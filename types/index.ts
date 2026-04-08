@@ -3,6 +3,23 @@ import { Timestamp } from "firebase/firestore";
 // ── 뉴스 도메인 ──────────────────────────────────────
 export type NewsTopic = "전체" | "국내" | "글로벌" | "헬스케어" | "IT";
 
+// ── 페르소나 ─────────────────────────────────────────
+export type PersonaId =
+  | "default"
+  | "entrepreneur"
+  | "healthcare-expert"
+  | "fund-trader"
+  | "tech-cto"
+  | "policy-analyst";
+
+export interface Persona {
+  id: PersonaId;
+  name: string;
+  icon: string;
+  description: string;
+  systemPromptAddition: string;
+}
+
 // ── 사용자 ────────────────────────────────────────────
 export interface User {
   uid: string;
@@ -38,6 +55,9 @@ export interface ChatMessage {
   content: string;
   sources: NewsSource[];
   createdAt: Timestamp;
+  personaId?: PersonaId;
+  personaName?: string;
+  personaIcon?: string;
 }
 
 // ── API 요청/응답 ─────────────────────────────────────
@@ -45,6 +65,7 @@ export interface ChatRequest {
   message: string;
   sessionId: string;
   topic?: NewsTopic;
+  persona?: PersonaId;
 }
 
 export interface ChatStreamEvent {

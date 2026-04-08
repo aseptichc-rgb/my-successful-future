@@ -24,6 +24,14 @@ export default function MessageBubble({ message }: Props) {
             : "bg-gray-100 text-gray-900"
         }`}
       >
+        {/* 페르소나 표시 */}
+        {!isUser && message.personaName && (
+          <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-gray-500">
+            <span>{message.personaIcon}</span>
+            <span>{message.personaName}</span>
+          </div>
+        )}
+
         <div className="whitespace-pre-wrap text-sm leading-relaxed">
           {message.content}
         </div>

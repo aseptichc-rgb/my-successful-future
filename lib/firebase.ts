@@ -159,7 +159,8 @@ export async function addMessage(
   sessionId: string,
   role: "user" | "assistant",
   content: string,
-  sources: NewsSource[] = []
+  sources: NewsSource[] = [],
+  personaInfo?: { personaId: string; personaName: string; personaIcon: string }
 ): Promise<string> {
   const db = getDbInstance();
   const ref = await addDoc(collection(db, "messages"), {
@@ -167,6 +168,7 @@ export async function addMessage(
     role,
     content,
     sources,
+    ...(personaInfo && personaInfo),
     createdAt: serverTimestamp(),
   });
   await updateDoc(doc(db, "sessions", sessionId), {

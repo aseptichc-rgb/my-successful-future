@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { ChatMessage } from "@/types";
+import type { ChatMessage, PersonaId } from "@/types";
+import { getPersona } from "@/lib/personas";
 import MessageBubble from "@/components/chat/MessageBubble";
 import LoadingDots from "@/components/ui/LoadingDots";
 
 interface Props {
   messages: ChatMessage[];
   isLoading: boolean;
+  respondingPersona?: PersonaId | null;
 }
 
-export default function ChatWindow({ messages, isLoading }: Props) {
+export default function ChatWindow({ messages, isLoading, respondingPersona }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -33,9 +35,13 @@ export default function ChatWindow({ messages, isLoading }: Props) {
           <MessageBubble key={msg.id} message={msg} />
         ))}
 
-        {isLoading && (
+        {isLoading && respondingPersona && (
           <div className="flex justify-start">
-            <div className="rounded-2xl bg-gray-100">
+            <div className="rounded-2xl bg-gray-100 px-4 py-3">
+              <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-gray-500">
+                <span>{getPersona(respondingPersona).icon}</span>
+                <span>{getPersona(respondingPersona).name} 응답 중...</span>
+              </div>
               <LoadingDots />
             </div>
           </div>

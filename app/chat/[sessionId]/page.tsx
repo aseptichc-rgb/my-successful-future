@@ -6,13 +6,14 @@ import { useAuth } from "@/lib/auth-context";
 import { useChat } from "@/hooks/useChat";
 import ChatWindow from "@/components/chat/ChatWindow";
 import TopicSelector from "@/components/chat/TopicSelector";
+import PersonaSelector from "@/components/chat/PersonaSelector";
 
 export default function ChatSessionPage() {
   const params = useParams();
   const router = useRouter();
   const { firebaseUser, loading: authLoading, signOut } = useAuth();
   const sessionId = params.sessionId as string;
-  const { messages, isLoading, error, selectedTopic, sendMessage, setSelectedTopic } = useChat(sessionId);
+  const { messages, isLoading, error, selectedTopic, activePersonas, respondingPersona, sendMessage, setSelectedTopic, togglePersona } = useChat(sessionId);
   const [input, setInput] = useState("");
 
   useEffect(() => {
@@ -60,8 +61,18 @@ export default function ChatSessionPage() {
       <header className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
         <div className="flex items-center gap-3">
           <h1 className="text-lg font-bold text-gray-900">AI 뉴스 챗봇</h1>
+          <PersonaSelector activePersonas={activePersonas} onToggle={togglePersona} />
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => router.push("/")}
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+            title="홈으로"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+            </svg>
+          </button>
           <button
             onClick={handleNewChat}
             className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
@@ -81,7 +92,7 @@ export default function ChatSessionPage() {
       <TopicSelector selected={selectedTopic} onChange={setSelectedTopic} />
 
       {/* 채팅 영역 */}
-      <ChatWindow messages={messages} isLoading={isLoading} />
+      <ChatWindow messages={messages} isLoading={isLoading} respondingPersona={respondingPersona} />
 
       {/* 에러 메시지 */}
       {error && (
