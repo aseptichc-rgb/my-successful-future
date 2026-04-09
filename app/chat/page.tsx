@@ -3,23 +3,44 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { getSessions } from "@/lib/firebase";
 import NewChatModal from "@/components/chat/NewChatModal";
 
 export default function ChatPage() {
   const router = useRouter();
   const { user, firebaseUser, loading } = useAuth();
-  const [showModal, setShowModal] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    if (!loading && !firebaseUser) {
+    if (loading) return;
+
+    if (!firebaseUser) {
       router.push("/login");
+      return;
     }
+
+    // 기존 세션이 있으면 가장 최근 대화로 이동
+    getSessions(firebaseUser.uid).then((sessions) => {
+      if (sessions.length > 0) {
+        router.replace(`/chat/${sessions[0].id}`);
+      } else {
+        setShowModal(true);
+        setChecking(false);
+      }
+    }).catch(() => {
+      setShowModal(true);
+      setChecking(false);
+    });
   }, [firebaseUser, loading, router]);
 
-  if (loading) {
+  if (loading || checking) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+      <div className="flex h-full items-center justify-center">
+        <div className="text-center text-gray-400">
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+          <p>대화 불러오는 중...</p>
+        </div>
       </div>
     );
   }
