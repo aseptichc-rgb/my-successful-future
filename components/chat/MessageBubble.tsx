@@ -24,6 +24,13 @@ export default function MessageBubble({ message }: Props) {
             : "bg-gray-100 text-gray-900"
         }`}
       >
+        {/* 사용자 메시지: 발신자 이름 표시 (다중 사용자 대화 시) */}
+        {isUser && message.senderName && (
+          <div className="mb-1 text-xs font-semibold text-blue-200">
+            {message.senderName}
+          </div>
+        )}
+
         {/* 페르소나 표시 */}
         {!isUser && message.personaName && (
           <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-gray-500">

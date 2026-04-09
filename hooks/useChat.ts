@@ -2,41 +2,47 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Timestamp } from "firebase/firestore";
-import { getMessages, addMessage, updateSessionTitle } from "@/lib/firebase";
+import { getMessages, addMessage, updateSessionTitle, onMessagesSnapshot, getSessionById } from "@/lib/firebase";
 import { getPersona } from "@/lib/personas";
-import type { ChatMessage, ChatStreamEvent, NewsTopic, PersonaId } from "@/types";
+import type { ChatMessage, ChatSession, ChatStreamEvent, NewsTopic, PersonaId } from "@/types";
 
-export function useChat(sessionId: string) {
+export function useChat(sessionId: string, currentUid?: string, currentName?: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<NewsTopic>("전체");
   const [activePersonas, setActivePersonas] = useState<PersonaId[]>(["default"]);
   const [respondingPersona, setRespondingPersona] = useState<PersonaId | null>(null);
+  const [session, setSession] = useState<ChatSession | null>(null);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+  const isLoadingRef = useRef(isLoading);
+  isLoadingRef.current = isLoading;
 
-  // Firestore에서 기존 메시지 로드
-  const loadHistory = useCallback(async () => {
-    try {
-      const history = await getMessages(sessionId);
-      setMessages(history);
-    } catch (err) {
-      console.error("Failed to load messages:", err);
+  // 세션 정보 로드
+  useEffect(() => {
+    if (sessionId) {
+      getSessionById(sessionId).then(setSession);
     }
   }, [sessionId]);
 
+  // 실시간 메시지 리스너 (다른 참여자의 메시지를 즉시 수신)
   useEffect(() => {
-    if (sessionId) {
-      loadHistory();
-    }
-  }, [sessionId, loadHistory]);
+    if (!sessionId) return;
+
+    const unsub = onMessagesSnapshot(sessionId, (serverMessages) => {
+      // 로딩 중(스트리밍 중)이면 서버 동기화 건너뜀 (스트리밍과 충돌 방지)
+      if (isLoadingRef.current) return;
+      setMessages(serverMessages);
+    });
+
+    return unsub;
+  }, [sessionId]);
 
   // 페르소나 추가/제거
   const togglePersona = useCallback((personaId: PersonaId) => {
     setActivePersonas((prev) => {
       if (prev.includes(personaId)) {
-        // 최소 1개는 유지
         if (prev.length <= 1) return prev;
         return prev.filter((id) => id !== personaId);
       }
@@ -134,7 +140,7 @@ export function useChat(sessionId: string) {
       setError(null);
       setIsLoading(true);
 
-      // 사용자 메시지를 즉시 UI에 추가
+      // 사용자 메시지를 즉시 UI에 추가 (발신자 정보 포함)
       const userMessage: ChatMessage = {
         id: `temp-user-${Date.now()}`,
         sessionId,
@@ -142,11 +148,13 @@ export function useChat(sessionId: string) {
         content,
         sources: [],
         createdAt: Timestamp.now(),
+        senderUid: currentUid,
+        senderName: currentName,
       };
       setMessages((prev) => [...prev, userMessage]);
 
-      // 사용자 메시지 Firestore 저장
-      addMessage(sessionId, "user", content).catch((err) =>
+      // 사용자 메시지 Firestore 저장 (발신자 정보 포함)
+      addMessage(sessionId, "user", content, [], undefined, currentUid, currentName).catch((err) =>
         console.error("Failed to save user message:", err)
       );
 
@@ -158,22 +166,22 @@ export function useChat(sessionId: string) {
         );
       }
 
-      // 기존 대화 히스토리 구성 (다중 페르소나 태그 포함)
+      // 기존 대화 히스토리 구성
       const isMulti = activePersonas.length > 1;
-      let accumulatedHistory = messagesRef.current.map((msg) => ({
+      const accumulatedHistory = messagesRef.current.map((msg) => ({
         role: msg.role as "user" | "assistant",
         content:
           msg.role === "assistant" && isMulti && msg.personaName
             ? `[${msg.personaName}] ${msg.content}`
-            : msg.content,
+            : msg.role === "user" && msg.senderName
+              ? `[${msg.senderName}] ${msg.content}`
+              : msg.content,
       }));
 
       try {
-        // 각 활성 페르소나가 순차적으로 응답
         for (const personaId of activePersonas) {
           const persona = getPersona(personaId);
 
-          // 어시스턴트 메시지 플레이스홀더
           const assistantId = `temp-${personaId}-${Date.now()}`;
           const assistantMessage: ChatMessage = {
             id: assistantId,
@@ -197,7 +205,6 @@ export function useChat(sessionId: string) {
               assistantId
             );
 
-            // Firestore 저장 (페르소나 정보 포함)
             if (fullText) {
               addMessage(sessionId, "assistant", fullText, [], {
                 personaId,
@@ -207,14 +214,12 @@ export function useChat(sessionId: string) {
                 console.error("Failed to save assistant message:", err)
               );
 
-              // 다음 페르소나를 위해 히스토리에 추가
               accumulatedHistory.push({
                 role: "assistant",
                 content: isMulti ? `[${persona.name}] ${fullText}` : fullText,
               });
             }
           } catch {
-            // 이 페르소나 실패 시 해당 메시지 제거, 다음 페르소나는 계속 진행
             setMessages((prev) => prev.filter((msg) => msg.id !== assistantId));
           }
         }
@@ -225,7 +230,7 @@ export function useChat(sessionId: string) {
         setRespondingPersona(null);
       }
     },
-    [sessionId, selectedTopic, activePersonas, isLoading, streamPersonaResponse]
+    [sessionId, selectedTopic, activePersonas, isLoading, streamPersonaResponse, currentUid, currentName]
   );
 
   return {
@@ -235,9 +240,9 @@ export function useChat(sessionId: string) {
     selectedTopic,
     activePersonas,
     respondingPersona,
+    session,
     sendMessage,
     setSelectedTopic,
     togglePersona,
-    loadHistory,
   };
 }

@@ -21,7 +21,8 @@ export default function ChatPage() {
     // 새 세션 생성 후 리다이렉트
     if (!creating) {
       setCreating(true);
-      createSession(firebaseUser.uid, "새 대화").then((sessionId) => {
+      const displayName = user?.displayName || firebaseUser.displayName || "사용자";
+      createSession(firebaseUser.uid, "새 대화", displayName).then((sessionId) => {
         router.push(`/chat/${sessionId}`);
       });
     }

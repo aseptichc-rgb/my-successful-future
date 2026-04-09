@@ -34,8 +34,23 @@ export interface ChatSession {
   id: string;
   uid: string;
   title: string;
+  participants: string[];       // 참여자 uid 배열 (방장 포함)
+  participantNames: Record<string, string>; // uid → displayName 매핑
   createdAt: Timestamp;
   updatedAt: Timestamp;
+}
+
+// ── 초대 ──────────────────────────────────────────────
+export interface Invitation {
+  id: string;
+  sessionId: string;
+  sessionTitle: string;
+  fromUid: string;
+  fromName: string;
+  toUid: string;
+  toEmail: string;
+  status: "pending" | "accepted" | "declined";
+  createdAt: Timestamp;
 }
 
 // ── 뉴스 출처 ─────────────────────────────────────────
@@ -55,6 +70,8 @@ export interface ChatMessage {
   content: string;
   sources: NewsSource[];
   createdAt: Timestamp;
+  senderUid?: string;
+  senderName?: string;
   personaId?: PersonaId;
   personaName?: string;
   personaIcon?: string;

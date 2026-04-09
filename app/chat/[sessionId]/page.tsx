@@ -7,14 +7,27 @@ import { useChat } from "@/hooks/useChat";
 import ChatWindow from "@/components/chat/ChatWindow";
 import TopicSelector from "@/components/chat/TopicSelector";
 import PersonaSelector from "@/components/chat/PersonaSelector";
+import ParticipantsBadge from "@/components/chat/ParticipantsBadge";
+import InviteModal from "@/components/chat/InviteModal";
+import InvitationBell from "@/components/chat/InvitationBell";
 
 export default function ChatSessionPage() {
   const params = useParams();
   const router = useRouter();
-  const { firebaseUser, loading: authLoading, signOut } = useAuth();
+  const { user, firebaseUser, loading: authLoading, signOut } = useAuth();
   const sessionId = params.sessionId as string;
-  const { messages, isLoading, error, selectedTopic, activePersonas, respondingPersona, sendMessage, setSelectedTopic, togglePersona } = useChat(sessionId);
+
+  const currentUid = firebaseUser?.uid;
+  const currentName = user?.displayName || firebaseUser?.displayName || "사용자";
+
+  const {
+    messages, isLoading, error, selectedTopic,
+    activePersonas, respondingPersona, session,
+    sendMessage, setSelectedTopic, togglePersona,
+  } = useChat(sessionId, currentUid, currentName);
+
   const [input, setInput] = useState("");
+  const [showInviteModal, setShowInviteModal] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !firebaseUser) {
@@ -55,6 +68,8 @@ export default function ChatSessionPage() {
     );
   }
 
+  const isMultiUser = session?.participants && session.participants.length > 1;
+
   return (
     <div className="flex h-screen flex-col bg-white">
       {/* 헤더 */}
@@ -62,8 +77,31 @@ export default function ChatSessionPage() {
         <div className="flex items-center gap-3">
           <h1 className="text-lg font-bold text-gray-900">AI 뉴스 챗봇</h1>
           <PersonaSelector activePersonas={activePersonas} onToggle={togglePersona} />
+          {session?.participantNames && currentUid && (
+            <ParticipantsBadge
+              participantNames={session.participantNames}
+              ownerUid={session.uid}
+              currentUid={currentUid}
+            />
+          )}
         </div>
         <div className="flex items-center gap-2">
+          {/* 초대 버튼 */}
+          <button
+            onClick={() => setShowInviteModal(true)}
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+            title="사용자 초대"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+            </svg>
+          </button>
+
+          {/* 초대 알림 벨 */}
+          {currentUid && (
+            <InvitationBell uid={currentUid} displayName={currentName} />
+          )}
+
           <button
             onClick={() => router.push("/")}
             className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
@@ -124,6 +162,18 @@ export default function ChatSessionPage() {
           </button>
         </form>
       </div>
+
+      {/* 초대 모달 */}
+      {showInviteModal && currentUid && (
+        <InviteModal
+          sessionId={sessionId}
+          sessionTitle={session?.title || "대화"}
+          fromUid={currentUid}
+          fromName={currentName}
+          participants={session?.participants || []}
+          onClose={() => setShowInviteModal(false)}
+        />
+      )}
     </div>
   );
 }

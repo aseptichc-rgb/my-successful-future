@@ -24,9 +24,12 @@ import {
   orderBy,
   Timestamp,
   serverTimestamp,
+  onSnapshot,
+  arrayUnion,
   type Firestore,
+  type Unsubscribe,
 } from "firebase/firestore";
-import type { User, ChatSession, ChatMessage, NewsSource, NewsTopic } from "@/types";
+import type { User, ChatSession, ChatMessage, Invitation, NewsSource, NewsTopic } from "@/types";
 
 // ── Firebase 지연 초기화 ─────────────────────────────
 const firebaseConfig = {
@@ -117,11 +120,13 @@ export async function updatePreferredTopics(uid: string, topics: NewsTopic[]) {
 }
 
 // ── 세션 CRUD ─────────────────────────────────────────
-export async function createSession(uid: string, title: string): Promise<string> {
+export async function createSession(uid: string, title: string, displayName: string = ""): Promise<string> {
   const db = getDbInstance();
   const ref = await addDoc(collection(db, "sessions"), {
     uid,
     title,
+    participants: [uid],
+    participantNames: { [uid]: displayName || "나" },
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -130,9 +135,10 @@ export async function createSession(uid: string, title: string): Promise<string>
 
 export async function getSessions(uid: string): Promise<ChatSession[]> {
   const db = getDbInstance();
+  // 참여 중인 모든 세션 조회 (본인 생성 + 초대받은 세션)
   const q = query(
     collection(db, "sessions"),
-    where("uid", "==", uid),
+    where("participants", "array-contains", uid),
     orderBy("updatedAt", "desc")
   );
   const snap = await getDocs(q);
@@ -160,7 +166,9 @@ export async function addMessage(
   role: "user" | "assistant",
   content: string,
   sources: NewsSource[] = [],
-  personaInfo?: { personaId: string; personaName: string; personaIcon: string }
+  personaInfo?: { personaId: string; personaName: string; personaIcon: string },
+  senderUid?: string,
+  senderName?: string
 ): Promise<string> {
   const db = getDbInstance();
   const ref = await addDoc(collection(db, "messages"), {
@@ -169,6 +177,8 @@ export async function addMessage(
     content,
     sources,
     ...(personaInfo && personaInfo),
+    ...(senderUid && { senderUid }),
+    ...(senderName && { senderName }),
     createdAt: serverTimestamp(),
   });
   await updateDoc(doc(db, "sessions", sessionId), {
@@ -186,4 +196,115 @@ export async function getMessages(sessionId: string): Promise<ChatMessage[]> {
   );
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ChatMessage);
+}
+
+// ── 실시간 메시지 리스너 ──────────────────────────────
+export function onMessagesSnapshot(
+  sessionId: string,
+  callback: (messages: ChatMessage[]) => void
+): Unsubscribe {
+  const db = getDbInstance();
+  const q = query(
+    collection(db, "messages"),
+    where("sessionId", "==", sessionId),
+    orderBy("createdAt", "asc")
+  );
+  return onSnapshot(q, (snap) => {
+    const msgs = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ChatMessage);
+    callback(msgs);
+  });
+}
+
+// ── 이메일로 사용자 찾기 ──────────────────────────────
+export async function findUserByEmail(email: string): Promise<User | null> {
+  const db = getDbInstance();
+  const q = query(
+    collection(db, "users"),
+    where("email", "==", email.trim().toLowerCase())
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  return { uid: d.id, ...d.data() } as User;
+}
+
+// ── 초대 CRUD ─────────────────────────────────────────
+export async function sendInvitation(
+  sessionId: string,
+  sessionTitle: string,
+  fromUid: string,
+  fromName: string,
+  toUid: string,
+  toEmail: string
+): Promise<string> {
+  const db = getDbInstance();
+  const ref = await addDoc(collection(db, "invitations"), {
+    sessionId,
+    sessionTitle,
+    fromUid,
+    fromName,
+    toUid,
+    toEmail,
+    status: "pending",
+    createdAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function getMyInvitations(uid: string): Promise<Invitation[]> {
+  const db = getDbInstance();
+  const q = query(
+    collection(db, "invitations"),
+    where("toUid", "==", uid),
+    where("status", "==", "pending"),
+    orderBy("createdAt", "desc")
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Invitation);
+}
+
+export function onInvitationsSnapshot(
+  uid: string,
+  callback: (invitations: Invitation[]) => void
+): Unsubscribe {
+  const db = getDbInstance();
+  const q = query(
+    collection(db, "invitations"),
+    where("toUid", "==", uid),
+    where("status", "==", "pending")
+  );
+  return onSnapshot(q, (snap) => {
+    const invites = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Invitation);
+    callback(invites);
+  });
+}
+
+export async function acceptInvitation(invitationId: string, uid: string, displayName: string) {
+  const db = getDbInstance();
+  const invDoc = await getDoc(doc(db, "invitations", invitationId));
+  if (!invDoc.exists()) return;
+
+  const inv = invDoc.data();
+
+  // 초대 상태 업데이트
+  await updateDoc(doc(db, "invitations", invitationId), { status: "accepted" });
+
+  // 세션에 참여자 추가
+  await updateDoc(doc(db, "sessions", inv.sessionId), {
+    participants: arrayUnion(uid),
+    [`participantNames.${uid}`]: displayName,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function declineInvitation(invitationId: string) {
+  const db = getDbInstance();
+  await updateDoc(doc(db, "invitations", invitationId), { status: "declined" });
+}
+
+// ── 세션 참여자 확인 ──────────────────────────────────
+export async function isSessionParticipant(sessionId: string, uid: string): Promise<boolean> {
+  const session = await getSessionById(sessionId);
+  if (!session) return false;
+  return session.participants?.includes(uid) || session.uid === uid;
 }
