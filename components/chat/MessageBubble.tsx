@@ -1,18 +1,12 @@
 import type { ChatMessage } from "@/types";
-import MedicalDisclaimer from "@/components/ui/MedicalDisclaimer";
 import NewsCard from "@/components/chat/NewsCard";
 
 interface Props {
   message: ChatMessage;
+  showPersonaHeader?: boolean;
 }
 
-const HEALTHCARE_KEYWORDS = ["의료", "건강", "헬스케어", "병원", "치료", "진단", "의료진 상담"];
-
-function containsHealthcareContent(content: string): boolean {
-  return HEALTHCARE_KEYWORDS.some((kw) => content.includes(kw));
-}
-
-export default function MessageBubble({ message }: Props) {
+export default function MessageBubble({ message, showPersonaHeader = true }: Props) {
   const isUser = message.role === "user";
 
   return (
@@ -31,8 +25,8 @@ export default function MessageBubble({ message }: Props) {
           </div>
         )}
 
-        {/* 페르소나 표시 */}
-        {!isUser && message.personaName && (
+        {/* 페르소나 표시 (연속 메시지에서는 첫 번째만 표시) */}
+        {!isUser && message.personaName && showPersonaHeader && (
           <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-gray-500">
             <span>{message.personaIcon}</span>
             <span>{message.personaName}</span>
@@ -51,11 +45,6 @@ export default function MessageBubble({ message }: Props) {
               <NewsCard key={i} source={source} />
             ))}
           </div>
-        )}
-
-        {/* 헬스케어 콘텐츠 면책 */}
-        {!isUser && containsHealthcareContent(message.content) && (
-          <MedicalDisclaimer />
         )}
       </div>
     </div>

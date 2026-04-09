@@ -1,4 +1,5 @@
 import type { NewsSource, NewsTopic } from "@/types";
+import { formatDate } from "@/lib/locale";
 
 // ── 시의성 키워드 ─────────────────────────────────────
 const TIMELINESS_KEYWORDS = ["오늘", "방금", "최신", "속보", "지금", "현재", "긴급"];
@@ -56,12 +57,14 @@ export async function fetchFromNewsAPI(
         url: string;
         publishedAt: string;
         description: string;
+        urlToImage?: string;
       }) => ({
         title: article.title,
         publisher: article.source?.name || "Unknown",
         url: article.url,
-        publishedAt: new Date(article.publishedAt).toLocaleDateString("ko-KR"),
+        publishedAt: formatDate(new Date(article.publishedAt)),
         summary: article.description || "",
+        imageUrl: article.urlToImage || undefined,
       })
     );
   } catch {
@@ -99,7 +102,7 @@ export async function fetchFromRSS(query: string): Promise<NewsSource[]> {
             publisher: name,
             url: item.link || "",
             publishedAt: item.pubDate
-              ? new Date(item.pubDate).toLocaleDateString("ko-KR")
+              ? formatDate(new Date(item.pubDate))
               : "",
             summary: item.contentSnippet?.slice(0, 150) || "",
           });

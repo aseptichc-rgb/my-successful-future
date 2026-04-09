@@ -30,10 +30,23 @@ export default function ChatWindow({ messages, isLoading, respondingPersona }: P
         </div>
       )}
 
-      <div className="mx-auto max-w-3xl space-y-4">
-        {messages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} />
-        ))}
+      <div className="mx-auto max-w-3xl">
+        {messages.map((msg, i) => {
+          const prevMsg = i > 0 ? messages[i - 1] : null;
+          const isContinuation =
+            msg.role === "assistant" &&
+            prevMsg?.role === "assistant" &&
+            prevMsg?.personaId === msg.personaId;
+
+          return (
+            <div key={msg.id} className={isContinuation ? "mt-1" : "mt-4 first:mt-0"}>
+              <MessageBubble
+                message={msg}
+                showPersonaHeader={!isContinuation}
+              />
+            </div>
+          );
+        })}
 
         {isLoading && respondingPersona && (
           <div className="flex justify-start">

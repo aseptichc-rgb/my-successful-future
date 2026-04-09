@@ -13,6 +13,17 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const getRedirectPath = () => {
+    const pendingToken = typeof window !== "undefined"
+      ? sessionStorage.getItem("pendingInviteToken")
+      : null;
+    if (pendingToken) {
+      sessionStorage.removeItem("pendingInviteToken");
+      return `/invite/${pendingToken}`;
+    }
+    return "/chat";
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
@@ -20,7 +31,7 @@ export default function LoginPage() {
 
     try {
       await signIn(email, password);
-      router.push("/chat");
+      router.push(getRedirectPath());
     } catch {
       setError("이메일 또는 비밀번호가 올바르지 않습니다.");
     } finally {
@@ -33,7 +44,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signInGoogle();
-      router.push("/chat");
+      router.push(getRedirectPath());
     } catch {
       setError("구글 로그인에 실패했습니다.");
     } finally {

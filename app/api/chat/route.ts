@@ -11,7 +11,11 @@ interface ChatApiRequest {
   topic?: NewsTopic;
   persona?: PersonaId;
   participants?: PersonaId[];
+  userPersona?: string;
 }
+
+// 입력 글자수 제한
+const MAX_INPUT_LENGTH = 500;
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,7 +28,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { message, history = [], topic = "전체", persona = "default", participants } = body;
+    // 입력 글자수 제한 검증
+    if (body.message.length > MAX_INPUT_LENGTH) {
+      return NextResponse.json(
+        { error: `메시지는 ${MAX_INPUT_LENGTH}자 이내로 입력해주세요. (현재 ${body.message.length}자)` },
+        { status: 400 }
+      );
+    }
+
+    const { message, history = [], topic = "전체", persona = "default", participants, userPersona } = body;
 
     // 대화 히스토리 + 현재 메시지
     const conversationMessages = [
@@ -36,11 +48,12 @@ export async function POST(request: NextRequest) {
     const systemPrompt = buildSystemPrompt(
       topic as NewsTopic,
       persona as PersonaId,
-      participants as PersonaId[] | undefined
+      participants as PersonaId[] | undefined,
+      userPersona
     );
 
-    // Gemini API 스트리밍 호출
-    const stream = streamChatResponse(conversationMessages, systemPrompt, true);
+    // Gemini API 스트리밍 호출 (topic 전달하여 폴백 뉴스 소스 활용)
+    const stream = streamChatResponse(conversationMessages, systemPrompt, true, topic as NewsTopic);
 
     return new Response(stream, {
       headers: {

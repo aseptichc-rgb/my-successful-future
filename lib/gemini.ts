@@ -1,5 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import type { ChatStreamEvent, NewsSource } from "@/types";
+import type { ChatStreamEvent, NewsSource, NewsTopic } from "@/types";
+import { formatDate } from "@/lib/locale";
+import { fetchFromNewsAPI, fetchFromRSS } from "@/lib/newsSource";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -23,7 +25,8 @@ interface MessageParam {
 export function streamChatResponse(
   messages: MessageParam[],
   systemPrompt: string,
-  useWebSearch: boolean = true
+  useWebSearch: boolean = true,
+  topic: NewsTopic = "전체"
 ): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
 
@@ -33,6 +36,9 @@ export function streamChatResponse(
         const model = genAI.getGenerativeModel({
           model: MODEL,
           systemInstruction: systemPrompt,
+          generationConfig: {
+            maxOutputTokens: 1024,
+          },
           ...(useWebSearch && {
             tools: [{ googleSearch: {} } as never],
           }),
@@ -54,8 +60,14 @@ export function streamChatResponse(
 
         const lastMessage = messages[messages.length - 1];
 
+        // 사용자 메시지에 오늘 날짜 컨텍스트 추가 (Google Search가 최신 결과를 반환하도록)
+        const now = new Date();
+        const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+        const todayStr = `${kst.getUTCFullYear()}년 ${kst.getUTCMonth() + 1}월 ${kst.getUTCDate()}일`;
+        const messageWithDate = `[오늘 날짜: ${todayStr}] ${lastMessage.content}`;
+
         const chat = model.startChat({ history });
-        const result = await chat.sendMessageStream(lastMessage.content);
+        const result = await chat.sendMessageStream(messageWithDate);
 
         let fullText = "";
 
@@ -111,10 +123,10 @@ export function streamChatResponse(
               const supportText = chunkTitles.get(i);
 
               sources.push({
-                title: supportText || `${publisher} 관련 기사`,
+                title: stripMarkdown(supportText || `${publisher} 관련 기사`),
                 publisher,
                 url: uri,
-                publishedAt: new Date().toLocaleDateString("ko-KR"),
+                publishedAt: formatDate(new Date()),
               });
             }
           }
@@ -122,7 +134,26 @@ export function streamChatResponse(
           // grounding metadata 추출 실패 시 무시
         }
 
+        // Gemini grounding에서 출처를 못 찾은 경우 NewsAPI/RSS 폴백
+        if (sources.length === 0 && useWebSearch) {
+          const userQuery = messages[messages.length - 1]?.content || "";
+          try {
+            const newsApiResults = await fetchFromNewsAPI(userQuery, topic);
+            if (newsApiResults.length > 0) {
+              sources.push(...newsApiResults.slice(0, 5));
+            } else {
+              const rssResults = await fetchFromRSS(userQuery);
+              sources.push(...rssResults.slice(0, 5));
+            }
+          } catch {
+            // 폴백 실패 시 무시
+          }
+        }
+
         if (sources.length > 0) {
+          // 모든 뉴스 소스에서 OG 이미지 병렬 추출
+          await fetchOgImages(sources);
+
           const sourcesData: ChatStreamEvent = {
             type: "sources",
             sources,
@@ -154,6 +185,71 @@ export function streamChatResponse(
       }
     },
   });
+}
+
+/** 텍스트에서 마크다운 형식 제거 */
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*/g, "")    // **굵게**
+    .replace(/\*/g, "")      // *기울임*
+    .replace(/#{1,6}\s*/g, "") // # 헤딩
+    .replace(/`/g, "")        // `코드`
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") // [텍스트](링크) → 텍스트
+    .trim();
+}
+
+/** URL에서 OG 이미지 추출 */
+async function fetchOgImage(url: string): Promise<string | undefined> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; NewsBot/1.0)" },
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) return undefined;
+
+    // 전체 HTML을 읽지 않고 앞부분만 확인 (성능)
+    const html = await res.text();
+    const head = html.slice(0, 30000);
+
+    // og:image 메타 태그 추출
+    const ogMatch = head.match(
+      /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i
+    ) || head.match(
+      /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i
+    );
+
+    if (ogMatch?.[1]) {
+      const imgUrl = ogMatch[1];
+      // 상대 경로를 절대 경로로 변환
+      if (imgUrl.startsWith("http")) return imgUrl;
+      try {
+        return new URL(imgUrl, url).href;
+      } catch {
+        return undefined;
+      }
+    }
+
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** 여러 URL에서 OG 이미지를 병렬로 추출 */
+async function fetchOgImages(
+  sources: NewsSource[]
+): Promise<void> {
+  const promises = sources.map(async (source) => {
+    const imageUrl = await fetchOgImage(source.url);
+    if (imageUrl) {
+      source.imageUrl = imageUrl;
+    }
+  });
+  await Promise.allSettled(promises);
 }
 
 /** 도메인 문자열 또는 URL에서 언론사 이름 추출 */

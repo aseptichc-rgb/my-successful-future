@@ -12,6 +12,7 @@ import {
   type FirebaseUser,
 } from "@/lib/firebase";
 import type { User } from "@/types";
+import { requestNotificationPermission, removeFCMTokenForUser } from "@/lib/fcm";
 
 interface AuthContextValue {
   user: User | null;
@@ -21,6 +22,8 @@ interface AuthContextValue {
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signInGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
+  enableNotifications: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -36,6 +39,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setFirebaseUser(fbUser);
         const profile = await getUserProfile(fbUser.uid);
         setUser(profile);
+        // FCM 토큰 등록 (알림 권한이 이미 부여된 경우에만 자동 등록)
+        if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+          requestNotificationPermission(fbUser.uid).catch(() => {});
+        }
       } else {
         setFirebaseUser(null);
         setUser(null);
@@ -58,12 +65,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    if (firebaseUser) {
+      await removeFCMTokenForUser(firebaseUser.uid).catch(() => {});
+    }
     await firebaseSignOut();
+  };
+
+  const refreshUser = async () => {
+    if (firebaseUser) {
+      const profile = await getUserProfile(firebaseUser.uid);
+      setUser(profile);
+    }
+  };
+
+  const enableNotifications = async (): Promise<string | null> => {
+    if (!firebaseUser) return null;
+    return requestNotificationPermission(firebaseUser.uid);
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, firebaseUser, loading, signIn, signUp, signInGoogle, signOut }}
+      value={{ user, firebaseUser, loading, signIn, signUp, signInGoogle, signOut, refreshUser, enableNotifications }}
     >
       {children}
     </AuthContext.Provider>

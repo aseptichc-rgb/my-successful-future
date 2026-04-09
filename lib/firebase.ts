@@ -19,6 +19,7 @@ import {
   getDocs,
   setDoc,
   updateDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -26,10 +27,13 @@ import {
   serverTimestamp,
   onSnapshot,
   arrayUnion,
+  arrayRemove,
+  writeBatch,
+  increment,
   type Firestore,
   type Unsubscribe,
 } from "firebase/firestore";
-import type { User, ChatSession, ChatMessage, Invitation, NewsSource, NewsTopic } from "@/types";
+import type { User, ChatSession, ChatMessage, Invitation, InviteLink, NewsSource, NewsTopic, SessionType, UserPresence, AutoNewsConfig, PersonaId } from "@/types";
 
 // ── Firebase 지연 초기화 ─────────────────────────────
 const firebaseConfig = {
@@ -119,18 +123,60 @@ export async function updatePreferredTopics(uid: string, topics: NewsTopic[]) {
   await updateDoc(doc(db, "users", uid), { preferredTopics: topics });
 }
 
-// ── 세션 CRUD ─────────────────────────────────────────
-export async function createSession(uid: string, title: string, displayName: string = ""): Promise<string> {
+export async function updateUserPersona(uid: string, userPersona: string) {
   const db = getDbInstance();
+  await updateDoc(doc(db, "users", uid), { userPersona });
+}
+
+// ── 세션 CRUD ─────────────────────────────────────────
+export async function createSession(
+  uid: string,
+  title: string,
+  displayName: string = "",
+  sessionType: SessionType = "ai",
+  participantUids?: string[],
+  participantNamesMap?: Record<string, string>
+): Promise<string> {
+  const db = getDbInstance();
+  const participants = participantUids || [uid];
+  const participantNames = participantNamesMap || { [uid]: displayName || "나" };
+
+  // participants에 방장이 포함되도록 보장
+  if (!participants.includes(uid)) {
+    participants.unshift(uid);
+  }
+  if (!participantNames[uid]) {
+    participantNames[uid] = displayName || "나";
+  }
+
   const ref = await addDoc(collection(db, "sessions"), {
     uid,
     title,
-    participants: [uid],
-    participantNames: { [uid]: displayName || "나" },
+    sessionType,
+    participants,
+    participantNames,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
   return ref.id;
+}
+
+// ── DM 중복 방지: 기존 DM 세션 찾기 ─────────────────
+export async function findExistingDM(uid1: string, uid2: string): Promise<ChatSession | null> {
+  const db = getDbInstance();
+  const q = query(
+    collection(db, "sessions"),
+    where("sessionType", "==", "dm"),
+    where("participants", "array-contains", uid1)
+  );
+  const snap = await getDocs(q);
+  for (const d of snap.docs) {
+    const session = { id: d.id, ...d.data() } as ChatSession;
+    if (session.participants?.includes(uid2)) {
+      return session;
+    }
+  }
+  return null;
 }
 
 export async function getSessions(uid: string): Promise<ChatSession[]> {
@@ -181,8 +227,14 @@ export async function addMessage(
     ...(senderName && { senderName }),
     createdAt: serverTimestamp(),
   });
+
+  // 세션의 lastMessage 및 updatedAt 갱신
+  const displayName = senderName || (personaInfo?.personaName) || "";
   await updateDoc(doc(db, "sessions", sessionId), {
     updatedAt: serverTimestamp(),
+    lastMessage: content.length > 100 ? content.slice(0, 100) + "..." : content,
+    lastMessageAt: serverTimestamp(),
+    lastMessageSenderName: displayName,
   });
   return ref.id;
 }
@@ -209,10 +261,16 @@ export function onMessagesSnapshot(
     where("sessionId", "==", sessionId),
     orderBy("createdAt", "asc")
   );
-  return onSnapshot(q, (snap) => {
-    const msgs = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ChatMessage);
-    callback(msgs);
-  });
+  return onSnapshot(
+    q,
+    (snap) => {
+      const msgs = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ChatMessage);
+      callback(msgs);
+    },
+    (error) => {
+      console.warn("메시지 리스너 에러:", error.message);
+    }
+  );
 }
 
 // ── 이메일로 사용자 찾기 ──────────────────────────────
@@ -273,10 +331,16 @@ export function onInvitationsSnapshot(
     where("toUid", "==", uid),
     where("status", "==", "pending")
   );
-  return onSnapshot(q, (snap) => {
-    const invites = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Invitation);
-    callback(invites);
-  });
+  return onSnapshot(
+    q,
+    (snap) => {
+      const invites = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Invitation);
+      callback(invites);
+    },
+    (error) => {
+      console.warn("초대 리스너 에러:", error.message);
+    }
+  );
 }
 
 export async function acceptInvitation(invitationId: string, uid: string, displayName: string) {
@@ -307,4 +371,302 @@ export async function isSessionParticipant(sessionId: string, uid: string): Prom
   const session = await getSessionById(sessionId);
   if (!session) return false;
   return session.participants?.includes(uid) || session.uid === uid;
+}
+
+// ── 초대 링크 CRUD ───────────────────────────────────
+function generateToken(): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let token = "";
+  for (let i = 0; i < 24; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
+}
+
+export async function createInviteLink(
+  sessionId: string,
+  sessionTitle: string,
+  fromUid: string,
+  fromName: string
+): Promise<InviteLink> {
+  const db = getDbInstance();
+  const token = generateToken();
+  const now = Timestamp.now();
+  const expiresAt = Timestamp.fromMillis(now.toMillis() + 7 * 24 * 60 * 60 * 1000); // 7일 후 만료
+
+  const ref = await addDoc(collection(db, "inviteLinks"), {
+    sessionId,
+    sessionTitle,
+    fromUid,
+    fromName,
+    token,
+    expiresAt,
+    createdAt: serverTimestamp(),
+  });
+
+  return {
+    id: ref.id,
+    sessionId,
+    sessionTitle,
+    fromUid,
+    fromName,
+    token,
+    expiresAt,
+    createdAt: now,
+  };
+}
+
+export async function getInviteLinkByToken(token: string): Promise<InviteLink | null> {
+  const db = getDbInstance();
+  const q = query(
+    collection(db, "inviteLinks"),
+    where("token", "==", token)
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  return { id: d.id, ...d.data() } as InviteLink;
+}
+
+export async function joinSessionViaLink(
+  token: string,
+  uid: string,
+  displayName: string
+): Promise<{ success: boolean; sessionId?: string; error?: string }> {
+  const inviteLink = await getInviteLinkByToken(token);
+  if (!inviteLink) {
+    return { success: false, error: "유효하지 않은 초대 링크입니다." };
+  }
+
+  if (inviteLink.expiresAt.toMillis() < Date.now()) {
+    return { success: false, error: "만료된 초대 링크입니다." };
+  }
+
+  const session = await getSessionById(inviteLink.sessionId);
+  if (!session) {
+    return { success: false, error: "존재하지 않는 대화방입니다." };
+  }
+
+  if (session.participants?.includes(uid)) {
+    return { success: true, sessionId: inviteLink.sessionId };
+  }
+
+  const db = getDbInstance();
+  await updateDoc(doc(db, "sessions", inviteLink.sessionId), {
+    participants: arrayUnion(uid),
+    [`participantNames.${uid}`]: displayName,
+    updatedAt: serverTimestamp(),
+  });
+
+  return { success: true, sessionId: inviteLink.sessionId };
+}
+
+// ── 실시간 세션 리스너 ──────────────────────────────
+export function onSessionsSnapshot(
+  uid: string,
+  callback: (sessions: ChatSession[]) => void
+): Unsubscribe {
+  const db = getDbInstance();
+  const q = query(
+    collection(db, "sessions"),
+    where("participants", "array-contains", uid),
+    orderBy("updatedAt", "desc")
+  );
+  return onSnapshot(
+    q,
+    (snap) => {
+      const sessions = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ChatSession);
+      callback(sessions);
+    },
+    (error) => {
+      console.warn("세션 리스너 에러:", error.message);
+    }
+  );
+}
+
+// ── 세션 삭제 ────────────────────────────────────────
+export async function deleteSession(sessionId: string) {
+  const db = getDbInstance();
+  // 세션에 속한 메시지 삭제
+  const msgQuery = query(
+    collection(db, "messages"),
+    where("sessionId", "==", sessionId)
+  );
+  const msgSnap = await getDocs(msgQuery);
+  const batch = writeBatch(db);
+  msgSnap.docs.forEach((d) => batch.delete(d.ref));
+  batch.delete(doc(db, "sessions", sessionId));
+  await batch.commit();
+}
+
+// ── 안읽은 메시지 카운트 ────────────────────────────
+export async function incrementUnreadCounts(
+  sessionId: string,
+  senderUid: string,
+  participants: string[]
+) {
+  const db = getDbInstance();
+  const updates: Record<string, ReturnType<typeof increment>> = {};
+  for (const uid of participants) {
+    if (uid !== senderUid) {
+      updates[`unreadCounts.${uid}`] = increment(1);
+    }
+  }
+  if (Object.keys(updates).length > 0) {
+    await updateDoc(doc(db, "sessions", sessionId), updates);
+  }
+}
+
+export async function clearUnreadCount(sessionId: string, uid: string) {
+  const db = getDbInstance();
+  await updateDoc(doc(db, "sessions", sessionId), {
+    [`unreadCounts.${uid}`]: 0,
+  });
+}
+
+// ── 세션 고정/음소거 ────────────────────────────────
+export async function pinSession(sessionId: string, uid: string) {
+  const db = getDbInstance();
+  await updateDoc(doc(db, "sessions", sessionId), {
+    pinnedBy: arrayUnion(uid),
+  });
+}
+
+export async function unpinSession(sessionId: string, uid: string) {
+  const db = getDbInstance();
+  await updateDoc(doc(db, "sessions", sessionId), {
+    pinnedBy: arrayRemove(uid),
+  });
+}
+
+export async function muteSession(sessionId: string, uid: string) {
+  const db = getDbInstance();
+  await updateDoc(doc(db, "sessions", sessionId), {
+    mutedBy: arrayUnion(uid),
+  });
+}
+
+export async function unmuteSession(sessionId: string, uid: string) {
+  const db = getDbInstance();
+  await updateDoc(doc(db, "sessions", sessionId), {
+    mutedBy: arrayRemove(uid),
+  });
+}
+
+// ── 프레즌스 관리 ───────────────────────────────────
+export async function updatePresence(
+  uid: string,
+  online: boolean,
+  activeSessionId?: string
+) {
+  const db = getDbInstance();
+  await setDoc(doc(db, "presence", uid), {
+    uid,
+    online,
+    lastSeen: serverTimestamp(),
+    ...(activeSessionId !== undefined && { activeSessionId }),
+  }, { merge: true });
+}
+
+export function onPresenceSnapshot(
+  uids: string[],
+  callback: (presences: Record<string, UserPresence>) => void
+): Unsubscribe {
+  if (uids.length === 0) return () => {};
+  const db = getDbInstance();
+  // Firestore 'in' 쿼리는 최대 30개까지
+  const limitedUids = uids.slice(0, 30);
+  const q = query(
+    collection(db, "presence"),
+    where("uid", "in", limitedUids)
+  );
+  return onSnapshot(q, (snap) => {
+    const presences: Record<string, UserPresence> = {};
+    snap.docs.forEach((d) => {
+      const data = d.data() as UserPresence;
+      presences[data.uid] = data;
+    });
+    callback(presences);
+  });
+}
+
+// ── FCM 토큰 관리 ───────────────────────────────────
+export async function saveFCMToken(uid: string, token: string) {
+  const db = getDbInstance();
+  // 중복 토큰 확인
+  const q = query(
+    collection(db, "fcmTokens"),
+    where("uid", "==", uid),
+    where("token", "==", token)
+  );
+  const snap = await getDocs(q);
+  if (!snap.empty) return; // 이미 등록됨
+
+  await addDoc(collection(db, "fcmTokens"), {
+    uid,
+    token,
+    createdAt: serverTimestamp(),
+    userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
+  });
+}
+
+export async function removeFCMToken(uid: string, token: string) {
+  const db = getDbInstance();
+  const q = query(
+    collection(db, "fcmTokens"),
+    where("uid", "==", uid),
+    where("token", "==", token)
+  );
+  const snap = await getDocs(q);
+  const batch = writeBatch(db);
+  snap.docs.forEach((d) => batch.delete(d.ref));
+  await batch.commit();
+}
+
+// ── 자동 뉴스 설정 CRUD ────────────────────────────────
+export async function saveAutoNewsConfig(
+  sessionId: string,
+  config: AutoNewsConfig
+) {
+  const db = getDbInstance();
+  await setDoc(doc(db, "autoNewsConfigs", sessionId), {
+    ...config,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+}
+
+export async function getAutoNewsConfig(
+  sessionId: string
+): Promise<AutoNewsConfig | null> {
+  const db = getDbInstance();
+  const snap = await getDoc(doc(db, "autoNewsConfigs", sessionId));
+  if (!snap.exists()) return null;
+  return snap.data() as AutoNewsConfig;
+}
+
+export function onAutoNewsConfigSnapshot(
+  sessionId: string,
+  callback: (config: AutoNewsConfig | null) => void
+): Unsubscribe {
+  const db = getDbInstance();
+  return onSnapshot(
+    doc(db, "autoNewsConfigs", sessionId),
+    (snap) => {
+      if (!snap.exists()) {
+        callback(null);
+        return;
+      }
+      callback(snap.data() as AutoNewsConfig);
+    },
+    (error) => {
+      console.warn("자동 뉴스 설정 리스너 에러:", error.message);
+    }
+  );
+}
+
+export async function updateAutoNewsLastChecked(sessionId: string) {
+  const db = getDbInstance();
+  await updateDoc(doc(db, "autoNewsConfigs", sessionId), {
+    lastCheckedAt: serverTimestamp(),
+  });
 }
