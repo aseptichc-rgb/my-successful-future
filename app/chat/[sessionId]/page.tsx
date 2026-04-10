@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useRef, useCallback, type FormEvent, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useChat } from "@/hooks/useChat";
 import { useAutoNews } from "@/hooks/useAutoNews";
+import { useKeywordAlert } from "@/hooks/useKeywordAlert";
 import ChatWindow from "@/components/chat/ChatWindow";
 import TopicSelector from "@/components/chat/TopicSelector";
 import PersonaSelector from "@/components/chat/PersonaSelector";
@@ -15,6 +16,8 @@ import InvitationBell from "@/components/chat/InvitationBell";
 import UserPersonaModal from "@/components/chat/UserPersonaModal";
 import FuturePersonaModal from "@/components/chat/FuturePersonaModal";
 import AutoNewsPanel from "@/components/chat/AutoNewsPanel";
+import KeywordAlertPanel from "@/components/chat/KeywordAlertPanel";
+import NewChatModal from "@/components/chat/NewChatModal";
 import MentionDropdown, { getFilteredPersonas } from "@/components/chat/MentionDropdown";
 import PresenceIndicator from "@/components/chat/PresenceIndicator";
 import { updateUserPersona, updateFuturePersona, clearUnreadCount, updatePresence } from "@/lib/firebase";
@@ -23,20 +26,32 @@ import type { PersonaId } from "@/types";
 export default function ChatSessionPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, firebaseUser, loading: authLoading, signOut, refreshUser } = useAuth();
   const sessionId = params.sessionId as string;
+  const initialPersona = (searchParams?.get("persona") as PersonaId | null) || undefined;
 
   const currentUid = firebaseUser?.uid;
   const currentName = user?.displayName || firebaseUser?.displayName || "사용자";
   const userPersona = user?.userPersona || "";
   const futurePersona = user?.futurePersona || "";
+  const userMemory = user?.userMemory || "";
 
   const {
     messages, isLoading, error, selectedTopic,
     activePersonas, respondingPersona, respondingConversationPersona, session,
     sessionType, isDirectChat,
     sendMessage, setSelectedTopic, togglePersona, dismissAI,
-  } = useChat(sessionId, currentUid, currentName, userPersona, futurePersona);
+  } = useChat(
+    sessionId,
+    currentUid,
+    currentName,
+    userPersona,
+    futurePersona,
+    userMemory,
+    () => { refreshUser().catch(() => {}); }, // 메모리 업데이트 후 user 프로필 리프레시
+    initialPersona, // 자문단 카드에서 진입 시 ?persona= 로 전달된 페르소나
+  );
 
   const isFutureSelfSession = sessionType === "future-self";
 
@@ -55,6 +70,17 @@ export default function ChatSessionPage() {
     currentPersona: userPersona || undefined,
   });
 
+  // 키워드 알림 훅 (페르소나 불필요, 순수 키워드 기반)
+  const {
+    config: keywordAlertConfig,
+    isChecking: isKeywordAlertChecking,
+    lastCheckResult: keywordAlertLastResult,
+    toggleEnabled: toggleKeywordAlert,
+    setKeywords: setKeywordAlertKeywords,
+    setIntervalMinutes: setKeywordAlertInterval,
+    manualCheck: keywordAlertManualCheck,
+  } = useKeywordAlert(sessionId);
+
   const [input, setInput] = useState("");
   const MAX_INPUT_LENGTH = 500;
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -62,6 +88,9 @@ export default function ChatSessionPage() {
   const [showPersonaModal, setShowPersonaModal] = useState(false);
   const [showFuturePersonaModal, setShowFuturePersonaModal] = useState(false);
   const [showAutoNewsPanel, setShowAutoNewsPanel] = useState(false);
+  const [showKeywordAlertPanel, setShowKeywordAlertPanel] = useState(false);
+  const [showAlertChooser, setShowAlertChooser] = useState(false);
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
 
   // 멘션 관련 상태
   const [showMention, setShowMention] = useState(false);
@@ -179,8 +208,9 @@ export default function ChatSessionPage() {
     }
   };
 
+  // 새 대화 만들기 → DM/그룹 채팅 선택 모달
   const handleNewChat = () => {
-    router.push("/chat");
+    setShowNewChatModal(true);
   };
 
   const handleSignOut = async () => {
@@ -269,22 +299,29 @@ export default function ChatSessionPage() {
             </button>
           )}
 
-          {/* 자동 뉴스/메시지 설정 버튼 (AI 세션 + future-self 세션) */}
+          {/* 자동 뉴스/키워드 알림 설정 버튼 (AI 세션 + future-self 세션) */}
           {(!isDirectChat || isFutureSelfSession) && (
             <button
-              onClick={() => setShowAutoNewsPanel(true)}
+              onClick={() => {
+                // future-self 세션은 키워드 알림 메뉴 없이 바로 자동 메시지 패널
+                if (isFutureSelfSession) {
+                  setShowAutoNewsPanel(true);
+                } else {
+                  setShowAlertChooser(true);
+                }
+              }}
               className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
-                autoNewsConfig?.enabled
+                autoNewsConfig?.enabled || keywordAlertConfig?.enabled
                   ? "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
                   : "border-gray-300 text-gray-700 hover:bg-gray-50"
               }`}
-              title={isFutureSelfSession ? "자동 메시지 설정" : "자동 뉴스 설정"}
+              title={isFutureSelfSession ? "자동 메시지 설정" : "자동 알림 설정"}
             >
               <div className="flex items-center gap-1">
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
-                {autoNewsConfig?.enabled && isAutoNewsChecking && (
+                {(autoNewsConfig?.enabled || keywordAlertConfig?.enabled) && (isAutoNewsChecking || isKeywordAlertChecking) && (
                   <span className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
                 )}
               </div>
@@ -497,6 +534,96 @@ export default function ChatSessionPage() {
             }
           }}
           onClose={() => setShowFuturePersonaModal(false)}
+        />
+      )}
+
+      {/* 새 대화 모달 (DM/그룹 채팅 만들기 - 다른 사용자 초대) */}
+      {showNewChatModal && currentUid && (
+        <NewChatModal
+          uid={currentUid}
+          displayName={currentName}
+          onClose={() => setShowNewChatModal(false)}
+        />
+      )}
+
+      {/* 알림 종류 선택 chooser */}
+      {showAlertChooser && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setShowAlertChooser(false)}
+        >
+          <div
+            className="mx-4 w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900">자동 알림 종류</h2>
+              <button
+                onClick={() => setShowAlertChooser(false)}
+                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  setShowAlertChooser(false);
+                  setShowKeywordAlertPanel(true);
+                }}
+                className="flex w-full items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-left transition-colors hover:bg-rose-100"
+              >
+                <span className="text-2xl">🔔</span>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-gray-900">내 키워드 알림</p>
+                    {keywordAlertConfig?.enabled && (
+                      <span className="rounded-full bg-rose-200 px-2 py-0.5 text-xs text-rose-800">ON</span>
+                    )}
+                  </div>
+                  <p className="mt-0.5 text-xs text-gray-600">
+                    내가 등록한 키워드의 새 뉴스를 주기적으로 검색해서 알려줍니다
+                  </p>
+                </div>
+              </button>
+              <button
+                onClick={() => {
+                  setShowAlertChooser(false);
+                  setShowAutoNewsPanel(true);
+                }}
+                className="flex w-full items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4 text-left transition-colors hover:bg-blue-100"
+              >
+                <span className="text-2xl">🤖</span>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-gray-900">AI 페르소나 자동 뉴스</p>
+                    {autoNewsConfig?.enabled && (
+                      <span className="rounded-full bg-blue-200 px-2 py-0.5 text-xs text-blue-800">ON</span>
+                    )}
+                  </div>
+                  <p className="mt-0.5 text-xs text-gray-600">
+                    선택한 AI 전문가가 자기 분야의 새 뉴스를 자동으로 공유합니다
+                  </p>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 키워드 알림 설정 패널 */}
+      {showKeywordAlertPanel && (
+        <KeywordAlertPanel
+          config={keywordAlertConfig}
+          isChecking={isKeywordAlertChecking}
+          lastCheckResult={keywordAlertLastResult}
+          onToggle={toggleKeywordAlert}
+          onSetKeywords={setKeywordAlertKeywords}
+          onSetInterval={setKeywordAlertInterval}
+          onManualCheck={keywordAlertManualCheck}
+          onClose={() => setShowKeywordAlertPanel(false)}
         />
       )}
 

@@ -30,6 +30,10 @@ export interface User {
   userPersona?: string;
   futurePersona?: string;              // "되고 싶은 미래의 나" 자유 텍스트
   futurePersonaUpdatedAt?: Timestamp;
+  // ── AI가 학습한 사용자 메모리 ──
+  userMemory?: string;                 // AI가 누적 추출한 사용자 인사이트 (요약 텍스트)
+  userMemoryUpdatedAt?: Timestamp;     // 메모리 마지막 업데이트 시각
+  userMemoryMessageCount?: number;     // 마지막 메모리 업데이트 시점의 메시지 수
   createdAt: Timestamp;
 }
 
@@ -130,6 +134,14 @@ export interface AutoNewsConfig {
   lastCheckedAt?: Timestamp;       // 마지막 자동 뉴스 체크 시각
 }
 
+// ── 키워드 알림 설정 (페르소나 불필요, 순수 키워드 기반) ────
+export interface KeywordAlertConfig {
+  enabled: boolean;
+  intervalMinutes: number;         // 폴링 간격 (기본 60분)
+  keywords: string[];              // 사용자가 직접 등록한 검색 키워드
+  lastCheckedAt?: Timestamp;       // 마지막 체크 시각
+}
+
 // ── API 요청/응답 ─────────────────────────────────────
 export interface ChatRequest {
   message: string;
@@ -161,4 +173,17 @@ export interface AutoNewsResponse {
   content?: string;
   sources?: NewsSource[];
   personaId?: PersonaId;
+}
+
+// ── 키워드 알림 API ──────────────────────────────────
+export interface KeywordAlertRequest {
+  sessionId: string;
+  keywords: string[];
+}
+
+export interface KeywordAlertResponse {
+  hasNews: boolean;
+  content?: string;
+  sources?: NewsSource[];
+  matchedKeyword?: string;
 }

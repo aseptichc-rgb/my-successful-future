@@ -33,7 +33,7 @@ import {
   type Firestore,
   type Unsubscribe,
 } from "firebase/firestore";
-import type { User, ChatSession, ChatMessage, Invitation, InviteLink, NewsSource, NewsTopic, SessionType, UserPresence, AutoNewsConfig, PersonaId } from "@/types";
+import type { User, ChatSession, ChatMessage, Invitation, InviteLink, NewsSource, NewsTopic, SessionType, UserPresence, AutoNewsConfig, KeywordAlertConfig, PersonaId } from "@/types";
 
 // ── Firebase 지연 초기화 ─────────────────────────────
 const firebaseConfig = {
@@ -133,6 +133,23 @@ export async function updateFuturePersona(uid: string, futurePersona: string) {
   await updateDoc(doc(db, "users", uid), {
     futurePersona,
     futurePersonaUpdatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * AI가 추출한 사용자 메모리(인사이트 요약)를 저장한다.
+ * messageCount는 마지막 추출 시점의 메시지 수로, 다음 추출 트리거 판정에 사용.
+ */
+export async function updateUserMemory(
+  uid: string,
+  userMemory: string,
+  messageCount: number
+) {
+  const db = getDbInstance();
+  await updateDoc(doc(db, "users", uid), {
+    userMemory,
+    userMemoryUpdatedAt: serverTimestamp(),
+    userMemoryMessageCount: messageCount,
   });
 }
 
@@ -746,6 +763,54 @@ export function onAutoNewsConfigSnapshot(
 export async function updateAutoNewsLastChecked(sessionId: string) {
   const db = getDbInstance();
   await updateDoc(doc(db, "autoNewsConfigs", sessionId), {
+    lastCheckedAt: serverTimestamp(),
+  });
+}
+
+// ── 키워드 알림 설정 CRUD ──────────────────────────────
+export async function saveKeywordAlertConfig(
+  sessionId: string,
+  config: KeywordAlertConfig
+) {
+  const db = getDbInstance();
+  await setDoc(doc(db, "keywordAlerts", sessionId), {
+    ...config,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+}
+
+export async function getKeywordAlertConfig(
+  sessionId: string
+): Promise<KeywordAlertConfig | null> {
+  const db = getDbInstance();
+  const snap = await getDoc(doc(db, "keywordAlerts", sessionId));
+  if (!snap.exists()) return null;
+  return snap.data() as KeywordAlertConfig;
+}
+
+export function onKeywordAlertConfigSnapshot(
+  sessionId: string,
+  callback: (config: KeywordAlertConfig | null) => void
+): Unsubscribe {
+  const db = getDbInstance();
+  return onSnapshot(
+    doc(db, "keywordAlerts", sessionId),
+    (snap) => {
+      if (!snap.exists()) {
+        callback(null);
+        return;
+      }
+      callback(snap.data() as KeywordAlertConfig);
+    },
+    (error) => {
+      console.warn("키워드 알림 설정 리스너 에러:", error.message);
+    }
+  );
+}
+
+export async function updateKeywordAlertLastChecked(sessionId: string) {
+  const db = getDbInstance();
+  await updateDoc(doc(db, "keywordAlerts", sessionId), {
     lastCheckedAt: serverTimestamp(),
   });
 }

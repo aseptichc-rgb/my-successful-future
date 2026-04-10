@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { findUserByEmail, findExistingDM, createSession } from "@/lib/firebase";
-import type { SessionType } from "@/types";
 
 interface Props {
   uid: string;
@@ -22,17 +21,10 @@ export default function NewChatModal({ uid, displayName, onClose }: Props) {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
-  // AI 채팅 생성
-  const handleCreateAI = async () => {
-    setStatus("loading");
-    try {
-      const sessionId = await createSession(uid, "새 대화", displayName, "ai");
-      router.push(`/chat/${sessionId}`);
-      onClose();
-    } catch {
-      setErrorMsg("세션 생성에 실패했습니다.");
-      setStatus("error");
-    }
+  // AI 채팅 = 자문단으로 진입 (페르소나를 카드에서 고른다)
+  const handleOpenAdvisors = () => {
+    router.push("/chat/advisors");
+    onClose();
   };
 
   // DM 생성
@@ -144,16 +136,15 @@ export default function NewChatModal({ uid, displayName, onClose }: Props) {
         {step === "choose" && (
           <div className="space-y-3">
             <button
-              onClick={handleCreateAI}
-              disabled={status === "loading"}
+              onClick={handleOpenAdvisors}
               className="flex w-full items-center gap-4 rounded-xl border border-gray-200 p-4 text-left transition-colors hover:border-blue-300 hover:bg-blue-50"
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-xl">
-                🤖
+                🧭
               </div>
               <div>
-                <p className="font-medium text-gray-900">AI 채팅</p>
-                <p className="text-sm text-gray-500">AI 페르소나와 뉴스 대화</p>
+                <p className="font-medium text-gray-900">자문단</p>
+                <p className="text-sm text-gray-500">AI 전문가에게 조언 받기</p>
               </div>
             </button>
             <button

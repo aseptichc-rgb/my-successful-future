@@ -187,6 +187,22 @@ export function streamChatResponse(
   });
 }
 
+/**
+ * 단발성 텍스트 응답 (스트리밍 X, 도구 X).
+ * 사용자 메모리 추출 등 짧은 분석 작업용.
+ */
+export async function generateText(prompt: string, maxTokens: number = 800): Promise<string> {
+  const model = genAI.getGenerativeModel({
+    model: MODEL,
+    generationConfig: {
+      maxOutputTokens: maxTokens,
+      temperature: 0.3,
+    },
+  });
+  const result = await model.generateContent(prompt);
+  return result.response.text();
+}
+
 /** 텍스트에서 마크다운 형식 제거 */
 function stripMarkdown(text: string): string {
   return text

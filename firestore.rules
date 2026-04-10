@@ -71,5 +71,11 @@ service cloud.firestore {
     match /autoNewsConfigs/{sessionId} {
       allow read, write: if isAuthenticated();
     }
+
+    // ── keywordAlerts ──
+    // 사용자가 직접 등록한 키워드 기반 알림 설정 (문서 ID = sessionId)
+    match /keywordAlerts/{sessionId} {
+      allow read, write: if isAuthenticated();
+    }
   }
 }

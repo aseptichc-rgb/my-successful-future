@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import SessionSidebar from "@/components/chat/SessionSidebar";
+import BottomNav from "@/components/chat/BottomNav";
 import { onForegroundMessage } from "@/lib/fcm";
 
 interface ToastNotification {
@@ -13,13 +13,13 @@ interface ToastNotification {
 }
 
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
-  const { firebaseUser, enableNotifications } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user, firebaseUser, enableNotifications } = useAuth();
   const [toast, setToast] = useState<ToastNotification | null>(null);
   const [showNotifPrompt, setShowNotifPrompt] = useState(false);
   const router = useRouter();
   const params = useParams();
   const currentSessionId = params.sessionId as string | undefined;
+  const displayName = user?.displayName || firebaseUser?.displayName || "사용자";
 
   // 포그라운드 메시지 리스너
   useEffect(() => {
@@ -53,28 +53,13 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* 사이드바 */}
+      {/* 데스크톱 좌측 슬림 레일 (BottomNav가 lg에서 슬림 레일로 렌더) */}
       {firebaseUser && (
-        <SessionSidebar
-          uid={firebaseUser.uid}
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-        />
+        <BottomNav uid={firebaseUser.uid} displayName={displayName} />
       )}
 
-      {/* 메인 콘텐츠 */}
-      <div className="flex flex-1 flex-col overflow-hidden relative">
-        {/* 사이드바 토글 버튼 */}
-        <button
-          onClick={() => setSidebarOpen((prev) => !prev)}
-          className="absolute left-2 top-3 z-20 rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 transition-colors lg:hidden"
-          title="대화 목록"
-        >
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-
+      {/* 메인 콘텐츠 (모바일 바텀 탭만큼 하단 패딩 확보) */}
+      <div className="flex flex-1 flex-col overflow-hidden relative pb-14 lg:pb-0">
         {/* 포그라운드 알림 토스트 */}
         {toast && (
           <div

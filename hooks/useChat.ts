@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Timestamp } from "firebase/firestore";
-import { getMessages, addMessage, updateSessionTitle, onMessagesSnapshot, getSessionById, incrementUnreadCounts } from "@/lib/firebase";
+import { getMessages, addMessage, updateSessionTitle, onMessagesSnapshot, getSessionById, incrementUnreadCounts, updateUserMemory } from "@/lib/firebase";
 import { getPersona, PERSONAS } from "@/lib/personas";
 import type { ChatMessage, ChatSession, ChatStreamEvent, NewsSource, NewsTopic, PersonaId, SessionType } from "@/types";
 
@@ -28,6 +28,15 @@ function normalizePersonaMarkers(text: string): string {
     .replace(/\\+/g, "");
 }
 
+/** 사람 타이핑보다 약간 빠른 속도로 한 글자씩 노출 (ms/char). */
+const TYPING_DELAY_MS = 30;
+/** 문단 사이에서 잠깐 멈춰 "다음 메시지 보내는 듯한" 느낌을 주는 시간(ms). */
+const PARAGRAPH_PAUSE_MS = 700;
+/** 서버 청크를 기다리는 동안 폴링 간격(ms). */
+const STREAM_POLL_MS = 20;
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 /** 메시지에서 @멘션된 페르소나 ID를 추출 */
 function parseMentions(content: string): PersonaId[] {
   const mentioned: PersonaId[] = [];
@@ -41,12 +50,23 @@ function parseMentions(content: string): PersonaId[] {
   return mentioned;
 }
 
-export function useChat(sessionId: string, currentUid?: string, currentName?: string, userPersona?: string, futurePersona?: string) {
+export function useChat(
+  sessionId: string,
+  currentUid?: string,
+  currentName?: string,
+  userPersona?: string,
+  futurePersona?: string,
+  userMemory?: string,
+  onMemoryUpdated?: (memory: string) => void,
+  initialPersona?: PersonaId,
+) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<NewsTopic>("전체");
-  const [activePersonas, setActivePersonas] = useState<PersonaId[]>(["default"]);
+  const [activePersonas, setActivePersonas] = useState<PersonaId[]>(
+    initialPersona ? [initialPersona] : ["default"],
+  );
   const [respondingPersona, setRespondingPersona] = useState<PersonaId | null>(null);
   const conversationPersonaRef = useRef<PersonaId | null>(null);
   const [session, setSession] = useState<ChatSession | null>(null);
@@ -54,6 +74,10 @@ export function useChat(sessionId: string, currentUid?: string, currentName?: st
   messagesRef.current = messages;
   const isLoadingRef = useRef(isLoading);
   isLoadingRef.current = isLoading;
+  // 메모리 업데이트 동시 실행 방지
+  const memoryUpdateInFlightRef = useRef(false);
+  // 사용자 메시지 카운트 (메모리 업데이트 트리거 판정용)
+  const userMessageCountRef = useRef(0);
 
   // 세션 정보 로드 + future-self 세션이면 activePersonas 자동 설정
   useEffect(() => {
@@ -79,6 +103,50 @@ export function useChat(sessionId: string, currentUid?: string, currentName?: st
 
     return unsub;
   }, [sessionId]);
+
+  // 백그라운드에서 사용자 메모리 업데이트 (5번째 사용자 메시지마다 트리거)
+  const triggerMemoryUpdateIfNeeded = useCallback(async () => {
+    if (!currentUid) return;
+    if (memoryUpdateInFlightRef.current) return;
+
+    userMessageCountRef.current += 1;
+    // 5개의 사용자 메시지마다 메모리 업데이트
+    if (userMessageCountRef.current % 5 !== 0) return;
+
+    memoryUpdateInFlightRef.current = true;
+    try {
+      // 최근 사용자 메시지 10개 추출 (현재 messages state에서)
+      const recentUserMessages = messagesRef.current
+        .filter((m) => m.role === "user" && m.senderUid === currentUid)
+        .slice(-10)
+        .map((m) => m.content);
+
+      if (recentUserMessages.length === 0) return;
+
+      const res = await fetch("/api/user-memory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          existingMemory: userMemory || "",
+          recentUserMessages,
+          userPersona: userPersona || undefined,
+        }),
+      });
+
+      if (!res.ok) return;
+      const data = await res.json();
+      const newMemory: string = data.memory || "";
+
+      if (newMemory && newMemory !== userMemory) {
+        await updateUserMemory(currentUid, newMemory, messagesRef.current.length);
+        onMemoryUpdated?.(newMemory);
+      }
+    } catch (err) {
+      console.warn("Memory update failed:", err);
+    } finally {
+      memoryUpdateInFlightRef.current = false;
+    }
+  }, [currentUid, userMemory, userPersona, onMemoryUpdated]);
 
   // 페르소나 추가/제거
   const togglePersona = useCallback((personaId: PersonaId) => {
@@ -110,6 +178,7 @@ export function useChat(sessionId: string, currentUid?: string, currentName?: st
           participants: activePersonas.length > 1 ? activePersonas : undefined,
           userPersona: userPersona || undefined,
           futurePersona: futurePersona || undefined,
+          userMemory: userMemory || undefined,
         }),
       });
 
@@ -124,95 +193,126 @@ export function useChat(sessionId: string, currentUid?: string, currentName?: st
       const decoder = new TextDecoder();
       let buffer = "";
       let fullText = "";
-      let fullAccumulated = "";
+      let receivedRaw = ""; // 서버에서 받은 누적 텍스트(아직 렌더되지 않을 수 있음)
       let collectedSources: NewsSource[] = [];
+      let serverDone = false;
+      let readerError: Error | null = null;
       const bubbleIds: string[] = [assistantId];
       const persona = getPersona(personaId);
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      // 1) 백그라운드에서 서버 SSE를 최대한 빠르게 누적만 한다.
+      const readerTask = (async () => {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n\n");
-        buffer = lines.pop() || "";
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n\n");
+            buffer = lines.pop() || "";
 
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
+            for (const line of lines) {
+              if (!line.startsWith("data: ")) continue;
+              try {
+                const data: ChatStreamEvent = JSON.parse(line.slice(6));
 
-          try {
-            const data: ChatStreamEvent = JSON.parse(line.slice(6));
-
-            if (data.type === "text" && data.content) {
-              fullAccumulated += data.content;
-
-              // [이름] 마커를 단락 구분으로 변환한 뒤 \n\n으로 분리 → 각 문단을 별도 버블로
-              const paragraphs = normalizePersonaMarkers(fullAccumulated)
-                .split("\n\n")
-                .map((p) => stripPersonaPrefix(p.trim()))
-                .filter((p) => p.length > 0);
-
-              // 새 문단이 생기면 새 버블 생성
-              while (bubbleIds.length < paragraphs.length) {
-                const newId = `temp-${personaId}-${Date.now()}-${bubbleIds.length}`;
-                bubbleIds.push(newId);
-                setMessages((prev) => [
-                  ...prev,
-                  {
-                    id: newId,
-                    sessionId,
-                    role: "assistant" as const,
-                    content: "",
-                    sources: [],
-                    createdAt: Timestamp.now(),
-                    personaId,
-                    personaName: persona.name,
-                    personaIcon: persona.icon,
-                  },
-                ]);
+                if (data.type === "text" && data.content) {
+                  receivedRaw += data.content;
+                } else if (data.type === "sources" && data.sources) {
+                  collectedSources = data.sources;
+                } else if (data.type === "done" && data.content) {
+                  fullText = stripPersonaPrefix(data.content);
+                } else if (data.type === "error") {
+                  setError(data.error || "오류가 발생했습니다.");
+                }
+              } catch {
+                // JSON 파싱 실패 무시
               }
-
-              // 각 버블에 해당 문단 내용 업데이트
-              setMessages((prev) =>
-                prev.map((msg) => {
-                  const idx = bubbleIds.indexOf(msg.id);
-                  if (idx >= 0 && paragraphs[idx] !== undefined) {
-                    return { ...msg, content: paragraphs[idx] };
-                  }
-                  return msg;
-                })
-              );
             }
-
-            if (data.type === "sources" && data.sources) {
-              collectedSources = data.sources;
-              // 소스는 마지막 버블에만 첨부
-              const lastBubbleId = bubbleIds[bubbleIds.length - 1];
-              setMessages((prev) =>
-                prev.map((msg) =>
-                  msg.id === lastBubbleId
-                    ? { ...msg, sources: data.sources! }
-                    : msg
-                )
-              );
-            }
-
-            if (data.type === "done" && data.content) {
-              fullText = stripPersonaPrefix(data.content);
-            }
-
-            if (data.type === "error") {
-              setError(data.error || "오류가 발생했습니다.");
-            }
-          } catch {
-            // JSON 파싱 실패 무시
           }
+        } catch (e) {
+          readerError = e instanceof Error ? e : new Error(String(e));
+        } finally {
+          serverDone = true;
         }
+      })();
+
+      // 2) 사람 타이핑보다 약간 빠른 속도로 한 글자씩 노출하는 렌더 루프.
+      //    문단 경계(\n\n)를 막 지난 직후에는 더 길게 쉬어 "한 문단씩 끊어 보내는" 느낌을 만든다.
+      let displayedLength = 0;
+      while (true) {
+        if (displayedLength >= receivedRaw.length) {
+          if (serverDone) break;
+          await sleep(STREAM_POLL_MS);
+          continue;
+        }
+
+        displayedLength += 1;
+
+        const visible = receivedRaw.slice(0, displayedLength);
+        const paragraphs = normalizePersonaMarkers(visible)
+          .split("\n\n")
+          .map((p) => stripPersonaPrefix(p.trim()))
+          .filter((p) => p.length > 0);
+
+        // 새 문단이 생기면 새 버블 생성
+        let createdNewBubble = false;
+        while (bubbleIds.length < paragraphs.length) {
+          const newId = `temp-${personaId}-${Date.now()}-${bubbleIds.length}`;
+          bubbleIds.push(newId);
+          createdNewBubble = true;
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: newId,
+              sessionId,
+              role: "assistant" as const,
+              content: "",
+              sources: [],
+              createdAt: Timestamp.now(),
+              personaId,
+              personaName: persona.name,
+              personaIcon: persona.icon,
+            },
+          ]);
+        }
+
+        // 각 버블에 해당 문단 내용 업데이트
+        setMessages((prev) =>
+          prev.map((msg) => {
+            const idx = bubbleIds.indexOf(msg.id);
+            if (idx >= 0 && paragraphs[idx] !== undefined) {
+              return { ...msg, content: paragraphs[idx] };
+            }
+            return msg;
+          })
+        );
+
+        // 문단을 새로 만들었다면(=방금 \n\n 경계를 넘었다면) 잠시 멈춤
+        await sleep(createdNewBubble ? PARAGRAPH_PAUSE_MS : TYPING_DELAY_MS);
       }
+
+      // 3) reader가 완전히 끝날 때까지 대기 (sources 이벤트 보장)
+      await readerTask;
+      if (readerError) throw readerError;
+
+      // 소스는 마지막 버블에만 첨부
+      if (collectedSources.length > 0) {
+        const lastBubbleId = bubbleIds[bubbleIds.length - 1];
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === lastBubbleId
+              ? { ...msg, sources: collectedSources }
+              : msg
+          )
+        );
+      }
+
+      if (!fullText) fullText = stripPersonaPrefix(receivedRaw);
 
       return { fullText, sources: collectedSources, bubbleIds };
     },
-    [selectedTopic, activePersonas, userPersona, futurePersona]
+    [selectedTopic, activePersonas, userPersona, futurePersona, userMemory, sessionId]
   );
 
   // 세션 타입 헬퍼
@@ -382,9 +482,11 @@ export function useChat(sessionId: string, currentUid?: string, currentName?: st
       } finally {
         setIsLoading(false);
         setRespondingPersona(null);
+        // 백그라운드에서 사용자 메모리 업데이트 (await 안 함 → UI 블로킹 X)
+        triggerMemoryUpdateIfNeeded();
       }
     },
-    [sessionId, selectedTopic, activePersonas, isLoading, streamPersonaResponse, currentUid, currentName]
+    [sessionId, selectedTopic, activePersonas, isLoading, streamPersonaResponse, currentUid, currentName, triggerMemoryUpdateIfNeeded, session]
   );
 
   // AI 대화 맥락 종료 (DM/그룹에서 AI 응답을 멈추고 싶을 때)

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { getSessions, ensureFutureSelfSession } from "@/lib/firebase";
+import { ensureFutureSelfSession } from "@/lib/firebase";
 import NewChatModal from "@/components/chat/NewChatModal";
 
 export default function ChatPage() {
@@ -22,21 +22,10 @@ export default function ChatPage() {
 
     const displayName = user?.displayName || firebaseUser.displayName || "사용자";
 
-    // 1) future-self 세션을 항상 보장 (없으면 생성)
-    // 2) 다른 기존 세션이 있으면 그 중 가장 최근 대화로 이동
-    // 3) 없으면 future-self 세션으로 이동
-    Promise.all([
-      ensureFutureSelfSession(firebaseUser.uid, displayName),
-      getSessions(firebaseUser.uid),
-    ])
-      .then(([futureSelfId, sessions]) => {
-        // future-self 외에 다른 세션이 있으면 그 중 가장 최근 대화로
-        const otherSessions = sessions.filter((s) => s.sessionType !== "future-self");
-        if (otherSessions.length > 0) {
-          router.replace(`/chat/${otherSessions[0].id}`);
-        } else {
-          router.replace(`/chat/${futureSelfId}`);
-        }
+    // 홈은 항상 "미래의 나" 세션. 없으면 생성하고 그곳으로 이동.
+    ensureFutureSelfSession(firebaseUser.uid, displayName)
+      .then((futureSelfId) => {
+        router.replace(`/chat/${futureSelfId}`);
       })
       .catch(() => {
         setShowModal(true);
