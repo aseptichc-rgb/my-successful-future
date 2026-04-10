@@ -10,7 +10,8 @@ export type PersonaId =
   | "healthcare-expert"
   | "fund-trader"
   | "tech-cto"
-  | "policy-analyst";
+  | "policy-analyst"
+  | "future-self";
 
 export interface Persona {
   id: PersonaId;
@@ -27,11 +28,13 @@ export interface User {
   email: string;
   preferredTopics: NewsTopic[];
   userPersona?: string;
+  futurePersona?: string;              // "되고 싶은 미래의 나" 자유 텍스트
+  futurePersonaUpdatedAt?: Timestamp;
   createdAt: Timestamp;
 }
 
 // ── 세션 타입 ─────────────────────────────────────────
-export type SessionType = "ai" | "dm" | "group";
+export type SessionType = "ai" | "dm" | "group" | "future-self";
 
 // ── 대화 세션 ─────────────────────────────────────────
 export interface ChatSession {
@@ -134,6 +137,7 @@ export interface ChatRequest {
   topic?: NewsTopic;
   persona?: PersonaId;
   userPersona?: string;
+  futurePersona?: string;
 }
 
 export interface ChatStreamEvent {
@@ -148,6 +152,8 @@ export interface AutoNewsRequest {
   sessionId: string;
   personaId: PersonaId;
   customTopics?: string[];
+  futurePersona?: string;        // future-self 페르소나일 때 사용
+  currentPersona?: string;       // 사용자 현재 자기소개 (보조 컨텍스트)
 }
 
 export interface AutoNewsResponse {

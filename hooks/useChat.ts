@@ -11,6 +11,23 @@ function stripPersonaPrefix(text: string): string {
   return text.replace(/^\[.*?\]\s*/, "");
 }
 
+/**
+ * AI 응답에서 본문 중간에 끼어든 [이름] 마커를 단락 구분(\n\n)으로 변환.
+ * AI가 단락 구분 없이 한 덩어리로 응답하면서 중간에 자기 이름을 반복해 붙이는 케이스 처리.
+ * 또한 모델이 가끔 출력하는 단독 백슬래시(특히 줄 시작의 \\n 흔적)를 제거한다.
+ */
+function normalizePersonaMarkers(text: string): string {
+  return text
+    // 1) 본문 중간 [이름] 마커 → 단락 구분
+    .replace(/(?!^)\s*\[[^\]\n]{1,30}\]\s*/g, "\n\n")
+    // 2) 줄 시작에 있는 백슬래시 시퀀스 제거 (모델이 \\n\\n을 그대로 따라 쓰는 케이스)
+    .replace(/^\s*\\+\s*$/gm, "")
+    // 3) 본문 안의 \n / \\n 같은 이스케이프 텍스트를 실제 줄바꿈으로 치환
+    .replace(/\\+n/g, "\n")
+    // 4) 남아 있는 단독 백슬래시 제거
+    .replace(/\\+/g, "");
+}
+
 /** 메시지에서 @멘션된 페르소나 ID를 추출 */
 function parseMentions(content: string): PersonaId[] {
   const mentioned: PersonaId[] = [];
@@ -24,7 +41,7 @@ function parseMentions(content: string): PersonaId[] {
   return mentioned;
 }
 
-export function useChat(sessionId: string, currentUid?: string, currentName?: string, userPersona?: string) {
+export function useChat(sessionId: string, currentUid?: string, currentName?: string, userPersona?: string, futurePersona?: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,10 +55,15 @@ export function useChat(sessionId: string, currentUid?: string, currentName?: st
   const isLoadingRef = useRef(isLoading);
   isLoadingRef.current = isLoading;
 
-  // 세션 정보 로드
+  // 세션 정보 로드 + future-self 세션이면 activePersonas 자동 설정
   useEffect(() => {
     if (sessionId) {
-      getSessionById(sessionId).then(setSession);
+      getSessionById(sessionId).then((s) => {
+        setSession(s);
+        if (s?.sessionType === "future-self") {
+          setActivePersonas(["future-self"]);
+        }
+      });
     }
   }, [sessionId]);
 
@@ -87,6 +109,7 @@ export function useChat(sessionId: string, currentUid?: string, currentName?: st
           persona: personaId,
           participants: activePersonas.length > 1 ? activePersonas : undefined,
           userPersona: userPersona || undefined,
+          futurePersona: futurePersona || undefined,
         }),
       });
 
@@ -123,8 +146,8 @@ export function useChat(sessionId: string, currentUid?: string, currentName?: st
             if (data.type === "text" && data.content) {
               fullAccumulated += data.content;
 
-              // \n\n 단위로 문단 분리 → 각 문단을 별도 채팅 버블로 표시
-              const paragraphs = fullAccumulated
+              // [이름] 마커를 단락 구분으로 변환한 뒤 \n\n으로 분리 → 각 문단을 별도 버블로
+              const paragraphs = normalizePersonaMarkers(fullAccumulated)
                 .split("\n\n")
                 .map((p) => stripPersonaPrefix(p.trim()))
                 .filter((p) => p.length > 0);
@@ -189,7 +212,7 @@ export function useChat(sessionId: string, currentUid?: string, currentName?: st
 
       return { fullText, sources: collectedSources, bubbleIds };
     },
-    [selectedTopic, activePersonas, userPersona]
+    [selectedTopic, activePersonas, userPersona, futurePersona]
   );
 
   // 세션 타입 헬퍼
@@ -323,7 +346,7 @@ export function useChat(sessionId: string, currentUid?: string, currentName?: st
 
             if (fullText) {
               // 문단별로 분리하여 Firestore에 개별 저장
-              const paragraphs = fullText
+              const paragraphs = normalizePersonaMarkers(fullText)
                 .split("\n\n")
                 .map((p) => stripPersonaPrefix(p.trim()))
                 .filter((p) => p.length > 0);

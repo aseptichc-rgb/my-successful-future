@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { getSessions } from "@/lib/firebase";
+import { getSessions, ensureFutureSelfSession } from "@/lib/firebase";
 import NewChatModal from "@/components/chat/NewChatModal";
 
 export default function ChatPage() {
@@ -20,19 +20,29 @@ export default function ChatPage() {
       return;
     }
 
-    // 기존 세션이 있으면 가장 최근 대화로 이동
-    getSessions(firebaseUser.uid).then((sessions) => {
-      if (sessions.length > 0) {
-        router.replace(`/chat/${sessions[0].id}`);
-      } else {
+    const displayName = user?.displayName || firebaseUser.displayName || "사용자";
+
+    // 1) future-self 세션을 항상 보장 (없으면 생성)
+    // 2) 다른 기존 세션이 있으면 그 중 가장 최근 대화로 이동
+    // 3) 없으면 future-self 세션으로 이동
+    Promise.all([
+      ensureFutureSelfSession(firebaseUser.uid, displayName),
+      getSessions(firebaseUser.uid),
+    ])
+      .then(([futureSelfId, sessions]) => {
+        // future-self 외에 다른 세션이 있으면 그 중 가장 최근 대화로
+        const otherSessions = sessions.filter((s) => s.sessionType !== "future-self");
+        if (otherSessions.length > 0) {
+          router.replace(`/chat/${otherSessions[0].id}`);
+        } else {
+          router.replace(`/chat/${futureSelfId}`);
+        }
+      })
+      .catch(() => {
         setShowModal(true);
         setChecking(false);
-      }
-    }).catch(() => {
-      setShowModal(true);
-      setChecking(false);
-    });
-  }, [firebaseUser, loading, router]);
+      });
+  }, [firebaseUser, loading, router, user?.displayName]);
 
   if (loading || checking) {
     return (

@@ -38,6 +38,12 @@ export const PERSONA_SPECIALTIES: Record<PersonaId, PersonaSpecialty> = {
     searchKeywords: ["정부 정책", "규제 변화", "법률 개정", "국제 관계", "경제 정책", "통상 협상"],
     briefingStyle: "정책 분석 관점에서 차분하게",
   },
+  "future-self": {
+    topics: ["전체"],
+    // 검색 키워드는 사용자의 futurePersona 텍스트에서 런타임에 추출
+    searchKeywords: ["성공", "성장", "동기부여", "자기계발"],
+    briefingStyle: "미래의 나로서, 오늘 뉴스를 보고 현재의 나에게 보내는 격려와 행동 제안",
+  },
 };
 
 export const PERSONAS: Record<PersonaId, Persona> = {
@@ -140,6 +146,14 @@ export const PERSONAS: Record<PersonaId, Persona> = {
   "법적으로 가능한가", "현실적으로 시행 가능한가" 같은 실현 가능성을 짚어줍니다.
 
 어투: 차분하고 논리적입니다. 감정보다 분석을 앞세웁니다.`,
+  },
+  "future-self": {
+    id: "future-self",
+    name: "미래의 나",
+    icon: "🌟",
+    description: "5년·10년 뒤 성공한 나 자신이 보내는 동기부여",
+    // 시스템 프롬프트는 lib/prompts.ts의 buildFutureSelfPrompt에서 별도로 빌드한다.
+    systemPromptAddition: "",
   },
 };
 

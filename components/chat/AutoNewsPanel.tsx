@@ -14,6 +14,9 @@ interface AutoNewsPanelProps {
   onSetInterval: (minutes: number) => void;
   onManualCheck: () => void;
   onClose: () => void;
+  // future-self 세션 모드: 페르소나 선택 UI 숨김 + 미래의 나만 활성
+  futureSelfMode?: boolean;
+  futurePersonaSet?: boolean;
 }
 
 const INTERVAL_OPTIONS = [
@@ -21,6 +24,8 @@ const INTERVAL_OPTIONS = [
   { label: "1시간", value: 60 },
   { label: "2시간", value: 120 },
   { label: "3시간", value: 180 },
+  { label: "12시간", value: 720 },
+  { label: "24시간", value: 1440 },
 ];
 
 export default function AutoNewsPanel({
@@ -33,6 +38,8 @@ export default function AutoNewsPanel({
   onSetInterval,
   onManualCheck,
   onClose,
+  futureSelfMode = false,
+  futurePersonaSet = false,
 }: AutoNewsPanelProps) {
   const [topicInput, setTopicInput] = useState("");
   const enabled = config?.enabled ?? false;
@@ -63,10 +70,16 @@ export default function AutoNewsPanel({
         {/* 헤더 */}
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
           <div className="flex items-center gap-2">
-            <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-            <h2 className="text-lg font-bold text-gray-900">자동 뉴스 설정</h2>
+            {futureSelfMode ? (
+              <span className="text-xl">🌟</span>
+            ) : (
+              <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+            )}
+            <h2 className="text-lg font-bold text-gray-900">
+              {futureSelfMode ? "미래의 나 자동 메시지" : "자동 뉴스 설정"}
+            </h2>
           </div>
           <button
             onClick={onClose}
@@ -79,12 +92,24 @@ export default function AutoNewsPanel({
         </div>
 
         <div className="max-h-[70vh] overflow-y-auto px-6 py-4">
+          {/* future-self 모드: 미래의 나 정의 안내 */}
+          {futureSelfMode && !futurePersonaSet && (
+            <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              먼저 헤더에서 "🌟 미래의 나" 버튼을 눌러 되고 싶은 미래의 모습을 정의해주세요.
+              그래야 자동 메시지가 작동합니다.
+            </div>
+          )}
+
           {/* 활성화 토글 */}
           <div className="mb-6 flex items-center justify-between">
             <div>
-              <p className="font-medium text-gray-900">자동 뉴스 브리핑</p>
+              <p className="font-medium text-gray-900">
+                {futureSelfMode ? "미래의 나 자동 메시지" : "자동 뉴스 브리핑"}
+              </p>
               <p className="text-sm text-gray-500">
-                AI 페르소나가 주기적으로 뉴스를 검색해서 채팅방에 공유합니다
+                {futureSelfMode
+                  ? "정해진 주기마다 미래의 내가 오늘의 너에게 메시지를 보냅니다"
+                  : "AI 페르소나가 주기적으로 뉴스를 검색해서 채팅방에 공유합니다"}
               </p>
             </div>
             <button
@@ -105,15 +130,17 @@ export default function AutoNewsPanel({
             <>
               {/* 인터벌 설정 */}
               <div className="mb-6">
-                <p className="mb-2 text-sm font-medium text-gray-700">뉴스 체크 주기</p>
-                <div className="flex gap-2">
+                <p className="mb-2 text-sm font-medium text-gray-700">
+                  {futureSelfMode ? "메시지 도착 주기" : "뉴스 체크 주기"}
+                </p>
+                <div className="flex flex-wrap gap-2">
                   {INTERVAL_OPTIONS.map((opt) => (
                     <button
                       key={opt.value}
                       onClick={() => onSetInterval(opt.value)}
                       className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
                         intervalMinutes === opt.value
-                          ? "bg-blue-600 text-white"
+                          ? futureSelfMode ? "bg-amber-500 text-white" : "bg-blue-600 text-white"
                           : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                       }`}
                     >
@@ -123,7 +150,8 @@ export default function AutoNewsPanel({
                 </div>
               </div>
 
-              {/* 페르소나 선택 */}
+              {/* 페르소나 선택 (future-self 모드에서는 숨김) */}
+              {!futureSelfMode && (
               <div className="mb-6">
                 <p className="mb-2 text-sm font-medium text-gray-700">뉴스를 올릴 AI 페르소나</p>
                 <div className="space-y-2">
@@ -167,11 +195,12 @@ export default function AutoNewsPanel({
                   })}
                 </div>
               </div>
+              )}
 
               {/* 커스텀 관심 주제 */}
               <div className="mb-6">
                 <p className="mb-2 text-sm font-medium text-gray-700">
-                  추가 관심 주제 (선택)
+                  {futureSelfMode ? "미래의 나가 다룰 추가 키워드 (선택)" : "추가 관심 주제 (선택)"}
                 </p>
                 <p className="mb-2 text-xs text-gray-500">
                   특정 키워드를 추가하면 해당 주제의 뉴스도 함께 검색합니다
@@ -222,7 +251,9 @@ export default function AutoNewsPanel({
               <div className="rounded-xl bg-gray-50 p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-700">수동 뉴스 체크</p>
+                    <p className="text-sm font-medium text-gray-700">
+                      {futureSelfMode ? "지금 메시지 받기" : "수동 뉴스 체크"}
+                    </p>
                     {lastCheckResult && (
                       <p className="mt-1 text-xs text-gray-500">{lastCheckResult}</p>
                     )}
@@ -234,27 +265,34 @@ export default function AutoNewsPanel({
                   </div>
                   <button
                     onClick={onManualCheck}
-                    disabled={isChecking || activePersonas.length === 0}
-                    className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                    disabled={isChecking || (!futureSelfMode && activePersonas.length === 0) || (futureSelfMode && !futurePersonaSet)}
+                    className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 transition-colors ${
+                      futureSelfMode ? "bg-amber-500 hover:bg-amber-600" : "bg-blue-600 hover:bg-blue-700"
+                    }`}
                   >
                     {isChecking ? (
                       <>
                         <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                        검색 중...
+                        {futureSelfMode ? "쓰는 중..." : "검색 중..."}
                       </>
                     ) : (
                       <>
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
-                        지금 체크
+                        {futureSelfMode ? "지금 받기" : "지금 체크"}
                       </>
                     )}
                   </button>
                 </div>
-                {activePersonas.length === 0 && enabled && (
+                {!futureSelfMode && activePersonas.length === 0 && enabled && (
                   <p className="mt-2 text-xs text-amber-600">
                     뉴스를 올릴 페르소나를 1명 이상 선택해주세요
+                  </p>
+                )}
+                {futureSelfMode && !futurePersonaSet && enabled && (
+                  <p className="mt-2 text-xs text-amber-600">
+                    "🌟 미래의 나" 정의를 먼저 완료해주세요
                   </p>
                 )}
               </div>

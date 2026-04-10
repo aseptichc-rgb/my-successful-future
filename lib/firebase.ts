@@ -128,6 +128,53 @@ export async function updateUserPersona(uid: string, userPersona: string) {
   await updateDoc(doc(db, "users", uid), { userPersona });
 }
 
+export async function updateFuturePersona(uid: string, futurePersona: string) {
+  const db = getDbInstance();
+  await updateDoc(doc(db, "users", uid), {
+    futurePersona,
+    futurePersonaUpdatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * 사용자의 future-self 세션을 찾는다 (없으면 null).
+ */
+export async function findFutureSelfSession(uid: string): Promise<ChatSession | null> {
+  const db = getDbInstance();
+  const q = query(
+    collection(db, "sessions"),
+    where("sessionType", "==", "future-self"),
+    where("participants", "array-contains", uid)
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  return { id: snap.docs[0].id, ...snap.docs[0].data() } as ChatSession;
+}
+
+/**
+ * 사용자의 future-self 세션을 가져오거나 없으면 새로 생성한다.
+ */
+export async function ensureFutureSelfSession(
+  uid: string,
+  displayName: string
+): Promise<string> {
+  const existing = await findFutureSelfSession(uid);
+  if (existing) return existing.id;
+
+  const db = getDbInstance();
+  const ref = await addDoc(collection(db, "sessions"), {
+    uid,
+    title: "🌟 미래의 나와의 대화",
+    sessionType: "future-self",
+    participants: [uid],
+    participantNames: { [uid]: displayName || "나" },
+    pinnedBy: [uid],          // 항상 사이드바 상단 고정
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
 // ── 세션 CRUD ─────────────────────────────────────────
 export async function createSession(
   uid: string,
@@ -182,13 +229,18 @@ export async function findExistingDM(uid1: string, uid2: string): Promise<ChatSe
 export async function getSessions(uid: string): Promise<ChatSession[]> {
   const db = getDbInstance();
   // 참여 중인 모든 세션 조회 (본인 생성 + 초대받은 세션)
+  // orderBy를 쿼리에서 빼고 클라이언트 측에서 정렬 → Firestore 복합 인덱스 불필요
   const q = query(
     collection(db, "sessions"),
-    where("participants", "array-contains", uid),
-    orderBy("updatedAt", "desc")
+    where("participants", "array-contains", uid)
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ChatSession);
+  const sessions = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ChatSession);
+  return sessions.sort((a, b) => {
+    const aTime = a.updatedAt?.toMillis?.() ?? 0;
+    const bTime = b.updatedAt?.toMillis?.() ?? 0;
+    return bTime - aTime;
+  });
 }
 
 export async function getSessionById(sessionId: string): Promise<ChatSession | null> {
@@ -467,15 +519,20 @@ export function onSessionsSnapshot(
   callback: (sessions: ChatSession[]) => void
 ): Unsubscribe {
   const db = getDbInstance();
+  // orderBy를 쿼리에서 빼고 클라이언트 측에서 정렬 → Firestore 복합 인덱스 불필요
   const q = query(
     collection(db, "sessions"),
-    where("participants", "array-contains", uid),
-    orderBy("updatedAt", "desc")
+    where("participants", "array-contains", uid)
   );
   return onSnapshot(
     q,
     (snap) => {
       const sessions = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ChatSession);
+      sessions.sort((a, b) => {
+        const aTime = a.updatedAt?.toMillis?.() ?? 0;
+        const bTime = b.updatedAt?.toMillis?.() ?? 0;
+        return bTime - aTime;
+      });
       callback(sessions);
     },
     (error) => {
@@ -484,19 +541,41 @@ export function onSessionsSnapshot(
   );
 }
 
-// ── 세션 삭제 ────────────────────────────────────────
-export async function deleteSession(sessionId: string) {
+// ── 세션 삭제 / 나가기 ────────────────────────────────
+// 1:1 AI 세션 (참여자 1명) → 세션 + 메시지 전체 삭제
+// 다중 참여자 세션 → 자기 자신만 participants 에서 제거 ("나가기")
+export async function deleteSession(sessionId: string, uid: string) {
   const db = getDbInstance();
-  // 세션에 속한 메시지 삭제
-  const msgQuery = query(
-    collection(db, "messages"),
-    where("sessionId", "==", sessionId)
-  );
-  const msgSnap = await getDocs(msgQuery);
-  const batch = writeBatch(db);
-  msgSnap.docs.forEach((d) => batch.delete(d.ref));
-  batch.delete(doc(db, "sessions", sessionId));
-  await batch.commit();
+  const sessionRef = doc(db, "sessions", sessionId);
+  const sessionSnap = await getDoc(sessionRef);
+  if (!sessionSnap.exists()) return;
+
+  const data = sessionSnap.data() as ChatSession;
+  const participants = data.participants || [];
+  const isSolo = participants.length <= 1;
+
+  if (isSolo) {
+    // 세션에 속한 메시지 삭제
+    const msgQuery = query(
+      collection(db, "messages"),
+      where("sessionId", "==", sessionId)
+    );
+    const msgSnap = await getDocs(msgQuery);
+    const batch = writeBatch(db);
+    msgSnap.docs.forEach((d) => batch.delete(d.ref));
+    batch.delete(sessionRef);
+    await batch.commit();
+  } else {
+    // 다중 참여자: 본인만 빠지기
+    const newParticipantNames = { ...(data.participantNames || {}) };
+    delete newParticipantNames[uid];
+    await updateDoc(sessionRef, {
+      participants: arrayRemove(uid),
+      participantNames: newParticipantNames,
+      pinnedBy: arrayRemove(uid),
+      mutedBy: arrayRemove(uid),
+    });
+  }
 }
 
 // ── 안읽은 메시지 카운트 ────────────────────────────

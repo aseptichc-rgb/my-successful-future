@@ -36,17 +36,24 @@ export default function SessionSidebar({ uid, isOpen, onClose }: SessionSidebarP
     onClose();
   };
 
-  const handleDelete = async (e: React.MouseEvent, sessionId: string) => {
+  const handleDelete = async (e: React.MouseEvent, session: ChatSession) => {
     e.stopPropagation();
     if (deletingId) return;
-    setDeletingId(sessionId);
+    const isMulti = (session.participants?.length || 1) > 1;
+    const confirmMsg = isMulti
+      ? `"${session.title || "이 대화"}"에서 나가시겠습니까?`
+      : `"${session.title || "이 대화"}"를 삭제하시겠습니까? 모든 메시지가 함께 삭제됩니다.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setDeletingId(session.id);
     try {
-      await deleteSession(sessionId);
-      if (currentSessionId === sessionId) {
+      await deleteSession(session.id, uid);
+      if (currentSessionId === session.id) {
         router.push("/chat");
       }
     } catch (err) {
       console.error("세션 삭제 실패:", err);
+      window.alert("삭제에 실패했습니다. 잠시 후 다시 시도해주세요.");
     } finally {
       setDeletingId(null);
     }
@@ -127,14 +134,22 @@ export default function SessionSidebar({ uid, isOpen, onClose }: SessionSidebarP
 
                 return (
                   <li key={session.id}>
-                    <button
+                    <div
+                      role="button"
+                      tabIndex={0}
                       onClick={() => handleSelectSession(session.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleSelectSession(session.id);
+                        }
+                      }}
                       onContextMenu={(e) => {
                         e.preventDefault();
                         setContextMenuId(contextMenuId === session.id ? null : session.id);
                       }}
                       className={`
-                        group flex w-full items-start gap-2 px-3 py-2.5 text-left transition-colors
+                        group flex w-full cursor-pointer items-start gap-2 px-3 py-2.5 text-left transition-colors
                         ${isActive ? "bg-blue-50 border-r-2 border-blue-500" : "hover:bg-gray-100"}
                       `}
                     >
@@ -179,16 +194,16 @@ export default function SessionSidebar({ uid, isOpen, onClose }: SessionSidebarP
                           {unreadCount > 99 ? "99+" : unreadCount}
                         </span>
                       )}
-                      {/* 삭제 버튼 */}
+                      {/* 삭제/나가기 버튼 */}
                       {unreadCount === 0 && (
                         <button
-                          onClick={(e) => handleDelete(e, session.id)}
+                          onClick={(e) => handleDelete(e, session)}
                           className={`
                             mt-0.5 shrink-0 rounded p-1 text-gray-300 transition-colors
                             hover:bg-red-50 hover:text-red-500
                             ${isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"}
                           `}
-                          title="대화 삭제"
+                          title={participantCount > 1 ? "대화방 나가기" : "대화 삭제"}
                           disabled={deletingId === session.id}
                         >
                           {deletingId === session.id ? (
@@ -200,7 +215,7 @@ export default function SessionSidebar({ uid, isOpen, onClose }: SessionSidebarP
                           )}
                         </button>
                       )}
-                    </button>
+                    </div>
                     {/* 컨텍스트 메뉴 (고정/음소거) */}
                     {contextMenuId === session.id && (
                       <div className="mx-3 mb-1 rounded-lg border border-gray-200 bg-white py-1 shadow-lg text-xs">

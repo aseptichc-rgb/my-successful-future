@@ -12,6 +12,7 @@ interface ChatApiRequest {
   persona?: PersonaId;
   participants?: PersonaId[];
   userPersona?: string;
+  futurePersona?: string;
 }
 
 // 입력 글자수 제한
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { message, history = [], topic = "전체", persona = "default", participants, userPersona } = body;
+    const { message, history = [], topic = "전체", persona = "default", participants, userPersona, futurePersona } = body;
 
     // 대화 히스토리 + 현재 메시지
     const conversationMessages = [
@@ -49,7 +50,8 @@ export async function POST(request: NextRequest) {
       topic as NewsTopic,
       persona as PersonaId,
       participants as PersonaId[] | undefined,
-      userPersona
+      userPersona,
+      futurePersona
     );
 
     // Gemini API 스트리밍 호출 (topic 전달하여 폴백 뉴스 소스 활용)

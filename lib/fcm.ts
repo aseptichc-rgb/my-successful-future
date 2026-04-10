@@ -40,8 +40,10 @@ export async function requestNotificationPermission(uid: string): Promise<string
     const { getToken } = await import("firebase/messaging");
     const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
 
-    // 서비스 워커 등록
-    const sw = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+    // 서비스 워커 등록 후 활성화될 때까지 대기
+    // (등록 직후에는 installing/waiting 상태일 수 있어 PushManager 구독이 실패함)
+    await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+    const sw = await navigator.serviceWorker.ready;
 
     const token = await getToken(messaging, {
       vapidKey: vapidKey || undefined,

@@ -7,12 +7,19 @@ import type { AutoNewsConfig, AutoNewsResponse, PersonaId } from "@/types";
 
 const DEFAULT_INTERVAL = 60; // 기본 60분
 
-export function useAutoNews(sessionId: string) {
+interface UseAutoNewsOptions {
+  futurePersona?: string;
+  currentPersona?: string;
+}
+
+export function useAutoNews(sessionId: string, options?: UseAutoNewsOptions) {
   const [config, setConfig] = useState<AutoNewsConfig | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [lastCheckResult, setLastCheckResult] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isCheckingRef = useRef(false);
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
 
   // Firestore에서 자동 뉴스 설정 실시간 동기화
   useEffect(() => {
@@ -32,6 +39,8 @@ export function useAutoNews(sessionId: string) {
             sessionId,
             personaId,
             customTopics,
+            futurePersona: optionsRef.current?.futurePersona,
+            currentPersona: optionsRef.current?.currentPersona,
           }),
         });
 

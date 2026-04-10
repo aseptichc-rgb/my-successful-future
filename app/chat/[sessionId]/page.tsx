@@ -13,10 +13,11 @@ import InviteModal from "@/components/chat/InviteModal";
 import ShareInviteModal from "@/components/chat/ShareInviteModal";
 import InvitationBell from "@/components/chat/InvitationBell";
 import UserPersonaModal from "@/components/chat/UserPersonaModal";
+import FuturePersonaModal from "@/components/chat/FuturePersonaModal";
 import AutoNewsPanel from "@/components/chat/AutoNewsPanel";
 import MentionDropdown, { getFilteredPersonas } from "@/components/chat/MentionDropdown";
 import PresenceIndicator from "@/components/chat/PresenceIndicator";
-import { updateUserPersona, clearUnreadCount, updatePresence } from "@/lib/firebase";
+import { updateUserPersona, updateFuturePersona, clearUnreadCount, updatePresence } from "@/lib/firebase";
 import type { PersonaId } from "@/types";
 
 export default function ChatSessionPage() {
@@ -28,15 +29,18 @@ export default function ChatSessionPage() {
   const currentUid = firebaseUser?.uid;
   const currentName = user?.displayName || firebaseUser?.displayName || "사용자";
   const userPersona = user?.userPersona || "";
+  const futurePersona = user?.futurePersona || "";
 
   const {
     messages, isLoading, error, selectedTopic,
     activePersonas, respondingPersona, respondingConversationPersona, session,
     sessionType, isDirectChat,
     sendMessage, setSelectedTopic, togglePersona, dismissAI,
-  } = useChat(sessionId, currentUid, currentName, userPersona);
+  } = useChat(sessionId, currentUid, currentName, userPersona, futurePersona);
 
-  // 자동 뉴스 훅
+  const isFutureSelfSession = sessionType === "future-self";
+
+  // 자동 뉴스 훅 (future-self 세션이면 사용자 미래/현재 자기소개 함께 전달)
   const {
     config: autoNewsConfig,
     isChecking: isAutoNewsChecking,
@@ -46,13 +50,17 @@ export default function ChatSessionPage() {
     setCustomTopics,
     setInterval: setAutoNewsInterval,
     manualCheck,
-  } = useAutoNews(sessionId);
+  } = useAutoNews(sessionId, {
+    futurePersona: futurePersona || undefined,
+    currentPersona: userPersona || undefined,
+  });
 
   const [input, setInput] = useState("");
   const MAX_INPUT_LENGTH = 500;
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showPersonaModal, setShowPersonaModal] = useState(false);
+  const [showFuturePersonaModal, setShowFuturePersonaModal] = useState(false);
   const [showAutoNewsPanel, setShowAutoNewsPanel] = useState(false);
 
   // 멘션 관련 상태
@@ -196,7 +204,9 @@ export default function ChatSessionPage() {
       <header className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
         <div className="flex items-center gap-3">
           <h1 className="text-lg font-bold text-gray-900">
-            {isDirectChat ? (
+            {isFutureSelfSession ? (
+              <>🌟 미래의 나와의 대화</>
+            ) : isDirectChat ? (
               <>
                 {sessionType === "dm" ? "💬" : "👥"}{" "}
                 {session?.title || "대화"}
@@ -205,8 +215,10 @@ export default function ChatSessionPage() {
               "AI 뉴스 챗봇"
             )}
           </h1>
-          <PersonaSelector activePersonas={activePersonas} onToggle={togglePersona} />
-          {session?.participantNames && currentUid && (
+          {!isFutureSelfSession && (
+            <PersonaSelector activePersonas={activePersonas} onToggle={togglePersona} />
+          )}
+          {!isFutureSelfSession && session?.participantNames && currentUid && (
             <>
               <ParticipantsBadge
                 participantNames={session.participantNames}
@@ -218,10 +230,30 @@ export default function ChatSessionPage() {
               )}
             </>
           )}
+          {isFutureSelfSession && !futurePersona && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
+              미래의 나를 먼저 정의해주세요 →
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          {/* 내 페르소나 설정 버튼 (AI 세션만) */}
-          {!isDirectChat && (
+          {/* 미래의 나 정의 버튼 (future-self 세션 전용) */}
+          {isFutureSelfSession && (
+            <button
+              onClick={() => setShowFuturePersonaModal(true)}
+              className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                futurePersona
+                  ? "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                  : "border-amber-400 bg-amber-100 text-amber-800 hover:bg-amber-200 animate-pulse"
+              }`}
+              title="미래의 나 정의"
+            >
+              🌟 미래의 나
+            </button>
+          )}
+
+          {/* 내 페르소나 설정 버튼 (AI 세션 + future-self 세션) */}
+          {(!isDirectChat || isFutureSelfSession) && (
             <button
               onClick={() => setShowPersonaModal(true)}
               className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
@@ -229,7 +261,7 @@ export default function ChatSessionPage() {
                   ? "border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100"
                   : "border-gray-300 text-gray-700 hover:bg-gray-50"
               }`}
-              title="내 페르소나 설정"
+              title={isFutureSelfSession ? "현재의 나 (보조 정보)" : "내 페르소나 설정"}
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -237,8 +269,8 @@ export default function ChatSessionPage() {
             </button>
           )}
 
-          {/* 자동 뉴스 설정 버튼 (AI 세션만) */}
-          {!isDirectChat && (
+          {/* 자동 뉴스/메시지 설정 버튼 (AI 세션 + future-self 세션) */}
+          {(!isDirectChat || isFutureSelfSession) && (
             <button
               onClick={() => setShowAutoNewsPanel(true)}
               className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
@@ -246,7 +278,7 @@ export default function ChatSessionPage() {
                   ? "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
                   : "border-gray-300 text-gray-700 hover:bg-gray-50"
               }`}
-              title="자동 뉴스 설정"
+              title={isFutureSelfSession ? "자동 메시지 설정" : "자동 뉴스 설정"}
             >
               <div className="flex items-center gap-1">
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -259,27 +291,31 @@ export default function ChatSessionPage() {
             </button>
           )}
 
-          {/* 초대 버튼 */}
-          <button
-            onClick={() => setShowInviteModal(true)}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-            title="사용자 초대"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-            </svg>
-          </button>
+          {/* 초대 버튼 (future-self 세션은 1:1 전용이므로 숨김) */}
+          {!isFutureSelfSession && (
+            <button
+              onClick={() => setShowInviteModal(true)}
+              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              title="사용자 초대"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+            </button>
+          )}
 
-          {/* 링크 공유 버튼 */}
-          <button
-            onClick={() => setShowShareModal(true)}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-            title="초대 링크 공유"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-            </svg>
-          </button>
+          {/* 링크 공유 버튼 (future-self 세션 숨김) */}
+          {!isFutureSelfSession && (
+            <button
+              onClick={() => setShowShareModal(true)}
+              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              title="초대 링크 공유"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+            </button>
+          )}
 
           {/* 초대 알림 벨 */}
           {currentUid && (
@@ -310,8 +346,8 @@ export default function ChatSessionPage() {
         </div>
       </header>
 
-      {/* 도메인 필터 (AI 세션만) */}
-      {!isDirectChat && (
+      {/* 도메인 필터 (AI 세션만, future-self 제외) */}
+      {!isDirectChat && !isFutureSelfSession && (
         <TopicSelector selected={selectedTopic} onChange={setSelectedTopic} />
       )}
 
@@ -372,7 +408,13 @@ export default function ChatSessionPage() {
                 setTimeout(() => setShowMention(false), 200);
               }}
               maxLength={MAX_INPUT_LENGTH + 50}
-              placeholder={isDirectChat ? "메시지를 입력하세요... (@로 AI 호출)" : "@를 입력하여 페르소나를 멘션하세요..."}
+              placeholder={
+                isFutureSelfSession
+                  ? "미래의 나에게 무엇이든 물어보세요. 오늘 힘든 일, 고민, 결정해야 할 것..."
+                  : isDirectChat
+                    ? "메시지를 입력하세요... (@로 AI 호출)"
+                    : "@를 입력하여 페르소나를 멘션하세요..."
+              }
               rows={1}
               className={`w-full resize-none rounded-xl border px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-1 ${
                 isOverLimit
@@ -433,18 +475,51 @@ export default function ChatSessionPage() {
         />
       )}
 
+      {/* 미래의 나 정의 모달 */}
+      {showFuturePersonaModal && (
+        <FuturePersonaModal
+          currentFuturePersona={futurePersona}
+          onSave={async (persona) => {
+            if (currentUid) {
+              await updateFuturePersona(currentUid, persona);
+              await refreshUser();
+              // 처음 정의되는 경우(이전에 futurePersona가 비어 있었을 때) + future-self 세션이면
+              // 자동 메시지 기본 설정을 켜준다 (24시간 주기)
+              if (!futurePersona && persona && isFutureSelfSession && !autoNewsConfig?.enabled) {
+                if (!autoNewsConfig?.activePersonas?.includes("future-self")) {
+                  await toggleAutoNewsPersona("future-self");
+                }
+                if (autoNewsConfig?.intervalMinutes !== 1440) {
+                  await setAutoNewsInterval(1440);
+                }
+                await toggleAutoNews(true);
+              }
+            }
+          }}
+          onClose={() => setShowFuturePersonaModal(false)}
+        />
+      )}
+
       {/* 자동 뉴스 설정 패널 */}
       {showAutoNewsPanel && (
         <AutoNewsPanel
           config={autoNewsConfig}
           isChecking={isAutoNewsChecking}
           lastCheckResult={lastCheckResult}
-          onToggle={toggleAutoNews}
+          onToggle={async (enabled) => {
+            // future-self 세션에서는 활성화 시 자동으로 future-self 페르소나를 등록
+            if (isFutureSelfSession && enabled && !autoNewsConfig?.activePersonas?.includes("future-self")) {
+              await toggleAutoNewsPersona("future-self");
+            }
+            await toggleAutoNews(enabled);
+          }}
           onTogglePersona={toggleAutoNewsPersona}
           onSetCustomTopics={setCustomTopics}
           onSetInterval={setAutoNewsInterval}
           onManualCheck={manualCheck}
           onClose={() => setShowAutoNewsPanel(false)}
+          futureSelfMode={isFutureSelfSession}
+          futurePersonaSet={!!futurePersona}
         />
       )}
     </div>
