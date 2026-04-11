@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, usePathname, useParams } from "next/navigation";
 import { onSessionsSnapshot, ensureFutureSelfSession } from "@/lib/firebase";
+import { formatRelativeDate } from "@/lib/locale";
+import NewChatModal from "@/components/chat/NewChatModal";
 import type { ChatSession } from "@/types";
 
 interface BottomNavProps {
@@ -15,8 +17,11 @@ type Tab = "future" | "advisors" | "inbox";
 export default function BottomNav({ uid, displayName }: BottomNavProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const params = useParams();
+  const activeSessionId = params?.sessionId as string | undefined;
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [futureSelfId, setFutureSelfId] = useState<string | null>(null);
+  const [showNewChat, setShowNewChat] = useState(false);
 
   useEffect(() => {
     if (!uid) return;
@@ -31,20 +36,34 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
     return unsub;
   }, [uid]);
 
-  // 받은편지함(DM/그룹)의 미확인 카운트 합산
+  // 받은편지함(DM/그룹)의 미확인 카운트 합산 (모바일 탭 배지)
   const inboxUnread = sessions
     .filter((s) => s.sessionType === "dm" || s.sessionType === "group")
     .reduce((sum, s) => sum + (s.unreadCounts?.[uid] || 0), 0);
 
-  // 현재 활성 탭 판정
+  // 데스크톱 사이드바에 표시할 대화 목록 (DM + 그룹, 고정 우선)
+  const chatList = useMemo(() => {
+    const list = sessions.filter(
+      (s) => s.sessionType === "dm" || s.sessionType === "group"
+    );
+    return list.sort((a, b) => {
+      const aPinned = a.pinnedBy?.includes(uid) ? 1 : 0;
+      const bPinned = b.pinnedBy?.includes(uid) ? 1 : 0;
+      if (aPinned !== bPinned) return bPinned - aPinned;
+      const aTime = a.lastMessageAt?.toMillis?.() ?? a.updatedAt?.toMillis?.() ?? 0;
+      const bTime = b.lastMessageAt?.toMillis?.() ?? b.updatedAt?.toMillis?.() ?? 0;
+      return bTime - aTime;
+    });
+  }, [sessions, uid]);
+
+  // 현재 활성 탭 판정 (모바일 바텀 탭에서만 사용)
   const activeTab: Tab | null = (() => {
     if (pathname === "/chat/advisors") return "advisors";
     if (pathname === "/chat/inbox") return "inbox";
     if (pathname?.startsWith("/chat/")) {
       const id = pathname.split("/")[2];
-      // future-self 세션이면 future, 그 외 ai 세션이면 advisors, dm/group이면 inbox
       const session = sessions.find((s) => s.id === id);
-      if (!session) return "future"; // 기본은 future
+      if (!session) return "future";
       if (session.sessionType === "future-self") return "future";
       if (session.sessionType === "ai") return "advisors";
       return "inbox";
@@ -58,8 +77,9 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
   };
   const goAdvisors = () => router.push("/chat/advisors");
   const goInbox = () => router.push("/chat/inbox");
+  const goSession = (id: string) => router.push(`/chat/${id}`);
 
-  const tabs: {
+  const mobileTabs: {
     id: Tab;
     label: string;
     icon: string;
@@ -71,11 +91,65 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
     { id: "inbox", label: "받은편지함", icon: "💬", onClick: goInbox, badge: inboxUnread },
   ];
 
+  const formatSessionDate = (timestamp: { toDate?: () => Date } | undefined) => {
+    if (!timestamp?.toDate) return "";
+    return formatRelativeDate(timestamp.toDate());
+  };
+
+  const renderChatItem = (session: ChatSession) => {
+    const participantCount = session.participants?.length || 1;
+    const unreadCount = session.unreadCounts?.[uid] || 0;
+    const isPinned = session.pinnedBy?.includes(uid) || false;
+    const isMuted = session.mutedBy?.includes(uid) || false;
+    const typeIcon = session.sessionType === "dm" ? "💬" : "👥";
+    const isActive = activeSessionId === session.id;
+
+    return (
+      <li key={session.id}>
+        <button
+          type="button"
+          onClick={() => goSession(session.id)}
+          className={`flex w-full items-start gap-2 border-b border-gray-100 px-3 py-2.5 text-left transition-colors ${
+            isActive ? "bg-blue-50" : "bg-white hover:bg-gray-50"
+          }`}
+        >
+          <span className="mt-0.5 text-base shrink-0">{typeIcon}</span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1">
+              <p className={`truncate text-sm ${isActive ? "font-semibold text-blue-700" : "font-medium text-gray-900"}`}>
+                {session.title || "새 대화"}
+              </p>
+              {isPinned && <span className="shrink-0 text-[10px] text-gray-400" title="고정됨">📌</span>}
+              {isMuted && <span className="shrink-0 text-[10px] text-gray-400" title="음소거">🔇</span>}
+            </div>
+            {session.lastMessage && (
+              <p className="mt-0.5 truncate text-xs text-gray-500">
+                {session.lastMessageSenderName && (
+                  <span className="font-medium">{session.lastMessageSenderName}: </span>
+                )}
+                {session.lastMessage}
+              </p>
+            )}
+            <div className="mt-0.5 flex items-center gap-2 text-[10px] text-gray-400">
+              <span>{formatSessionDate(session.lastMessageAt || session.updatedAt)}</span>
+              {participantCount > 1 && <span>· {participantCount}명</span>}
+            </div>
+          </div>
+          {unreadCount > 0 && (
+            <span className="mt-1 shrink-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
+        </button>
+      </li>
+    );
+  };
+
   return (
     <>
-      {/* 모바일: 바텀 탭 */}
+      {/* 모바일: 바텀 탭 (기존 동작 유지) */}
       <nav className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-gray-200 bg-white lg:hidden">
-        {tabs.map((tab) => {
+        {mobileTabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
             <button
@@ -97,32 +171,70 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
         })}
       </nav>
 
-      {/* 데스크톱: 좌측 슬림 레일 */}
-      <nav className="hidden lg:flex lg:w-16 lg:flex-col lg:items-center lg:gap-2 lg:border-r lg:border-gray-200 lg:bg-white lg:py-4">
-        {tabs.map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={tab.onClick}
-              title={tab.label}
-              className={`relative flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] transition-colors ${
-                isActive
-                  ? "bg-blue-50 text-blue-600"
-                  : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-              }`}
-            >
-              <span className="text-xl leading-none">{tab.icon}</span>
-              <span className={isActive ? "font-semibold" : ""}>{tab.label}</span>
-              {tab.badge && tab.badge > 0 ? (
-                <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                  {tab.badge > 99 ? "99+" : tab.badge}
-                </span>
-              ) : null}
-            </button>
-          );
-        })}
-      </nav>
+      {/* 데스크톱: 좌측 사이드바 (기존 대화 목록이 바로 노출됨) */}
+      <aside className="hidden lg:flex lg:w-72 lg:flex-col lg:border-r lg:border-gray-200 lg:bg-white">
+        {/* 상단 빠른 이동: 미래의 나 / 자문단 */}
+        <div className="flex items-center gap-1 border-b border-gray-200 p-2">
+          <button
+            onClick={goFuture}
+            title="미래의 나"
+            className={`flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${
+              activeTab === "future"
+                ? "bg-blue-50 text-blue-600"
+                : "text-gray-600 hover:bg-gray-100"
+            }`}
+          >
+            <span className="text-base leading-none">🌟</span>
+            <span>미래의 나</span>
+          </button>
+          <button
+            onClick={goAdvisors}
+            title="자문단"
+            className={`flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${
+              activeTab === "advisors"
+                ? "bg-blue-50 text-blue-600"
+                : "text-gray-600 hover:bg-gray-100"
+            }`}
+          >
+            <span className="text-base leading-none">🧭</span>
+            <span>자문단</span>
+          </button>
+        </div>
+
+        {/* 대화 목록 헤더 */}
+        <div className="flex items-center justify-between border-b border-gray-200 px-3 py-2">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+            대화 ({chatList.length})
+          </h2>
+          <button
+            onClick={() => setShowNewChat(true)}
+            className="rounded-md bg-blue-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-blue-700"
+          >
+            + 새 대화
+          </button>
+        </div>
+
+        {/* 대화 목록 */}
+        <div className="flex-1 overflow-y-auto">
+          {chatList.length === 0 ? (
+            <div className="px-4 py-8 text-center text-xs text-gray-400">
+              아직 대화가 없습니다.
+              <br />
+              새 대화를 만들어 보세요.
+            </div>
+          ) : (
+            <ul>{chatList.map(renderChatItem)}</ul>
+          )}
+        </div>
+      </aside>
+
+      {showNewChat && (
+        <NewChatModal
+          uid={uid}
+          displayName={displayName}
+          onClose={() => setShowNewChat(false)}
+        />
+      )}
     </>
   );
 }

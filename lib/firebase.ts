@@ -33,7 +33,7 @@ import {
   type Firestore,
   type Unsubscribe,
 } from "firebase/firestore";
-import type { User, ChatSession, ChatMessage, Invitation, InviteLink, NewsSource, NewsTopic, SessionType, UserPresence, AutoNewsConfig, KeywordAlertConfig, PersonaId } from "@/types";
+import type { User, ChatSession, ChatMessage, Invitation, InviteLink, NewsSource, NewsTopic, SessionType, UserPresence, AutoNewsConfig, KeywordAlertConfig, PersonaId, Goal, DailyRitualConfig, DailyTask, PersonaMemory, CustomPersona } from "@/types";
 
 // ── Firebase 지연 초기화 ─────────────────────────────
 const firebaseConfig = {
@@ -276,6 +276,12 @@ export async function updateSessionTitle(sessionId: string, title: string) {
 }
 
 // ── 메시지 CRUD ───────────────────────────────────────
+interface AddMessageExtras {
+  councilGroupId?: string;
+  councilRound?: number;
+  councilQuestion?: string;
+}
+
 export async function addMessage(
   sessionId: string,
   role: "user" | "assistant",
@@ -283,7 +289,8 @@ export async function addMessage(
   sources: NewsSource[] = [],
   personaInfo?: { personaId: string; personaName: string; personaIcon: string },
   senderUid?: string,
-  senderName?: string
+  senderName?: string,
+  extras?: AddMessageExtras
 ): Promise<string> {
   const db = getDbInstance();
   const ref = await addDoc(collection(db, "messages"), {
@@ -294,6 +301,9 @@ export async function addMessage(
     ...(personaInfo && personaInfo),
     ...(senderUid && { senderUid }),
     ...(senderName && { senderName }),
+    ...(extras?.councilGroupId && { councilGroupId: extras.councilGroupId }),
+    ...(typeof extras?.councilRound === "number" && { councilRound: extras.councilRound }),
+    ...(extras?.councilQuestion && { councilQuestion: extras.councilQuestion }),
     createdAt: serverTimestamp(),
   });
 
@@ -813,4 +823,357 @@ export async function updateKeywordAlertLastChecked(sessionId: string) {
   await updateDoc(doc(db, "keywordAlerts", sessionId), {
     lastCheckedAt: serverTimestamp(),
   });
+}
+
+// ── 목표 CRUD ───────────────────────────────────────
+// 저장 위치: users/{uid}/goals/{goalId}
+export async function createGoal(
+  uid: string,
+  data: Pick<Goal, "title" | "category"> & Partial<Pick<Goal, "description" | "targetDate" | "progress" | "milestones">>
+): Promise<string> {
+  const db = getDbInstance();
+  const ref = await addDoc(collection(db, "users", uid, "goals"), {
+    title: data.title,
+    description: data.description || "",
+    category: data.category,
+    ...(data.targetDate && { targetDate: data.targetDate }),
+    progress: data.progress ?? 0,
+    milestones: data.milestones || [],
+    checkinCount: 0,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function updateGoal(
+  uid: string,
+  goalId: string,
+  updates: Partial<Goal>
+) {
+  const db = getDbInstance();
+  // id, createdAt 은 업데이트 대상에서 제거
+  const { id: _id, createdAt: _createdAt, ...rest } = updates as Partial<Goal> & { id?: string; createdAt?: unknown };
+  void _id;
+  void _createdAt;
+  await updateDoc(doc(db, "users", uid, "goals", goalId), {
+    ...rest,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function checkinGoal(
+  uid: string,
+  goalId: string,
+  progress: number,
+  note?: string
+) {
+  const db = getDbInstance();
+  await updateDoc(doc(db, "users", uid, "goals", goalId), {
+    progress: Math.max(0, Math.min(100, Math.round(progress))),
+    ...(note !== undefined && { lastCheckinNote: note }),
+    lastCheckinAt: serverTimestamp(),
+    checkinCount: increment(1),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function deleteGoal(uid: string, goalId: string) {
+  const db = getDbInstance();
+  await deleteDoc(doc(db, "users", uid, "goals", goalId));
+}
+
+export async function getGoals(uid: string): Promise<Goal[]> {
+  const db = getDbInstance();
+  const snap = await getDocs(collection(db, "users", uid, "goals"));
+  const goals = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Goal);
+  return sortGoals(goals);
+}
+
+export function onGoalsSnapshot(
+  uid: string,
+  callback: (goals: Goal[]) => void
+): Unsubscribe {
+  const db = getDbInstance();
+  return onSnapshot(
+    collection(db, "users", uid, "goals"),
+    (snap) => {
+      const goals = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Goal);
+      callback(sortGoals(goals));
+    },
+    (error) => {
+      console.warn("목표 리스너 에러:", error.message);
+    }
+  );
+}
+
+// 마감 임박순 정렬 (targetDate 없는 것은 뒤로)
+function sortGoals(goals: Goal[]): Goal[] {
+  return [...goals].sort((a, b) => {
+    const aHas = !!a.targetDate;
+    const bHas = !!b.targetDate;
+    if (aHas && bHas) {
+      return (a.targetDate!.toMillis() - b.targetDate!.toMillis());
+    }
+    if (aHas) return -1;
+    if (bHas) return 1;
+    // 둘 다 마감일 없음 → 최신 업데이트 우선
+    const au = a.updatedAt?.toMillis?.() ?? 0;
+    const bu = b.updatedAt?.toMillis?.() ?? 0;
+    return bu - au;
+  });
+}
+
+// ── 데일리 리추얼 설정 CRUD ─────────────────────────
+// 문서 ID = uid (사용자 1명당 1개 설정)
+export async function saveDailyRitualConfig(
+  uid: string,
+  config: Partial<DailyRitualConfig>
+) {
+  const db = getDbInstance();
+  await setDoc(
+    doc(db, "dailyRitualConfigs", uid),
+    { ...config, updatedAt: serverTimestamp() },
+    { merge: true }
+  );
+}
+
+export async function getDailyRitualConfig(
+  uid: string
+): Promise<DailyRitualConfig | null> {
+  const db = getDbInstance();
+  const snap = await getDoc(doc(db, "dailyRitualConfigs", uid));
+  if (!snap.exists()) return null;
+  return snap.data() as DailyRitualConfig;
+}
+
+export function onDailyRitualConfigSnapshot(
+  uid: string,
+  callback: (config: DailyRitualConfig | null) => void
+): Unsubscribe {
+  const db = getDbInstance();
+  return onSnapshot(
+    doc(db, "dailyRitualConfigs", uid),
+    (snap) => {
+      callback(snap.exists() ? (snap.data() as DailyRitualConfig) : null);
+    },
+    (error) => {
+      console.warn("데일리 리추얼 설정 리스너 에러:", error.message);
+    }
+  );
+}
+
+// ── 데일리 체크리스트 CRUD ──────────────────────────
+// 저장 위치: users/{uid}/dailyTasks/{taskId}
+function kstDateString(date: Date = new Date()): string {
+  const kst = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+  const y = kst.getUTCFullYear();
+  const m = String(kst.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(kst.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function yesterdayKst(): string {
+  const d = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  return kstDateString(d);
+}
+
+export async function createDailyTask(
+  uid: string,
+  title: string,
+  icon?: string
+): Promise<string> {
+  const db = getDbInstance();
+  // 가장 마지막 order 값 찾기
+  const existing = await getDocs(collection(db, "users", uid, "dailyTasks"));
+  const maxOrder = existing.docs.reduce((max, d) => {
+    const o = (d.data() as DailyTask).order ?? 0;
+    return o > max ? o : max;
+  }, -1);
+  const ref = await addDoc(collection(db, "users", uid, "dailyTasks"), {
+    title,
+    ...(icon && { icon }),
+    order: maxOrder + 1,
+    streakCount: 0,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function updateDailyTask(
+  uid: string,
+  taskId: string,
+  updates: Partial<Pick<DailyTask, "title" | "icon" | "order">>
+) {
+  const db = getDbInstance();
+  await updateDoc(doc(db, "users", uid, "dailyTasks", taskId), {
+    ...updates,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function deleteDailyTask(uid: string, taskId: string) {
+  const db = getDbInstance();
+  await deleteDoc(doc(db, "users", uid, "dailyTasks", taskId));
+}
+
+/**
+ * 오늘 체크 / 체크 해제 토글.
+ * 체크: lastCompletedDate=today, 이전 값이 어제면 streak+1, 아니면 streak=1
+ * 언체크: 체크 직전 값으로 롤백 (prevCompletedDate → lastCompletedDate)
+ */
+export async function toggleDailyTaskToday(uid: string, task: DailyTask) {
+  const db = getDbInstance();
+  const today = kstDateString();
+  const yesterday = yesterdayKst();
+  const isDoneToday = task.lastCompletedDate === today;
+
+  if (isDoneToday) {
+    // 언체크 → 직전 상태로 되돌림
+    const prev = task.prevCompletedDate;
+    const newStreak = prev && prev === yesterday ? Math.max(task.streakCount - 1, 0) : 0;
+    await updateDoc(doc(db, "users", uid, "dailyTasks", task.id), {
+      lastCompletedDate: prev ?? null,
+      prevCompletedDate: null,
+      streakCount: newStreak,
+      updatedAt: serverTimestamp(),
+    });
+  } else {
+    // 체크
+    const newStreak = task.lastCompletedDate === yesterday ? task.streakCount + 1 : 1;
+    await updateDoc(doc(db, "users", uid, "dailyTasks", task.id), {
+      prevCompletedDate: task.lastCompletedDate ?? null,
+      lastCompletedDate: today,
+      streakCount: newStreak,
+      updatedAt: serverTimestamp(),
+    });
+  }
+}
+
+export function onDailyTasksSnapshot(
+  uid: string,
+  callback: (tasks: DailyTask[]) => void
+): Unsubscribe {
+  const db = getDbInstance();
+  return onSnapshot(
+    collection(db, "users", uid, "dailyTasks"),
+    (snap) => {
+      const tasks = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as DailyTask);
+      tasks.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      callback(tasks);
+    },
+    (error) => {
+      console.warn("데일리 체크리스트 리스너 에러:", error.message);
+    }
+  );
+}
+
+// ── 커스텀 페르소나 CRUD ────────────────────────────
+// 저장 위치: users/{uid}/customPersonas/{personaId}
+// 문서 ID는 "custom:xxxxx" 형식의 랜덤 token
+function generateCustomPersonaId(): string {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let token = "";
+  for (let i = 0; i < 10; i++) token += chars.charAt(Math.floor(Math.random() * chars.length));
+  return `custom:${token}`;
+}
+
+export async function createCustomPersona(
+  uid: string,
+  data: Pick<CustomPersona, "name" | "icon" | "description" | "systemPromptAddition">
+): Promise<string> {
+  const db = getDbInstance();
+  const id = generateCustomPersonaId();
+  await setDoc(doc(db, "users", uid, "customPersonas", id), {
+    id,
+    name: data.name,
+    icon: data.icon || "✨",
+    description: data.description || "",
+    systemPromptAddition: data.systemPromptAddition,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return id;
+}
+
+export async function updateCustomPersona(
+  uid: string,
+  id: string,
+  updates: Partial<Pick<CustomPersona, "name" | "icon" | "description" | "systemPromptAddition">>
+) {
+  const db = getDbInstance();
+  await updateDoc(doc(db, "users", uid, "customPersonas", id), {
+    ...updates,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function deleteCustomPersona(uid: string, id: string) {
+  const db = getDbInstance();
+  await deleteDoc(doc(db, "users", uid, "customPersonas", id));
+}
+
+export function onCustomPersonasSnapshot(
+  uid: string,
+  callback: (map: Record<string, CustomPersona>) => void
+): Unsubscribe {
+  const db = getDbInstance();
+  return onSnapshot(
+    collection(db, "users", uid, "customPersonas"),
+    (snap) => {
+      const map: Record<string, CustomPersona> = {};
+      snap.docs.forEach((d) => {
+        const data = d.data() as CustomPersona;
+        map[d.id] = { ...data, id: d.id };
+      });
+      callback(map);
+    },
+    (error) => {
+      console.warn("커스텀 페르소나 리스너 에러:", error.message);
+    }
+  );
+}
+
+// ── 페르소나별 기억 샤드 CRUD ────────────────────────
+// 저장 위치: users/{uid}/personaMemories/{personaId}
+export async function updatePersonaMemory(
+  uid: string,
+  personaId: string,
+  summary: string,
+  messageCount: number,
+  topics?: string[]
+) {
+  const db = getDbInstance();
+  await setDoc(
+    doc(db, "users", uid, "personaMemories", personaId),
+    {
+      personaId,
+      summary,
+      ...(topics && { topics }),
+      messageCount,
+      lastUpdatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+
+export function onPersonaMemoriesSnapshot(
+  uid: string,
+  callback: (memories: Record<string, PersonaMemory>) => void
+): Unsubscribe {
+  const db = getDbInstance();
+  return onSnapshot(
+    collection(db, "users", uid, "personaMemories"),
+    (snap) => {
+      const map: Record<string, PersonaMemory> = {};
+      snap.docs.forEach((d) => {
+        map[d.id] = d.data() as PersonaMemory;
+      });
+      callback(map);
+    },
+    (error) => {
+      console.warn("페르소나 메모리 리스너 에러:", error.message);
+    }
+  );
 }

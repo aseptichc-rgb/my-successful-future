@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { PERSONA_LIST, PERSONA_SPECIALTIES } from "@/lib/personas";
-import type { AutoNewsConfig, PersonaId } from "@/types";
+import type { AutoNewsConfig, BuiltinPersonaId, PersonaId } from "@/types";
 
 interface AutoNewsPanelProps {
   config: AutoNewsConfig | null;
@@ -157,7 +157,7 @@ export default function AutoNewsPanel({
                 <div className="space-y-2">
                   {personas.map((persona) => {
                     const isActive = activePersonas.includes(persona.id);
-                    const specialty = PERSONA_SPECIALTIES[persona.id];
+                    const specialty = PERSONA_SPECIALTIES[persona.id as BuiltinPersonaId];
                     return (
                       <button
                         key={persona.id}
@@ -180,7 +180,7 @@ export default function AutoNewsPanel({
                           </div>
                           <p className="text-xs text-gray-500">{persona.description}</p>
                           <div className="mt-1 flex flex-wrap gap-1">
-                            {specialty.searchKeywords.slice(0, 3).map((kw) => (
+                            {specialty.searchKeywords.slice(0, 3).map((kw: string) => (
                               <span
                                 key={kw}
                                 className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600"

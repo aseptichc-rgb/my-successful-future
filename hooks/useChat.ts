@@ -2,9 +2,9 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Timestamp } from "firebase/firestore";
-import { getMessages, addMessage, updateSessionTitle, onMessagesSnapshot, getSessionById, incrementUnreadCounts, updateUserMemory } from "@/lib/firebase";
-import { getPersona, PERSONAS } from "@/lib/personas";
-import type { ChatMessage, ChatSession, ChatStreamEvent, NewsSource, NewsTopic, PersonaId, SessionType } from "@/types";
+import { getMessages, addMessage, updateSessionTitle, onMessagesSnapshot, getSessionById, incrementUnreadCounts, updateUserMemory, onPersonaMemoriesSnapshot, updatePersonaMemory } from "@/lib/firebase";
+import { getPersona, PERSONAS, isCustomPersonaId } from "@/lib/personas";
+import type { ChatMessage, ChatSession, ChatStreamEvent, CustomPersona, DailyTaskSnapshot, GoalSnapshot, MoodKind, NewsSource, NewsTopic, PersonaId, SessionType } from "@/types";
 
 /** 응답 텍스트에서 AI가 붙인 [이름] 접두사를 제거 */
 function stripPersonaPrefix(text: string): string {
@@ -59,7 +59,28 @@ export function useChat(
   userMemory?: string,
   onMemoryUpdated?: (memory: string) => void,
   initialPersona?: PersonaId,
+  activeGoals?: GoalSnapshot[],
+  dailyTasks?: DailyTaskSnapshot[],
+  customPersonaMap?: Record<string, CustomPersona>,
 ) {
+  const activeGoalsRef = useRef<GoalSnapshot[] | undefined>(activeGoals);
+  activeGoalsRef.current = activeGoals;
+  const dailyTasksRef = useRef<DailyTaskSnapshot[] | undefined>(dailyTasks);
+  dailyTasksRef.current = dailyTasks;
+  const customPersonaMapRef = useRef<Record<string, CustomPersona> | undefined>(customPersonaMap);
+  customPersonaMapRef.current = customPersonaMap;
+  // 페르소나별 기억 샤드 (Firestore subscribe)
+  const [personaMemories, setPersonaMemories] = useState<Record<string, string>>({});
+  const personaMemoriesRef = useRef<Record<string, string>>({});
+  personaMemoriesRef.current = personaMemories;
+  // 페르소나별 턴 카운터 (업데이트 트리거용)
+  const personaTurnCountRef = useRef<Record<string, number>>({});
+  const personaMemoryInFlightRef = useRef<Set<string>>(new Set());
+  // 감정 상태 (mood-aware future-self)
+  const [mood, setMood] = useState<MoodKind>("unknown");
+  const moodRef = useRef<MoodKind>("unknown");
+  moodRef.current = mood;
+  const moodInFlightRef = useRef(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +112,19 @@ export function useChat(
     }
   }, [sessionId]);
 
+  // 페르소나별 기억 샤드 실시간 구독
+  useEffect(() => {
+    if (!currentUid) return;
+    const unsub = onPersonaMemoriesSnapshot(currentUid, (map) => {
+      const plain: Record<string, string> = {};
+      Object.entries(map).forEach(([id, mem]) => {
+        if (mem.summary) plain[id] = mem.summary;
+      });
+      setPersonaMemories(plain);
+    });
+    return unsub;
+  }, [currentUid]);
+
   // 실시간 메시지 리스너 (다른 참여자의 메시지를 즉시 수신)
   useEffect(() => {
     if (!sessionId) return;
@@ -103,6 +137,90 @@ export function useChat(
 
     return unsub;
   }, [sessionId]);
+
+  // 백그라운드에서 감정 상태 업데이트 (3번째 사용자 메시지마다 트리거)
+  const userMessageCountForMoodRef = useRef(0);
+  const triggerMoodUpdate = useCallback(async () => {
+    if (moodInFlightRef.current) return;
+    userMessageCountForMoodRef.current += 1;
+    // 3메시지마다 갱신
+    if (userMessageCountForMoodRef.current % 3 !== 0) return;
+
+    moodInFlightRef.current = true;
+    try {
+      const recent = messagesRef.current
+        .filter((m) => m.role === "user" && m.senderUid === currentUid)
+        .slice(-5)
+        .map((m) => m.content);
+      if (recent.length === 0) return;
+
+      const res = await fetch("/api/mood", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recentUserMessages: recent }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const next: MoodKind = data.mood || "unknown";
+      if (next && next !== moodRef.current) setMood(next);
+    } catch (err) {
+      console.warn("Mood update failed:", err);
+    } finally {
+      moodInFlightRef.current = false;
+    }
+  }, [currentUid]);
+
+  // 백그라운드에서 페르소나별 기억 업데이트 (해당 페르소나 5턴마다)
+  const triggerPersonaMemoryUpdate = useCallback(
+    async (personaId: PersonaId) => {
+      if (!currentUid) return;
+      if (personaId === "default" || personaId === "future-self") return; // 뉴스봇/미래의 나는 제외
+      if (personaMemoryInFlightRef.current.has(personaId)) return;
+
+      const prev = personaTurnCountRef.current[personaId] || 0;
+      const next = prev + 1;
+      personaTurnCountRef.current[personaId] = next;
+      if (next % 5 !== 0) return;
+
+      personaMemoryInFlightRef.current.add(personaId);
+      try {
+        // 해당 페르소나와의 최근 대화 추출 (사용자 ↔ 이 페르소나)
+        const recentExchanges: { role: "user" | "assistant"; content: string }[] = [];
+        for (const msg of messagesRef.current.slice(-40)) {
+          if (msg.role === "user") {
+            recentExchanges.push({ role: "user", content: msg.content });
+          } else if (msg.role === "assistant" && msg.personaId === personaId) {
+            recentExchanges.push({ role: "assistant", content: msg.content });
+          }
+        }
+        if (recentExchanges.length === 0) return;
+
+        const persona = getPersona(personaId, customPersonaMapRef.current);
+        const existing = personaMemoriesRef.current[personaId] || "";
+        const res = await fetch("/api/persona-memory", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            personaId,
+            personaName: persona.name,
+            existingMemory: existing,
+            recentExchanges: recentExchanges.slice(-20),
+          }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const newMemory: string = data.memory || "";
+        if (newMemory && newMemory !== existing) {
+          await updatePersonaMemory(currentUid, personaId, newMemory, messagesRef.current.length);
+        }
+      } catch (err) {
+        console.warn(`Persona memory update failed (${personaId}):`, err);
+      } finally {
+        personaMemoryInFlightRef.current.delete(personaId);
+      }
+    },
+    [currentUid]
+  );
 
   // 백그라운드에서 사용자 메모리 업데이트 (5번째 사용자 메시지마다 트리거)
   const triggerMemoryUpdateIfNeeded = useCallback(async () => {
@@ -167,6 +285,11 @@ export function useChat(
       accumulatedHistory: { role: "user" | "assistant"; content: string }[],
       assistantId: string
     ): Promise<{ fullText: string; sources: NewsSource[]; bubbleIds: string[] }> => {
+      const personaMemory = personaMemoriesRef.current?.[personaId];
+      const isCustom = isCustomPersonaId(personaId as string);
+      const customPayload = isCustom
+        ? customPersonaMapRef.current?.[personaId as string]
+        : undefined;
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -179,6 +302,19 @@ export function useChat(
           userPersona: userPersona || undefined,
           futurePersona: futurePersona || undefined,
           userMemory: userMemory || undefined,
+          activeGoals: activeGoalsRef.current && activeGoalsRef.current.length > 0 ? activeGoalsRef.current : undefined,
+          dailyTasks: dailyTasksRef.current && dailyTasksRef.current.length > 0 ? dailyTasksRef.current : undefined,
+          personaMemory: personaMemory && personaMemory.trim().length > 0 ? personaMemory : undefined,
+          customPersona: customPayload
+            ? {
+                id: customPayload.id,
+                name: customPayload.name,
+                icon: customPayload.icon,
+                description: customPayload.description,
+                systemPromptAddition: customPayload.systemPromptAddition,
+              }
+            : undefined,
+          mood: moodRef.current !== "unknown" ? moodRef.current : undefined,
         }),
       });
 
@@ -198,7 +334,7 @@ export function useChat(
       let serverDone = false;
       let readerError: Error | null = null;
       const bubbleIds: string[] = [assistantId];
-      const persona = getPersona(personaId);
+      const persona = getPersona(personaId, customPersonaMapRef.current);
 
       // 1) 백그라운드에서 서버 SSE를 최대한 빠르게 누적만 한다.
       const readerTask = (async () => {
@@ -419,7 +555,7 @@ export function useChat(
 
       try {
         for (const personaId of respondPersonas) {
-          const persona = getPersona(personaId);
+          const persona = getPersona(personaId, customPersonaMapRef.current);
 
           const assistantId = `temp-${personaId}-${Date.now()}`;
           const assistantMessage: ChatMessage = {
@@ -472,6 +608,8 @@ export function useChat(
                 role: "assistant",
                 content: isMulti ? `[${persona.name}] ${fullText}` : fullText,
               });
+              // 페르소나별 메모리 업데이트 트리거 (fire-and-forget)
+              triggerPersonaMemoryUpdate(personaId);
             }
           } catch {
             setMessages((prev) => prev.filter((msg) => msg.id !== assistantId));
@@ -482,17 +620,188 @@ export function useChat(
       } finally {
         setIsLoading(false);
         setRespondingPersona(null);
-        // 백그라운드에서 사용자 메모리 업데이트 (await 안 함 → UI 블로킹 X)
+        // 백그라운드에서 사용자 메모리 + 감정 업데이트 (await 안 함 → UI 블로킹 X)
         triggerMemoryUpdateIfNeeded();
+        triggerMoodUpdate();
       }
     },
-    [sessionId, selectedTopic, activePersonas, isLoading, streamPersonaResponse, currentUid, currentName, triggerMemoryUpdateIfNeeded, session]
+    [sessionId, selectedTopic, activePersonas, isLoading, streamPersonaResponse, currentUid, currentName, triggerMemoryUpdateIfNeeded, triggerPersonaMemoryUpdate, triggerMoodUpdate, session]
   );
 
   // AI 대화 맥락 종료 (DM/그룹에서 AI 응답을 멈추고 싶을 때)
   const dismissAI = useCallback(() => {
     conversationPersonaRef.current = null;
   }, []);
+
+  // 🪑 카운슬 모드: 선택된 페르소나들이 순차적으로 의견을 내고, 마지막에 미래의 나가 종합
+  const sendCouncilQuestion = useCallback(
+    async (question: string, personaIds: PersonaId[]) => {
+      if (!question.trim() || isLoading) return;
+      if (personaIds.length === 0) return;
+
+      // 미래의 나는 항상 마지막 종합자로 자동 포함
+      const rounds: PersonaId[] = personaIds.filter((p) => p !== "future-self");
+      rounds.push("future-self");
+
+      const councilGroupId = `council-${Date.now()}`;
+      setError(null);
+      setIsLoading(true);
+
+      // 사용자 질문 메시지 저장 (카운슬 그룹에 묶음)
+      const userMsgId = `temp-user-${Date.now()}`;
+      const userMessage: ChatMessage = {
+        id: userMsgId,
+        sessionId,
+        role: "user",
+        content: question,
+        sources: [],
+        createdAt: Timestamp.now(),
+        senderUid: currentUid,
+        senderName: currentName,
+        councilGroupId,
+        councilRound: 0,
+        councilQuestion: question,
+      };
+      setMessages((prev) => [...prev, userMessage]);
+
+      addMessage(
+        sessionId,
+        "user",
+        question,
+        [],
+        undefined,
+        currentUid,
+        currentName,
+        { councilGroupId, councilRound: 0, councilQuestion: question }
+      ).catch((err) => console.error("Failed to save council question:", err));
+
+      // 프라이어 라운드 컨텍스트 누적
+      const priorRounds: { personaName: string; content: string }[] = [];
+
+      try {
+        for (let i = 0; i < rounds.length; i++) {
+          const personaId = rounds[i];
+          const persona = getPersona(personaId, customPersonaMapRef.current);
+          const isFinal = personaId === "future-self" && i === rounds.length - 1;
+          const round = i + 1;
+          setRespondingPersona(personaId);
+
+          const assistantId = `temp-council-${personaId}-${Date.now()}`;
+          const assistantMessage: ChatMessage = {
+            id: assistantId,
+            sessionId,
+            role: "assistant",
+            content: "",
+            sources: [],
+            createdAt: Timestamp.now(),
+            personaId,
+            personaName: persona.name,
+            personaIcon: persona.icon,
+            councilGroupId,
+            councilRound: isFinal ? 999 : round,
+          };
+          setMessages((prev) => [...prev, assistantMessage]);
+
+          try {
+            const personaMemoryForThis = personaMemoriesRef.current?.[personaId];
+            const isCustomP = isCustomPersonaId(personaId as string);
+            const customPayloadP = isCustomP
+              ? customPersonaMapRef.current?.[personaId as string]
+              : undefined;
+            const response = await fetch("/api/chat", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                message: question,
+                history: [],
+                topic: "전체",
+                persona: personaId,
+                userPersona: userPersona || undefined,
+                futurePersona: futurePersona || undefined,
+                userMemory: userMemory || undefined,
+                activeGoals: activeGoalsRef.current && activeGoalsRef.current.length > 0 ? activeGoalsRef.current : undefined,
+                dailyTasks: dailyTasksRef.current && dailyTasksRef.current.length > 0 ? dailyTasksRef.current : undefined,
+                personaMemory: personaMemoryForThis && personaMemoryForThis.trim().length > 0 ? personaMemoryForThis : undefined,
+                councilContext: priorRounds.length > 0 ? priorRounds : undefined,
+                isCouncilFinal: isFinal,
+                customPersona: customPayloadP
+                  ? {
+                      id: customPayloadP.id,
+                      name: customPayloadP.name,
+                      icon: customPayloadP.icon,
+                      description: customPayloadP.description,
+                      systemPromptAddition: customPayloadP.systemPromptAddition,
+                    }
+                  : undefined,
+                mood: moodRef.current !== "unknown" ? moodRef.current : undefined,
+              }),
+            });
+
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}`);
+            }
+
+            // SSE를 모두 모아서 한 번에 표시 (카운슬은 길이가 짧아 스트리밍 불필요)
+            const reader = response.body?.getReader();
+            if (!reader) throw new Error("No reader");
+            const decoder = new TextDecoder();
+            let buffer = "";
+            let fullText = "";
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split("\n\n");
+              buffer = lines.pop() || "";
+              for (const line of lines) {
+                if (!line.startsWith("data: ")) continue;
+                try {
+                  const data: ChatStreamEvent = JSON.parse(line.slice(6));
+                  if (data.type === "text" && data.content) {
+                    fullText += data.content;
+                    const clean = stripPersonaPrefix(normalizePersonaMarkers(fullText).trim());
+                    setMessages((prev) =>
+                      prev.map((m) => (m.id === assistantId ? { ...m, content: clean } : m))
+                    );
+                  } else if (data.type === "done" && data.content) {
+                    fullText = data.content;
+                  }
+                } catch {
+                  // ignore
+                }
+              }
+            }
+
+            const cleaned = stripPersonaPrefix(normalizePersonaMarkers(fullText).trim());
+            // Firestore 저장 (단일 메시지)
+            if (cleaned) {
+              addMessage(
+                sessionId,
+                "assistant",
+                cleaned,
+                [],
+                { personaId, personaName: persona.name, personaIcon: persona.icon },
+                undefined,
+                undefined,
+                { councilGroupId, councilRound: isFinal ? 999 : round }
+              ).catch((err) => console.error("Failed to save council response:", err));
+
+              priorRounds.push({ personaName: persona.name, content: cleaned });
+            }
+          } catch (err) {
+            console.warn(`Council round ${round} 실패:`, err);
+            setMessages((prev) => prev.filter((m) => m.id !== assistantId));
+          }
+        }
+      } catch {
+        setError("카운슬 진행에 실패했습니다. 다시 시도해주세요.");
+      } finally {
+        setIsLoading(false);
+        setRespondingPersona(null);
+      }
+    },
+    [isLoading, sessionId, currentUid, currentName, userPersona, futurePersona, userMemory]
+  );
 
   return {
     messages,
@@ -505,7 +814,10 @@ export function useChat(
     session,
     sessionType,
     isDirectChat,
+    mood,
     sendMessage,
+    sendCouncilQuestion,
+    personaMemories,
     setSelectedTopic,
     togglePersona,
     dismissAI,

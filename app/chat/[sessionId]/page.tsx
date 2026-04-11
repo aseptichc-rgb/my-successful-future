@@ -6,6 +6,10 @@ import { useAuth } from "@/lib/auth-context";
 import { useChat } from "@/hooks/useChat";
 import { useAutoNews } from "@/hooks/useAutoNews";
 import { useKeywordAlert } from "@/hooks/useKeywordAlert";
+import { useGoals } from "@/hooks/useGoals";
+import { useDailyRitual } from "@/hooks/useDailyRitual";
+import { useDailyTasks } from "@/hooks/useDailyTasks";
+import { useCustomPersonas } from "@/hooks/useCustomPersonas";
 import ChatWindow from "@/components/chat/ChatWindow";
 import TopicSelector from "@/components/chat/TopicSelector";
 import PersonaSelector from "@/components/chat/PersonaSelector";
@@ -17,6 +21,11 @@ import UserPersonaModal from "@/components/chat/UserPersonaModal";
 import FuturePersonaModal from "@/components/chat/FuturePersonaModal";
 import AutoNewsPanel from "@/components/chat/AutoNewsPanel";
 import KeywordAlertPanel from "@/components/chat/KeywordAlertPanel";
+import GoalPanel from "@/components/chat/GoalPanel";
+import DailyRitualSettings from "@/components/chat/DailyRitualSettings";
+import DailyChecklistPanel from "@/components/chat/DailyChecklistPanel";
+import CouncilLauncher from "@/components/chat/CouncilLauncher";
+import PeerAssistPanel from "@/components/chat/PeerAssistPanel";
 import NewChatModal from "@/components/chat/NewChatModal";
 import MentionDropdown, { getFilteredPersonas } from "@/components/chat/MentionDropdown";
 import PresenceIndicator from "@/components/chat/PresenceIndicator";
@@ -37,11 +46,29 @@ export default function ChatSessionPage() {
   const futurePersona = user?.futurePersona || "";
   const userMemory = user?.userMemory || "";
 
+  // 목표 훅 (미래의 나 세션에서 활용)
+  const { goals, activeSnapshots, addGoal, checkin, removeGoal } = useGoals(currentUid);
+
+  // 데일리 체크리스트 훅 (미래의 나 세션에서 활용)
+  const {
+    tasksWithTodayState,
+    snapshots: dailyTaskSnapshots,
+    progress: dailyTaskProgress,
+    addTask: addDailyTask,
+    toggleTask: toggleDailyTask,
+    removeTask: removeDailyTask,
+  } = useDailyTasks(currentUid);
+
+  // 커스텀 페르소나 맵
+  const { map: customPersonaMap } = useCustomPersonas(currentUid);
+
   const {
     messages, isLoading, error, selectedTopic,
     activePersonas, respondingPersona, respondingConversationPersona, session,
     sessionType, isDirectChat,
-    sendMessage, setSelectedTopic, togglePersona, dismissAI,
+    mood,
+    sendMessage, sendCouncilQuestion, setSelectedTopic, togglePersona, dismissAI,
+    personaMemories,
   } = useChat(
     sessionId,
     currentUid,
@@ -51,9 +78,30 @@ export default function ChatSessionPage() {
     userMemory,
     () => { refreshUser().catch(() => {}); }, // 메모리 업데이트 후 user 프로필 리프레시
     initialPersona, // 자문단 카드에서 진입 시 ?persona= 로 전달된 페르소나
+    activeSnapshots, // 목표 스냅샷 (미래의 나 세션에서만 실제 사용)
+    dailyTaskSnapshots, // 체크리스트 스냅샷
+    customPersonaMap, // 커스텀 페르소나 맵
   );
+  void personaMemories;
 
   const isFutureSelfSession = sessionType === "future-self";
+
+  // 데일리 리추얼 (미래의 나 세션에서만 폴링)
+  const {
+    config: dailyRitualConfig,
+    updateConfig: updateDailyRitualConfig,
+  } = useDailyRitual(
+    isFutureSelfSession ? currentUid : undefined,
+    isFutureSelfSession ? sessionId : undefined,
+    {
+      userPersona,
+      futurePersona,
+      userMemory,
+      activeGoals: activeSnapshots,
+      dailyTasks: dailyTaskSnapshots,
+      mood,
+    }
+  );
 
   // 자동 뉴스 훅 (future-self 세션이면 사용자 미래/현재 자기소개 함께 전달)
   const {
@@ -89,6 +137,9 @@ export default function ChatSessionPage() {
   const [showFuturePersonaModal, setShowFuturePersonaModal] = useState(false);
   const [showAutoNewsPanel, setShowAutoNewsPanel] = useState(false);
   const [showKeywordAlertPanel, setShowKeywordAlertPanel] = useState(false);
+  const [showDailyRitualSettings, setShowDailyRitualSettings] = useState(false);
+  const [showCouncilLauncher, setShowCouncilLauncher] = useState(false);
+  const [showPeerAssist, setShowPeerAssist] = useState(false);
   const [showAlertChooser, setShowAlertChooser] = useState(false);
   const [showNewChatModal, setShowNewChatModal] = useState(false);
 
@@ -246,7 +297,11 @@ export default function ChatSessionPage() {
             )}
           </h1>
           {!isFutureSelfSession && (
-            <PersonaSelector activePersonas={activePersonas} onToggle={togglePersona} />
+            <PersonaSelector
+              activePersonas={activePersonas}
+              onToggle={togglePersona}
+              customPersonas={customPersonaMap}
+            />
           )}
           {!isFutureSelfSession && session?.participantNames && currentUid && (
             <>
@@ -265,6 +320,26 @@ export default function ChatSessionPage() {
               미래의 나를 먼저 정의해주세요 →
             </span>
           )}
+          {/* 감정 상태 뱃지 (미래의 나 세션 전용, 알려진 상태일 때만) */}
+          {isFutureSelfSession && mood !== "unknown" && (
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs ${
+                mood === "warm"
+                  ? "bg-rose-100 text-rose-700"
+                  : mood === "stressed"
+                    ? "bg-blue-100 text-blue-700"
+                    : mood === "flat"
+                      ? "bg-gray-100 text-gray-600"
+                      : "bg-yellow-100 text-yellow-800"
+              }`}
+              title="최근 대화 기반 자동 감지"
+            >
+              {mood === "warm" && "☁️ 안정적"}
+              {mood === "stressed" && "💧 긴장된"}
+              {mood === "flat" && "🌫️ 평온한"}
+              {mood === "elated" && "☀️ 활기찬"}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {/* 미래의 나 정의 버튼 (future-self 세션 전용) */}
@@ -279,6 +354,43 @@ export default function ChatSessionPage() {
               title="미래의 나 정의"
             >
               🌟 미래의 나
+            </button>
+          )}
+
+          {/* 데일리 리추얼 설정 (future-self 세션 전용) */}
+          {isFutureSelfSession && (
+            <button
+              onClick={() => setShowDailyRitualSettings(true)}
+              className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                dailyRitualConfig?.enabled
+                  ? "border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100"
+                  : "border-gray-300 text-gray-700 hover:bg-gray-50"
+              }`}
+              title="데일리 리추얼 설정"
+            >
+              ☀️ 리추얼
+            </button>
+          )}
+
+          {/* 카운슬 소집 (AI 세션 + future-self 세션) */}
+          {(!isDirectChat || isFutureSelfSession) && (
+            <button
+              onClick={() => setShowCouncilLauncher(true)}
+              className="rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-sm text-indigo-700 hover:bg-indigo-100 transition-colors"
+              title="카운슬 소집 — 여러 전문가 의견 한번에"
+            >
+              🪑 카운슬
+            </button>
+          )}
+
+          {/* AI 도우미 (DM/그룹 전용, 상대방에게 노출 안 됨) */}
+          {isDirectChat && (
+            <button
+              onClick={() => setShowPeerAssist(true)}
+              className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm text-emerald-700 hover:bg-emerald-100 transition-colors"
+              title="AI 도우미 — 요약 · 답장 제안 · 번역 (나만 봄)"
+            >
+              🤖 AI 도우미
             </button>
           )}
 
@@ -386,6 +498,27 @@ export default function ChatSessionPage() {
       {/* 도메인 필터 (AI 세션만, future-self 제외) */}
       {!isDirectChat && !isFutureSelfSession && (
         <TopicSelector selected={selectedTopic} onChange={setSelectedTopic} />
+      )}
+
+      {/* 목표 패널 (미래의 나 세션 전용) */}
+      {isFutureSelfSession && currentUid && (
+        <GoalPanel
+          goals={goals}
+          onAdd={addGoal}
+          onCheckin={checkin}
+          onRemove={removeGoal}
+        />
+      )}
+
+      {/* 데일리 체크리스트 (미래의 나 세션 전용) */}
+      {isFutureSelfSession && currentUid && (
+        <DailyChecklistPanel
+          tasksWithTodayState={tasksWithTodayState}
+          progress={dailyTaskProgress}
+          onAdd={addDailyTask}
+          onToggle={toggleDailyTask}
+          onRemove={removeDailyTask}
+        />
       )}
 
       {/* 채팅 영역 */}
@@ -647,6 +780,40 @@ export default function ChatSessionPage() {
           onClose={() => setShowAutoNewsPanel(false)}
           futureSelfMode={isFutureSelfSession}
           futurePersonaSet={!!futurePersona}
+        />
+      )}
+
+      {/* 데일리 리추얼 설정 패널 */}
+      {showDailyRitualSettings && isFutureSelfSession && (
+        <DailyRitualSettings
+          config={dailyRitualConfig}
+          onUpdate={updateDailyRitualConfig}
+          onClose={() => setShowDailyRitualSettings(false)}
+        />
+      )}
+
+      {/* 카운슬 런처 */}
+      {showCouncilLauncher && (
+        <CouncilLauncher
+          onLaunch={sendCouncilQuestion}
+          onClose={() => setShowCouncilLauncher(false)}
+          disabled={isLoading}
+        />
+      )}
+
+      {/* 피어 채팅 AI 도우미 (DM/그룹 전용, 프라이빗) */}
+      {showPeerAssist && isDirectChat && (
+        <PeerAssistPanel
+          messages={messages}
+          currentUid={currentUid}
+          currentUserName={currentName}
+          userPersona={userPersona}
+          onClose={() => setShowPeerAssist(false)}
+          onUseReply={(text) => {
+            setInput((prev) => (prev ? `${prev}\n${text}` : text));
+            // 입력창에 포커스
+            setTimeout(() => textareaRef.current?.focus(), 50);
+          }}
         />
       )}
     </div>

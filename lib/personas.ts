@@ -1,4 +1,4 @@
-import type { Persona, PersonaId, NewsTopic } from "@/types";
+import type { Persona, PersonaId, BuiltinPersonaId, NewsTopic, CustomPersona } from "@/types";
 
 // ── 페르소나별 전문 분야 & 자동 뉴스 검색 키워드 ────────
 export interface PersonaSpecialty {
@@ -7,7 +7,7 @@ export interface PersonaSpecialty {
   briefingStyle: string;        // 자동 뉴스 올릴 때의 말투 힌트
 }
 
-export const PERSONA_SPECIALTIES: Record<PersonaId, PersonaSpecialty> = {
+export const PERSONA_SPECIALTIES: Record<BuiltinPersonaId, PersonaSpecialty> = {
   default: {
     topics: ["전체"],
     searchKeywords: ["오늘 주요 뉴스", "속보", "한국 뉴스 오늘"],
@@ -46,7 +46,7 @@ export const PERSONA_SPECIALTIES: Record<PersonaId, PersonaSpecialty> = {
   },
 };
 
-export const PERSONAS: Record<PersonaId, Persona> = {
+export const PERSONAS: Record<BuiltinPersonaId, Persona> = {
   default: {
     id: "default",
     name: "뉴스봇",
@@ -159,6 +159,33 @@ export const PERSONAS: Record<PersonaId, Persona> = {
 
 export const PERSONA_LIST = Object.values(PERSONAS);
 
-export function getPersona(id: PersonaId): Persona {
-  return PERSONAS[id] ?? PERSONAS.default;
+export const BUILTIN_PERSONA_IDS = Object.keys(PERSONAS) as BuiltinPersonaId[];
+
+export function isBuiltinPersona(id: string): id is BuiltinPersonaId {
+  return id in PERSONAS;
+}
+
+export function isCustomPersonaId(id: string): boolean {
+  return id.startsWith("custom:");
+}
+
+/**
+ * 페르소나를 조회한다. 빌트인이면 PERSONAS, 커스텀이면 customMap에서 찾고,
+ * 어디에도 없으면 default(뉴스봇) 폴백.
+ */
+export function getPersona(id: PersonaId, customMap?: Record<string, CustomPersona>): Persona {
+  if (isBuiltinPersona(id as string)) {
+    return PERSONAS[id as BuiltinPersonaId];
+  }
+  if (customMap && customMap[id as string]) {
+    const c = customMap[id as string];
+    return {
+      id: c.id,
+      name: c.name,
+      icon: c.icon,
+      description: c.description,
+      systemPromptAddition: c.systemPromptAddition,
+    };
+  }
+  return PERSONAS.default;
 }

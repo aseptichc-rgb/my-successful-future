@@ -17,6 +17,26 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isOwner(uid);
       allow update: if isOwner(uid);
+
+      // ── 본인 목표 서브컬렉션 ──
+      match /goals/{goalId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      // ── 본인 데일리 체크리스트 ──
+      match /dailyTasks/{taskId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      // ── 본인 페르소나별 기억 샤드 ──
+      match /personaMemories/{personaId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      // ── 본인 커스텀 페르소나 ──
+      match /customPersonas/{personaId} {
+        allow read, write: if isOwner(uid);
+      }
     }
 
     // ── sessions ──
@@ -76,6 +96,12 @@ service cloud.firestore {
     // 사용자가 직접 등록한 키워드 기반 알림 설정 (문서 ID = sessionId)
     match /keywordAlerts/{sessionId} {
       allow read, write: if isAuthenticated();
+    }
+
+    // ── dailyRitualConfigs ──
+    // 데일리 리추얼(아침 브리프 / 저녁 회고) 설정 (문서 ID = uid)
+    match /dailyRitualConfigs/{uid} {
+      allow read, write: if isOwner(uid);
     }
   }
 }

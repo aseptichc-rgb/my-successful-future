@@ -2,17 +2,29 @@
 
 import { useState } from "react";
 import { PERSONA_LIST } from "@/lib/personas";
-import type { PersonaId } from "@/types";
+import type { CustomPersona, Persona, PersonaId } from "@/types";
 
 interface PersonaSelectorProps {
   activePersonas: PersonaId[];
   onToggle: (personaId: PersonaId) => void;
+  customPersonas?: Record<string, CustomPersona>;
 }
 
-export default function PersonaSelector({ activePersonas, onToggle }: PersonaSelectorProps) {
+export default function PersonaSelector({ activePersonas, onToggle, customPersonas }: PersonaSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const activeList = PERSONA_LIST.filter((p) => activePersonas.includes(p.id));
-  const inactiveList = PERSONA_LIST.filter((p) => !activePersonas.includes(p.id));
+
+  // 빌트인 + 커스텀을 한 리스트로 합침 (커스텀은 Persona 형태로 어댑트)
+  const customAsPersonas: Persona[] = Object.values(customPersonas || {}).map((c) => ({
+    id: c.id,
+    name: c.name,
+    icon: c.icon,
+    description: c.description || "내가 만든 멘토",
+    systemPromptAddition: c.systemPromptAddition,
+  }));
+  const allPersonas: Persona[] = [...PERSONA_LIST, ...customAsPersonas];
+
+  const activeList = allPersonas.filter((p) => activePersonas.includes(p.id));
+  const inactiveList = allPersonas.filter((p) => !activePersonas.includes(p.id));
 
   return (
     <div className="flex items-center gap-1.5 flex-wrap">

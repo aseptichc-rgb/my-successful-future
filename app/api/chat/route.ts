@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { streamChatResponse } from "@/lib/gemini";
 import { buildSystemPrompt } from "@/lib/prompts";
-import type { NewsTopic, PersonaId } from "@/types";
+import type { NewsTopic, PersonaId, GoalSnapshot, DailyTaskSnapshot, MoodKind } from "@/types";
 
 export const maxDuration = 60;
+
+interface CustomPersonaPayload {
+  id: string;
+  name: string;
+  icon: string;
+  description?: string;
+  systemPromptAddition: string;
+}
 
 interface ChatApiRequest {
   message: string;
@@ -14,6 +22,13 @@ interface ChatApiRequest {
   userPersona?: string;
   futurePersona?: string;
   userMemory?: string;
+  activeGoals?: GoalSnapshot[];
+  dailyTasks?: DailyTaskSnapshot[];
+  personaMemory?: string;
+  councilContext?: { personaName: string; content: string }[];
+  isCouncilFinal?: boolean;
+  customPersona?: CustomPersonaPayload;
+  mood?: MoodKind;
 }
 
 // 입력 글자수 제한
@@ -38,7 +53,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { message, history = [], topic = "전체", persona = "default", participants, userPersona, futurePersona, userMemory } = body;
+    const { message, history = [], topic = "전체", persona = "default", participants, userPersona, futurePersona, userMemory, activeGoals, dailyTasks, personaMemory, councilContext, isCouncilFinal, customPersona, mood } = body;
 
     // 대화 히스토리 + 현재 메시지
     const conversationMessages = [
@@ -53,7 +68,16 @@ export async function POST(request: NextRequest) {
       participants as PersonaId[] | undefined,
       userPersona,
       futurePersona,
-      userMemory
+      userMemory,
+      activeGoals,
+      {
+        dailyTasks,
+        personaMemory,
+        councilContext,
+        isCouncilFinal,
+        customPersona,
+        mood,
+      }
     );
 
     // Gemini API 스트리밍 호출 (topic 전달하여 폴백 뉴스 소스 활용)

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { buildAutoNewsPrompt, buildFutureSelfPrompt } from "@/lib/prompts";
-import { PERSONA_SPECIALTIES } from "@/lib/personas";
+import { PERSONA_SPECIALTIES, isBuiltinPersona } from "@/lib/personas";
 import { formatDate } from "@/lib/locale";
-import type { AutoNewsRequest, AutoNewsResponse, NewsSource, PersonaId } from "@/types";
+import type { AutoNewsRequest, AutoNewsResponse, BuiltinPersonaId, NewsSource, PersonaId } from "@/types";
 
 export const maxDuration = 60;
 
@@ -101,7 +101,14 @@ export async function POST(request: NextRequest) {
       );
     } else {
       // ── 기존 페르소나 자동 뉴스 ──────────────────────
-      const specialty = PERSONA_SPECIALTIES[personaId as PersonaId];
+      if (!isBuiltinPersona(personaId as string)) {
+        return NextResponse.json(
+          { error: "자동 뉴스는 빌트인 페르소나에서만 지원됩니다." },
+          { status: 400 }
+        );
+      }
+      const builtinId = personaId as BuiltinPersonaId;
+      const specialty = PERSONA_SPECIALTIES[builtinId];
       if (!specialty) {
         return NextResponse.json(
           { error: "유효하지 않은 페르소나입니다." },
@@ -110,7 +117,7 @@ export async function POST(request: NextRequest) {
       }
 
       systemPrompt = buildAutoNewsPrompt(
-        personaId as PersonaId,
+        builtinId,
         specialty.searchKeywords,
         customTopics
       );
