@@ -19,6 +19,11 @@ export default function SignupPage() {
     e.preventDefault();
     setError("");
 
+    if (!displayName.trim()) {
+      setError("이름을 입력해주세요.");
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError("비밀번호가 일치하지 않습니다.");
       return;
