@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { Timestamp } from "firebase/firestore";
 import { getMessages, addMessage, updateSessionTitle, onMessagesSnapshot, getSessionById, incrementUnreadCounts, updateUserMemory, onPersonaMemoriesSnapshot, updatePersonaMemory } from "@/lib/firebase";
 import { getPersona, PERSONAS, isCustomPersonaId } from "@/lib/personas";
+import { detectBotCommand } from "@/lib/externalBots";
 import type { ChatMessage, ChatSession, ChatStreamEvent, CustomPersona, DailyTaskSnapshot, GoalSnapshot, MoodKind, NewsSource, NewsTopic, PersonaId, SessionType } from "@/types";
 
 /** 응답 텍스트에서 AI가 붙인 [이름] 접두사를 제거 */
@@ -27,15 +28,6 @@ function normalizePersonaMarkers(text: string): string {
     // 4) 남아 있는 단독 백슬래시 제거
     .replace(/\\+/g, "");
 }
-
-/** 사람 타이핑보다 약간 빠른 속도로 한 글자씩 노출 (ms/char). */
-const TYPING_DELAY_MS = 30;
-/** 문단 사이에서 잠깐 멈춰 "다음 메시지 보내는 듯한" 느낌을 주는 시간(ms). */
-const PARAGRAPH_PAUSE_MS = 700;
-/** 서버 청크를 기다리는 동안 폴링 간격(ms). */
-const STREAM_POLL_MS = 20;
-
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /** 메시지에서 @멘션된 페르소나 ID를 추출 */
 function parseMentions(content: string): PersonaId[] {
@@ -295,6 +287,7 @@ export function useChat(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: content,
+          sessionId,
           history: accumulatedHistory,
           topic: selectedTopic,
           persona: personaId,
@@ -331,105 +324,91 @@ export function useChat(
       let fullText = "";
       let receivedRaw = ""; // 서버에서 받은 누적 텍스트(아직 렌더되지 않을 수 있음)
       let collectedSources: NewsSource[] = [];
-      let serverDone = false;
       let readerError: Error | null = null;
       const bubbleIds: string[] = [assistantId];
       const persona = getPersona(personaId, customPersonaMapRef.current);
 
-      // 1) 백그라운드에서 서버 SSE를 최대한 빠르게 누적만 한다.
-      const readerTask = (async () => {
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n\n");
-            buffer = lines.pop() || "";
-
-            for (const line of lines) {
-              if (!line.startsWith("data: ")) continue;
-              try {
-                const data: ChatStreamEvent = JSON.parse(line.slice(6));
-
-                if (data.type === "text" && data.content) {
-                  receivedRaw += data.content;
-                } else if (data.type === "sources" && data.sources) {
-                  collectedSources = data.sources;
-                } else if (data.type === "done" && data.content) {
-                  fullText = stripPersonaPrefix(data.content);
-                } else if (data.type === "error") {
-                  setError(data.error || "오류가 발생했습니다.");
-                }
-              } catch {
-                // JSON 파싱 실패 무시
-              }
-            }
-          }
-        } catch (e) {
-          readerError = e instanceof Error ? e : new Error(String(e));
-        } finally {
-          serverDone = true;
-        }
-      })();
-
-      // 2) 사람 타이핑보다 약간 빠른 속도로 한 글자씩 노출하는 렌더 루프.
-      //    문단 경계(\n\n)를 막 지난 직후에는 더 길게 쉬어 "한 문단씩 끊어 보내는" 느낌을 만든다.
-      let displayedLength = 0;
-      while (true) {
-        if (displayedLength >= receivedRaw.length) {
-          if (serverDone) break;
-          await sleep(STREAM_POLL_MS);
-          continue;
-        }
-
-        displayedLength += 1;
-
-        const visible = receivedRaw.slice(0, displayedLength);
-        const paragraphs = normalizePersonaMarkers(visible)
+      // 서버 SSE 청크를 받을 때마다 즉시 버블에 반영한다.
+      // 인위적 타이핑 애니메이션 없이 청크 단위로만 setMessages → 리렌더 횟수 최소화.
+      const applyVisibleText = () => {
+        const paragraphs = normalizePersonaMarkers(receivedRaw)
           .split("\n\n")
           .map((p) => stripPersonaPrefix(p.trim()))
           .filter((p) => p.length > 0);
 
-        // 새 문단이 생기면 새 버블 생성
-        let createdNewBubble = false;
-        while (bubbleIds.length < paragraphs.length) {
-          const newId = `temp-${personaId}-${Date.now()}-${bubbleIds.length}`;
-          bubbleIds.push(newId);
-          createdNewBubble = true;
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: newId,
-              sessionId,
-              role: "assistant" as const,
-              content: "",
-              sources: [],
-              createdAt: Timestamp.now(),
-              personaId,
-              personaName: persona.name,
-              personaIcon: persona.icon,
-            },
-          ]);
+        if (paragraphs.length === 0) return;
+
+        // 새 문단이 생기면 새 버블을 한 번에 추가
+        const newBubbles: ChatMessage[] = [];
+        while (bubbleIds.length + newBubbles.length < paragraphs.length) {
+          const idx = bubbleIds.length + newBubbles.length;
+          const newId = `temp-${personaId}-${Date.now()}-${idx}`;
+          newBubbles.push({
+            id: newId,
+            sessionId,
+            role: "assistant" as const,
+            content: paragraphs[idx] ?? "",
+            sources: [],
+            createdAt: Timestamp.now(),
+            personaId,
+            personaName: persona.name,
+            personaIcon: persona.icon,
+          });
+        }
+        if (newBubbles.length > 0) {
+          bubbleIds.push(...newBubbles.map((b) => b.id));
         }
 
-        // 각 버블에 해당 문단 내용 업데이트
-        setMessages((prev) =>
-          prev.map((msg) => {
+        setMessages((prev) => {
+          const bubbleIdSet = new Set(bubbleIds);
+          const next = prev.map((msg) => {
+            if (!bubbleIdSet.has(msg.id)) return msg;
             const idx = bubbleIds.indexOf(msg.id);
-            if (idx >= 0 && paragraphs[idx] !== undefined) {
-              return { ...msg, content: paragraphs[idx] };
-            }
-            return msg;
-          })
-        );
+            const nextContent = paragraphs[idx];
+            if (nextContent === undefined || nextContent === msg.content) return msg;
+            return { ...msg, content: nextContent };
+          });
+          return newBubbles.length > 0 ? [...next, ...newBubbles] : next;
+        });
+      };
 
-        // 문단을 새로 만들었다면(=방금 \n\n 경계를 넘었다면) 잠시 멈춤
-        await sleep(createdNewBubble ? PARAGRAPH_PAUSE_MS : TYPING_DELAY_MS);
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n\n");
+          buffer = lines.pop() || "";
+
+          let textChanged = false;
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const data: ChatStreamEvent = JSON.parse(line.slice(6));
+
+              if (data.type === "text" && data.content) {
+                receivedRaw += data.content;
+                textChanged = true;
+              } else if (data.type === "sources" && data.sources) {
+                collectedSources = data.sources;
+              } else if (data.type === "done" && data.content) {
+                fullText = stripPersonaPrefix(data.content);
+              } else if (data.type === "error") {
+                setError(data.error || "오류가 발생했습니다.");
+              }
+            } catch {
+              // JSON 파싱 실패 무시
+            }
+          }
+          if (textChanged) applyVisibleText();
+        }
+      } catch (e) {
+        readerError = e instanceof Error ? e : new Error(String(e));
       }
 
-      // 3) reader가 완전히 끝날 때까지 대기 (sources 이벤트 보장)
-      await readerTask;
+      // 마지막 한 번 더 반영(마지막 청크 이후 파싱 보정)
+      applyVisibleText();
       if (readerError) throw readerError;
 
       // 소스는 마지막 버블에만 첨부
@@ -501,6 +480,107 @@ export function useChat(
         updateSessionTitle(sessionId, title).catch((err) =>
           console.error("Failed to update session title:", err)
         );
+      }
+
+      // 외부 봇 슬래시 명령어 감지 (예: "/gpt 안녕")
+      const botCommand = detectBotCommand(content);
+      if (botCommand) {
+        const { bot, message: botMessage } = botCommand;
+        const assistantId = `temp-${bot.id}-${Date.now()}`;
+        const assistantMessage: ChatMessage = {
+          id: assistantId,
+          sessionId,
+          role: "assistant",
+          content: "",
+          sources: [],
+          createdAt: Timestamp.now(),
+          personaId: bot.id,
+          personaName: bot.name,
+          personaIcon: bot.icon,
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+        setRespondingPersona(bot.id);
+
+        try {
+          const botHistory = messagesRef.current.map((msg) => ({
+            role: msg.role as "user" | "assistant",
+            content: msg.content,
+          }));
+
+          const response = await fetch("/api/external-bot", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              botId: bot.id,
+              message: botMessage,
+              history: botHistory,
+            }),
+          });
+
+          if (!response.ok) {
+            const errBody = await response.json().catch(() => null);
+            throw new Error(errBody?.error || `HTTP ${response.status}`);
+          }
+
+          const reader = response.body?.getReader();
+          if (!reader) throw new Error("No reader");
+          const decoder = new TextDecoder();
+          let buffer = "";
+          let fullText = "";
+          let streamErr: string | null = null;
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n\n");
+            buffer = lines.pop() || "";
+            for (const line of lines) {
+              if (!line.startsWith("data: ")) continue;
+              try {
+                const data: ChatStreamEvent = JSON.parse(line.slice(6));
+                if (data.type === "text" && data.content) {
+                  fullText += data.content;
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantId ? { ...msg, content: fullText } : msg
+                    )
+                  );
+                } else if (data.type === "done" && data.content) {
+                  fullText = data.content;
+                } else if (data.type === "error") {
+                  streamErr = data.error || "외부 봇 호출 실패";
+                }
+              } catch {
+                // 무시
+              }
+            }
+          }
+
+          if (streamErr) throw new Error(streamErr);
+
+          if (fullText) {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantId ? { ...msg, content: fullText } : msg
+              )
+            );
+            addMessage(sessionId, "assistant", fullText, [], {
+              personaId: bot.id,
+              personaName: bot.name,
+              personaIcon: bot.icon,
+            }).catch((err) =>
+              console.error("Failed to save external bot message:", err)
+            );
+          }
+        } catch (err) {
+          setMessages((prev) => prev.filter((msg) => msg.id !== assistantId));
+          setError(err instanceof Error ? err.message : "외부 봇 호출 실패");
+        } finally {
+          setIsLoading(false);
+          setRespondingPersona(null);
+        }
+        return;
       }
 
       // @멘션 파싱 (모든 세션 타입에서 공통)
@@ -713,6 +793,7 @@ export function useChat(
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 message: question,
+                sessionId,
                 history: [],
                 topic: "전체",
                 persona: personaId,

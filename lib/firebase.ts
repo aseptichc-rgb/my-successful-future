@@ -1,6 +1,9 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import {
   getAuth,
+  setPersistence,
+  browserLocalPersistence,
+  indexedDBLocalPersistence,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
@@ -59,6 +62,12 @@ function getFirebaseApp(): FirebaseApp {
 function getAuthInstance(): Auth {
   if (!_auth) {
     _auth = getAuth(getFirebaseApp());
+    // 브라우저를 닫았다 열어도 로그인 상태 유지 (기본값이지만 명시적으로 설정)
+    if (typeof window !== "undefined") {
+      setPersistence(_auth, indexedDBLocalPersistence).catch(() => {
+        setPersistence(_auth!, browserLocalPersistence).catch(() => {});
+      });
+    }
   }
   return _auth;
 }

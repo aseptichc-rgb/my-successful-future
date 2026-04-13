@@ -98,6 +98,31 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
 
+    // ── pushTokens ──
+    // 외부 푸시용 토큰: 평문 토큰을 저장하지 않으며, 모든 쓰기는 서버(Admin SDK) 전용.
+    // 클라이언트는 메타데이터(label, expiresAt 등)만 읽을 수 있고 tokenHash 도 함께 들어가지만
+    // 해시이므로 노출돼도 평문 복원 불가. 다만 발급자 또는 세션 참여자만 읽도록 제한.
+    match /pushTokens/{tokenId} {
+      allow read: if isAuthenticated()
+        && request.auth.uid in get(/databases/$(database)/documents/sessions/$(resource.data.sessionId)).data.participants;
+      allow create, update, delete: if false; // 서버에서만 처리
+    }
+
+    // ── sessionDocuments ──
+    // 첨부 문서: 세션 참여자만 읽기 가능. 생성은 서버(Admin SDK)에서만.
+    // 토글/삭제는 세션 참여자(토글) 또는 본인(삭제) — API 라우트에서 추가 검증.
+    match /sessionDocuments/{docId} {
+      // participants 는 업로드 시 세션에서 비정규화된 배열. cross-doc get() 을 피하면
+      // onSnapshot 쿼리에서 권한 평가가 안정적이고 SDK INTERNAL ASSERTION 캐스케이드도 차단.
+      allow read: if isAuthenticated()
+        && request.auth.uid in resource.data.participants;
+      allow create: if false; // 클라이언트 직접 생성 금지 (Admin SDK 만)
+      allow update: if isAuthenticated()
+        && request.auth.uid in resource.data.participants;
+      allow delete: if isAuthenticated()
+        && request.auth.uid == resource.data.ownerUid;
+    }
+
     // ── dailyRitualConfigs ──
     // 데일리 리추얼(아침 브리프 / 저녁 회고) 설정 (문서 ID = uid)
     match /dailyRitualConfigs/{uid} {

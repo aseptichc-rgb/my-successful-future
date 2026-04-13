@@ -286,6 +286,45 @@ export interface ChatStreamEvent {
   error?: string;
 }
 
+// ── 세션 첨부 문서 ───────────────────────────────────
+export type SessionDocumentScope = "session" | "message";
+
+export interface SessionDocument {
+  id: string;
+  sessionId: string;
+  ownerUid: string;
+  ownerName?: string;
+  fileName: string;
+  mime: "text/plain" | "text/markdown" | "application/pdf";
+  sizeBytes: number;
+  charCount: number;
+  truncated: boolean;
+  /** session: 세션 내내 컨텍스트 / message: 다음 1개 메시지에만 첨부 후 자동 비활성. */
+  scope: SessionDocumentScope;
+  active: boolean;
+  /** 추출된 본문 텍스트(서버에서 sanitize 됨). */
+  extractedText: string;
+  createdAt: unknown; // Firestore Timestamp (클라이언트/서버 모두 사용)
+}
+
+// ── 외부 Push 토큰 (Claude Code 등에서 결과물을 채팅방에 푸시) ──
+export interface PushToken {
+  id: string;
+  sessionId: string;
+  ownerUid: string;
+  ownerName?: string;
+  /** 사람이 식별할 수 있는 라벨 (예: "친구A의 Claude Code"). */
+  label?: string;
+  /** SHA-256 해시 (원문 토큰은 발급 직후 1회만 노출). */
+  tokenHash: string;
+  expiresAt: unknown; // Firestore Timestamp
+  revoked: boolean;
+  useCount: number;
+  maxUses?: number;
+  lastUsedAt?: unknown;
+  createdAt: unknown;
+}
+
 // ── 자동 뉴스 API ────────────────────────────────────
 export interface AutoNewsRequest {
   sessionId: string;
