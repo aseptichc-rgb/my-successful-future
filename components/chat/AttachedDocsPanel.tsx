@@ -117,34 +117,34 @@ export default function AttachedDocsPanel({ sessionId, currentUid, currentName }
   }
 
   return (
-    <div className="border-b border-gray-200 bg-gray-50 px-4 py-2 text-xs">
-      <div className="mx-auto flex max-w-3xl items-center gap-2">
+    <div className="border-b border-gray-200 bg-gray-50 px-3 py-1.5 text-[11px] sm:px-4 sm:py-2 sm:text-xs">
+      <div className="mx-auto flex max-w-3xl items-center gap-1.5 sm:gap-2 overflow-x-auto hide-scrollbar whitespace-nowrap">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-gray-700 hover:bg-gray-200"
+          className="shrink-0 flex items-center gap-1 rounded-md px-2 py-1 text-gray-700 hover:bg-gray-200"
         >
-          📎 첨부 문서{activeCount > 0 ? ` (${activeCount})` : ""}
+          📎 <span className="hidden sm:inline">첨부 문서</span><span className="sm:hidden">문서</span>{activeCount > 0 ? ` (${activeCount})` : ""}
           <span className="text-gray-400">{open ? "▲" : "▼"}</span>
         </button>
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
-          className="rounded-md bg-blue-600 px-2 py-1 text-white hover:bg-blue-700 disabled:opacity-50"
+          className="shrink-0 rounded-md bg-blue-600 px-2 py-1 text-white hover:bg-blue-700 disabled:opacity-50"
         >
-          {uploading ? "업로드 중..." : "+ 파일 추가"}
+          {uploading ? "업로드 중..." : "+ 파일"}
         </button>
         <select
           value={scope}
           onChange={(e) => setScope(e.target.value as SessionDocumentScope)}
-          className="rounded-md border border-gray-300 bg-white px-1 py-1 text-gray-700"
+          className="shrink-0 rounded-md border border-gray-300 bg-white px-1 py-1 text-gray-700"
           title="첨부 범위"
         >
           <option value="session">세션 전체</option>
-          <option value="message">다음 1개 메시지만</option>
+          <option value="message">1회용</option>
         </select>
-        <span className="ml-auto text-[10px] text-gray-500">
+        <span className="hidden sm:inline ml-auto text-[10px] text-gray-500">
           .md / .txt / .pdf · 최대 5MB
         </span>
         <input

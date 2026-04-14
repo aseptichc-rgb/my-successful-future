@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { DailyTask } from "@/types";
 
 interface DailyChecklistPanelProps {
@@ -22,6 +22,12 @@ export default function DailyChecklistPanel({
   const [showAdd, setShowAdd] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+      setExpanded(false);
+    }
+  }, []);
 
   const handleAdd = async () => {
     const title = newTitle.trim();

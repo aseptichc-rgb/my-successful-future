@@ -285,9 +285,9 @@ export default function ChatSessionPage() {
   return (
     <div className="flex h-full flex-col bg-white">
       {/* 헤더 */}
-      <header className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center gap-3">
-          <h1 className="text-lg font-bold text-gray-900">
+      <header className="flex flex-col gap-2 border-b border-gray-200 px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          <h1 className="text-base sm:text-lg font-bold text-gray-900 truncate max-w-[60vw] sm:max-w-none">
             {isFutureSelfSession ? (
               <>🌟 미래의 나와의 대화</>
             ) : isDirectChat ? (
@@ -344,12 +344,12 @@ export default function ChatSessionPage() {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto hide-scrollbar -mx-1 px-1 sm:mx-0 sm:px-0 sm:overflow-visible whitespace-nowrap">
           {/* 미래의 나 정의 버튼 (future-self 세션 전용) */}
           {isFutureSelfSession && (
             <button
               onClick={() => setShowFuturePersonaModal(true)}
-              className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+              className={`shrink-0 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
                 futurePersona
                   ? "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
                   : "border-amber-400 bg-amber-100 text-amber-800 hover:bg-amber-200 animate-pulse"
@@ -364,7 +364,7 @@ export default function ChatSessionPage() {
           {isFutureSelfSession && (
             <button
               onClick={() => setShowDailyRitualSettings(true)}
-              className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+              className={`shrink-0 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
                 dailyRitualConfig?.enabled
                   ? "border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100"
                   : "border-gray-300 text-gray-700 hover:bg-gray-50"
@@ -379,7 +379,7 @@ export default function ChatSessionPage() {
           {(!isDirectChat || isFutureSelfSession) && (
             <button
               onClick={() => setShowCouncilLauncher(true)}
-              className="rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-sm text-indigo-700 hover:bg-indigo-100 transition-colors"
+              className="shrink-0 rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-sm text-indigo-700 hover:bg-indigo-100 transition-colors"
               title="카운슬 소집 — 여러 전문가 의견 한번에"
             >
               🪑 카운슬
@@ -390,7 +390,7 @@ export default function ChatSessionPage() {
           {isDirectChat && (
             <button
               onClick={() => setShowPeerAssist(true)}
-              className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm text-emerald-700 hover:bg-emerald-100 transition-colors"
+              className="shrink-0 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm text-emerald-700 hover:bg-emerald-100 transition-colors"
               title="AI 도우미 — 요약 · 답장 제안 · 번역 (나만 봄)"
             >
               🤖 AI 도우미
@@ -401,7 +401,7 @@ export default function ChatSessionPage() {
           {(!isDirectChat || isFutureSelfSession) && (
             <button
               onClick={() => setShowPersonaModal(true)}
-              className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+              className={`shrink-0 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
                 userPersona
                   ? "border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100"
                   : "border-gray-300 text-gray-700 hover:bg-gray-50"
@@ -425,7 +425,7 @@ export default function ChatSessionPage() {
                   setShowAlertChooser(true);
                 }
               }}
-              className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+              className={`shrink-0 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
                 autoNewsConfig?.enabled || keywordAlertConfig?.enabled
                   ? "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
                   : "border-gray-300 text-gray-700 hover:bg-gray-50"
@@ -447,7 +447,7 @@ export default function ChatSessionPage() {
           {!isFutureSelfSession && (
             <button
               onClick={() => setShowInviteModal(true)}
-              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              className="shrink-0 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
               title="사용자 초대"
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -460,7 +460,7 @@ export default function ChatSessionPage() {
           {!isFutureSelfSession && (
             <button
               onClick={() => setShowShareModal(true)}
-              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              className="shrink-0 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
               title="초대 링크 공유"
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -476,7 +476,7 @@ export default function ChatSessionPage() {
 
           <button
             onClick={() => router.push("/chat")}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+            className="shrink-0 hidden sm:inline-flex rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
             title="홈으로"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -485,13 +485,13 @@ export default function ChatSessionPage() {
           </button>
           <button
             onClick={handleNewChat}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+            className="shrink-0 hidden sm:inline-flex rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
           >
             새 대화
           </button>
           <button
             onClick={handleSignOut}
-            className="rounded-lg px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
+            className="shrink-0 hidden sm:inline-flex rounded-lg px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
           >
             로그아웃
           </button>
@@ -564,7 +564,7 @@ export default function ChatSessionPage() {
             currentUid={currentUid}
             currentName={currentName}
           />
-          <div className="border-b border-gray-200 bg-gray-50 px-4 py-1.5 text-xs">
+          <div className="border-b border-gray-200 bg-gray-50 px-3 py-1 text-[11px] sm:px-4 sm:py-1.5 sm:text-xs">
             <div className="mx-auto flex max-w-3xl items-center justify-end gap-2">
               <button
                 type="button"
@@ -572,7 +572,7 @@ export default function ChatSessionPage() {
                 className="rounded-md border border-gray-300 bg-white px-2 py-1 text-gray-700 hover:bg-gray-100"
                 title="다른 사람의 Claude Code 결과물을 이 채팅방에 푸시할 수 있는 토큰 발급"
               >
-                🔑 외부 푸시 토큰
+                🔑 <span className="hidden sm:inline">외부 </span>푸시 토큰
               </button>
             </div>
           </div>
@@ -588,10 +588,10 @@ export default function ChatSessionPage() {
       )}
 
       {/* 입력 영역 */}
-      <div className={`border-t border-gray-200 px-4 py-3 ${isDirectChat && respondingConversationPersona ? "border-t-0" : ""}`}>
+      <div className={`border-t border-gray-200 px-3 py-2 sm:px-4 sm:py-3 ${isDirectChat && respondingConversationPersona ? "border-t-0" : ""}`}>
         <form
           onSubmit={handleSubmit}
-          className="mx-auto flex max-w-3xl items-end gap-3"
+          className="mx-auto flex max-w-3xl items-end gap-2 sm:gap-3"
         >
           <div className="relative flex-1">
             {showMention && (
@@ -620,13 +620,13 @@ export default function ChatSessionPage() {
                     : "@를 입력하여 페르소나를 멘션하세요..."
               }
               rows={1}
-              className={`w-full resize-none rounded-xl border px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-1 ${
+              className={`w-full resize-none rounded-xl border pl-3 pr-14 py-3 text-sm text-gray-900 focus:outline-none focus:ring-1 sm:pl-4 ${
                 isOverLimit
                   ? "border-red-400 focus:border-red-500 focus:ring-red-500"
                   : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               }`}
             />
-            <div className={`absolute bottom-1 right-2 text-xs ${
+            <div className={`pointer-events-none absolute bottom-1.5 right-2 text-[10px] sm:text-xs ${
               isOverLimit ? "text-red-500 font-semibold" : input.length > MAX_INPUT_LENGTH * 0.8 ? "text-yellow-500" : "text-gray-400"
             }`}>
               {input.length}/{MAX_INPUT_LENGTH}
@@ -635,7 +635,7 @@ export default function ChatSessionPage() {
           <button
             type="submit"
             disabled={isLoading || !input.trim() || isOverLimit}
-            className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="shrink-0 rounded-xl bg-blue-600 px-4 py-3 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors sm:px-5"
           >
             전송
           </button>

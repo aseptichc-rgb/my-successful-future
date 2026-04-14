@@ -67,7 +67,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               if (toast.sessionId) router.push(`/chat/${toast.sessionId}`);
               setToast(null);
             }}
-            className="absolute top-2 right-2 z-50 max-w-xs cursor-pointer rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-lg transition-all animate-in slide-in-from-top"
+            className="fixed bottom-20 right-2 left-2 z-50 max-w-xs mx-auto cursor-pointer rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-lg transition-all animate-in slide-in-from-top lg:absolute lg:top-2 lg:bottom-auto lg:left-auto lg:mx-0"
           >
             <p className="text-sm font-semibold text-gray-900">{toast.title}</p>
             <p className="mt-0.5 text-xs text-gray-500 truncate">{toast.body}</p>
@@ -76,7 +76,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
         {/* 알림 권한 요청 프롬프트 */}
         {showNotifPrompt && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 shadow-lg">
+          <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex max-w-[calc(100vw-1rem)] items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm shadow-lg lg:absolute lg:top-2 lg:bottom-auto lg:px-4 lg:py-3">
             <p className="text-sm text-blue-800">새 메시지 알림을 받으시겠습니까?</p>
             <button
               onClick={handleEnableNotifications}

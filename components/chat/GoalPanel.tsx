@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Goal, GoalCategory } from "@/types";
 import GoalCheckinModal from "./GoalCheckinModal";
 import GoalEditorModal from "./GoalEditorModal";
@@ -63,6 +63,12 @@ export default function GoalPanel({ goals, onAdd, onCheckin, onRemove }: GoalPan
   const [expanded, setExpanded] = useState(true);
   const [checkinGoal, setCheckinGoal] = useState<Goal | null>(null);
   const [showEditor, setShowEditor] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+      setExpanded(false);
+    }
+  }, []);
 
   return (
     <div className="border-b border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50">
