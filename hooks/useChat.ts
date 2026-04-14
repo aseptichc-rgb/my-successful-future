@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { Timestamp } from "firebase/firestore";
 import { getMessages, addMessage, updateSessionTitle, onMessagesSnapshot, getSessionById, incrementUnreadCounts, updateUserMemory, onPersonaMemoriesSnapshot, updatePersonaMemory } from "@/lib/firebase";
 import { getPersona, PERSONAS, isCustomPersonaId } from "@/lib/personas";
+import { routeToPersonas } from "@/lib/persona-router";
 import type { ChatMessage, ChatSession, ChatStreamEvent, CustomPersona, DailyTaskSnapshot, GoalSnapshot, MoodKind, NewsSource, NewsTopic, PersonaId, SessionType } from "@/types";
 
 /** 응답 텍스트에서 AI가 붙인 [이름] 접두사를 제거 */
@@ -27,13 +28,6 @@ function normalizePersonaMarkers(text: string): string {
     // 4) 남아 있는 단독 백슬래시 제거
     .replace(/\\+/g, "");
 }
-
-/** 사람 타이핑보다 약간 빠른 속도로 한 글자씩 노출 (ms/char). */
-const TYPING_DELAY_MS = 30;
-/** 문단 사이에서 잠깐 멈춰 "다음 메시지 보내는 듯한" 느낌을 주는 시간(ms). */
-const PARAGRAPH_PAUSE_MS = 700;
-/** 서버 청크를 기다리는 동안 폴링 간격(ms). */
-const STREAM_POLL_MS = 20;
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -373,66 +367,50 @@ export function useChat(
         }
       })();
 
-      // 2) 사람 타이핑보다 약간 빠른 속도로 한 글자씩 노출하는 렌더 루프.
-      //    문단 경계(\n\n)를 막 지난 직후에는 더 길게 쉬어 "한 문단씩 끊어 보내는" 느낌을 만든다.
-      let displayedLength = 0;
-      while (true) {
-        if (displayedLength >= receivedRaw.length) {
-          if (serverDone) break;
-          await sleep(STREAM_POLL_MS);
-          continue;
-        }
-
-        displayedLength += 1;
-
-        const visible = receivedRaw.slice(0, displayedLength);
-        const paragraphs = normalizePersonaMarkers(visible)
-          .split("\n\n")
-          .map((p) => stripPersonaPrefix(p.trim()))
-          .filter((p) => p.length > 0);
-
-        // 새 문단이 생기면 새 버블 생성
-        let createdNewBubble = false;
-        while (bubbleIds.length < paragraphs.length) {
-          const newId = `temp-${personaId}-${Date.now()}-${bubbleIds.length}`;
-          bubbleIds.push(newId);
-          createdNewBubble = true;
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: newId,
-              sessionId,
-              role: "assistant" as const,
-              content: "",
-              sources: [],
-              createdAt: Timestamp.now(),
-              personaId,
-              personaName: persona.name,
-              personaIcon: persona.icon,
-            },
-          ]);
-        }
-
-        // 각 버블에 해당 문단 내용 업데이트
-        setMessages((prev) =>
-          prev.map((msg) => {
-            const idx = bubbleIds.indexOf(msg.id);
-            if (idx >= 0 && paragraphs[idx] !== undefined) {
-              return { ...msg, content: paragraphs[idx] };
-            }
-            return msg;
-          })
-        );
-
-        // 문단을 새로 만들었다면(=방금 \n\n 경계를 넘었다면) 잠시 멈춤
-        await sleep(createdNewBubble ? PARAGRAPH_PAUSE_MS : TYPING_DELAY_MS);
-      }
-
-      // 3) reader가 완전히 끝날 때까지 대기 (sources 이벤트 보장)
+      // 2) 서버 응답이 완전히 끝날 때까지 대기한 후, 전체 메시지를 한번에 표시.
       await readerTask;
       if (readerError) throw readerError;
 
-      // 소스는 마지막 버블에만 첨부
+      if (!fullText) fullText = stripPersonaPrefix(receivedRaw);
+
+      // 전체 텍스트를 문단 단위로 분리하여 버블 생성/업데이트
+      const paragraphs = normalizePersonaMarkers(fullText)
+        .split("\n\n")
+        .map((p) => stripPersonaPrefix(p.trim()))
+        .filter((p) => p.length > 0);
+
+      // 첫 번째 버블(assistantId)은 이미 있으므로 나머지 문단용 버블만 추가
+      while (bubbleIds.length < paragraphs.length) {
+        const newId = `temp-${personaId}-${Date.now()}-${bubbleIds.length}`;
+        bubbleIds.push(newId);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: newId,
+            sessionId,
+            role: "assistant" as const,
+            content: "",
+            sources: [],
+            createdAt: Timestamp.now(),
+            personaId,
+            personaName: persona.name,
+            personaIcon: persona.icon,
+          },
+        ]);
+      }
+
+      // 각 버블에 전체 문단 내용을 한번에 표시
+      setMessages((prev) =>
+        prev.map((msg) => {
+          const idx = bubbleIds.indexOf(msg.id);
+          if (idx >= 0 && paragraphs[idx] !== undefined) {
+            return { ...msg, content: paragraphs[idx] };
+          }
+          return msg;
+        })
+      );
+
+      // 소스는 마지막 버블에 첨부
       if (collectedSources.length > 0) {
         const lastBubbleId = bubbleIds[bubbleIds.length - 1];
         setMessages((prev) =>
@@ -443,8 +421,6 @@ export function useChat(
           )
         );
       }
-
-      if (!fullText) fullText = stripPersonaPrefix(receivedRaw);
 
       return { fullText, sources: collectedSources, bubbleIds };
     },
@@ -548,9 +524,8 @@ export function useChat(
       } else if (conversationPersonaRef.current) {
         respondPersonas = [conversationPersonaRef.current];
       } else {
-        // 뉴스봇은 @멘션 없이는 자동 응답하지 않음
-        const nonDefault = activePersonas.filter((id) => id !== "default");
-        respondPersonas = nonDefault.length > 0 ? nonDefault : activePersonas;
+        // 메시지 내용을 분석하여 가장 적절한 페르소나(들)를 자동 선택
+        respondPersonas = routeToPersonas(content, currentSessionType);
       }
 
       try {
