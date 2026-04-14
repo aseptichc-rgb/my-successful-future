@@ -102,10 +102,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const mark = () => {
       if (document.visibilityState === "visible") writeLastActivity();
     };
-    const events: Array<keyof WindowEventMap> = ["focus", "pointerdown", "keydown", "visibilitychange"];
-    events.forEach((ev) => window.addEventListener(ev, mark, { passive: true }));
+    const windowEvents: Array<keyof WindowEventMap> = ["focus", "pointerdown", "keydown"];
+    windowEvents.forEach((ev) => window.addEventListener(ev, mark, { passive: true }));
+    document.addEventListener("visibilitychange", mark, { passive: true });
     return () => {
-      events.forEach((ev) => window.removeEventListener(ev, mark));
+      windowEvents.forEach((ev) => window.removeEventListener(ev, mark));
+      document.removeEventListener("visibilitychange", mark);
     };
   }, []);
 
