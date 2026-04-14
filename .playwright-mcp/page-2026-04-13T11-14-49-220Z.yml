@@ -1,0 +1,25 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - heading "AI 뉴스 챗봇" [level=1] [ref=e5]
+      - paragraph [ref=e6]: 로그인하여 최신 뉴스를 확인하세요
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: 이메일
+        - textbox "이메일" [ref=e10]:
+          - /placeholder: email@example.com
+      - generic [ref=e11]:
+        - generic [ref=e12]: 비밀번호
+        - textbox "비밀번호" [ref=e13]:
+          - /placeholder: 비밀번호 입력
+      - button "로그인" [ref=e14]
+    - generic [ref=e19]: 또는
+    - button "구글로 로그인" [ref=e20]:
+      - img [ref=e21]
+      - text: 구글로 로그인
+    - paragraph [ref=e26]:
+      - text: 계정이 없으신가요?
+      - link "회원가입" [ref=e27] [cursor=pointer]:
+        - /url: /signup
+  - button "Open Next.js Dev Tools" [ref=e33] [cursor=pointer]:
+    - img [ref=e34]

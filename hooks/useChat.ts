@@ -5,6 +5,7 @@ import { Timestamp } from "firebase/firestore";
 import { getMessages, addMessage, updateSessionTitle, onMessagesSnapshot, getSessionById, incrementUnreadCounts, updateUserMemory, onPersonaMemoriesSnapshot, updatePersonaMemory } from "@/lib/firebase";
 import { getPersona, PERSONAS, isCustomPersonaId } from "@/lib/personas";
 import { routeToPersonas } from "@/lib/persona-router";
+import { detectBotCommand } from "@/lib/externalBots";
 import type { ChatMessage, ChatSession, ChatStreamEvent, CustomPersona, DailyTaskSnapshot, GoalSnapshot, MoodKind, NewsSource, NewsTopic, PersonaId, SessionType } from "@/types";
 
 /** 응답 텍스트에서 AI가 붙인 [이름] 접두사를 제거 */
@@ -289,6 +290,7 @@ export function useChat(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: content,
+          sessionId,
           history: accumulatedHistory,
           topic: selectedTopic,
           persona: personaId,
@@ -325,50 +327,43 @@ export function useChat(
       let fullText = "";
       let receivedRaw = ""; // 서버에서 받은 누적 텍스트(아직 렌더되지 않을 수 있음)
       let collectedSources: NewsSource[] = [];
-      let serverDone = false;
       let readerError: Error | null = null;
       const bubbleIds: string[] = [assistantId];
       const persona = getPersona(personaId, customPersonaMapRef.current);
 
-      // 1) 백그라운드에서 서버 SSE를 최대한 빠르게 누적만 한다.
-      const readerTask = (async () => {
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
+      // 서버 SSE를 모두 누적만 하고, 응답이 끝난 뒤에 한번에 표시한다.
+      // (사용자 요청: 한 글자씩이 아니라 메시지 완성 후 일괄 표시)
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n\n");
-            buffer = lines.pop() || "";
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n\n");
+          buffer = lines.pop() || "";
 
-            for (const line of lines) {
-              if (!line.startsWith("data: ")) continue;
-              try {
-                const data: ChatStreamEvent = JSON.parse(line.slice(6));
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const data: ChatStreamEvent = JSON.parse(line.slice(6));
 
-                if (data.type === "text" && data.content) {
-                  receivedRaw += data.content;
-                } else if (data.type === "sources" && data.sources) {
-                  collectedSources = data.sources;
-                } else if (data.type === "done" && data.content) {
-                  fullText = stripPersonaPrefix(data.content);
-                } else if (data.type === "error") {
-                  setError(data.error || "오류가 발생했습니다.");
-                }
-              } catch {
-                // JSON 파싱 실패 무시
+              if (data.type === "text" && data.content) {
+                receivedRaw += data.content;
+              } else if (data.type === "sources" && data.sources) {
+                collectedSources = data.sources;
+              } else if (data.type === "done" && data.content) {
+                fullText = stripPersonaPrefix(data.content);
+              } else if (data.type === "error") {
+                setError(data.error || "오류가 발생했습니다.");
               }
+            } catch {
+              // JSON 파싱 실패 무시
             }
           }
-        } catch (e) {
-          readerError = e instanceof Error ? e : new Error(String(e));
-        } finally {
-          serverDone = true;
         }
-      })();
-
-      // 2) 서버 응답이 완전히 끝날 때까지 대기한 후, 전체 메시지를 한번에 표시.
-      await readerTask;
+      } catch (e) {
+        readerError = e instanceof Error ? e : new Error(String(e));
+      }
       if (readerError) throw readerError;
 
       if (!fullText) fullText = stripPersonaPrefix(receivedRaw);
@@ -477,6 +472,107 @@ export function useChat(
         updateSessionTitle(sessionId, title).catch((err) =>
           console.error("Failed to update session title:", err)
         );
+      }
+
+      // 외부 봇 슬래시 명령어 감지 (예: "/gpt 안녕")
+      const botCommand = detectBotCommand(content);
+      if (botCommand) {
+        const { bot, message: botMessage } = botCommand;
+        const assistantId = `temp-${bot.id}-${Date.now()}`;
+        const assistantMessage: ChatMessage = {
+          id: assistantId,
+          sessionId,
+          role: "assistant",
+          content: "",
+          sources: [],
+          createdAt: Timestamp.now(),
+          personaId: bot.id,
+          personaName: bot.name,
+          personaIcon: bot.icon,
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+        setRespondingPersona(bot.id);
+
+        try {
+          const botHistory = messagesRef.current.map((msg) => ({
+            role: msg.role as "user" | "assistant",
+            content: msg.content,
+          }));
+
+          const response = await fetch("/api/external-bot", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              botId: bot.id,
+              message: botMessage,
+              history: botHistory,
+            }),
+          });
+
+          if (!response.ok) {
+            const errBody = await response.json().catch(() => null);
+            throw new Error(errBody?.error || `HTTP ${response.status}`);
+          }
+
+          const reader = response.body?.getReader();
+          if (!reader) throw new Error("No reader");
+          const decoder = new TextDecoder();
+          let buffer = "";
+          let fullText = "";
+          let streamErr: string | null = null;
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n\n");
+            buffer = lines.pop() || "";
+            for (const line of lines) {
+              if (!line.startsWith("data: ")) continue;
+              try {
+                const data: ChatStreamEvent = JSON.parse(line.slice(6));
+                if (data.type === "text" && data.content) {
+                  fullText += data.content;
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantId ? { ...msg, content: fullText } : msg
+                    )
+                  );
+                } else if (data.type === "done" && data.content) {
+                  fullText = data.content;
+                } else if (data.type === "error") {
+                  streamErr = data.error || "외부 봇 호출 실패";
+                }
+              } catch {
+                // 무시
+              }
+            }
+          }
+
+          if (streamErr) throw new Error(streamErr);
+
+          if (fullText) {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantId ? { ...msg, content: fullText } : msg
+              )
+            );
+            addMessage(sessionId, "assistant", fullText, [], {
+              personaId: bot.id,
+              personaName: bot.name,
+              personaIcon: bot.icon,
+            }).catch((err) =>
+              console.error("Failed to save external bot message:", err)
+            );
+          }
+        } catch (err) {
+          setMessages((prev) => prev.filter((msg) => msg.id !== assistantId));
+          setError(err instanceof Error ? err.message : "외부 봇 호출 실패");
+        } finally {
+          setIsLoading(false);
+          setRespondingPersona(null);
+        }
+        return;
       }
 
       // @멘션 파싱 (모든 세션 타입에서 공통)
@@ -688,6 +784,7 @@ export function useChat(
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 message: question,
+                sessionId,
                 history: [],
                 topic: "전체",
                 persona: personaId,

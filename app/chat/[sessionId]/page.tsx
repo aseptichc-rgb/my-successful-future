@@ -28,6 +28,8 @@ import CouncilLauncher from "@/components/chat/CouncilLauncher";
 import PeerAssistPanel from "@/components/chat/PeerAssistPanel";
 import NewChatModal from "@/components/chat/NewChatModal";
 import MentionDropdown, { getFilteredPersonas } from "@/components/chat/MentionDropdown";
+import AttachedDocsPanel from "@/components/chat/AttachedDocsPanel";
+import PushTokenModal from "@/components/chat/PushTokenModal";
 import PresenceIndicator from "@/components/chat/PresenceIndicator";
 import { updateUserPersona, updateFuturePersona, clearUnreadCount, updatePresence } from "@/lib/firebase";
 import type { PersonaId } from "@/types";
@@ -142,6 +144,7 @@ export default function ChatSessionPage() {
   const [showPeerAssist, setShowPeerAssist] = useState(false);
   const [showAlertChooser, setShowAlertChooser] = useState(false);
   const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [showPushTokenModal, setShowPushTokenModal] = useState(false);
 
   // 멘션 관련 상태
   const [showMention, setShowMention] = useState(false);
@@ -551,6 +554,37 @@ export default function ChatSessionPage() {
             AI 종료
           </button>
         </div>
+      )}
+
+      {/* 첨부 문서 패널 (Claude 결과물 등) + 외부 푸시 토큰 발급 */}
+      {currentUid && (
+        <>
+          <AttachedDocsPanel
+            sessionId={sessionId}
+            currentUid={currentUid}
+            currentName={currentName}
+          />
+          <div className="border-b border-gray-200 bg-gray-50 px-4 py-1.5 text-xs">
+            <div className="mx-auto flex max-w-3xl items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPushTokenModal(true)}
+                className="rounded-md border border-gray-300 bg-white px-2 py-1 text-gray-700 hover:bg-gray-100"
+                title="다른 사람의 Claude Code 결과물을 이 채팅방에 푸시할 수 있는 토큰 발급"
+              >
+                🔑 외부 푸시 토큰
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {showPushTokenModal && (
+        <PushTokenModal
+          sessionId={sessionId}
+          ownerName={currentName}
+          onClose={() => setShowPushTokenModal(false)}
+        />
       )}
 
       {/* 입력 영역 */}

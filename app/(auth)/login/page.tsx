@@ -1,13 +1,19 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { signIn, signInGoogle } = useAuth();
+  const { signIn, signInGoogle, firebaseUser, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && firebaseUser) {
+      router.replace("/chat");
+    }
+  }, [authLoading, firebaseUser, router]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
