@@ -41,13 +41,26 @@ export async function PATCH(request: NextRequest, ctx: RouteContext) {
   try {
     const { id } = await ctx.params;
     const user = await verifyRequestUser(request);
-    const body = (await request.json()) as { active?: boolean; title?: string };
+    const body = (await request.json()) as { active?: boolean; title?: string; personaIds?: unknown };
 
     const update: Record<string, unknown> = {};
     if (typeof body.active === "boolean") update.active = body.active;
     if (typeof body.title === "string") {
       const t = body.title.trim().slice(0, 100);
       if (t.length > 0) update.title = t;
+    }
+    if (Array.isArray(body.personaIds)) {
+      const seen = new Set<string>();
+      const personaIds: string[] = [];
+      for (const item of body.personaIds) {
+        if (typeof item !== "string") continue;
+        const trimmed = item.trim().slice(0, 80);
+        if (!trimmed || seen.has(trimmed)) continue;
+        seen.add(trimmed);
+        personaIds.push(trimmed);
+        if (personaIds.length >= 20) break;
+      }
+      update.personaIds = personaIds;
     }
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ error: "변경할 필드가 없습니다." }, { status: 400 });

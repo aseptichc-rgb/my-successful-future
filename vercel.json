@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/collect-news",
-      "schedule": "0 22-23,0-9 * * *"
+      "schedule": "*/15 * * * *"
     }
   ]
 }

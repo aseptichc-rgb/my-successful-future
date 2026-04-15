@@ -7,7 +7,11 @@ import {
   onKeywordAlertConfigSnapshot,
   updateKeywordAlertLastChecked,
 } from "@/lib/firebase";
-import type { KeywordAlertConfig, KeywordAlertResponse } from "@/types";
+import type { KeywordAlertConfig, KeywordAlertResponse, ScheduledNewsSlot } from "@/types";
+import {
+  MAX_SCHEDULED_SLOTS,
+  HHMM_PATTERN,
+} from "@/lib/constants/keyword-alert";
 
 const DEFAULT_INTERVAL = 60; // 기본 60분
 
@@ -181,6 +185,37 @@ export function useKeywordAlert(sessionId: string) {
     await checkNews();
   }, [checkNews]);
 
+  // ── 정시 알림 (서버 크론) ────────────────────────────
+  const setScheduledEnabled = useCallback(
+    async (enabled: boolean) => {
+      await updateConfig({ scheduledEnabled: enabled });
+    },
+    [updateConfig]
+  );
+
+  const addScheduledTime = useCallback(
+    async (hhmm: string) => {
+      if (!HHMM_PATTERN.test(hhmm)) return;
+      const current = config?.scheduledTimes ?? [];
+      if (current.find((s) => s.time === hhmm)) return;
+      if (current.length >= MAX_SCHEDULED_SLOTS) return;
+      const next: ScheduledNewsSlot[] = [...current, { time: hhmm }].sort((a, b) =>
+        a.time.localeCompare(b.time)
+      );
+      await updateConfig({ scheduledTimes: next });
+    },
+    [config, updateConfig]
+  );
+
+  const removeScheduledTime = useCallback(
+    async (hhmm: string) => {
+      const current = config?.scheduledTimes ?? [];
+      const next = current.filter((s) => s.time !== hhmm);
+      await updateConfig({ scheduledTimes: next });
+    },
+    [config, updateConfig]
+  );
+
   return {
     config,
     isChecking,
@@ -189,5 +224,8 @@ export function useKeywordAlert(sessionId: string) {
     setKeywords,
     setIntervalMinutes,
     manualCheck,
+    setScheduledEnabled,
+    addScheduledTime,
+    removeScheduledTime,
   };
 }

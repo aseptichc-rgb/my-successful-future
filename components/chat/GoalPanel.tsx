@@ -71,36 +71,36 @@ export default function GoalPanel({ goals, onAdd, onCheckin, onRemove }: GoalPan
   }, []);
 
   return (
-    <div className="border-b border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50">
+    <div className="border-b border-gray-200/70 bg-white">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-amber-100/50 transition-colors"
+        className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50 transition-colors"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <span className="text-base">🎯</span>
-          <span className="text-sm font-semibold text-amber-900">
-            나의 목표 ({goals.length})
+          <span className="text-sm font-semibold text-gray-900 truncate">
+            나의 목표 <span className="text-gray-400 font-normal">({goals.length})</span>
           </span>
           {goals.length === 0 && (
-            <span className="text-xs text-amber-700">
+            <span className="hidden sm:inline text-xs text-gray-500 truncate">
               — 미래의 나와의 약속을 하나 정해보세요
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <span
             onClick={(e) => {
               e.stopPropagation();
               setShowEditor(true);
             }}
-            className="rounded-md border border-amber-300 bg-white px-2 py-0.5 text-xs text-amber-800 hover:bg-amber-100"
+            className="rounded-full bg-[#007aff] px-2.5 py-0.5 text-xs font-medium text-white hover:opacity-90"
             role="button"
           >
             + 추가
           </span>
           <svg
-            className={`h-4 w-4 text-amber-700 transition-transform ${expanded ? "rotate-180" : ""}`}
+            className={`h-4 w-4 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -120,7 +120,7 @@ export default function GoalPanel({ goals, onAdd, onCheckin, onRemove }: GoalPan
                 key={goal.id}
                 type="button"
                 onClick={() => setCheckinGoal(goal)}
-                className="flex w-full items-center gap-3 rounded-lg border border-amber-200 bg-white/80 p-2.5 text-left hover:bg-white transition-colors"
+                className="flex w-full items-center gap-3 rounded-xl border border-gray-200/80 bg-white p-3 text-left hover:bg-gray-50 transition-colors"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -134,13 +134,13 @@ export default function GoalPanel({ goals, onAdd, onCheckin, onRemove }: GoalPan
                     </span>
                   </div>
                   <div className="mt-1 flex items-center gap-2">
-                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-amber-100">
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
                       <div
-                        className="h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all"
+                        className="h-full bg-[#007aff] transition-all"
                         style={{ width: `${goal.progress}%` }}
                       />
                     </div>
-                    <span className="shrink-0 text-xs font-medium text-amber-700">
+                    <span className="shrink-0 text-xs font-medium text-gray-600 tabular-nums">
                       {goal.progress}%
                     </span>
                   </div>

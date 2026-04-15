@@ -37,6 +37,22 @@ export interface CustomPersona {
   updatedAt: Timestamp;
 }
 
+// ── 빌트인 페르소나 사용자별 오버라이드 ────────────
+// Firestore: users/{uid}/personaOverrides/{builtinPersonaId}
+// 문서가 없으면 = 기본값 사용. 문서 삭제 = 리셋.
+export interface PersonaOverride {
+  personaId: BuiltinPersonaId;
+  name?: string;
+  icon?: string;
+  description?: string;
+  systemPromptAddition?: string;
+  updatedAt: Timestamp;
+}
+export type PersonaOverrideInput = Pick<
+  PersonaOverride,
+  "name" | "icon" | "description" | "systemPromptAddition"
+>;
+
 // ── 감정 상태 (mood-aware future-self) ────────────
 export type MoodKind = "warm" | "stressed" | "flat" | "elated" | "unknown";
 
@@ -153,6 +169,9 @@ export interface ChatMessage {
   councilGroupId?: string;       // 같은 카운슬 세션에 속한 메시지 그룹 식별자
   councilRound?: number;         // 1, 2, 3, ... / 종합은 999
   councilQuestion?: string;      // 원 질문 (첫 라운드 메시지에만 저장)
+  // 🔔 정시 키워드 뉴스 배달 배지
+  scheduledSlot?: string;        // "HH:mm" KST — 크론이 정시 알림으로 전달한 메시지
+  matchedKeyword?: string;       // 어떤 키워드 매칭으로 전달됐는지 (UI 배지)
 }
 
 // ── FCM 토큰 ─────────────────────────────────────────
@@ -182,11 +201,20 @@ export interface AutoNewsConfig {
 }
 
 // ── 키워드 알림 설정 (페르소나 불필요, 순수 키워드 기반) ────
+/** "HH:mm" KST 특정 시각 발사 슬롯 */
+export interface ScheduledNewsSlot {
+  time: string;                    // "HH:mm" KST (24h)
+  lastFiredYmd?: string;           // "YYYY-MM-DD" KST - 일일 중복 방지
+}
+
 export interface KeywordAlertConfig {
   enabled: boolean;
   intervalMinutes: number;         // 폴링 간격 (기본 60분)
   keywords: string[];              // 사용자가 직접 등록한 검색 키워드
   lastCheckedAt?: Timestamp;       // 마지막 체크 시각
+  // ── 정시 알림 (서버 크론 기반) ──
+  scheduledEnabled?: boolean;      // 특정 시각 알림 on/off (interval과 독립)
+  scheduledTimes?: ScheduledNewsSlot[]; // 발사 시각 슬롯 목록
 }
 
 // ── 목표 & 마일스톤 ──────────────────────────────────

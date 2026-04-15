@@ -45,40 +45,42 @@ export default function DailyChecklistPanel({
   const allDone = progress.total > 0 && progress.done === progress.total;
 
   return (
-    <div className="border-b border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50">
+    <div className="border-b border-gray-200/70 bg-white">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-emerald-100/50 transition-colors"
+        className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50 transition-colors"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <span className="text-base">{allDone ? "🎉" : "📋"}</span>
-          <span className="text-sm font-semibold text-emerald-900">
-            오늘 체크리스트 {progress.total > 0 ? `(${progress.done}/${progress.total})` : ""}
+          <span className="text-sm font-semibold text-gray-900 truncate">
+            오늘 체크리스트 {progress.total > 0 ? (
+              <span className="text-gray-400 font-normal">({progress.done}/{progress.total})</span>
+            ) : ""}
           </span>
           {progress.total === 0 && (
-            <span className="text-xs text-emerald-700">— 매일 반복할 습관을 추가해보세요</span>
+            <span className="hidden sm:inline text-xs text-gray-500 truncate">— 매일 반복할 습관을 추가해보세요</span>
           )}
           {allDone && (
-            <span className="rounded-full bg-emerald-200 px-2 py-0.5 text-[10px] font-medium text-emerald-800">
+            <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
               전부 완료!
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <span
             onClick={(e) => {
               e.stopPropagation();
               setShowAdd(true);
               setExpanded(true);
             }}
-            className="rounded-md border border-emerald-300 bg-white px-2 py-0.5 text-xs text-emerald-800 hover:bg-emerald-100"
+            className="rounded-full bg-[#007aff] px-2.5 py-0.5 text-xs font-medium text-white hover:opacity-90"
             role="button"
           >
             + 추가
           </span>
           <svg
-            className={`h-4 w-4 text-emerald-700 transition-transform ${expanded ? "rotate-180" : ""}`}
+            className={`h-4 w-4 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -91,9 +93,9 @@ export default function DailyChecklistPanel({
       {expanded && (
         <div className="space-y-1 px-4 pb-3">
           {progress.total > 0 && (
-            <div className="mb-2 h-1.5 overflow-hidden rounded-full bg-emerald-100">
+            <div className="mb-2 h-1.5 overflow-hidden rounded-full bg-gray-100">
               <div
-                className="h-full bg-gradient-to-r from-emerald-400 to-teal-500 transition-all"
+                className="h-full bg-emerald-500 transition-all"
                 style={{ width: `${progress.percent}%` }}
               />
             </div>
@@ -102,7 +104,7 @@ export default function DailyChecklistPanel({
           {tasksWithTodayState.map(({ task, doneToday }) => (
             <div
               key={task.id}
-              className="group flex items-center gap-3 rounded-lg border border-emerald-200 bg-white/80 px-3 py-2 hover:bg-white transition-colors"
+              className="group flex items-center gap-3 rounded-xl border border-gray-200/80 bg-white px-3 py-2.5 hover:bg-gray-50 transition-colors"
             >
               <button
                 type="button"

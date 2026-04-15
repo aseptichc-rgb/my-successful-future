@@ -7,8 +7,11 @@ import { onSessionsSnapshot, createSession } from "@/lib/firebase";
 import { PERSONAS, getPersona } from "@/lib/personas";
 import { formatRelativeDate } from "@/lib/locale";
 import { useCustomPersonas } from "@/hooks/useCustomPersonas";
+import { usePersonaOverrides } from "@/hooks/usePersonaOverrides";
 import CustomPersonaBuilder from "@/components/chat/CustomPersonaBuilder";
-import type { ChatSession, CustomPersona, PersonaId } from "@/types";
+import PersonaEditorModal from "@/components/chat/PersonaEditorModal";
+import { mergePersona } from "@/lib/persona-resolver";
+import type { BuiltinPersonaId, ChatSession, CustomPersona, PersonaId } from "@/types";
 
 // 자문단으로 노출할 페르소나 (future-self는 별도 홈, default 뉴스봇은 일반 뉴스용이라 포함)
 const ADVISOR_IDS: PersonaId[] = [
@@ -26,8 +29,10 @@ export default function AdvisorsPage() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [creating, setCreating] = useState<PersonaId | null>(null);
   const { map: customMap, list: customList, create: createCustom, edit: editCustom, remove: removeCustom } = useCustomPersonas(firebaseUser?.uid);
+  const { map: overrideMap, upsert: upsertOverride, reset: resetOverride } = usePersonaOverrides(firebaseUser?.uid);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editingCustom, setEditingCustom] = useState<CustomPersona | null>(null);
+  const [editingBuiltin, setEditingBuiltin] = useState<BuiltinPersonaId | null>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -99,44 +104,64 @@ export default function AdvisorsPage() {
           {/* 빌트인 자문단 */}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
             {ADVISOR_IDS.map((personaId) => {
-              const persona = PERSONAS[personaId as keyof typeof PERSONAS];
+              const base = PERSONAS[personaId as keyof typeof PERSONAS];
+              const persona = mergePersona(base, overrideMap[personaId as string]);
               const latest = findLatestSessionFor(personaId);
               const isCreating = creating === personaId;
+              const isOverridden = !!overrideMap[personaId as string];
 
               return (
-                <button
+                <div
                   key={personaId}
-                  onClick={() => handleCardClick(personaId)}
-                  disabled={isCreating}
-                  className="flex flex-col items-start gap-2 rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm transition-all hover:border-blue-300 hover:shadow-md disabled:opacity-50"
+                  className="group relative flex flex-col items-start gap-2 rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm transition-all hover:border-blue-300 hover:shadow-md"
                 >
-                  <div className="text-3xl">{persona.icon}</div>
-                  <div className="w-full">
-                    <p className="truncate text-sm font-semibold text-gray-900">
-                      {persona.name}
-                    </p>
-                    <p className="mt-0.5 line-clamp-2 text-xs text-gray-500">
-                      {persona.description}
-                    </p>
-                  </div>
-                  <div className="mt-1 flex w-full items-center justify-between">
-                    {latest?.lastMessageAt?.toDate ? (
-                      <span className="text-[10px] text-gray-400">
-                        {formatRelativeDate(latest.lastMessageAt.toDate())}
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-gray-300">대화 시작 전</span>
+                  <button
+                    onClick={() => handleCardClick(personaId)}
+                    disabled={isCreating}
+                    className="flex w-full flex-col items-start gap-2 text-left disabled:opacity-50"
+                  >
+                    <div className="text-3xl">{persona.icon}</div>
+                    <div className="w-full">
+                      <p className="truncate text-sm font-semibold text-gray-900">
+                        {persona.name}
+                        {isOverridden && (
+                          <span className="ml-1 text-[9px] font-normal text-violet-600">·수정됨</span>
+                        )}
+                      </p>
+                      <p className="mt-0.5 line-clamp-2 text-xs text-gray-500">
+                        {persona.description}
+                      </p>
+                    </div>
+                    <div className="mt-1 flex w-full items-center justify-between">
+                      {latest?.lastMessageAt?.toDate ? (
+                        <span className="text-[10px] text-gray-400">
+                          {formatRelativeDate(latest.lastMessageAt.toDate())}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-gray-300">대화 시작 전</span>
+                      )}
+                      {isCreating && (
+                        <span className="h-3 w-3 animate-spin rounded-full border border-gray-300 border-t-blue-600" />
+                      )}
+                    </div>
+                    {latest?.lastMessage && (
+                      <p className="line-clamp-1 w-full text-[11px] text-gray-400">
+                        {latest.lastMessage}
+                      </p>
                     )}
-                    {isCreating && (
-                      <span className="h-3 w-3 animate-spin rounded-full border border-gray-300 border-t-blue-600" />
-                    )}
-                  </div>
-                  {latest?.lastMessage && (
-                    <p className="line-clamp-1 w-full text-[11px] text-gray-400">
-                      {latest.lastMessage}
-                    </p>
-                  )}
-                </button>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingBuiltin(personaId as BuiltinPersonaId);
+                    }}
+                    className="absolute right-2 top-2 rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] text-gray-500 opacity-0 transition-opacity hover:text-blue-700 group-hover:opacity-100"
+                    aria-label="역할 편집"
+                  >
+                    ✎ 편집
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -222,6 +247,16 @@ export default function AdvisorsPage() {
           </div>
         </div>
       </div>
+
+      {editingBuiltin && (
+        <PersonaEditorModal
+          personaId={editingBuiltin}
+          override={overrideMap[editingBuiltin]}
+          onSave={(data) => upsertOverride(editingBuiltin, data)}
+          onReset={() => resetOverride(editingBuiltin)}
+          onClose={() => setEditingBuiltin(null)}
+        />
+      )}
 
       {builderOpen && (
         <CustomPersonaBuilder

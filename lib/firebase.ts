@@ -36,7 +36,7 @@ import {
   type Firestore,
   type Unsubscribe,
 } from "firebase/firestore";
-import type { User, ChatSession, ChatMessage, Invitation, InviteLink, NewsSource, NewsTopic, SessionType, UserPresence, AutoNewsConfig, KeywordAlertConfig, PersonaId, Goal, DailyRitualConfig, DailyTask, PersonaMemory, CustomPersona } from "@/types";
+import type { User, ChatSession, ChatMessage, Invitation, InviteLink, NewsSource, NewsTopic, SessionType, UserPresence, AutoNewsConfig, KeywordAlertConfig, PersonaId, Goal, DailyRitualConfig, DailyTask, PersonaMemory, CustomPersona, PersonaOverride, PersonaOverrideInput, BuiltinPersonaId } from "@/types";
 
 // ── Firebase 지연 초기화 ─────────────────────────────
 const firebaseConfig = {
@@ -1140,6 +1140,65 @@ export function onCustomPersonasSnapshot(
     },
     (error) => {
       console.warn("커스텀 페르소나 리스너 에러:", error.message);
+    }
+  );
+}
+
+// ── 빌트인 페르소나 오버라이드 CRUD ──────────────────
+// 저장 위치: users/{uid}/personaOverrides/{builtinPersonaId}
+// 문서가 없으면 기본값 사용. 문서 삭제 = 리셋.
+export async function upsertPersonaOverride(
+  uid: string,
+  personaId: BuiltinPersonaId,
+  data: PersonaOverrideInput
+): Promise<void> {
+  try {
+    const db = getDbInstance();
+    await setDoc(
+      doc(db, "users", uid, "personaOverrides", personaId),
+      {
+        personaId,
+        ...data,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error("upsertPersonaOverride 실패:", error);
+    throw error;
+  }
+}
+
+export async function deletePersonaOverride(
+  uid: string,
+  personaId: BuiltinPersonaId
+): Promise<void> {
+  try {
+    const db = getDbInstance();
+    await deleteDoc(doc(db, "users", uid, "personaOverrides", personaId));
+  } catch (error) {
+    console.error("deletePersonaOverride 실패:", error);
+    throw error;
+  }
+}
+
+export function onPersonaOverridesSnapshot(
+  uid: string,
+  callback: (map: Record<string, PersonaOverride>) => void
+): Unsubscribe {
+  const db = getDbInstance();
+  return onSnapshot(
+    collection(db, "users", uid, "personaOverrides"),
+    (snap) => {
+      const map: Record<string, PersonaOverride> = {};
+      snap.docs.forEach((d) => {
+        const data = d.data() as PersonaOverride;
+        map[d.id] = { ...data, personaId: d.id as BuiltinPersonaId };
+      });
+      callback(map);
+    },
+    (error) => {
+      console.warn("페르소나 오버라이드 리스너 에러:", error.message);
     }
   );
 }

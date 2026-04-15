@@ -132,6 +132,9 @@ export default function ChatSessionPage() {
     setKeywords: setKeywordAlertKeywords,
     setIntervalMinutes: setKeywordAlertInterval,
     manualCheck: keywordAlertManualCheck,
+    setScheduledEnabled: setKeywordAlertScheduledEnabled,
+    addScheduledTime: addKeywordAlertScheduledTime,
+    removeScheduledTime: removeKeywordAlertScheduledTime,
   } = useKeywordAlert(sessionId);
 
   const [input, setInput] = useState("");
@@ -293,7 +296,7 @@ export default function ChatSessionPage() {
   return (
     <div className="flex h-full flex-col bg-white">
       {/* 헤더 */}
-      <header className="flex flex-col gap-2 border-b border-gray-200 px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-3">
+      <header className="sticky top-0 z-10 flex flex-col gap-2 border-b border-gray-200/70 bg-white/85 backdrop-blur-xl px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-3">
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <h1 className="text-base sm:text-lg font-bold text-gray-900 truncate max-w-[60vw] sm:max-w-none">
             {isFutureSelfSession ? (
@@ -364,7 +367,7 @@ export default function ChatSessionPage() {
               }`}
               title="미래의 나 정의"
             >
-              🌟 미래의 나
+              🌟<span className="hidden sm:inline"> 미래의 나</span>
             </button>
           )}
 
@@ -379,7 +382,7 @@ export default function ChatSessionPage() {
               }`}
               title="데일리 리추얼 설정"
             >
-              ☀️ 리추얼
+              ☀️<span className="hidden sm:inline"> 리추얼</span>
             </button>
           )}
 
@@ -390,7 +393,7 @@ export default function ChatSessionPage() {
               className="shrink-0 rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-sm text-indigo-700 hover:bg-indigo-100 transition-colors"
               title="카운슬 소집 — 여러 전문가 의견 한번에"
             >
-              🪑 카운슬
+              🪑<span className="hidden sm:inline"> 카운슬</span>
             </button>
           )}
 
@@ -401,7 +404,7 @@ export default function ChatSessionPage() {
               className="shrink-0 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm text-emerald-700 hover:bg-emerald-100 transition-colors"
               title="AI 도우미 — 요약 · 답장 제안 · 번역 (나만 봄)"
             >
-              🤖 AI 도우미
+              🤖<span className="hidden sm:inline"> AI 도우미</span>
             </button>
           )}
 
@@ -597,7 +600,7 @@ export default function ChatSessionPage() {
       )}
 
       {/* 입력 영역 */}
-      <div className={`border-t border-gray-200 px-3 py-2 sm:px-4 sm:py-3 ${isDirectChat && respondingConversationPersona ? "border-t-0" : ""}`}>
+      <div className={`border-t border-gray-200/70 bg-white/90 backdrop-blur-xl px-3 py-2.5 sm:px-4 sm:py-3 ${isDirectChat && respondingConversationPersona ? "border-t-0" : ""}`}>
         {activeCouncil && (
           <ActiveDebateBanner
             council={activeCouncil}
@@ -640,10 +643,10 @@ export default function ChatSessionPage() {
                     : "@를 입력하여 페르소나를 멘션하세요..."
               }
               rows={1}
-              className={`w-full resize-none rounded-xl border pl-3 pr-14 py-3 text-sm text-gray-900 focus:outline-none focus:ring-1 sm:pl-4 ${
+              className={`w-full resize-none rounded-[22px] border bg-[#f2f2f7] pl-4 pr-14 py-2.5 text-[15px] leading-[1.45] text-gray-900 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-1 transition-colors ${
                 isOverLimit
-                  ? "border-red-400 focus:border-red-500 focus:ring-red-500"
-                  : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  ? "border-red-300 focus:border-red-400 focus:ring-red-400"
+                  : "border-transparent focus:border-[#007aff]/40 focus:ring-[#007aff]/30"
               }`}
             />
             <div className={`pointer-events-none absolute bottom-1.5 right-2 text-[10px] sm:text-xs ${
@@ -655,7 +658,7 @@ export default function ChatSessionPage() {
           <button
             type="submit"
             disabled={isLoading || !input.trim() || isOverLimit}
-            className="shrink-0 rounded-xl bg-blue-600 px-4 py-3 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors sm:px-5"
+            className="shrink-0 rounded-full bg-[#007aff] px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 active:opacity-80 disabled:opacity-40 transition-opacity sm:px-6"
           >
             전송
           </button>
@@ -811,6 +814,9 @@ export default function ChatSessionPage() {
           onSetInterval={setKeywordAlertInterval}
           onManualCheck={keywordAlertManualCheck}
           onClose={() => setShowKeywordAlertPanel(false)}
+          onToggleScheduled={setKeywordAlertScheduledEnabled}
+          onAddScheduledTime={addKeywordAlertScheduledTime}
+          onRemoveScheduledTime={removeKeywordAlertScheduledTime}
         />
       )}
 

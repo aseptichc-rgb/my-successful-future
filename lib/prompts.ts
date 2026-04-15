@@ -568,6 +568,16 @@ export interface BuildSystemPromptExtras {
   mood?: MoodKind;
   /** 사용자가 첨부한 참고 문서 (Claude 결과물 등). 프롬프트 인젝션 방어 문구와 함께 주입. */
   attachedDocuments?: { fileName: string; text: string; truncated: boolean }[];
+  /**
+   * 빌트인 페르소나의 사용자 오버라이드. 존재하면 이름/아이콘/설명/systemPromptAddition을
+   * 기본 빌트인 정의 대신 사용한다. (customPersona와 다름 — customPersona는 id가 "custom:xxx"인 경우만)
+   */
+  builtinPersonaOverride?: {
+    name: string;
+    icon: string;
+    description: string;
+    systemPromptAddition: string;
+  };
 }
 
 /**
@@ -679,6 +689,9 @@ export function buildSystemPrompt(
   }
 
   // 커스텀 페르소나면 해당 데이터로 오버라이드, 아니면 빌트인 조회
+  // 빌트인이고 사용자 오버라이드가 있으면 그 값을 병합해 사용.
+  const builtinOverride = extras?.builtinPersonaOverride;
+  const baseBuiltin = getPersona(personaId);
   const persona =
     customPersona && isCustomPersonaId(personaId as string)
       ? {
@@ -688,7 +701,16 @@ export function buildSystemPrompt(
           description: customPersona.description || "",
           systemPromptAddition: "",
         }
-      : getPersona(personaId);
+      : builtinOverride
+      ? {
+          id: baseBuiltin.id,
+          name: builtinOverride.name || baseBuiltin.name,
+          icon: builtinOverride.icon || baseBuiltin.icon,
+          description: builtinOverride.description || baseBuiltin.description,
+          systemPromptAddition:
+            builtinOverride.systemPromptAddition || baseBuiltin.systemPromptAddition,
+        }
+      : baseBuiltin;
 
   // 페르소나별 추가 프롬프트 적용
   if (customPersona && isCustomPersonaId(personaId as string)) {

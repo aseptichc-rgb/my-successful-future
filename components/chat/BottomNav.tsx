@@ -148,15 +148,15 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
   return (
     <>
       {/* 모바일: 바텀 탭 (기존 동작 유지) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-gray-200 bg-white lg:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-gray-200/70 bg-white/85 backdrop-blur-xl safe-pb lg:hidden">
         {mobileTabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
               onClick={tab.onClick}
-              className={`relative flex flex-1 flex-col items-center gap-0.5 py-2 text-xs transition-colors ${
-                isActive ? "text-blue-600" : "text-gray-500 hover:text-gray-700"
+              className={`relative flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] transition-colors ${
+                isActive ? "text-[#007aff]" : "text-gray-500 hover:text-gray-700"
               }`}
             >
               <span className="text-xl leading-none">{tab.icon}</span>

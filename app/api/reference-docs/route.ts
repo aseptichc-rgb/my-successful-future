@@ -8,6 +8,30 @@ export const runtime = "nodejs";
 
 const MAX_USER_DOCS = 10;
 const MAX_TITLE_LENGTH = 100;
+const MAX_PERSONA_SCOPE = 20;
+const MAX_PERSONA_ID_LENGTH = 80;
+
+/**
+ * 클라이언트가 보낸 personaIds 배열을 안전하게 정규화한다.
+ * - 문자열 아닌 항목 제거, 공백 trim, 빈 문자열 제거
+ * - 길이 제한 및 최대 개수 제한
+ * - 중복 제거
+ * 반환값이 빈 배열이면 "전체 페르소나 적용" 으로 해석한다.
+ */
+function sanitizePersonaIds(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== "string") continue;
+    const trimmed = item.trim().slice(0, MAX_PERSONA_ID_LENGTH);
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    result.push(trimmed);
+    if (result.length >= MAX_PERSONA_SCOPE) break;
+  }
+  return result;
+}
 
 /**
  * GET: 현재 사용자가 등록한 Google Docs 참조 링크 목록.
@@ -28,6 +52,7 @@ export async function GET(request: NextRequest) {
           googleDocId: String(data.googleDocId || ""),
           title: String(data.title || ""),
           active: Boolean(data.active),
+          personaIds: Array.isArray(data.personaIds) ? data.personaIds.map(String) : [],
           createdAt: data.createdAt?.toMillis?.() ?? null,
         };
       })
@@ -48,8 +73,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyRequestUser(request);
-    const body = (await request.json()) as { url?: string; title?: string };
+    const body = (await request.json()) as { url?: string; title?: string; personaIds?: unknown };
     const rawUrl = String(body.url || "");
+    const personaIds = sanitizePersonaIds(body.personaIds);
     const docId = parseGoogleDocId(rawUrl);
     if (!docId) {
       return NextResponse.json(
@@ -101,6 +127,7 @@ export async function POST(request: NextRequest) {
       googleDocId: docId,
       title,
       active: true,
+      personaIds,
       createdAt: FieldValue.serverTimestamp(),
     });
 
@@ -109,6 +136,7 @@ export async function POST(request: NextRequest) {
       googleDocId: docId,
       title,
       active: true,
+      personaIds,
     });
   } catch (err) {
     if (err instanceof AuthError) {

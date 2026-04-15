@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import type { KeywordAlertConfig } from "@/types";
+import { MAX_SCHEDULED_SLOTS, HHMM_PATTERN } from "@/lib/constants/keyword-alert";
 
 interface KeywordAlertPanelProps {
   config: KeywordAlertConfig | null;
@@ -12,6 +13,10 @@ interface KeywordAlertPanelProps {
   onSetInterval: (minutes: number) => void;
   onManualCheck: () => void;
   onClose: () => void;
+  // 정시 알림 (서버 크론)
+  onToggleScheduled: (enabled: boolean) => void;
+  onAddScheduledTime: (hhmm: string) => void;
+  onRemoveScheduledTime: (hhmm: string) => void;
 }
 
 const INTERVAL_OPTIONS = [
@@ -34,11 +39,24 @@ export default function KeywordAlertPanel({
   onSetInterval,
   onManualCheck,
   onClose,
+  onToggleScheduled,
+  onAddScheduledTime,
+  onRemoveScheduledTime,
 }: KeywordAlertPanelProps) {
   const [input, setInput] = useState("");
+  const [timeInput, setTimeInput] = useState("");
   const enabled = config?.enabled ?? false;
   const keywords = config?.keywords ?? [];
   const intervalMinutes = config?.intervalMinutes ?? 60;
+  const scheduledEnabled = config?.scheduledEnabled ?? false;
+  const scheduledTimes = config?.scheduledTimes ?? [];
+
+  const handleAddTime = useCallback(() => {
+    if (!HHMM_PATTERN.test(timeInput)) return;
+    if (scheduledTimes.length >= MAX_SCHEDULED_SLOTS) return;
+    onAddScheduledTime(timeInput);
+    setTimeInput("");
+  }, [timeInput, scheduledTimes, onAddScheduledTime]);
 
   const handleAdd = useCallback(() => {
     const k = input.trim();
@@ -121,6 +139,77 @@ export default function KeywordAlertPanel({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* 정시 알림 (서버 크론) */}
+          <div className="mb-6 rounded-xl border border-rose-100 bg-rose-50/40 p-4">
+            <div className="mb-2 flex items-start justify-between gap-3">
+              <div>
+                <p className="flex items-center gap-1 font-medium text-gray-900">
+                  ⏰ 정시 알림
+                </p>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  지정한 시각마다 키워드 뉴스를 채팅방으로 자동 전달합니다 (브라우저를 닫아도 작동, KST 기준 약 ±10분 오차).
+                </p>
+              </div>
+              <button
+                onClick={() => onToggleScheduled(!scheduledEnabled)}
+                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                  scheduledEnabled ? "bg-rose-500" : "bg-gray-300"
+                }`}
+                aria-label="정시 알림 토글"
+              >
+                <span
+                  className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+                    scheduledEnabled ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="mt-3 flex gap-2">
+              <input
+                type="time"
+                value={timeInput}
+                onChange={(e) => setTimeInput(e.target.value)}
+                disabled={scheduledTimes.length >= MAX_SCHEDULED_SLOTS}
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-rose-500 focus:outline-none disabled:bg-gray-100"
+              />
+              <button
+                onClick={handleAddTime}
+                disabled={
+                  !HHMM_PATTERN.test(timeInput) ||
+                  scheduledTimes.length >= MAX_SCHEDULED_SLOTS
+                }
+                className="rounded-lg bg-rose-500 px-4 py-2 text-sm font-medium text-white hover:bg-rose-600 disabled:opacity-50"
+              >
+                시각 추가
+              </button>
+            </div>
+
+            {scheduledTimes.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {scheduledTimes.map((slot) => (
+                  <span
+                    key={slot.time}
+                    className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-medium text-rose-700 ring-1 ring-rose-200"
+                  >
+                    🕐 {slot.time}
+                    <button
+                      onClick={() => onRemoveScheduledTime(slot.time)}
+                      className="ml-0.5 hover:text-rose-900"
+                      aria-label={`${slot.time} 삭제`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-gray-500">
+                예: 08:00, 18:00 — 아침/저녁으로 핵심 키워드 브리핑을 받아보세요. 최대 {MAX_SCHEDULED_SLOTS}개.
+              </p>
+            )}
           </div>
 
           {/* 키워드 입력 */}

@@ -120,9 +120,16 @@ export async function loadReferenceDocuments(): Promise<ReferenceDocument[]> {
 
 /**
  * 전역 기본 문서 + 해당 사용자가 등록한 활성 Google Docs 링크를 함께 로드.
+ * `personaId` 가 주어지면 해당 페르소나에 스코핑된 문서만 포함한다.
+ *   - 문서의 personaIds 가 비어 있거나 누락된 경우: 모든 페르소나에 적용 (기존 동작과 호환)
+ *   - 문서의 personaIds 에 현재 personaId 가 포함된 경우: 적용
+ *   - 그 외: 제외
  * Firestore 조회 실패 시에도 전역 문서만이라도 반환한다.
  */
-export async function loadReferenceDocumentsForUser(uid: string | null | undefined): Promise<ReferenceDocument[]> {
+export async function loadReferenceDocumentsForUser(
+  uid: string | null | undefined,
+  personaId?: string | null
+): Promise<ReferenceDocument[]> {
   const globalIds = resolveDocIds();
   let userIds: string[] = [];
   if (uid) {
@@ -136,6 +143,12 @@ export async function loadReferenceDocumentsForUser(uid: string | null | undefin
         .limit(MAX_USER_DOCS)
         .get();
       userIds = snap.docs
+        .filter((d) => {
+          if (!personaId) return true;
+          const raw = d.data().personaIds;
+          if (!Array.isArray(raw) || raw.length === 0) return true;
+          return raw.map(String).includes(personaId);
+        })
         .map((d) => String(d.data().googleDocId || ""))
         .filter(Boolean);
     } catch (err) {

@@ -60,7 +60,7 @@ const markdownComponents: Components = {
     );
   },
   pre: ({ children }) => (
-    <pre className="my-2 overflow-x-auto rounded bg-gray-800 p-2 text-xs text-gray-100">
+    <pre className="my-2 overflow-x-auto rounded-lg bg-gray-100 p-3 text-xs text-gray-800 border border-gray-200/70">
       {children}
     </pre>
   ),
@@ -91,20 +91,20 @@ export default function MessageBubble({ message, showPersonaHeader = true }: Pro
   const isCouncilFinal = message.councilRound === 999;
   const isCouncilQuestion = isUser && isCouncil && message.councilRound === 0;
 
-  // 카운슬 버블 스타일
+  // 카운슬 버블 스타일 (Apple iMessage 톤)
   const bubbleClass = isUser
     ? isCouncilQuestion
-      ? "bg-indigo-600 text-white border-2 border-indigo-300"
-      : "bg-blue-600 text-white"
+      ? "bg-indigo-500 text-white"
+      : "bg-[#007aff] text-white"
     : isCouncilFinal
-      ? "bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 text-gray-900"
+      ? "bg-amber-50 border border-amber-200 text-gray-900"
       : isCouncil
-        ? "bg-indigo-50 border border-indigo-200 text-gray-900"
-        : "bg-gray-100 text-gray-900";
+        ? "bg-indigo-50 border border-indigo-100 text-gray-900"
+        : "bg-[#f2f2f7] text-gray-900";
 
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${bubbleClass}`}>
+      <div className={`max-w-[85%] sm:max-w-[78%] rounded-[22px] px-4 py-2.5 shadow-[0_1px_1px_rgba(0,0,0,0.04)] ${bubbleClass}`}>
         {/* 카운슬 질문 표시 */}
         {isCouncilQuestion && (
           <div className="mb-1.5 inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold text-indigo-100">
@@ -114,7 +114,7 @@ export default function MessageBubble({ message, showPersonaHeader = true }: Pro
 
         {/* 사용자 메시지: 발신자 이름 표시 (다중 사용자 대화 시) */}
         {isUser && message.senderName && !isCouncilQuestion && (
-          <div className="mb-1 text-xs font-semibold text-blue-200">
+          <div className="mb-1 text-xs font-semibold text-white/85">
             {message.senderName}
           </div>
         )}
@@ -134,17 +134,22 @@ export default function MessageBubble({ message, showPersonaHeader = true }: Pro
                 종합
               </span>
             )}
+            {message.scheduledSlot && (
+              <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-[9px] font-medium text-rose-700">
+                ⏰ {message.scheduledSlot} 정시
+              </span>
+            )}
           </div>
         )}
 
         {isUser ? (
           // 사용자 메시지는 마크다운 해석 없이 원문 그대로
-          <div className="whitespace-pre-wrap text-sm leading-relaxed">
+          <div className="whitespace-pre-wrap text-[15px] leading-[1.55] break-words">
             {message.content}
           </div>
         ) : (
           // AI 응답은 마크다운 렌더링
-          <div className="text-sm leading-relaxed">
+          <div className="text-[15px] leading-[1.6] break-words">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
               {message.content}
             </ReactMarkdown>

@@ -5,7 +5,9 @@ import { getAdminDb } from "@/lib/firebase-admin";
 import { loadReferenceDocumentsForUser } from "@/lib/googleDocs";
 import { getAdminAuth } from "@/lib/firebase-admin";
 import { getRecentArticlesForPersona } from "@/lib/personaNewsCollector";
-import { isBuiltinPersona } from "@/lib/personas";
+import { isBuiltinPersona, PERSONAS } from "@/lib/personas";
+import { mergePersona } from "@/lib/persona-resolver";
+import type { PersonaOverride } from "@/types";
 import type { BuiltinPersonaId, NewsTopic, PersonaId, GoalSnapshot, DailyTaskSnapshot, MoodKind } from "@/types";
 
 export const maxDuration = 60;
@@ -166,9 +168,41 @@ export async function POST(request: NextRequest) {
     // Google Docs 는 5분 캐시 되므로 매 요청마다 외부 호출되지 않음.
     const [sessionDocs, referenceDocs] = await Promise.all([
       sessionId ? loadActiveDocuments(sessionId) : Promise.resolve([]),
-      loadReferenceDocumentsForUser(authedUid),
+      loadReferenceDocumentsForUser(authedUid, persona as string | undefined),
     ]);
     const attachedDocuments = [...referenceDocs, ...sessionDocs];
+
+    // 빌트인 페르소나에 대한 사용자 오버라이드 로드 (future-self 제외 — 별도 빌더)
+    let builtinPersonaOverride:
+      | { name: string; icon: string; description: string; systemPromptAddition: string }
+      | undefined;
+    if (
+      authedUid &&
+      isBuiltinPersona(persona as string) &&
+      persona !== "future-self"
+    ) {
+      try {
+        const db = getAdminDb();
+        const snap = await db
+          .collection("users")
+          .doc(authedUid)
+          .collection("personaOverrides")
+          .doc(persona as string)
+          .get();
+        if (snap.exists) {
+          const ov = snap.data() as PersonaOverride;
+          const merged = mergePersona(PERSONAS[persona as keyof typeof PERSONAS], ov);
+          builtinPersonaOverride = {
+            name: merged.name,
+            icon: merged.icon,
+            description: merged.description,
+            systemPromptAddition: merged.systemPromptAddition,
+          };
+        }
+      } catch (err) {
+        console.warn("[chat] persona override 로드 실패, 기본값 사용:", err);
+      }
+    }
 
     // 시스템 프롬프트 빌드 (lib/prompts.ts에서만 관리)
     const systemPrompt = buildSystemPrompt(
@@ -188,6 +222,7 @@ export async function POST(request: NextRequest) {
         customPersona,
         mood,
         attachedDocuments,
+        builtinPersonaOverride,
       }
     );
 
