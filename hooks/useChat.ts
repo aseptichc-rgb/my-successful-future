@@ -2,11 +2,11 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Timestamp } from "firebase/firestore";
-import { getMessages, addMessage, updateSessionTitle, onMessagesSnapshot, getSessionById, incrementUnreadCounts, updateUserMemory, onPersonaMemoriesSnapshot, updatePersonaMemory } from "@/lib/firebase";
+import { getMessages, addMessage, updateSessionTitle, onMessagesSnapshot, getSessionById, incrementUnreadCounts, updateUserMemory, onPersonaMemoriesSnapshot, updatePersonaMemory, getAuth_ } from "@/lib/firebase";
 import { getPersona, PERSONAS, isCustomPersonaId } from "@/lib/personas";
 import { routeToPersonas } from "@/lib/persona-router";
 import { detectBotCommand } from "@/lib/externalBots";
-import type { ChatMessage, ChatSession, ChatStreamEvent, CustomPersona, DailyTaskSnapshot, GoalSnapshot, MoodKind, NewsSource, NewsTopic, PersonaId, SessionType } from "@/types";
+import type { ActiveCouncilState, ChatMessage, ChatSession, ChatStreamEvent, CouncilTurn, CustomPersona, DailyTaskSnapshot, GoalSnapshot, MoodKind, NewsSource, NewsTopic, PersonaId, SessionType } from "@/types";
 
 /** 응답 텍스트에서 AI가 붙인 [이름] 접두사를 제거 */
 function stripPersonaPrefix(text: string): string {
@@ -31,6 +31,24 @@ function normalizePersonaMarkers(text: string): string {
 }
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/**
+ * /api/chat 요청에 Firebase ID 토큰을 실어 보낸다.
+ * 서버가 사용자별 Google Docs 참조 문서를 주입하기 위해 필요.
+ * 로그인 전이거나 토큰 발급 실패 시 헤더 없이 전송 — 기존 동작과 호환.
+ */
+async function buildAuthHeaders(): Promise<Record<string, string>> {
+  const base: Record<string, string> = { "Content-Type": "application/json" };
+  try {
+    const user = getAuth_().currentUser;
+    if (!user) return base;
+    const token = await user.getIdToken();
+    if (token) base.Authorization = `Bearer ${token}`;
+  } catch (err) {
+    console.warn("[useChat] ID 토큰 발급 실패 — 비인증으로 전송:", err);
+  }
+  return base;
+}
 
 /** 메시지에서 @멘션된 페르소나 ID를 추출 */
 function parseMentions(content: string): PersonaId[] {
@@ -287,7 +305,7 @@ export function useChat(
         : undefined;
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await buildAuthHeaders(),
         body: JSON.stringify({
           message: content,
           sessionId,
@@ -781,7 +799,7 @@ export function useChat(
               : undefined;
             const response = await fetch("/api/chat", {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: await buildAuthHeaders(),
               body: JSON.stringify({
                 message: question,
                 sessionId,
@@ -875,6 +893,337 @@ export function useChat(
     [isLoading, sessionId, currentUid, currentName, userPersona, futurePersona, userMemory]
   );
 
+  // ─────────────────────────────────────────────────────
+  // 🗣️ 사람 참여 가능한 카운슬 모드 (뉴스 토론)
+  //
+  // sendCouncilQuestion(원샷)과 다른 점:
+  //   - 한 라운드씩만 실행 → UI에서 사용자가 끼어들 시간이 생긴다.
+  //   - 사용자가 메시지를 던지면 priorTurns에 추가되고, 다음 라운드 페르소나가
+  //     그 말을 받아서 반응한다.
+  //   - useCollectedNews=true 로 호출돼 각 페르소나가 자기 자동수집 기사를 근거로 발언.
+  //
+  // 흐름:
+  //   startNewsDebate(personas, question?) → 사용자 질문 메시지 저장 + round1 실행
+  //   advanceCouncil()                    → 다음 페르소나 발언 (남은 큐가 비면 무동작)
+  //   addUserToCouncil(text)              → 사용자 끼어들기 메시지 추가 + 자동 advance
+  //   endCouncil()                        → 상태 초기화
+  // ─────────────────────────────────────────────────────
+  const [activeCouncil, setActiveCouncil] = useState<ActiveCouncilState | null>(null);
+  const activeCouncilRef = useRef<ActiveCouncilState | null>(null);
+  activeCouncilRef.current = activeCouncil;
+
+  /** 한 페르소나의 한 라운드를 실행. priorTurns/groupId/round를 받아서 메시지로 합류. */
+  const runCouncilRound = useCallback(
+    async (
+      personaId: PersonaId,
+      groupId: string,
+      question: string,
+      round: number,
+      priorTurns: CouncilTurn[],
+      isFinal: boolean
+    ): Promise<{ ok: boolean; content: string; personaName: string }> => {
+      const persona = getPersona(personaId, customPersonaMapRef.current);
+      setRespondingPersona(personaId);
+
+      const assistantId = `temp-newsdebate-${personaId}-${Date.now()}`;
+      const placeholder: ChatMessage = {
+        id: assistantId,
+        sessionId,
+        role: "assistant",
+        content: "",
+        sources: [],
+        createdAt: Timestamp.now(),
+        personaId,
+        personaName: persona.name,
+        personaIcon: persona.icon,
+        councilGroupId: groupId,
+        councilRound: isFinal ? 999 : round,
+      };
+      setMessages((prev) => [...prev, placeholder]);
+
+      try {
+        const personaMemoryForThis = personaMemoriesRef.current?.[personaId];
+        const isCustomP = isCustomPersonaId(personaId as string);
+        const customPayloadP = isCustomP
+          ? customPersonaMapRef.current?.[personaId as string]
+          : undefined;
+
+        const councilContextPayload = priorTurns.map((t) => ({
+          personaName: t.speakerName,
+          content: t.content,
+          isUser: t.kind === "user",
+        }));
+
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: question,
+            sessionId,
+            history: [],
+            topic: "전체",
+            persona: personaId,
+            userPersona: userPersona || undefined,
+            futurePersona: futurePersona || undefined,
+            userMemory: userMemory || undefined,
+            activeGoals:
+              activeGoalsRef.current && activeGoalsRef.current.length > 0
+                ? activeGoalsRef.current
+                : undefined,
+            dailyTasks:
+              dailyTasksRef.current && dailyTasksRef.current.length > 0
+                ? dailyTasksRef.current
+                : undefined,
+            personaMemory:
+              personaMemoryForThis && personaMemoryForThis.trim().length > 0
+                ? personaMemoryForThis
+                : undefined,
+            councilContext:
+              councilContextPayload.length > 0 ? councilContextPayload : undefined,
+            isCouncilFinal: isFinal,
+            useCollectedNews: true,
+            customPersona: customPayloadP
+              ? {
+                  id: customPayloadP.id,
+                  name: customPayloadP.name,
+                  icon: customPayloadP.icon,
+                  description: customPayloadP.description,
+                  systemPromptAddition: customPayloadP.systemPromptAddition,
+                }
+              : undefined,
+            mood: moodRef.current !== "unknown" ? moodRef.current : undefined,
+          }),
+        });
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error("No reader");
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let fullText = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n\n");
+          buffer = lines.pop() || "";
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const data: ChatStreamEvent = JSON.parse(line.slice(6));
+              if (data.type === "text" && data.content) {
+                fullText += data.content;
+                const clean = stripPersonaPrefix(
+                  normalizePersonaMarkers(fullText).trim()
+                );
+                setMessages((prev) =>
+                  prev.map((m) => (m.id === assistantId ? { ...m, content: clean } : m))
+                );
+              } else if (data.type === "done" && data.content) {
+                fullText = data.content;
+              }
+            } catch {
+              // ignore malformed line
+            }
+          }
+        }
+
+        const cleaned = stripPersonaPrefix(normalizePersonaMarkers(fullText).trim());
+        if (!cleaned) {
+          setMessages((prev) => prev.filter((m) => m.id !== assistantId));
+          return { ok: false, content: "", personaName: persona.name };
+        }
+
+        addMessage(
+          sessionId,
+          "assistant",
+          cleaned,
+          [],
+          { personaId, personaName: persona.name, personaIcon: persona.icon },
+          undefined,
+          undefined,
+          { councilGroupId: groupId, councilRound: isFinal ? 999 : round }
+        ).catch((err) => console.error("Failed to save council response:", err));
+
+        return { ok: true, content: cleaned, personaName: persona.name };
+      } catch (err) {
+        console.warn(`[runCouncilRound] ${personaId} 실패:`, err);
+        setMessages((prev) => prev.filter((m) => m.id !== assistantId));
+        return { ok: false, content: "", personaName: persona.name };
+      } finally {
+        setRespondingPersona(null);
+      }
+    },
+    [sessionId, userPersona, futurePersona, userMemory]
+  );
+
+  /**
+   * 토론 시작.
+   * @param personaIds  토론 참여 페르소나. future-self는 자동으로 마지막 종합자로 추가됨.
+   * @param question    사용자가 던지는 토론 주제. 생략 시 "오늘 수집한 뉴스 중 가장 중요한 이슈에 대해" 디폴트.
+   */
+  const startNewsDebate = useCallback(
+    async (personaIds: PersonaId[], question?: string) => {
+      if (isLoadingRef.current) return;
+      if (personaIds.length === 0) return;
+
+      const queue: PersonaId[] = personaIds.filter((p) => p !== "future-self");
+      queue.push("future-self");
+
+      const groupId = `council-${Date.now()}`;
+      const realQuestion = (question?.trim() || "오늘 자동 수집된 뉴스 중 가장 중요한 이슈가 뭔지, 각자 자기 도메인 관점에서 한 가지씩 짚어보고 토론해보자.").slice(0, 500);
+
+      setError(null);
+      setIsLoading(true);
+
+      // 사용자 질문 저장
+      const userMsgId = `temp-user-${Date.now()}`;
+      const userMessage: ChatMessage = {
+        id: userMsgId,
+        sessionId,
+        role: "user",
+        content: realQuestion,
+        sources: [],
+        createdAt: Timestamp.now(),
+        senderUid: currentUid,
+        senderName: currentName,
+        councilGroupId: groupId,
+        councilRound: 0,
+        councilQuestion: realQuestion,
+      };
+      setMessages((prev) => [...prev, userMessage]);
+      addMessage(
+        sessionId,
+        "user",
+        realQuestion,
+        [],
+        undefined,
+        currentUid,
+        currentName,
+        { councilGroupId: groupId, councilRound: 0, councilQuestion: realQuestion }
+      ).catch((err) => console.error("Failed to save debate question:", err));
+
+      // 첫 페르소나 발언
+      const firstPersona = queue.shift()!;
+      const isFinal = firstPersona === "future-self" && queue.length === 0;
+      const result = await runCouncilRound(firstPersona, groupId, realQuestion, 1, [], isFinal);
+
+      const newPriorTurns: CouncilTurn[] = result.ok
+        ? [{ kind: "persona", speakerName: result.personaName, content: result.content }]
+        : [];
+
+      setActiveCouncil({
+        groupId,
+        question: realQuestion,
+        remainingPersonas: queue,
+        priorTurns: newPriorTurns,
+        currentRound: 1,
+      });
+      setIsLoading(false);
+    },
+    [sessionId, currentUid, currentName, runCouncilRound]
+  );
+
+  /** 다음 라운드 진행. 큐가 비면 자동 종료. */
+  const advanceCouncil = useCallback(async () => {
+    const cur = activeCouncilRef.current;
+    if (!cur || cur.remainingPersonas.length === 0 || isLoadingRef.current) return;
+
+    setIsLoading(true);
+    const [next, ...rest] = cur.remainingPersonas;
+    const newRound = cur.currentRound + 1;
+    const isFinal = next === "future-self" && rest.length === 0;
+
+    const result = await runCouncilRound(
+      next,
+      cur.groupId,
+      cur.question,
+      newRound,
+      cur.priorTurns,
+      isFinal
+    );
+
+    const updatedTurns: CouncilTurn[] = result.ok
+      ? [
+          ...cur.priorTurns,
+          { kind: "persona", speakerName: result.personaName, content: result.content },
+        ]
+      : cur.priorTurns;
+
+    if (rest.length === 0) {
+      // 마지막 라운드 끝 → 토론 종료
+      setActiveCouncil(null);
+    } else {
+      setActiveCouncil({
+        ...cur,
+        remainingPersonas: rest,
+        priorTurns: updatedTurns,
+        currentRound: newRound,
+      });
+    }
+    setIsLoading(false);
+  }, [runCouncilRound]);
+
+  /** 사용자가 토론 중간에 끼어들어 메시지를 던진다. priorTurns에 추가하고 자동으로 다음 라운드 진행. */
+  const addUserToCouncil = useCallback(
+    async (text: string) => {
+      const cur = activeCouncilRef.current;
+      if (!cur) return;
+      const trimmed = text.trim();
+      if (!trimmed) return;
+
+      // 사용자 메시지를 카운슬 그룹에 추가
+      const userMsgId = `temp-user-interject-${Date.now()}`;
+      const userMessage: ChatMessage = {
+        id: userMsgId,
+        sessionId,
+        role: "user",
+        content: trimmed,
+        sources: [],
+        createdAt: Timestamp.now(),
+        senderUid: currentUid,
+        senderName: currentName,
+        councilGroupId: cur.groupId,
+        councilRound: cur.currentRound,
+      };
+      setMessages((prev) => [...prev, userMessage]);
+      addMessage(
+        sessionId,
+        "user",
+        trimmed,
+        [],
+        undefined,
+        currentUid,
+        currentName,
+        { councilGroupId: cur.groupId, councilRound: cur.currentRound }
+      ).catch((err) => console.error("Failed to save user interjection:", err));
+
+      const userTurn: CouncilTurn = {
+        kind: "user",
+        speakerName: currentName || "사용자",
+        content: trimmed,
+      };
+      const updated: ActiveCouncilState = {
+        ...cur,
+        priorTurns: [...cur.priorTurns, userTurn],
+      };
+      setActiveCouncil(updated);
+      activeCouncilRef.current = updated;
+
+      // 다음 페르소나가 사용자의 발언을 받아 응답하도록 즉시 진행
+      if (updated.remainingPersonas.length > 0) {
+        await advanceCouncil();
+      }
+    },
+    [sessionId, currentUid, currentName, advanceCouncil]
+  );
+
+  /** 토론 강제 종료 (중도에 사용자가 그만하고 싶을 때). */
+  const endCouncil = useCallback(() => {
+    setActiveCouncil(null);
+  }, []);
+
   return {
     messages,
     isLoading,
@@ -889,6 +1238,12 @@ export function useChat(
     mood,
     sendMessage,
     sendCouncilQuestion,
+    // 사람 참여 가능한 뉴스 토론 모드
+    activeCouncil,
+    startNewsDebate,
+    advanceCouncil,
+    addUserToCouncil,
+    endCouncil,
     personaMemories,
     setSelectedTopic,
     togglePersona,

@@ -554,8 +554,10 @@ export function buildEveningReflectionPrompt(
 export interface BuildSystemPromptExtras {
   dailyTasks?: DailyTaskSnapshot[];
   personaMemory?: string;
-  councilContext?: { personaName: string; content: string }[];
+  councilContext?: { personaName: string; content: string; isUser?: boolean }[];
   isCouncilFinal?: boolean;
+  /** 이 페르소나가 자동 수집해둔 최근 기사 (토론 컨텍스트에 주입) */
+  collectedArticles?: { title: string; publisher: string; url: string; briefing?: string }[];
   customPersona?: {
     id: string;
     name: string;
@@ -774,6 +776,11 @@ ${personaMemory}
 맥락과 지금 질문이 상관없으면 굳이 꺼내지 마세요.`;
   }
 
+  // 자동 수집해둔 기사 — 토론 시 본인 도메인 근거로 활용
+  if (extras?.collectedArticles && extras.collectedArticles.length > 0) {
+    prompt += buildCollectedArticlesSection(extras.collectedArticles, getPersona(personaId).name);
+  }
+
   // 카운슬 모드 컨텍스트 — 앞서 다른 전문가들이 낸 의견
   if (councilContext && councilContext.length > 0) {
     prompt += buildCouncilContextSection(councilContext, false, isCouncilFinal);
@@ -790,20 +797,55 @@ ${personaMemory}
   return prompt;
 }
 
+function buildCollectedArticlesSection(
+  articles: { title: string; publisher: string; url: string; briefing?: string }[],
+  personaName: string
+): string {
+  const items = articles
+    .slice(0, 5)
+    .map((a, i) => {
+      const t = a.title.length > 100 ? a.title.slice(0, 100) + "…" : a.title;
+      return `${i + 1}. ${a.publisher} — ${t}`;
+    })
+    .join("\n");
+  const briefing = articles.find((a) => a.briefing && a.briefing.trim())?.briefing;
+  return `
+
+## 📰 ${personaName} 본인이 오늘 자동 수집해둔 최근 기사들
+당신은 평소에 자기 도메인 뉴스를 주기적으로 모으고 있어. 아래는 최근 모아둔 기사 헤드라인이야:
+
+${items}
+${briefing ? `\n오늘 흐름 브리핑: ${briefing}\n` : ""}
+토론할 때 위 기사 내용을 자연스럽게 근거로 활용해. ("오늘 본 ${articles[0]?.publisher} 기사에 따르면…" 식으로 가볍게 인용해도 좋아.)
+다만 위 목록에 없는 사실을 마치 기사에 있던 것처럼 지어내지 마세요.
+
+`;
+}
+
 function buildCouncilContextSection(
-  prior: { personaName: string; content: string }[],
+  prior: { personaName: string; content: string; isUser?: boolean }[],
   isFutureSelf: boolean,
   isFinal?: boolean
 ): string {
+  const hasUserTurn = prior.some((p) => p.isUser);
   let section = `
 
 ## 🪑 지금은 카운슬 모드야
-여러 전문가가 사용자의 질문 하나에 대해 순서대로 의견을 내는 원탁회의 상황이야. 당신 차례 전에 이미 다음 분들이 먼저 의견을 냈어:
+여러 전문가가 사용자의 질문 하나에 대해 순서대로 의견을 내는 원탁회의 상황이야. 당신 차례 전에 이미 다음 발언들이 있었어:
 
 `;
   for (const p of prior) {
     const trimmed = p.content.length > 600 ? p.content.slice(0, 600) + "…" : p.content;
-    section += `### ${p.personaName}의 의견\n${trimmed}\n\n`;
+    if (p.isUser) {
+      // 사용자가 토론 도중에 끼어들어서 한 말. 다음 발언자는 이 말을 직접 받아주는 게 자연스럽다.
+      section += `### 👤 ${p.personaName}(사용자)이 토론 중간에 끼어들어 한 말\n${trimmed}\n\n`;
+    } else {
+      section += `### ${p.personaName}의 의견\n${trimmed}\n\n`;
+    }
+  }
+
+  if (hasUserTurn) {
+    section += `중요: 위에 사용자가 토론 중간에 끼어들어 한 말이 있어. 당신의 의견을 시작할 때 그 말을 가볍게라도 받아주세요. ("말씀하신 부분은…", "그 질문에 답하자면…" 식으로) 사용자를 무시하고 자기 얘기만 하지 마세요.\n\n`;
   }
 
   if (isFinal) {

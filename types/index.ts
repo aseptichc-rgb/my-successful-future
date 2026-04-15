@@ -325,6 +325,62 @@ export interface PushToken {
   createdAt: unknown;
 }
 
+// ── 페르소나 자동 수집 뉴스 (1일 2회 스케줄) ─────────
+/**
+ * 각 빌트인 페르소나가 자기 도메인에서 자동 수집해서 보관하는 기사.
+ * Firestore 경로: personaNews/{personaId}/items/{articleId}
+ */
+export interface CollectedArticle {
+  id: string;
+  personaId: BuiltinPersonaId;
+  source: NewsSource;
+  /** AI가 페르소나 관점에서 1~2 문장으로 요약. 토론 컨텍스트에 그대로 주입됨. */
+  briefing: string;
+  /** 수집 슬롯 인덱스 (0 또는 1) — 하루 2회 중 어느 회차인지 */
+  slotIndex: number;
+  /** YYYY-MM-DD (KST) — 동일 일자 중복 수집 방지용 */
+  collectedDate: string;
+  /** Firestore Timestamp (admin/client 모두 사용 가능하도록 unknown). */
+  collectedAt: unknown;
+}
+
+/**
+ * 페르소나별 일일 수집 스케줄.
+ * 같은 날짜+페르소나 조합이면 항상 동일한 시각이 나오도록 결정론적으로 생성된다.
+ * Firestore 경로: personaNewsSchedule/{YYYY-MM-DD}_{personaId}
+ */
+export interface PersonaNewsSchedule {
+  date: string;                    // YYYY-MM-DD (KST)
+  personaId: BuiltinPersonaId;
+  /** [slot0Minutes, slot1Minutes] — KST 자정 기준 분 (420~1080 사이, 즉 07:00~18:00) */
+  slotMinutes: [number, number];
+  /** 각 슬롯이 이미 수집됐는지 */
+  fetched: [boolean, boolean];
+}
+
+// ── 카운슬 토론 (사람 참여 가능 모드) ────────────────
+/**
+ * 진행 중인 카운슬 토론의 라이브 상태. 사람 끼어들기를 허용하기 위해
+ * sendCouncilQuestion(원샷)과 별도로 useChat이 클라이언트 상태로 유지한다.
+ */
+export interface ActiveCouncilState {
+  groupId: string;
+  question: string;
+  /** 아직 발언 안 한 페르소나 큐 (앞에서부터 소비). future-self는 항상 마지막. */
+  remainingPersonas: PersonaId[];
+  /** 지금까지 누적된 발언 (페르소나 + 사용자 끼어들기 모두 포함) */
+  priorTurns: CouncilTurn[];
+  /** 현재 라운드 인덱스 (1부터 시작) */
+  currentRound: number;
+}
+
+export interface CouncilTurn {
+  /** "persona": AI 발언 / "user": 사용자 끼어들기 */
+  kind: "persona" | "user";
+  speakerName: string;
+  content: string;
+}
+
 // ── 자동 뉴스 API ────────────────────────────────────
 export interface AutoNewsRequest {
   sessionId: string;

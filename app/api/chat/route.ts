@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { streamChatResponse } from "@/lib/gemini";
 import { buildSystemPrompt } from "@/lib/prompts";
 import { getAdminDb } from "@/lib/firebase-admin";
-import type { NewsTopic, PersonaId, GoalSnapshot, DailyTaskSnapshot, MoodKind } from "@/types";
+import { loadReferenceDocumentsForUser } from "@/lib/googleDocs";
+import { getAdminAuth } from "@/lib/firebase-admin";
+import { getRecentArticlesForPersona } from "@/lib/personaNewsCollector";
+import { isBuiltinPersona } from "@/lib/personas";
+import type { BuiltinPersonaId, NewsTopic, PersonaId, GoalSnapshot, DailyTaskSnapshot, MoodKind } from "@/types";
 
 export const maxDuration = 60;
 
@@ -26,8 +30,10 @@ interface ChatApiRequest {
   activeGoals?: GoalSnapshot[];
   dailyTasks?: DailyTaskSnapshot[];
   personaMemory?: string;
-  councilContext?: { personaName: string; content: string }[];
+  councilContext?: { personaName: string; content: string; isUser?: boolean }[];
   isCouncilFinal?: boolean;
+  /** true 이면 서버가 이 페르소나의 최근 자동수집 기사 5건을 시스템 프롬프트에 주입한다. */
+  useCollectedNews?: boolean;
   customPersona?: CustomPersonaPayload;
   mood?: MoodKind;
   /** 첨부 문서 컨텍스트를 로드할 세션 ID. 클라이언트는 텍스트를 보내지 않고 ID 만 넘긴다. */
@@ -112,7 +118,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { message, history = [], topic = "전체", persona = "default", participants, userPersona, futurePersona, userMemory, activeGoals, dailyTasks, personaMemory, councilContext, isCouncilFinal, customPersona, mood, sessionId } = body;
+    const { message, history = [], topic = "전체", persona = "default", participants, userPersona, futurePersona, userMemory, activeGoals, dailyTasks, personaMemory, councilContext, isCouncilFinal, useCollectedNews, customPersona, mood, sessionId } = body;
+
+    // 토론 모드에서 사용: 이 페르소나가 자동 수집해둔 최근 기사 주입
+    let collectedArticles:
+      | { title: string; publisher: string; url: string; briefing?: string }[]
+      | undefined;
+    if (useCollectedNews && isBuiltinPersona(persona as string)) {
+      try {
+        const items = await getRecentArticlesForPersona(persona as BuiltinPersonaId, 5);
+        if (items.length > 0) {
+          collectedArticles = items.map((it) => ({
+            title: it.source.title,
+            publisher: it.source.publisher,
+            url: it.source.url,
+            briefing: it.briefing,
+          }));
+        }
+      } catch {
+        // 조회 실패 시 토론은 그대로 진행 — 컨텍스트만 비어 있을 뿐
+      }
+    }
 
     // 대화 히스토리 + 현재 메시지
     const conversationMessages = [
@@ -120,8 +146,29 @@ export async function POST(request: NextRequest) {
       { role: "user" as const, content: message },
     ];
 
-    // 활성 첨부 문서 로드 (서버에서 직접 — 클라이언트 텍스트 신뢰 X)
-    const attachedDocuments = sessionId ? await loadActiveDocuments(sessionId) : [];
+    // 선택적 인증 — Authorization 헤더가 있으면 사용자별 참조 문서까지 로드.
+    // 헤더가 없거나 검증 실패해도 기존 동작을 깨지 않도록 전역 문서는 항상 로드.
+    let authedUid: string | null = null;
+    try {
+      const header = request.headers.get("authorization") || request.headers.get("Authorization");
+      if (header && header.startsWith("Bearer ")) {
+        const token = header.slice(7).trim();
+        if (token) {
+          const decoded = await getAdminAuth().verifyIdToken(token);
+          authedUid = decoded.uid;
+        }
+      }
+    } catch (err) {
+      console.warn("[chat] optional auth 실패 — 전역 참조 문서만 사용:", err);
+    }
+
+    // 활성 첨부 문서 + Google Docs 상시 참조 문서를 병렬 로드.
+    // Google Docs 는 5분 캐시 되므로 매 요청마다 외부 호출되지 않음.
+    const [sessionDocs, referenceDocs] = await Promise.all([
+      sessionId ? loadActiveDocuments(sessionId) : Promise.resolve([]),
+      loadReferenceDocumentsForUser(authedUid),
+    ]);
+    const attachedDocuments = [...referenceDocs, ...sessionDocs];
 
     // 시스템 프롬프트 빌드 (lib/prompts.ts에서만 관리)
     const systemPrompt = buildSystemPrompt(
@@ -137,6 +184,7 @@ export async function POST(request: NextRequest) {
         personaMemory,
         councilContext,
         isCouncilFinal,
+        collectedArticles,
         customPersona,
         mood,
         attachedDocuments,

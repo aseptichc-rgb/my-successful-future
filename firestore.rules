@@ -123,10 +123,32 @@ service cloud.firestore {
         && request.auth.uid == resource.data.ownerUid;
     }
 
+    // ── userReferenceDocs ──
+    // 사용자별 Google Docs 참조 링크. 모든 읽기/쓰기는 서버(Admin SDK) 를 통해 처리되며
+    // 클라이언트 직접 접근은 차단한다. (API: /api/reference-docs)
+    match /userReferenceDocs/{docId} {
+      allow read, write: if false;
+    }
+
     // ── dailyRitualConfigs ──
     // 데일리 리추얼(아침 브리프 / 저녁 회고) 설정 (문서 ID = uid)
     match /dailyRitualConfigs/{uid} {
       allow read, write: if isOwner(uid);
+    }
+
+    // ── personaNews ──
+    // 페르소나가 자동 수집한 기사들 (server-only write).
+    // 모든 로그인 사용자는 토론 UI에서 페르소나의 수집 기사 헤드라인을 볼 수 있다.
+    match /personaNews/{personaId}/items/{articleId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // 크론(Admin SDK)에서만 쓰기
+    }
+
+    // ── personaNewsSchedule ──
+    // 페르소나별 일일 수집 스케줄 (server-only write). 클라이언트 노출 불필요.
+    match /personaNewsSchedule/{docId} {
+      allow read: if false;
+      allow write: if false;
     }
   }
 }

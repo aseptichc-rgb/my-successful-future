@@ -25,10 +25,12 @@ import GoalPanel from "@/components/chat/GoalPanel";
 import DailyRitualSettings from "@/components/chat/DailyRitualSettings";
 import DailyChecklistPanel from "@/components/chat/DailyChecklistPanel";
 import CouncilLauncher from "@/components/chat/CouncilLauncher";
+import ActiveDebateBanner from "@/components/chat/ActiveDebateBanner";
 import PeerAssistPanel from "@/components/chat/PeerAssistPanel";
 import NewChatModal from "@/components/chat/NewChatModal";
 import MentionDropdown, { getFilteredPersonas } from "@/components/chat/MentionDropdown";
 import AttachedDocsPanel from "@/components/chat/AttachedDocsPanel";
+import ReferenceDocsPanel from "@/components/chat/ReferenceDocsPanel";
 import PushTokenModal from "@/components/chat/PushTokenModal";
 import PresenceIndicator from "@/components/chat/PresenceIndicator";
 import { updateUserPersona, updateFuturePersona, clearUnreadCount, updatePresence } from "@/lib/firebase";
@@ -70,6 +72,7 @@ export default function ChatSessionPage() {
     sessionType, isDirectChat,
     mood,
     sendMessage, sendCouncilQuestion, setSelectedTopic, togglePersona, dismissAI,
+    activeCouncil, startNewsDebate, advanceCouncil, addUserToCouncil, endCouncil,
     personaMemories,
   } = useChat(
     sessionId,
@@ -227,7 +230,12 @@ export default function ChatSessionPage() {
 
     const message = input;
     setInput("");
-    await sendMessage(message);
+    // 라이브 토론이 진행 중이면 사용자 메시지는 토론에 끼어드는 발언으로 처리
+    if (activeCouncil) {
+      await addUserToCouncil(message);
+    } else {
+      await sendMessage(message);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -564,6 +572,7 @@ export default function ChatSessionPage() {
             currentUid={currentUid}
             currentName={currentName}
           />
+          <ReferenceDocsPanel />
           <div className="border-b border-gray-200 bg-gray-50 px-3 py-1 text-[11px] sm:px-4 sm:py-1.5 sm:text-xs">
             <div className="mx-auto flex max-w-3xl items-center justify-end gap-2">
               <button
@@ -589,6 +598,15 @@ export default function ChatSessionPage() {
 
       {/* 입력 영역 */}
       <div className={`border-t border-gray-200 px-3 py-2 sm:px-4 sm:py-3 ${isDirectChat && respondingConversationPersona ? "border-t-0" : ""}`}>
+        {activeCouncil && (
+          <ActiveDebateBanner
+            council={activeCouncil}
+            isLoading={isLoading}
+            onAdvance={advanceCouncil}
+            onEnd={endCouncil}
+            customPersonaMap={customPersonaMap}
+          />
+        )}
         <form
           onSubmit={handleSubmit}
           className="mx-auto flex max-w-3xl items-end gap-2 sm:gap-3"
@@ -613,7 +631,9 @@ export default function ChatSessionPage() {
               }}
               maxLength={MAX_INPUT_LENGTH + 50}
               placeholder={
-                isFutureSelfSession
+                activeCouncil
+                  ? "토론에 끼어들어 의견이나 질문을 남기세요. 다음 발언자가 받아줍니다."
+                  : isFutureSelfSession
                   ? "미래의 나에게 무엇이든 물어보세요. 오늘 힘든 일, 고민, 결정해야 할 것..."
                   : isDirectChat
                     ? "메시지를 입력하세요... (@로 AI 호출)"
@@ -829,7 +849,13 @@ export default function ChatSessionPage() {
       {/* 카운슬 런처 */}
       {showCouncilLauncher && (
         <CouncilLauncher
-          onLaunch={sendCouncilQuestion}
+          onLaunch={async (q, ids, mode) => {
+            if (mode === "live") {
+              await startNewsDebate(ids, q);
+            } else {
+              await sendCouncilQuestion(q, ids);
+            }
+          }}
           onClose={() => setShowCouncilLauncher(false)}
           disabled={isLoading}
         />

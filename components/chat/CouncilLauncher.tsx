@@ -4,8 +4,10 @@ import { useState } from "react";
 import { PERSONAS } from "@/lib/personas";
 import type { BuiltinPersonaId, PersonaId } from "@/types";
 
+type CouncilMode = "oneshot" | "live";
+
 interface CouncilLauncherProps {
-  onLaunch: (question: string, personaIds: PersonaId[]) => Promise<void>;
+  onLaunch: (question: string, personaIds: PersonaId[], mode: CouncilMode) => Promise<void>;
   onClose: () => void;
   disabled?: boolean;
 }
@@ -26,6 +28,7 @@ export default function CouncilLauncher({ onLaunch, onClose, disabled }: Council
     "tech-cto",
   ]);
   const [question, setQuestion] = useState("");
+  const [mode, setMode] = useState<CouncilMode>("live");
   const [launching, setLaunching] = useState(false);
 
   const toggle = (id: BuiltinPersonaId) => {
@@ -34,10 +37,12 @@ export default function CouncilLauncher({ onLaunch, onClose, disabled }: Council
     );
   };
 
+  // 라이브 모드는 질문 생략 가능 (각 페르소나가 자동수집한 기사로 토론 시작)
+  const minQuestionLen = mode === "live" ? 0 : 5;
   const canLaunch =
     !launching &&
     !disabled &&
-    question.trim().length >= 5 &&
+    question.trim().length >= minQuestionLen &&
     selected.length >= 1 &&
     selected.length <= 4;
 
@@ -45,7 +50,7 @@ export default function CouncilLauncher({ onLaunch, onClose, disabled }: Council
     if (!canLaunch) return;
     setLaunching(true);
     try {
-      await onLaunch(question.trim(), selected);
+      await onLaunch(question.trim(), selected, mode);
       onClose();
     } finally {
       setLaunching(false);
@@ -62,9 +67,37 @@ export default function CouncilLauncher({ onLaunch, onClose, disabled }: Council
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-1 text-lg font-bold text-gray-900">🪑 카운슬 소집</h2>
-        <p className="mb-5 text-xs text-gray-500">
+        <p className="mb-4 text-xs text-gray-500">
           여러 전문가가 순서대로 의견을 내고, 마지막에 🌟 미래의 나가 종합해줍니다.
         </p>
+
+        {/* 모드 선택 */}
+        <div className="mb-4 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setMode("live")}
+            className={`rounded-lg border px-3 py-2 text-left text-xs transition-colors ${
+              mode === "live"
+                ? "border-emerald-500 bg-emerald-50 text-emerald-900"
+                : "border-gray-200 text-gray-600 hover:bg-gray-50"
+            }`}
+          >
+            <div className="font-semibold">🗣️ 라이브 토론</div>
+            <div className="mt-0.5 text-[11px] opacity-80">한 명씩 발언 · 사람도 끼어들 수 있음 · 자동수집 기사 활용</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("oneshot")}
+            className={`rounded-lg border px-3 py-2 text-left text-xs transition-colors ${
+              mode === "oneshot"
+                ? "border-indigo-500 bg-indigo-50 text-indigo-900"
+                : "border-gray-200 text-gray-600 hover:bg-gray-50"
+            }`}
+          >
+            <div className="font-semibold">⚡ 원샷 카운슬</div>
+            <div className="mt-0.5 text-[11px] opacity-80">전원이 한 번에 의견 → 종합 (기존 방식)</div>
+          </button>
+        </div>
 
         <div className="mb-4">
           <label className="mb-2 block text-sm font-medium text-gray-700">
@@ -107,12 +140,16 @@ export default function CouncilLauncher({ onLaunch, onClose, disabled }: Council
 
         <div className="mb-5">
           <label className="mb-2 block text-sm font-medium text-gray-700">
-            질문
+            질문 {mode === "live" && <span className="text-xs font-normal text-gray-400">(생략 시 오늘 자동수집된 뉴스로 토론)</span>}
           </label>
           <textarea
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="예: 지금 다니는 회사를 나와서 창업해도 될까? 자금은 충분한데 시장 타이밍이 불안해."
+            placeholder={
+              mode === "live"
+                ? "비워두면 각 전문가가 오늘 모은 기사 중 가장 중요한 이슈를 골라 토론을 시작합니다."
+                : "예: 지금 다니는 회사를 나와서 창업해도 될까? 자금은 충분한데 시장 타이밍이 불안해."
+            }
             rows={4}
             maxLength={500}
             className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
