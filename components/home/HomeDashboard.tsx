@@ -8,6 +8,7 @@ import { useGoals } from "@/hooks/useGoals";
 import { useDailyTasks } from "@/hooks/useDailyTasks";
 import DailyChecklistPanel from "@/components/chat/DailyChecklistPanel";
 import NewChatModal from "@/components/chat/NewChatModal";
+import ReferenceDocsPanel from "@/components/chat/ReferenceDocsPanel";
 import type { ChatSession } from "@/types";
 
 interface Props {
@@ -196,6 +197,11 @@ export default function HomeDashboard({ uid, displayName, futureSelfId }: Props)
               고민을 여러 전문가에게 묻기
             </div>
           </button>
+        </section>
+
+        {/* Google Docs 참조 문서 관리 */}
+        <section className="mb-4 overflow-hidden rounded-2xl border border-gray-200/70 bg-white shadow-sm">
+          <ReferenceDocsPanel />
         </section>
 
         {/* 최근 대화 */}
