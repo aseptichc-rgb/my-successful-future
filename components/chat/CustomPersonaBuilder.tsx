@@ -1,7 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import type { CustomPersona } from "@/types";
+import { useEffect, useState } from "react";
+import type { CustomPersona, CustomPersonaSchedule } from "@/types";
+import PersonaRefDocsModal from "./PersonaRefDocsModal";
+import CustomPersonaScheduleModal from "./CustomPersonaScheduleModal";
+import { useAuth } from "@/lib/auth-context";
+import { onCustomPersonaScheduleSnapshot } from "@/lib/firebase";
 
 interface CustomPersonaBuilderProps {
   initial?: CustomPersona;
@@ -38,12 +42,40 @@ export default function CustomPersonaBuilder({ initial, onSave, onClose, onDelet
   const [systemPromptAddition, setSystemPromptAddition] = useState(initial?.systemPromptAddition || "");
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [refDocsOpen, setRefDocsOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [schedule, setSchedule] = useState<CustomPersonaSchedule | null>(null);
+
+  const { firebaseUser } = useAuth();
+  const uid = firebaseUser?.uid;
+
+  useEffect(() => {
+    if (!uid || !initial?.id) {
+      setSchedule(null);
+      return;
+    }
+    const unsub = onCustomPersonaScheduleSnapshot(uid, initial.id, (cfg) => {
+      setSchedule(cfg);
+    });
+    return unsub;
+  }, [uid, initial?.id]);
 
   const canSave =
     !saving &&
     name.trim().length >= 1 &&
     name.trim().length <= 20 &&
     systemPromptAddition.trim().length >= 20;
+
+  const isDirty =
+    name !== (initial?.name || "") ||
+    icon !== (initial?.icon || "✨") ||
+    description !== (initial?.description || "") ||
+    systemPromptAddition !== (initial?.systemPromptAddition || "");
+
+  const handleBackdropClose = () => {
+    if (isDirty && !window.confirm("작성 중인 내용이 사라집니다. 닫을까요?")) return;
+    onClose();
+  };
 
   const handleSave = async () => {
     if (!canSave) return;
@@ -75,7 +107,7 @@ export default function CustomPersonaBuilder({ initial, onSave, onClose, onDelet
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={onClose}
+      onClick={handleBackdropClose}
     >
       <div
         className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
@@ -168,6 +200,50 @@ export default function CustomPersonaBuilder({ initial, onSave, onClose, onDelet
               </div>
             </div>
           </div>
+
+          <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-800">📘 참조 문서 (Google Docs)</p>
+                <p className="mt-0.5 text-[11px] text-gray-500">
+                  {initial
+                    ? "이 멘토가 배경지식으로 참고할 Google Docs를 연결해요. 문서 내용은 답변에 반영됩니다."
+                    : "멘토를 먼저 저장한 뒤 편집 화면에서 문서를 연결할 수 있어요."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRefDocsOpen(true)}
+                disabled={!initial}
+                className="shrink-0 rounded-md border border-blue-200 bg-white px-2.5 py-1 text-[11px] font-medium text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                문서 관리
+              </button>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-violet-100 bg-violet-50/40 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-800">📰 정시 뉴스 알림</p>
+                <p className="mt-0.5 text-[11px] text-gray-500">
+                  {!initial
+                    ? "멘토를 먼저 저장한 뒤 편집 화면에서 정시 뉴스 알림을 설정할 수 있어요."
+                    : schedule?.enabled
+                      ? `켜짐 · ${schedule.scheduledTimes.map((s) => s.time).join(", ") || "시간 미설정"} · 키워드 ${schedule.keywords[0] ?? ""}${(schedule.keywords.length || 0) > 1 ? ` 외 ${schedule.keywords.length - 1}` : ""}`
+                      : "꺼짐 · 클릭해서 키워드와 발송 시각을 설정하세요"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setScheduleOpen(true)}
+                disabled={!initial}
+                className="shrink-0 rounded-md border border-violet-200 bg-white px-2.5 py-1 text-[11px] font-medium text-violet-700 hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                알림 설정
+              </button>
+            </div>
+          </div>
         </div>
 
         {confirmDelete && onDelete && (
@@ -225,6 +301,24 @@ export default function CustomPersonaBuilder({ initial, onSave, onClose, onDelet
           </div>
         </div>
       </div>
+
+      {refDocsOpen && initial && (
+        <PersonaRefDocsModal
+          personaId={initial.id}
+          personaName={name || initial.name}
+          personaIcon={icon || initial.icon}
+          onClose={() => setRefDocsOpen(false)}
+        />
+      )}
+
+      {scheduleOpen && initial && (
+        <CustomPersonaScheduleModal
+          personaId={initial.id}
+          personaName={name || initial.name}
+          personaIcon={icon || initial.icon}
+          onClose={() => setScheduleOpen(false)}
+        />
+      )}
     </div>
   );
 }

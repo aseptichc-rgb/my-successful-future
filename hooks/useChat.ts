@@ -50,14 +50,28 @@ async function buildAuthHeaders(): Promise<Record<string, string>> {
   return base;
 }
 
-/** 메시지에서 @멘션된 페르소나 ID를 추출 */
-function parseMentions(content: string): PersonaId[] {
+/** 정규식 메타문자를 이스케이프 — 페르소나 이름에 특수기호가 들어가도 안전 */
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** 메시지에서 @멘션된 페르소나 ID를 추출 (빌트인 + 커스텀 자문단 모두) */
+function parseMentions(
+  content: string,
+  customPersonas?: Record<string, CustomPersona>,
+): PersonaId[] {
   const mentioned: PersonaId[] = [];
-  for (const persona of Object.values(PERSONAS)) {
+  const seen = new Set<string>();
+  const candidates: { id: PersonaId; name: string }[] = [
+    ...Object.values(PERSONAS).map((p) => ({ id: p.id, name: p.name })),
+    ...Object.values(customPersonas || {}).map((p) => ({ id: p.id as PersonaId, name: p.name })),
+  ];
+  for (const c of candidates) {
     // @페르소나이름 패턴 매칭 (이름 뒤에 공백이나 문장 끝)
-    const pattern = new RegExp(`@${persona.name}(?:\\s|$)`, "g");
-    if (pattern.test(content)) {
-      mentioned.push(persona.id);
+    const pattern = new RegExp(`@${escapeRegex(c.name)}(?:\\s|$)`, "g");
+    if (pattern.test(content) && !seen.has(c.id as string)) {
+      mentioned.push(c.id);
+      seen.add(c.id as string);
     }
   }
   return mentioned;
@@ -593,12 +607,19 @@ export function useChat(
         return;
       }
 
-      // @멘션 파싱 (모든 세션 타입에서 공통)
-      const mentionedPersonas = parseMentions(content);
+      // @멘션 파싱 (모든 세션 타입에서 공통, 커스텀 자문단도 인식)
+      const mentionedPersonas = parseMentions(content, customPersonaMapRef.current);
       const currentSessionType: SessionType = session?.sessionType || "ai";
 
+      // "1명만 있는 대화방" = 참여자(사람)가 본인 1명 이하 + 활성 페르소나 중 뉴스봇(default)이 아닌 게 있을 때
+      // → @멘션 없이도 활성 페르소나가 자동 응답. 뉴스봇만 활성일 땐 자동 응답하지 않음(원래 동작 유지).
+      const participantCount = session?.participants?.length ?? 1;
+      const nonDefaultActive = activePersonas.filter((p) => p !== "default");
+      const soloAutoRespond = participantCount <= 1 && nonDefaultActive.length > 0;
+
       // DM/그룹 채팅: @멘션도 없고 진행 중인 AI 대화도 없으면 메시지만 저장
-      if ((currentSessionType === "dm" || currentSessionType === "group") && mentionedPersonas.length === 0 && !conversationPersonaRef.current) {
+      // 단, 1인 방이고 뉴스봇 외 활성 페르소나가 있으면 아래 루트로 떨어져 자동 응답한다.
+      if ((currentSessionType === "dm" || currentSessionType === "group") && mentionedPersonas.length === 0 && !conversationPersonaRef.current && !soloAutoRespond) {
         // 푸시 알림 트리거
         if (currentUid) {
           fetch("/api/notify", {
@@ -637,6 +658,9 @@ export function useChat(
         conversationPersonaRef.current = mentionedPersonas.length === 1 ? mentionedPersonas[0] : null;
       } else if (conversationPersonaRef.current) {
         respondPersonas = [conversationPersonaRef.current];
+      } else if (soloAutoRespond) {
+        // 1인 방: 뉴스봇 외 활성 페르소나가 @ 없이도 이어서 응답
+        respondPersonas = nonDefaultActive;
       } else {
         // 메시지 내용을 분석하여 가장 적절한 페르소나(들)를 자동 선택
         respondPersonas = routeToPersonas(content, currentSessionType);

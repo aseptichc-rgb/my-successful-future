@@ -9,6 +9,7 @@ import {
   MAX_PERSONA_DESC_LEN,
   MAX_PERSONA_SYSTEM_PROMPT_LEN,
 } from "@/lib/constants/persona";
+import PersonaRefDocsModal from "./PersonaRefDocsModal";
 
 interface PersonaEditorModalProps {
   personaId: BuiltinPersonaId;
@@ -41,9 +42,21 @@ export default function PersonaEditorModal({
   );
   const [saving, setSaving] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [refDocsOpen, setRefDocsOpen] = useState(false);
 
   const hasOverride = !!override;
   const canSave = !saving && name.trim().length >= 1;
+
+  const isDirty =
+    name !== merged.name ||
+    icon !== merged.icon ||
+    description !== merged.description ||
+    systemPromptAddition !== merged.systemPromptAddition.trim();
+
+  const handleBackdropClose = () => {
+    if (isDirty && !window.confirm("작성 중인 내용이 사라집니다. 닫을까요?")) return;
+    onClose();
+  };
 
   const handleSave = async () => {
     if (!canSave) return;
@@ -80,7 +93,7 @@ export default function PersonaEditorModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={onClose}
+      onClick={handleBackdropClose}
     >
       <div
         className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
@@ -154,6 +167,24 @@ export default function PersonaEditorModal({
               비워두면 기본 프롬프트가 사용됩니다.
             </p>
           </div>
+
+          <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-800">📘 참조 문서 (Google Docs)</p>
+                <p className="mt-0.5 text-[11px] text-gray-500">
+                  이 자문단이 배경지식으로 참고할 Google Docs를 연결해요. 문서 내용은 답변에 반영됩니다.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRefDocsOpen(true)}
+                className="shrink-0 rounded-md border border-blue-200 bg-white px-2.5 py-1 text-[11px] font-medium text-blue-700 hover:bg-blue-50"
+              >
+                문서 관리
+              </button>
+            </div>
+          </div>
         </div>
 
         {confirmReset && (
@@ -211,6 +242,15 @@ export default function PersonaEditorModal({
           </div>
         </div>
       </div>
+
+      {refDocsOpen && (
+        <PersonaRefDocsModal
+          personaId={personaId}
+          personaName={name || merged.name}
+          personaIcon={icon || merged.icon}
+          onClose={() => setRefDocsOpen(false)}
+        />
+      )}
     </div>
   );
 }

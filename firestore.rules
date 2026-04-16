@@ -37,6 +37,12 @@ service cloud.firestore {
       match /customPersonas/{personaId} {
         allow read, write: if isOwner(uid);
       }
+
+      // ── 본인 커스텀 멘토 정시 뉴스 스케줄 ──
+      // 크론(Admin SDK)도 collectionGroup 으로 스캔하지만 Admin SDK 는 룰을 우회한다.
+      match /customPersonaSchedules/{personaId} {
+        allow read, write: if isOwner(uid);
+      }
     }
 
     // ── sessions ──

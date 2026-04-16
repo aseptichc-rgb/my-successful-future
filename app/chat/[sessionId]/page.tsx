@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, type FormEvent, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useChat } from "@/hooks/useChat";
@@ -28,7 +28,7 @@ import CouncilLauncher from "@/components/chat/CouncilLauncher";
 import ActiveDebateBanner from "@/components/chat/ActiveDebateBanner";
 import PeerAssistPanel from "@/components/chat/PeerAssistPanel";
 import NewChatModal from "@/components/chat/NewChatModal";
-import MentionDropdown, { getFilteredPersonas } from "@/components/chat/MentionDropdown";
+import ChatInput, { type ChatInputHandle } from "@/components/chat/ChatInput";
 import AttachedDocsPanel from "@/components/chat/AttachedDocsPanel";
 import ReferenceDocsPanel from "@/components/chat/ReferenceDocsPanel";
 import PushTokenModal from "@/components/chat/PushTokenModal";
@@ -137,7 +137,6 @@ export default function ChatSessionPage() {
     removeScheduledTime: removeKeywordAlertScheduledTime,
   } = useKeywordAlert(sessionId);
 
-  const [input, setInput] = useState("");
   const MAX_INPUT_LENGTH = 500;
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -152,50 +151,9 @@ export default function ChatSessionPage() {
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [showPushTokenModal, setShowPushTokenModal] = useState(false);
 
-  // 멘션 관련 상태
-  const [showMention, setShowMention] = useState(false);
-  const [mentionQuery, setMentionQuery] = useState("");
-  const [mentionIndex, setMentionIndex] = useState(0);
-  const [mentionStart, setMentionStart] = useState(-1);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // 입력 변경 시 @ 감지
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    const cursorPos = e.target.selectionStart;
-    setInput(value);
-
-    // 커서 위치 기준으로 @ 찾기
-    const textBeforeCursor = value.slice(0, cursorPos);
-    const lastAtIndex = textBeforeCursor.lastIndexOf("@");
-
-    if (lastAtIndex !== -1) {
-      const charBeforeAt = lastAtIndex > 0 ? textBeforeCursor[lastAtIndex - 1] : " ";
-      const query = textBeforeCursor.slice(lastAtIndex + 1);
-      // @ 앞이 공백이거나 문장 시작이고, 쿼리에 공백이 없을 때
-      if ((charBeforeAt === " " || charBeforeAt === "\n" || lastAtIndex === 0) && !query.includes(" ")) {
-        const filtered = getFilteredPersonas(query);
-        if (filtered.length > 0) {
-          setShowMention(true);
-          setMentionQuery(query);
-          setMentionStart(lastAtIndex);
-          setMentionIndex(0);
-          return;
-        }
-      }
-    }
-    setShowMention(false);
-  }, []);
-
-  // 멘션 선택 시
-  const handleMentionSelect = useCallback((personaId: PersonaId, personaName: string) => {
-    const before = input.slice(0, mentionStart);
-    const after = input.slice(mentionStart + 1 + mentionQuery.length);
-    const newInput = `${before}@${personaName} ${after}`;
-    setInput(newInput);
-    setShowMention(false);
-    textareaRef.current?.focus();
-  }, [input, mentionStart, mentionQuery]);
+  // 입력창은 별도 컴포넌트로 격리되어 있고, 타이핑이 이 페이지를 리렌더하지 않는다.
+  // 외부(예: PeerAssist 답장 반영)에서 input에 값을 추가해야 하는 경우에만 ref로 접근한다.
+  const chatInputRef = useRef<ChatInputHandle>(null);
 
   useEffect(() => {
     if (!authLoading && !firebaseUser) {
@@ -225,53 +183,25 @@ export default function ChatSessionPage() {
     };
   }, [sessionId, currentUid]);
 
-  const isOverLimit = input.length > MAX_INPUT_LENGTH;
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isOverLimit) return;
-
-    const message = input;
-    setInput("");
-    // 라이브 토론이 진행 중이면 사용자 메시지는 토론에 끼어드는 발언으로 처리
-    if (activeCouncil) {
-      await addUserToCouncil(message);
-    } else {
-      await sendMessage(message);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (showMention) {
-      const filtered = getFilteredPersonas(mentionQuery);
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setMentionIndex((prev) => (prev + 1) % filtered.length);
-        return;
+  // 라이브 토론이 진행 중이면 사용자 발언은 토론 끼어들기로 처리
+  const handleChatSubmit = useCallback(
+    async (text: string) => {
+      if (activeCouncil) {
+        await addUserToCouncil(text);
+      } else {
+        await sendMessage(text);
       }
-      if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setMentionIndex((prev) => (prev - 1 + filtered.length) % filtered.length);
-        return;
-      }
-      if (e.key === "Enter" || e.key === "Tab") {
-        e.preventDefault();
-        const selected = filtered[mentionIndex];
-        if (selected) handleMentionSelect(selected.id, selected.name);
-        return;
-      }
-      if (e.key === "Escape") {
-        e.preventDefault();
-        setShowMention(false);
-        return;
-      }
-    }
+    },
+    [activeCouncil, addUserToCouncil, sendMessage],
+  );
 
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e);
-    }
-  };
+  const inputPlaceholder = activeCouncil
+    ? "토론에 끼어들어 의견이나 질문을 남기세요. 다음 발언자가 받아줍니다."
+    : isFutureSelfSession
+      ? "미래의 나에게 무엇이든 물어보세요. 오늘 힘든 일, 고민, 결정해야 할 것..."
+      : isDirectChat
+        ? "메시지를 입력하세요... (@로 AI 호출)"
+        : "@를 입력하여 페르소나를 멘션하세요...";
 
   // 새 대화 만들기 → DM/그룹 채팅 선택 모달
   const handleNewChat = () => {
@@ -536,14 +466,7 @@ export default function ChatSessionPage() {
       )}
 
       {/* 채팅 영역 */}
-      <ChatWindow messages={messages} isLoading={isLoading} respondingPersona={respondingPersona} />
-
-      {/* 글자수 초과 경고 */}
-      {isOverLimit && (
-        <div className="px-4 py-2 text-center text-sm text-red-600">
-          ⚠️ 메시지는 {MAX_INPUT_LENGTH}자 이내로 입력해주세요. (현재 {input.length}자)
-        </div>
-      )}
+      <ChatWindow messages={messages} isLoading={isLoading} respondingPersona={respondingPersona} customPersonaMap={customPersonaMap} />
 
       {/* 에러 메시지 */}
       {error && (
@@ -610,59 +533,14 @@ export default function ChatSessionPage() {
             customPersonaMap={customPersonaMap}
           />
         )}
-        <form
-          onSubmit={handleSubmit}
-          className="mx-auto flex max-w-3xl items-end gap-2 sm:gap-3"
-        >
-          <div className="relative flex-1">
-            {showMention && (
-              <MentionDropdown
-                query={mentionQuery}
-                onSelect={handleMentionSelect}
-                onClose={() => setShowMention(false)}
-                selectedIndex={mentionIndex}
-              />
-            )}
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyDown}
-              onBlur={() => {
-                // 약간의 딜레이로 클릭 이벤트가 먼저 처리되도록
-                setTimeout(() => setShowMention(false), 200);
-              }}
-              maxLength={MAX_INPUT_LENGTH + 50}
-              placeholder={
-                activeCouncil
-                  ? "토론에 끼어들어 의견이나 질문을 남기세요. 다음 발언자가 받아줍니다."
-                  : isFutureSelfSession
-                  ? "미래의 나에게 무엇이든 물어보세요. 오늘 힘든 일, 고민, 결정해야 할 것..."
-                  : isDirectChat
-                    ? "메시지를 입력하세요... (@로 AI 호출)"
-                    : "@를 입력하여 페르소나를 멘션하세요..."
-              }
-              rows={1}
-              className={`w-full resize-none rounded-[22px] border bg-[#f2f2f7] pl-4 pr-14 py-2.5 text-[15px] leading-[1.45] text-gray-900 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-1 transition-colors ${
-                isOverLimit
-                  ? "border-red-300 focus:border-red-400 focus:ring-red-400"
-                  : "border-transparent focus:border-[#007aff]/40 focus:ring-[#007aff]/30"
-              }`}
-            />
-            <div className={`pointer-events-none absolute bottom-1.5 right-2 text-[10px] sm:text-xs ${
-              isOverLimit ? "text-red-500 font-semibold" : input.length > MAX_INPUT_LENGTH * 0.8 ? "text-yellow-500" : "text-gray-400"
-            }`}>
-              {input.length}/{MAX_INPUT_LENGTH}
-            </div>
-          </div>
-          <button
-            type="submit"
-            disabled={isLoading || !input.trim() || isOverLimit}
-            className="shrink-0 rounded-full bg-[#007aff] px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 active:opacity-80 disabled:opacity-40 transition-opacity sm:px-6"
-          >
-            전송
-          </button>
-        </form>
+        <ChatInput
+          ref={chatInputRef}
+          onSubmit={handleChatSubmit}
+          disabled={isLoading}
+          maxLength={MAX_INPUT_LENGTH}
+          placeholder={inputPlaceholder}
+          customPersonaMap={customPersonaMap}
+        />
       </div>
 
       {/* 초대 모달 */}
@@ -876,9 +754,7 @@ export default function ChatSessionPage() {
           userPersona={userPersona}
           onClose={() => setShowPeerAssist(false)}
           onUseReply={(text) => {
-            setInput((prev) => (prev ? `${prev}\n${text}` : text));
-            // 입력창에 포커스
-            setTimeout(() => textareaRef.current?.focus(), 50);
+            chatInputRef.current?.appendText(text);
           }}
         />
       )}

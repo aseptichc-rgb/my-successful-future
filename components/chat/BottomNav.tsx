@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname, useParams } from "next/navigation";
-import { onSessionsSnapshot, ensureFutureSelfSession } from "@/lib/firebase";
+import { onSessionsSnapshot, ensureFutureSelfSession, updateSessionTitle } from "@/lib/firebase";
 import { formatRelativeDate } from "@/lib/locale";
 import NewChatModal from "@/components/chat/NewChatModal";
 import type { ChatSession } from "@/types";
+
+const MAX_TITLE_LEN = 80;
+const MAX_INLINE_PARTICIPANTS = 3;
 
 interface BottomNavProps {
   uid: string;
@@ -22,6 +25,47 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [futureSelfId, setFutureSelfId] = useState<string | null>(null);
   const [showNewChat, setShowNewChat] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const renameCancelledRef = useRef(false);
+
+  const beginRename = (e: React.MouseEvent, session: ChatSession) => {
+    e.stopPropagation();
+    renameCancelledRef.current = false;
+    setEditingId(session.id);
+    setEditValue(session.title || "");
+  };
+
+  const saveRename = async (session: ChatSession) => {
+    if (renameCancelledRef.current) {
+      renameCancelledRef.current = false;
+      setEditingId(null);
+      return;
+    }
+    const next = editValue.trim();
+    setEditingId(null);
+    if (!next || next === session.title) return;
+    try {
+      await updateSessionTitle(session.id, next.slice(0, MAX_TITLE_LEN));
+    } catch (err) {
+      console.error("세션 이름 변경 실패:", err);
+      window.alert("이름 변경에 실패했습니다. 잠시 후 다시 시도해주세요.");
+    }
+  };
+
+  const getParticipantInfo = (session: ChatSession): { total: number; preview: string } => {
+    const total = session.participants?.length || Object.keys(session.participantNames || {}).length || 0;
+    const others = Object.entries(session.participantNames || {})
+      .filter(([u]) => u !== uid)
+      .map(([, n]) => n)
+      .filter((n): n is string => Boolean(n && n.trim().length > 0));
+    const shownNames = others.slice(0, MAX_INLINE_PARTICIPANTS).join(", ");
+    const preview =
+      others.length > MAX_INLINE_PARTICIPANTS
+        ? `${shownNames} 외 ${others.length - MAX_INLINE_PARTICIPANTS}명`
+        : shownNames;
+    return { total, preview };
+  };
 
   useEffect(() => {
     if (!uid) return;
@@ -97,32 +141,77 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
   };
 
   const renderChatItem = (session: ChatSession) => {
-    const participantCount = session.participants?.length || 1;
     const unreadCount = session.unreadCounts?.[uid] || 0;
     const isPinned = session.pinnedBy?.includes(uid) || false;
     const isMuted = session.mutedBy?.includes(uid) || false;
     const typeIcon = session.sessionType === "dm" ? "💬" : "👥";
     const isActive = activeSessionId === session.id;
+    const isEditing = editingId === session.id;
+    const { total: participantCount, preview: participantPreview } = getParticipantInfo(session);
 
     return (
       <li key={session.id}>
-        <button
-          type="button"
-          onClick={() => goSession(session.id)}
-          className={`flex w-full items-start gap-2 border-b border-gray-100 px-3 py-2.5 text-left transition-colors ${
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => { if (!isEditing) goSession(session.id); }}
+          onKeyDown={(e) => {
+            if (isEditing) return;
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              goSession(session.id);
+            }
+          }}
+          className={`group flex w-full cursor-pointer items-start gap-2 border-b border-gray-100 px-3 py-2.5 text-left transition-colors ${
             isActive ? "bg-blue-50" : "bg-white hover:bg-gray-50"
           }`}
         >
           <span className="mt-0.5 text-base shrink-0">{typeIcon}</span>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1">
-              <p className={`truncate text-sm ${isActive ? "font-semibold text-blue-700" : "font-medium text-gray-900"}`}>
-                {session.title || "새 대화"}
-              </p>
-              {isPinned && <span className="shrink-0 text-[10px] text-gray-400" title="고정됨">📌</span>}
-              {isMuted && <span className="shrink-0 text-[10px] text-gray-400" title="음소거">🔇</span>}
+              {isEditing ? (
+                <input
+                  autoFocus
+                  value={editValue}
+                  maxLength={MAX_TITLE_LEN}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      (e.currentTarget as HTMLInputElement).blur();
+                    } else if (e.key === "Escape") {
+                      e.preventDefault();
+                      renameCancelledRef.current = true;
+                      (e.currentTarget as HTMLInputElement).blur();
+                    }
+                  }}
+                  onBlur={() => saveRename(session)}
+                  className="w-full min-w-0 rounded border border-blue-300 bg-white px-1.5 py-0.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                />
+              ) : (
+                <>
+                  <p className={`truncate text-sm ${isActive ? "font-semibold text-blue-700" : "font-medium text-gray-900"}`}>
+                    {session.title || "새 대화"}
+                  </p>
+                  {isPinned && <span className="shrink-0 text-[10px] text-gray-400" title="고정됨">📌</span>}
+                  {isMuted && <span className="shrink-0 text-[10px] text-gray-400" title="음소거">🔇</span>}
+                </>
+              )}
             </div>
-            {session.lastMessage && (
+            {!isEditing && participantCount > 0 && (
+              <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-gray-500">
+                <svg className="h-3 w-3 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span className="shrink-0 font-medium text-gray-600">{participantCount}명</span>
+                {participantPreview && (
+                  <span className="truncate text-gray-500">· {participantPreview}</span>
+                )}
+              </p>
+            )}
+            {!isEditing && session.lastMessage && (
               <p className="mt-0.5 truncate text-xs text-gray-500">
                 {session.lastMessageSenderName && (
                   <span className="font-medium">{session.lastMessageSenderName}: </span>
@@ -132,15 +221,27 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
             )}
             <div className="mt-0.5 flex items-center gap-2 text-[10px] text-gray-400">
               <span>{formatSessionDate(session.lastMessageAt || session.updatedAt)}</span>
-              {participantCount > 1 && <span>· {participantCount}명</span>}
             </div>
           </div>
-          {unreadCount > 0 && (
+          {!isEditing && (
+            <button
+              type="button"
+              onClick={(e) => beginRename(e, session)}
+              className="mt-0.5 shrink-0 rounded p-1 text-gray-300 opacity-0 transition-opacity hover:bg-gray-100 hover:text-gray-600 group-hover:opacity-100 focus:opacity-100"
+              title="이름 변경"
+              aria-label="대화 이름 변경"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+          )}
+          {unreadCount > 0 && !isEditing && (
             <span className="mt-1 shrink-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
               {unreadCount > 99 ? "99+" : unreadCount}
             </span>
           )}
-        </button>
+        </div>
       </li>
     );
   };

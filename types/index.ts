@@ -217,6 +217,19 @@ export interface KeywordAlertConfig {
   scheduledTimes?: ScheduledNewsSlot[]; // 발사 시각 슬롯 목록
 }
 
+// ── 커스텀 멘토 정시 키워드 뉴스 자동 배달 설정 ────
+// 저장 위치: users/{uid}/customPersonaSchedules/{personaId}
+// 크론이 collectionGroup 으로 스캔하므로 uid 를 비정규화해서 같이 저장한다.
+export interface CustomPersonaSchedule {
+  personaId: string;               // "custom:xxx" — 부모 customPersona 문서 id
+  uid: string;                     // collectionGroup 스캔 시 소유자 식별
+  enabled: boolean;
+  keywords: string[];              // 1~10개
+  scheduledTimes: ScheduledNewsSlot[]; // 최대 6개 슬롯 ("HH:mm" KST)
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
 // ── 목표 & 마일스톤 ──────────────────────────────────
 export type GoalCategory =
   | "career"

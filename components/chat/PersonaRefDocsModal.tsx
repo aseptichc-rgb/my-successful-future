@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getAuth_ } from "@/lib/firebase";
+import { authedFetch } from "@/lib/authedFetch";
 import type { PersonaId } from "@/types";
 
 interface RefDocItem {
@@ -34,24 +34,15 @@ export default function PersonaRefDocsModal({ personaId, personaName, personaIco
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const authedFetch = useCallback(async (input: string, init: RequestInit = {}): Promise<Response> => {
-    const user = getAuth_().currentUser;
-    if (!user) throw new Error("로그인이 필요합니다.");
-    const token = await user.getIdToken();
-    const headers = new Headers(init.headers || {});
-    headers.set("Authorization", `Bearer ${token}`);
-    if (init.body && !headers.has("Content-Type")) {
-      headers.set("Content-Type", "application/json");
-    }
-    return fetch(input, { ...init, headers });
-  }, []);
-
   const loadDocs = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const res = await authedFetch("/api/reference-docs");
-      if (!res.ok) throw new Error("조회 실패");
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || `조회 실패 (HTTP ${res.status})`);
+      }
       const data = (await res.json()) as { items: RefDocItem[] };
       setAllDocs(data.items.map((i) => ({ ...i, personaIds: i.personaIds ?? [] })));
     } catch (err) {
@@ -59,7 +50,7 @@ export default function PersonaRefDocsModal({ personaId, personaName, personaIco
     } finally {
       setLoading(false);
     }
-  }, [authedFetch]);
+  }, []);
 
   useEffect(() => {
     loadDocs();

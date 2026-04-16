@@ -1,27 +1,44 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useMemo, useRef } from "react";
 import { PERSONA_LIST } from "@/lib/personas";
-import type { PersonaId } from "@/types";
+import type { CustomPersona, Persona, PersonaId } from "@/types";
 
 interface MentionDropdownProps {
   query: string;
   onSelect: (personaId: PersonaId, personaName: string) => void;
   onClose: () => void;
   selectedIndex: number;
+  customPersonas?: Record<string, CustomPersona>;
 }
 
-export default function MentionDropdown({
+function buildPersonaList(customPersonas?: Record<string, CustomPersona>): Persona[] {
+  const customAsPersonas: Persona[] = Object.values(customPersonas || {}).map((c) => ({
+    id: c.id,
+    name: c.name,
+    icon: c.icon,
+    description: c.description || "내가 만든 멘토",
+    systemPromptAddition: c.systemPromptAddition,
+  }));
+  return [...PERSONA_LIST, ...customAsPersonas];
+}
+
+function MentionDropdown({
   query,
   onSelect,
   onClose,
   selectedIndex,
+  customPersonas,
 }: MentionDropdownProps) {
+  void onClose;
   const listRef = useRef<HTMLUListElement>(null);
 
-  const filtered = PERSONA_LIST.filter((p) =>
-    p.name.toLowerCase().includes(query.toLowerCase())
-  );
+  // 페르소나 목록은 customPersonas 참조가 유지되는 한 재생성하지 않는다
+  const allPersonas = useMemo(() => buildPersonaList(customPersonas), [customPersonas]);
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase();
+    return allPersonas.filter((p) => p.name.toLowerCase().includes(q));
+  }, [allPersonas, query]);
 
   // 선택된 항목이 보이도록 스크롤
   useEffect(() => {
@@ -61,8 +78,13 @@ export default function MentionDropdown({
   );
 }
 
-export function getFilteredPersonas(query: string) {
-  return PERSONA_LIST.filter((p) =>
+export default memo(MentionDropdown);
+
+export function getFilteredPersonas(
+  query: string,
+  customPersonas?: Record<string, CustomPersona>,
+): Persona[] {
+  return buildPersonaList(customPersonas).filter((p) =>
     p.name.toLowerCase().includes(query.toLowerCase())
   );
 }

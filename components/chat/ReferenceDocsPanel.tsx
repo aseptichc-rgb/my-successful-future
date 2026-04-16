@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getAuth_ } from "@/lib/firebase";
+import { authedFetch } from "@/lib/authedFetch";
 import { useAuth } from "@/lib/auth-context";
 import { useCustomPersonas } from "@/hooks/useCustomPersonas";
 import { PERSONAS } from "@/lib/personas";
@@ -74,18 +74,6 @@ export default function ReferenceDocsPanel() {
     [personaOptions]
   );
 
-  const authedFetch = useCallback(async (input: string, init: RequestInit = {}): Promise<Response> => {
-    const user = getAuth_().currentUser;
-    if (!user) throw new Error("로그인이 필요합니다.");
-    const token = await user.getIdToken();
-    const headers = new Headers(init.headers || {});
-    headers.set("Authorization", `Bearer ${token}`);
-    if (init.body && !headers.has("Content-Type")) {
-      headers.set("Content-Type", "application/json");
-    }
-    return fetch(input, { ...init, headers });
-  }, []);
-
   const loadItems = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -102,7 +90,7 @@ export default function ReferenceDocsPanel() {
     } finally {
       setLoading(false);
     }
-  }, [authedFetch]);
+  }, []);
 
   useEffect(() => {
     if (open) loadItems();

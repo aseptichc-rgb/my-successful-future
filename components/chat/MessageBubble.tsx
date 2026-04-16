@@ -1,3 +1,4 @@
+import { memo } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { ChatMessage } from "@/types";
@@ -85,7 +86,7 @@ const markdownComponents: Components = {
   ),
 };
 
-export default function MessageBubble({ message, showPersonaHeader = true }: Props) {
+function MessageBubble({ message, showPersonaHeader = true }: Props) {
   const isUser = message.role === "user";
   const isCouncil = !!message.councilGroupId;
   const isCouncilFinal = message.councilRound === 999;
@@ -169,3 +170,5 @@ export default function MessageBubble({ message, showPersonaHeader = true }: Pro
     </div>
   );
 }
+
+export default memo(MessageBubble);

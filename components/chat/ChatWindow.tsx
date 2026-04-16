@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { ChatMessage, PersonaId } from "@/types";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
+import type { ChatMessage, CustomPersona, PersonaId } from "@/types";
 import { getPersona } from "@/lib/personas";
 import MessageBubble from "@/components/chat/MessageBubble";
 import LoadingDots from "@/components/ui/LoadingDots";
@@ -10,6 +10,7 @@ interface Props {
   messages: ChatMessage[];
   isLoading: boolean;
   respondingPersona?: PersonaId | null;
+  customPersonaMap?: Record<string, CustomPersona>;
 }
 
 // KST 기준 오늘 00:00의 epoch(ms)
@@ -21,7 +22,7 @@ function kstTodayStartMs(): number {
   return kst.getTime() - 9 * 60 * 60 * 1000;
 }
 
-export default function ChatWindow({ messages, isLoading, respondingPersona }: Props) {
+function ChatWindow({ messages, isLoading, respondingPersona, customPersonaMap }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [showOld, setShowOld] = useState(false);
 
@@ -100,20 +101,25 @@ export default function ChatWindow({ messages, isLoading, respondingPersona }: P
           );
         })}
 
-        {isLoading && respondingPersona && (
-          <div className="mt-4 flex justify-start">
-            <div className="rounded-[22px] bg-[#f2f2f7] px-4 py-3">
-              <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-gray-500">
-                <span>{getPersona(respondingPersona).icon}</span>
-                <span>{getPersona(respondingPersona).name} 응답 중...</span>
+        {isLoading && respondingPersona && (() => {
+          const p = getPersona(respondingPersona, customPersonaMap);
+          return (
+            <div className="mt-4 flex justify-start">
+              <div className="rounded-[22px] bg-[#f2f2f7] px-4 py-3">
+                <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-gray-500">
+                  <span>{p.icon}</span>
+                  <span>{p.name} 응답 중...</span>
+                </div>
+                <LoadingDots />
               </div>
-              <LoadingDots />
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         <div ref={bottomRef} />
       </div>
     </div>
   );
 }
+
+export default memo(ChatWindow);

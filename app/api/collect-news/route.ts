@@ -19,7 +19,7 @@ import {
   KST_OFFSET_MINUTES,
   CRON_TOLERANCE_MINUTES,
 } from "@/lib/constants/keyword-alert";
-import type { BuiltinPersonaId, KeywordAlertConfig, ScheduledNewsSlot, NewsSource } from "@/types";
+import type { BuiltinPersonaId, KeywordAlertConfig, ScheduledNewsSlot, NewsSource, CustomPersona, CustomPersonaSchedule } from "@/types";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -190,6 +190,197 @@ async function postKeywordAlertMessages(
   );
 }
 
+// ── 커스텀 멘토 정시 키워드 뉴스 자동 배달 ─────────────────────────
+// users/{uid}/customPersonaSchedules/{personaId} 문서를 collectionGroup 으로 스캔.
+// 도래한 슬롯이 있으면 runKeywordAlert 로 뉴스를 받아 그 멘토와 가장 최근 대화한
+// 세션에 멘토 자신의 personaId/이름/아이콘으로 메시지를 게시한다.
+interface CustomMentorFireResult {
+  personaId: string;
+  uid: string;
+  slotTime: string;
+  status: "fired" | "no-news" | "no-session" | "no-persona" | "skipped" | "error";
+  sessionId?: string;
+}
+
+async function findLatestSessionForPersona(
+  uid: string,
+  personaId: string
+): Promise<string | null> {
+  const db = getAdminDb();
+  try {
+    // 가장 최근 메시지 1건만 가져와서 그 세션을 사용 (사용자가 마지막으로 이 멘토와 대화한 곳)
+    const msgSnap = await db
+      .collection("messages")
+      .where("personaId", "==", personaId)
+      .orderBy("createdAt", "desc")
+      .limit(1)
+      .get();
+    if (msgSnap.empty) return null;
+    const sessionId = msgSnap.docs[0].get("sessionId") as string | undefined;
+    if (!sessionId) return null;
+
+    // 세션 소유권 검증 (혹시 모를 personaId 충돌 방어)
+    const sessSnap = await db.collection("sessions").doc(sessionId).get();
+    if (!sessSnap.exists) return null;
+    const participants = (sessSnap.get("participants") as string[] | undefined) ?? [];
+    if (!participants.includes(uid)) return null;
+    return sessionId;
+  } catch (err) {
+    console.error(`[collect-news] findLatestSessionForPersona 실패 (${uid}/${personaId}):`, err);
+    return null;
+  }
+}
+
+async function postCustomMentorMessages(
+  sessionId: string,
+  persona: CustomPersona,
+  content: string,
+  sources: NewsSource[],
+  matchedKeyword: string | undefined,
+  slotTime: string
+): Promise<void> {
+  const db = getAdminDb();
+  const headline = matchedKeyword
+    ? `${persona.icon} [${matchedKeyword}] ${slotTime} 정시 뉴스 브리핑`
+    : `${persona.icon} ${slotTime} 정시 뉴스 브리핑`;
+  const fullContent = `${headline}\n\n${content}`;
+  const paragraphs = fullContent
+    .split("\n\n")
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+
+  for (let i = 0; i < paragraphs.length; i++) {
+    const isLast = i === paragraphs.length - 1;
+    await db.collection("messages").add({
+      sessionId,
+      role: "assistant",
+      content: paragraphs[i],
+      sources: isLast ? sources : [],
+      personaId: persona.id,
+      personaName: persona.name,
+      personaIcon: persona.icon,
+      scheduledSlot: slotTime,
+      ...(matchedKeyword && { matchedKeyword }),
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  }
+
+  const lastPreview = paragraphs[paragraphs.length - 1] || headline;
+  await db.collection("sessions").doc(sessionId).set(
+    {
+      updatedAt: FieldValue.serverTimestamp(),
+      lastMessage: lastPreview.length > 100 ? lastPreview.slice(0, 100) + "..." : lastPreview,
+      lastMessageAt: FieldValue.serverTimestamp(),
+      lastMessageSenderName: persona.name,
+    },
+    { merge: true }
+  );
+}
+
+async function markCustomMentorSlotFired(
+  uid: string,
+  personaId: string,
+  slots: ScheduledNewsSlot[],
+  firedTime: string,
+  ymd: string
+): Promise<void> {
+  const updated: ScheduledNewsSlot[] = slots.map((s) =>
+    s.time === firedTime ? { ...s, lastFiredYmd: ymd } : s
+  );
+  const db = getAdminDb();
+  await db
+    .collection("users")
+    .doc(uid)
+    .collection("customPersonaSchedules")
+    .doc(personaId)
+    .set(
+      { scheduledTimes: updated, updatedAt: FieldValue.serverTimestamp() },
+      { merge: true }
+    );
+}
+
+async function processCustomMentorSchedules(): Promise<CustomMentorFireResult[]> {
+  const db = getAdminDb();
+  const { minuteOfDay, ymd } = kstNow();
+  const out: CustomMentorFireResult[] = [];
+
+  let snap;
+  try {
+    snap = await db
+      .collectionGroup("customPersonaSchedules")
+      .where("enabled", "==", true)
+      .get();
+  } catch (err) {
+    console.error("[collect-news] custom mentor 스케줄 스캔 실패:", err);
+    return out;
+  }
+
+  for (const docSnap of snap.docs) {
+    const data = docSnap.data() as CustomPersonaSchedule;
+    const uid = data.uid;
+    const personaId = data.personaId || docSnap.id;
+    const slots: ScheduledNewsSlot[] = data.scheduledTimes ?? [];
+    const keywords = data.keywords ?? [];
+    if (!uid || slots.length === 0 || keywords.length === 0) continue;
+
+    for (const slot of slots) {
+      const slotMin = parseHhmmToMinute(slot.time);
+      if (slotMin === null) continue;
+      const diff = Math.abs(slotMin - minuteOfDay);
+      if (diff > CRON_TOLERANCE_MINUTES) continue;
+      if (slot.lastFiredYmd === ymd) continue;
+
+      try {
+        // 부모 페르소나 문서 로드
+        const personaSnap = await db
+          .collection("users")
+          .doc(uid)
+          .collection("customPersonas")
+          .doc(personaId)
+          .get();
+        if (!personaSnap.exists) {
+          out.push({ personaId, uid, slotTime: slot.time, status: "no-persona" });
+          continue;
+        }
+        const persona = { ...(personaSnap.data() as CustomPersona), id: personaId };
+
+        const sessionId = await findLatestSessionForPersona(uid, personaId);
+        if (!sessionId) {
+          // 사용자가 아직 이 멘토와 대화한 적이 없음 — 슬롯 소비하지 않고 다음 크론에서 재시도
+          out.push({ personaId, uid, slotTime: slot.time, status: "no-session" });
+          continue;
+        }
+
+        const result = await runKeywordAlert(keywords);
+        if (!result.hasNews || !result.content) {
+          out.push({ personaId, uid, slotTime: slot.time, status: "no-news", sessionId });
+          await markCustomMentorSlotFired(uid, personaId, slots, slot.time, ymd);
+          continue;
+        }
+
+        await postCustomMentorMessages(
+          sessionId,
+          persona,
+          result.content,
+          result.sources ?? [],
+          result.matchedKeyword,
+          slot.time
+        );
+        await markCustomMentorSlotFired(uid, personaId, slots, slot.time, ymd);
+        out.push({ personaId, uid, slotTime: slot.time, status: "fired", sessionId });
+      } catch (err) {
+        console.error(
+          `[collect-news] 커스텀 멘토 알림 실패 (${uid}/${personaId}@${slot.time}):`,
+          err
+        );
+        out.push({ personaId, uid, slotTime: slot.time, status: "error" });
+      }
+    }
+  }
+
+  return out;
+}
+
 export async function POST(req: NextRequest) {
   if (!authorize(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -219,7 +410,14 @@ export async function POST(req: NextRequest) {
     console.error("[collect-news] 정시 알림 처리 전체 실패:", err);
   }
 
-  return NextResponse.json({ ok: true, summary, results, scheduled });
+  let customMentors: CustomMentorFireResult[] = [];
+  try {
+    customMentors = await processCustomMentorSchedules();
+  } catch (err) {
+    console.error("[collect-news] 커스텀 멘토 스케줄 처리 전체 실패:", err);
+  }
+
+  return NextResponse.json({ ok: true, summary, results, scheduled, customMentors });
 }
 
 // Vercel Cron은 GET 으로도 호출할 수 있게 한다.

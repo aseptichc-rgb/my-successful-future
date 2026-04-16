@@ -72,6 +72,26 @@ const NEWSBOT_SYSTEM_PROMPT = `당신은 국내외 최신 뉴스를 전달하는
 - 실제 기사 링크는 시스템이 자동으로 카드 형태로 첨부합니다.
 - 홈페이지 주소나 임의의 URL을 만들어 내지 마세요.`;
 
+// ── 주식 시세 환각 방지 규칙 (공통) ─────────────────────
+// 뉴스봇/페르소나 양쪽 모두에 주입되어, 실시간 시세가 주입되지 않았을 때
+// 모델이 학습 데이터 기반으로 숫자를 지어내지 않도록 강하게 유도한다.
+const STOCK_ACCURACY_RULES = `
+
+## 주식 시세·금융 수치 규칙 (매우 중요, 환각 방지)
+- 코스피·코스닥·코스피200 지수, 개별 종목 가격, 환율, 금리 등 숫자 데이터는 절대 기억이나 추측으로 답하지 마세요.
+- 시스템 프롬프트에 "실시간 국내 시세 데이터" 섹션이 주입되어 있으면 거기 있는 숫자만 그대로 전달하세요. 어떤 경우에도 그 숫자를 변경하거나 반올림하지 마세요.
+- 해당 섹션이 없거나 질문한 종목·지수·통화가 목록에 없다면 반드시 다음과 같이 답하세요:
+  "죄송합니다. 현재 실시간 시세를 조회할 수 없습니다. 정확한 가격은 네이버 금융이나 증권사 앱에서 확인해 주세요."
+
+## 시계열 지표 "최신 1건" 원칙 (반드시 준수)
+- 환율, 주가, 지수, 금리 같은 시계열 지표는 반드시 가장 최신 시각의 데이터 1건만 전달하세요.
+- 여러 시점(예: "17시 23분 씨티은행 기준", "4월 14일 하나은행 기준"), 여러 은행, 여러 서비스(Remitly 등)의 수치를 동시에 나열하지 마세요.
+- Google Search 결과에서 여러 시점의 환율·주가가 나와도, 그중 가장 최근 시각 1개만 선택해서 전달하세요.
+- "다른 정보에 따르면", "한편 다른 시점 기준으로는" 같은 식으로 과거 수치를 추가 제공하지 마세요.
+- 사용자가 명시적으로 "과거 추이"나 "비교"를 요청한 경우에만 예외적으로 여러 시점을 제공할 수 있습니다.
+- Google Search 결과에 가격이 나와도, 보도 시점이 명시되지 않은 수치는 인용하지 마세요.
+- 특정 종목 매수·매도 추천은 절대 하지 않습니다. 시세 전달과 일반적 동향 설명까지만 합니다.`;
+
 // 다른 페르소나용: 전문가 관점의 편한 코멘트 프롬프트
 const PERSONA_SYSTEM_PROMPT = `당신은 사용자가 오래 알고 지낸 친한 지인입니다. 자기 전문 분야가 있고, 그 분야 얘기를 사용자와 편하게 나누는 사람입니다.
 
@@ -578,6 +598,8 @@ export interface BuildSystemPromptExtras {
     description: string;
     systemPromptAddition: string;
   };
+  /** 주식 질문 감지 시 NAVER 금융에서 조회한 실시간 시세 블록. 있으면 프롬프트 말미에 그대로 주입. */
+  stockContext?: string;
 }
 
 /**
@@ -659,6 +681,10 @@ export function buildSystemPrompt(
     }
     if (extras?.attachedDocuments && extras.attachedDocuments.length > 0) {
       base += buildAttachedDocumentsSection(extras.attachedDocuments);
+    }
+    base += STOCK_ACCURACY_RULES;
+    if (extras?.stockContext && extras.stockContext.trim().length > 0) {
+      base += extras.stockContext;
     }
     return base;
   }
@@ -814,6 +840,12 @@ ${personaMemory}
   // 첨부 문서 (Claude 결과물 등)
   if (extras?.attachedDocuments && extras.attachedDocuments.length > 0) {
     prompt += buildAttachedDocumentsSection(extras.attachedDocuments);
+  }
+
+  // 주식 시세 환각 방지 규칙 + 실시간 시세 데이터 주입 (있을 때)
+  prompt += STOCK_ACCURACY_RULES;
+  if (extras?.stockContext && extras.stockContext.trim().length > 0) {
+    prompt += extras.stockContext;
   }
 
   return prompt;

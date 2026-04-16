@@ -7,6 +7,7 @@ import { getAdminAuth } from "@/lib/firebase-admin";
 import { getRecentArticlesForPersona } from "@/lib/personaNewsCollector";
 import { isBuiltinPersona, PERSONAS } from "@/lib/personas";
 import { mergePersona } from "@/lib/persona-resolver";
+import { buildStockContext } from "@/lib/stockSource";
 import type { PersonaOverride } from "@/types";
 import type { BuiltinPersonaId, NewsTopic, PersonaId, GoalSnapshot, DailyTaskSnapshot, MoodKind } from "@/types";
 
@@ -164,11 +165,16 @@ export async function POST(request: NextRequest) {
       console.warn("[chat] optional auth 실패 — 전역 참조 문서만 사용:", err);
     }
 
-    // 활성 첨부 문서 + Google Docs 상시 참조 문서를 병렬 로드.
+    // 활성 첨부 문서 + Google Docs 상시 참조 문서 + 실시간 주식 시세를 병렬 로드.
     // Google Docs 는 5분 캐시 되므로 매 요청마다 외부 호출되지 않음.
-    const [sessionDocs, referenceDocs] = await Promise.all([
+    // 주식 시세는 NAVER에 10초 캐시 + 3초 타임아웃 → 일반 질문에도 지연 최소.
+    const [sessionDocs, referenceDocs, stockContext] = await Promise.all([
       sessionId ? loadActiveDocuments(sessionId) : Promise.resolve([]),
       loadReferenceDocumentsForUser(authedUid, persona as string | undefined),
+      buildStockContext(message).catch((err) => {
+        console.warn("[chat] 주식 시세 조회 실패, 시세 컨텍스트 없이 진행:", err);
+        return null;
+      }),
     ]);
     const attachedDocuments = [...referenceDocs, ...sessionDocs];
 
@@ -223,6 +229,7 @@ export async function POST(request: NextRequest) {
         mood,
         attachedDocuments,
         builtinPersonaOverride,
+        stockContext: stockContext || undefined,
       }
     );
 

@@ -36,7 +36,7 @@ import {
   type Firestore,
   type Unsubscribe,
 } from "firebase/firestore";
-import type { User, ChatSession, ChatMessage, Invitation, InviteLink, NewsSource, NewsTopic, SessionType, UserPresence, AutoNewsConfig, KeywordAlertConfig, PersonaId, Goal, DailyRitualConfig, DailyTask, PersonaMemory, CustomPersona, PersonaOverride, PersonaOverrideInput, BuiltinPersonaId } from "@/types";
+import type { User, ChatSession, ChatMessage, Invitation, InviteLink, NewsSource, NewsTopic, SessionType, UserPresence, AutoNewsConfig, KeywordAlertConfig, PersonaId, Goal, DailyRitualConfig, DailyTask, PersonaMemory, CustomPersona, PersonaOverride, PersonaOverrideInput, BuiltinPersonaId, CustomPersonaSchedule, ScheduledNewsSlot } from "@/types";
 
 // ── Firebase 지연 초기화 ─────────────────────────────
 const firebaseConfig = {
@@ -1120,6 +1120,12 @@ export async function updateCustomPersona(
 
 export async function deleteCustomPersona(uid: string, id: string) {
   const db = getDbInstance();
+  // 정시 뉴스 스케줄도 같이 지운다 (실패해도 페르소나 삭제는 진행 — 데이터 정합성보다 사용자 액션 우선)
+  try {
+    await deleteDoc(doc(db, "users", uid, "customPersonaSchedules", id));
+  } catch (err) {
+    console.warn("[deleteCustomPersona] schedule 캐스케이드 실패:", err);
+  }
   await deleteDoc(doc(db, "users", uid, "customPersonas", id));
 }
 
@@ -1140,6 +1146,86 @@ export function onCustomPersonasSnapshot(
     },
     (error) => {
       console.warn("커스텀 페르소나 리스너 에러:", error.message);
+    }
+  );
+}
+
+// ── 커스텀 멘토 정시 뉴스 스케줄 CRUD ───────────────
+// 저장 위치: users/{uid}/customPersonaSchedules/{personaId}
+// uid 필드를 비정규화 저장하여 크론에서 collectionGroup 쿼리로 스캔 가능하게 함.
+export type CustomPersonaScheduleInput = Pick<
+  CustomPersonaSchedule,
+  "enabled" | "keywords" | "scheduledTimes"
+>;
+
+export async function getCustomPersonaSchedule(
+  uid: string,
+  personaId: string
+): Promise<CustomPersonaSchedule | null> {
+  try {
+    const db = getDbInstance();
+    const snap = await getDoc(doc(db, "users", uid, "customPersonaSchedules", personaId));
+    if (!snap.exists()) return null;
+    return snap.data() as CustomPersonaSchedule;
+  } catch (err) {
+    console.error("getCustomPersonaSchedule 실패:", err);
+    return null;
+  }
+}
+
+export async function saveCustomPersonaSchedule(
+  uid: string,
+  personaId: string,
+  input: CustomPersonaScheduleInput
+): Promise<void> {
+  const db = getDbInstance();
+  const ref = doc(db, "users", uid, "customPersonaSchedules", personaId);
+  // 중복 발사 방지를 위해 lastFiredYmd 는 기존 값 보존, 새 슬롯은 빈 값으로 시작
+  const existing = await getDoc(ref);
+  const prevSlots: ScheduledNewsSlot[] =
+    (existing.exists() && (existing.data() as CustomPersonaSchedule).scheduledTimes) || [];
+  const prevByTime = new Map(prevSlots.map((s) => [s.time, s.lastFiredYmd]));
+  const mergedSlots: ScheduledNewsSlot[] = input.scheduledTimes.map((s) => {
+    const prev = prevByTime.get(s.time);
+    return prev ? { time: s.time, lastFiredYmd: prev } : { time: s.time };
+  });
+
+  await setDoc(
+    ref,
+    {
+      personaId,
+      uid,
+      enabled: input.enabled,
+      keywords: input.keywords,
+      scheduledTimes: mergedSlots,
+      ...(existing.exists() ? {} : { createdAt: serverTimestamp() }),
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+
+export async function deleteCustomPersonaSchedule(
+  uid: string,
+  personaId: string
+): Promise<void> {
+  const db = getDbInstance();
+  await deleteDoc(doc(db, "users", uid, "customPersonaSchedules", personaId));
+}
+
+export function onCustomPersonaScheduleSnapshot(
+  uid: string,
+  personaId: string,
+  callback: (schedule: CustomPersonaSchedule | null) => void
+): Unsubscribe {
+  const db = getDbInstance();
+  return onSnapshot(
+    doc(db, "users", uid, "customPersonaSchedules", personaId),
+    (snap) => {
+      callback(snap.exists() ? (snap.data() as CustomPersonaSchedule) : null);
+    },
+    (error) => {
+      console.warn("커스텀 멘토 스케줄 리스너 에러:", error.message);
     }
   );
 }
