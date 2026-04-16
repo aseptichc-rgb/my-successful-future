@@ -11,6 +11,7 @@ import { usePersonaOverrides } from "@/hooks/usePersonaOverrides";
 import CustomPersonaBuilder from "@/components/chat/CustomPersonaBuilder";
 import PersonaEditorModal from "@/components/chat/PersonaEditorModal";
 import { mergePersona } from "@/lib/persona-resolver";
+import PersonaRefDocsModal from "@/components/chat/PersonaRefDocsModal";
 import type { BuiltinPersonaId, ChatSession, CustomPersona, PersonaId } from "@/types";
 
 // 자문단으로 노출할 페르소나 (future-self는 별도 홈, default 뉴스봇은 일반 뉴스용이라 포함)
@@ -33,6 +34,7 @@ export default function AdvisorsPage() {
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editingCustom, setEditingCustom] = useState<CustomPersona | null>(null);
   const [editingBuiltin, setEditingBuiltin] = useState<BuiltinPersonaId | null>(null);
+  const [refDocsTarget, setRefDocsTarget] = useState<{ id: PersonaId; name: string; icon: string } | null>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -150,17 +152,30 @@ export default function AdvisorsPage() {
                       </p>
                     )}
                   </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingBuiltin(personaId as BuiltinPersonaId);
-                    }}
-                    className="absolute right-2 top-2 rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] text-gray-500 opacity-0 transition-opacity hover:text-blue-700 group-hover:opacity-100"
-                    aria-label="역할 편집"
-                  >
-                    ✎ 편집
-                  </button>
+                  <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRefDocsTarget({ id: personaId, name: persona.name, icon: persona.icon });
+                      }}
+                      className="rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] text-gray-500 hover:text-blue-700"
+                      aria-label="참조 문서"
+                    >
+                      📘 문서
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingBuiltin(personaId as BuiltinPersonaId);
+                      }}
+                      className="rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] text-gray-500 hover:text-blue-700"
+                      aria-label="역할 편집"
+                    >
+                      ✎ 편집
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -228,17 +243,30 @@ export default function AdvisorsPage() {
                           )}
                         </div>
                       </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingCustom(cp);
-                          setBuilderOpen(true);
-                        }}
-                        className="absolute right-2 top-2 rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] text-gray-500 opacity-0 transition-opacity hover:text-violet-700 group-hover:opacity-100"
-                      >
-                        편집
-                      </button>
+                      <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRefDocsTarget({ id: cp.id, name: cp.name, icon: cp.icon });
+                          }}
+                          className="rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] text-gray-500 hover:text-blue-700"
+                          aria-label="참조 문서"
+                        >
+                          📘 문서
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingCustom(cp);
+                            setBuilderOpen(true);
+                          }}
+                          className="rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] text-gray-500 hover:text-violet-700"
+                        >
+                          편집
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -247,6 +275,15 @@ export default function AdvisorsPage() {
           </div>
         </div>
       </div>
+
+      {refDocsTarget && (
+        <PersonaRefDocsModal
+          personaId={refDocsTarget.id}
+          personaName={refDocsTarget.name}
+          personaIcon={refDocsTarget.icon}
+          onClose={() => setRefDocsTarget(null)}
+        />
+      )}
 
       {editingBuiltin && (
         <PersonaEditorModal
