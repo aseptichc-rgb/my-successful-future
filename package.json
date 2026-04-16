@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
-    "@types/pdf-parse": "^1.1.5",
     "firebase": "^12.11.0",
     "firebase-admin": "^13.8.0",
     "next": "16.2.2",
@@ -26,6 +25,7 @@
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

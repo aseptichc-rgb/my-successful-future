@@ -6,7 +6,6 @@ import type {
   CustomPersona,
 } from "@/types";
 import { PERSONAS, isBuiltinPersona } from "./personas";
-import { getAdminDb } from "./firebase-admin";
 
 /**
  * 빌트인 페르소나 + 사용자 오버라이드 → 최종 Persona 객체.
@@ -48,33 +47,4 @@ export function resolvePersona(
   return PERSONAS.default;
 }
 
-/**
- * 서버(API 라우트/크론)용 리졸버. admin SDK로 Firestore 읽음.
- * uid가 없으면 기본값 그대로 반환.
- */
-export async function resolvePersonaServer(
-  uid: string | undefined,
-  id: PersonaId
-): Promise<Persona> {
-  if (!isBuiltinPersona(id as string)) {
-    // 커스텀 페르소나는 호출자가 별도 경로로 처리 — 기본값 폴백
-    return PERSONAS.default;
-  }
-  const base = PERSONAS[id as BuiltinPersonaId];
-  if (!uid) return base;
-  try {
-    const db = getAdminDb();
-    const snap = await db
-      .collection("users")
-      .doc(uid)
-      .collection("personaOverrides")
-      .doc(id as string)
-      .get();
-    if (!snap.exists) return base;
-    const ov = snap.data() as PersonaOverride;
-    return mergePersona(base, ov);
-  } catch (error) {
-    console.warn("resolvePersonaServer 실패, 기본값 폴백:", error);
-    return base;
-  }
-}
+// resolvePersonaServer 는 lib/persona-resolver-server.ts 로 분리 (firebase-admin 의존)
