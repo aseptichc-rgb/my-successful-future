@@ -3,19 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import {
-  getCustomPersonaSchedule,
-  saveCustomPersonaSchedule,
-  deleteCustomPersonaSchedule,
+  getPersonaSchedule,
+  savePersonaSchedule,
+  deletePersonaSchedule,
 } from "@/lib/firebase";
 import {
   HHMM_PATTERN,
   MAX_KEYWORDS,
   MAX_SCHEDULED_SLOTS,
 } from "@/lib/constants/keyword-alert";
-import type { ScheduledNewsSlot } from "@/types";
+import { getCuratedKeywords } from "@/lib/curated-keywords";
+import type { PersonaId, ScheduledNewsSlot } from "@/types";
 
 interface Props {
-  personaId: string;
+  personaId: PersonaId;
   personaName: string;
   personaIcon: string;
   onClose: () => void;
@@ -23,7 +24,7 @@ interface Props {
 
 const DEFAULT_SLOT_TIME = "09:00";
 
-export default function CustomPersonaScheduleModal({
+export default function PersonaScheduleModal({
   personaId,
   personaName,
   personaIcon,
@@ -40,12 +41,14 @@ export default function CustomPersonaScheduleModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const curated = useMemo(() => getCuratedKeywords(personaId), [personaId]);
+
   useEffect(() => {
     if (!uid) return;
     let cancelled = false;
     (async () => {
       try {
-        const cfg = await getCustomPersonaSchedule(uid, personaId);
+        const cfg = await getPersonaSchedule(uid, String(personaId));
         if (cancelled) return;
         if (cfg) {
           setEnabled(cfg.enabled);
@@ -79,20 +82,25 @@ export default function CustomPersonaScheduleModal({
     slotTimesValid &&
     (!enabled || (keywords.length > 0 && slots.length > 0));
 
-  function addKeyword() {
-    const draft = keywordDraft.trim();
-    if (!draft) return;
-    if (keywords.includes(draft)) {
-      setKeywordDraft("");
-      return;
-    }
+  function tryAddKeyword(value: string): boolean {
+    const trimmed = value.trim();
+    if (!trimmed) return false;
+    if (keywords.includes(trimmed)) return false;
     if (keywords.length >= MAX_KEYWORDS) {
       setError(`키워드는 최대 ${MAX_KEYWORDS}개까지 등록할 수 있어요.`);
-      return;
+      return false;
     }
-    setKeywords([...keywords, draft]);
-    setKeywordDraft("");
+    setKeywords((prev) => [...prev, trimmed]);
     setError(null);
+    return true;
+  }
+
+  function addKeywordFromDraft() {
+    if (tryAddKeyword(keywordDraft)) {
+      setKeywordDraft("");
+    } else if (keywords.includes(keywordDraft.trim())) {
+      setKeywordDraft("");
+    }
   }
 
   function removeKeyword(k: string) {
@@ -122,11 +130,10 @@ export default function CustomPersonaScheduleModal({
     setSaving(true);
     setError(null);
     try {
-      // 빈 시간 슬롯 보호: 모두 정상 형식이라고 가정 (canSave 검증). 시간 중복은 마지막 값 우선.
       const dedupedSlots = Array.from(
         new Map(slots.map((s) => [s.time, s])).values()
       );
-      await saveCustomPersonaSchedule(uid, personaId, {
+      await savePersonaSchedule(uid, String(personaId), {
         enabled,
         keywords,
         scheduledTimes: dedupedSlots,
@@ -144,7 +151,7 @@ export default function CustomPersonaScheduleModal({
     if (!confirm("정시 뉴스 알림 설정을 완전히 삭제할까요?")) return;
     setSaving(true);
     try {
-      await deleteCustomPersonaSchedule(uid, personaId);
+      await deletePersonaSchedule(uid, String(personaId));
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "삭제 실패");
@@ -193,20 +200,20 @@ export default function CustomPersonaScheduleModal({
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-gray-800">정시 뉴스 알림</p>
                   <p className="text-[11px] text-gray-500">
-                    꺼두면 크론이 이 멘토를 건너뛰어요.
+                    꺼두면 정시 크론과 최초 진입 실시간 브리프 모두 비활성화돼요.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setEnabled((v) => !v)}
-                  className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+                  className={`relative h-6 w-11 shrink-0 overflow-hidden rounded-full transition-colors ${
                     enabled ? "bg-violet-500" : "bg-gray-300"
                   }`}
                   aria-pressed={enabled}
                 >
                   <span
-                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                      enabled ? "translate-x-5" : "translate-x-0.5"
+                    className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                      enabled ? "translate-x-5" : "translate-x-0"
                     }`}
                   />
                 </button>
@@ -230,15 +237,15 @@ export default function CustomPersonaScheduleModal({
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === ",") {
                         e.preventDefault();
-                        addKeyword();
+                        addKeywordFromDraft();
                       }
                     }}
-                    placeholder="예: K-바이오, AI 스타트업"
+                    placeholder="자유 입력 — 예: K-바이오, AI 스타트업"
                     className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
                   />
                   <button
                     type="button"
-                    onClick={addKeyword}
+                    onClick={addKeywordFromDraft}
                     disabled={!keywordDraft.trim() || keywords.length >= MAX_KEYWORDS}
                     className="shrink-0 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
                   >
@@ -262,6 +269,42 @@ export default function CustomPersonaScheduleModal({
                           ✕
                         </button>
                       </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* 추천 키워드 풀 */}
+                {curated.length > 0 && (
+                  <div className="mt-3 space-y-2 rounded-lg border border-gray-100 bg-gray-50/60 p-2.5">
+                    <p className="text-[11px] font-medium text-gray-600">
+                      추천 키워드 · 클릭해서 바로 추가
+                    </p>
+                    {curated.map((group) => (
+                      <div key={group.category}>
+                        <p className="mb-1 text-[10px] text-gray-400">{group.category}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {group.keywords.map((k) => {
+                            const selected = keywords.includes(k);
+                            const disabled = selected || keywords.length >= MAX_KEYWORDS;
+                            return (
+                              <button
+                                key={k}
+                                type="button"
+                                onClick={() => tryAddKeyword(k)}
+                                disabled={disabled}
+                                className={`rounded-full border px-2 py-0.5 text-[11px] transition-colors ${
+                                  selected
+                                    ? "border-violet-300 bg-violet-100 text-violet-700"
+                                    : "border-gray-200 bg-white text-gray-600 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700"
+                                } ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
+                              >
+                                {selected ? "✓ " : "+ "}
+                                {k}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -317,11 +360,9 @@ export default function CustomPersonaScheduleModal({
                 </button>
               </div>
 
-              {/* 안내 */}
               <div className="rounded-lg border border-amber-100 bg-amber-50/60 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
-                ⚠️ 현재 요금제(Vercel Hobby)에서는 서버 크론이 하루 1회 09:00 KST 전후로만 동작해요.
-                다른 시각 슬롯은 등록해둘 수 있지만, 요금제를 시간별 크론으로 업그레이드해야 그 시각에도 발송돼요.
-                또한 발송 대상은 이 멘토와 가장 최근에 대화한 채팅방이에요. 한 번도 대화하지 않았다면 첫 대화 이후부터 발송이 시작돼요.
+                ⚠️ Vercel Hobby 플랜에서는 서버 크론이 하루 1회 09:00 KST 전후만 동작해요.
+                다른 시각 슬롯도 등록해두면, 채팅방에 처음 진입할 때 당일 브리프가 없을 경우 실시간으로 한 번 생성돼요.
               </div>
 
               {error && (

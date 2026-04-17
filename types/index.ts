@@ -217,15 +217,18 @@ export interface KeywordAlertConfig {
   scheduledTimes?: ScheduledNewsSlot[]; // 발사 시각 슬롯 목록
 }
 
-// ── 커스텀 멘토 정시 키워드 뉴스 자동 배달 설정 ────
-// 저장 위치: users/{uid}/customPersonaSchedules/{personaId}
+// ── 챗봇(빌트인/커스텀) 정시 키워드 뉴스 자동 배달 설정 ────
+// 저장 위치: users/{uid}/personaSchedules/{personaId}
+// personaId 는 빌트인 ID (예: "entrepreneur") 또는 커스텀 ID ("custom:xxx") 둘 다 허용한다.
 // 크론이 collectionGroup 으로 스캔하므로 uid 를 비정규화해서 같이 저장한다.
-export interface CustomPersonaSchedule {
-  personaId: string;               // "custom:xxx" — 부모 customPersona 문서 id
+export interface PersonaSchedule {
+  personaId: string;               // 빌트인 PersonaId 또는 "custom:xxx"
   uid: string;                     // collectionGroup 스캔 시 소유자 식별
   enabled: boolean;
   keywords: string[];              // 1~10개
   scheduledTimes: ScheduledNewsSlot[]; // 최대 6개 슬롯 ("HH:mm" KST)
+  /** 최초 진입 실시간 브리프 중복 방지 ("YYYY-MM-DD" KST). 슬롯과 독립. */
+  lastLazyBriefYmd?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

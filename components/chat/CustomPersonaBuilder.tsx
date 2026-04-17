@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { CustomPersona, CustomPersonaSchedule } from "@/types";
+import type { CustomPersona, PersonaSchedule } from "@/types";
 import PersonaRefDocsModal from "./PersonaRefDocsModal";
-import CustomPersonaScheduleModal from "./CustomPersonaScheduleModal";
+import PersonaScheduleModal from "./PersonaScheduleModal";
 import { useAuth } from "@/lib/auth-context";
-import { onCustomPersonaScheduleSnapshot } from "@/lib/firebase";
+import { onPersonaScheduleSnapshot } from "@/lib/firebase";
 
 interface CustomPersonaBuilderProps {
   initial?: CustomPersona;
@@ -44,7 +44,7 @@ export default function CustomPersonaBuilder({ initial, onSave, onClose, onDelet
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [refDocsOpen, setRefDocsOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
-  const [schedule, setSchedule] = useState<CustomPersonaSchedule | null>(null);
+  const [schedule, setSchedule] = useState<PersonaSchedule | null>(null);
 
   const { firebaseUser } = useAuth();
   const uid = firebaseUser?.uid;
@@ -54,7 +54,7 @@ export default function CustomPersonaBuilder({ initial, onSave, onClose, onDelet
       setSchedule(null);
       return;
     }
-    const unsub = onCustomPersonaScheduleSnapshot(uid, initial.id, (cfg) => {
+    const unsub = onPersonaScheduleSnapshot(uid, initial.id, (cfg) => {
       setSchedule(cfg);
     });
     return unsub;
@@ -312,7 +312,7 @@ export default function CustomPersonaBuilder({ initial, onSave, onClose, onDelet
       )}
 
       {scheduleOpen && initial && (
-        <CustomPersonaScheduleModal
+        <PersonaScheduleModal
           personaId={initial.id}
           personaName={name || initial.name}
           personaIcon={icon || initial.icon}

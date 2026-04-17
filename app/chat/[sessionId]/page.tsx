@@ -34,6 +34,7 @@ import ReferenceDocsPanel from "@/components/chat/ReferenceDocsPanel";
 import PushTokenModal from "@/components/chat/PushTokenModal";
 import PresenceIndicator from "@/components/chat/PresenceIndicator";
 import { updateUserPersona, updateFuturePersona, clearUnreadCount, updatePresence } from "@/lib/firebase";
+import { getAuth as getFirebaseAuth } from "firebase/auth";
 import type { PersonaId } from "@/types";
 
 export default function ChatSessionPage() {
@@ -160,6 +161,34 @@ export default function ChatSessionPage() {
       router.push("/login");
     }
   }, [authLoading, firebaseUser, router]);
+
+  // 최초 진입 실시간 브리프 (personaSchedules 가 켜져 있고 당일 브리프가 없으면 한 번 생성)
+  useEffect(() => {
+    if (!sessionId || !currentUid || !initialPersona) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const user = getFirebaseAuth().currentUser;
+        if (!user) return;
+        const token = await user.getIdToken().catch(() => null);
+        if (!token || cancelled) return;
+        await fetch("/api/persona-brief", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ sessionId, personaId: String(initialPersona) }),
+        });
+      } catch (err) {
+        // 브리프 생성은 보조 기능 — 실패해도 채팅방 진입 자체는 계속 진행
+        console.warn("[persona-brief] 요청 실패:", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId, currentUid, initialPersona]);
 
   // 세션 진입 시 안읽은 메시지 초기화 + 프레즌스 업데이트
   useEffect(() => {

@@ -7,6 +7,15 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 const MODEL = "gemini-2.0-flash";
 
+/**
+ * 메시지에서 `@페르소나이름` 형태의 멘션 토큰을 제거한다.
+ * 멘션이 검색 쿼리에 그대로 포함되면 NewsAPI/RSS/Google Search가
+ * 이를 리터럴 검색어로 취급해 결과가 비는 문제를 방지한다.
+ */
+function stripMentions(text: string): string {
+  return text.replace(/@[\p{L}\p{N}_]+/gu, "").replace(/\s{2,}/g, " ").trim();
+}
+
 /** Gemini grounding metadata 타입 (SDK 타입이 불완전하므로 직접 정의) */
 interface GroundingMeta {
   groundingChunks?: { web?: { uri?: string; title?: string } }[];
@@ -64,7 +73,8 @@ export function streamChatResponse(
         const now = new Date();
         const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
         const todayStr = `${kst.getUTCFullYear()}년 ${kst.getUTCMonth() + 1}월 ${kst.getUTCDate()}일`;
-        const messageWithDate = `[오늘 날짜: ${todayStr}] ${lastMessage.content}`;
+        const sanitizedContent = stripMentions(lastMessage.content);
+        const messageWithDate = `[오늘 날짜: ${todayStr}] ${sanitizedContent}`;
 
         const chat = model.startChat({ history });
         const result = await chat.sendMessageStream(messageWithDate);
@@ -136,7 +146,7 @@ export function streamChatResponse(
 
         // Gemini grounding에서 출처를 못 찾은 경우 NewsAPI/RSS 폴백
         if (sources.length === 0 && useWebSearch) {
-          const userQuery = messages[messages.length - 1]?.content || "";
+          const userQuery = stripMentions(messages[messages.length - 1]?.content || "");
           try {
             const newsApiResults = await fetchFromNewsAPI(userQuery, topic);
             if (newsApiResults.length > 0) {

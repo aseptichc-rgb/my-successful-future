@@ -12,6 +12,7 @@ import CustomPersonaBuilder from "@/components/chat/CustomPersonaBuilder";
 import PersonaEditorModal from "@/components/chat/PersonaEditorModal";
 import { mergePersona } from "@/lib/persona-resolver";
 import PersonaRefDocsModal from "@/components/chat/PersonaRefDocsModal";
+import PersonaScheduleModal from "@/components/chat/PersonaScheduleModal";
 import type { BuiltinPersonaId, ChatSession, CustomPersona, PersonaId } from "@/types";
 
 // 자문단으로 노출할 페르소나 (future-self는 별도 홈, default 뉴스봇은 일반 뉴스용이라 포함)
@@ -35,6 +36,7 @@ export default function AdvisorsPage() {
   const [editingCustom, setEditingCustom] = useState<CustomPersona | null>(null);
   const [editingBuiltin, setEditingBuiltin] = useState<BuiltinPersonaId | null>(null);
   const [refDocsTarget, setRefDocsTarget] = useState<{ id: PersonaId; name: string; icon: string } | null>(null);
+  const [scheduleTarget, setScheduleTarget] = useState<{ id: PersonaId; name: string; icon: string } | null>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -157,6 +159,17 @@ export default function AdvisorsPage() {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
+                        setScheduleTarget({ id: personaId, name: persona.name, icon: persona.icon });
+                      }}
+                      className="rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] text-gray-500 hover:text-violet-700"
+                      aria-label="뉴스 키워드 설정"
+                    >
+                      📰 뉴스
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setRefDocsTarget({ id: personaId, name: persona.name, icon: persona.icon });
                       }}
                       className="rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] text-gray-500 hover:text-blue-700"
@@ -248,6 +261,17 @@ export default function AdvisorsPage() {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
+                            setScheduleTarget({ id: cp.id, name: cp.name, icon: cp.icon });
+                          }}
+                          className="rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] text-gray-500 hover:text-violet-700"
+                          aria-label="뉴스 키워드 설정"
+                        >
+                          📰 뉴스
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setRefDocsTarget({ id: cp.id, name: cp.name, icon: cp.icon });
                           }}
                           className="rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] text-gray-500 hover:text-blue-700"
@@ -282,6 +306,15 @@ export default function AdvisorsPage() {
           personaName={refDocsTarget.name}
           personaIcon={refDocsTarget.icon}
           onClose={() => setRefDocsTarget(null)}
+        />
+      )}
+
+      {scheduleTarget && (
+        <PersonaScheduleModal
+          personaId={scheduleTarget.id}
+          personaName={scheduleTarget.name}
+          personaIcon={scheduleTarget.icon}
+          onClose={() => setScheduleTarget(null)}
         />
       )}
 
