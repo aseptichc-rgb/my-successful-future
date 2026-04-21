@@ -357,14 +357,13 @@ export function useChat(
       const decoder = new TextDecoder();
       let buffer = "";
       let fullText = "";
-      let receivedRaw = ""; // 서버에서 받은 누적 텍스트(아직 렌더되지 않을 수 있음)
+      let receivedRaw = "";
       let collectedSources: NewsSource[] = [];
       let readerError: Error | null = null;
       const bubbleIds: string[] = [assistantId];
       const persona = getPersona(personaId, customPersonaMapRef.current);
 
-      // 서버 SSE를 모두 누적만 하고, 응답이 끝난 뒤에 한번에 표시한다.
-      // (사용자 요청: 한 글자씩이 아니라 메시지 완성 후 일괄 표시)
+      // 스트리밍 텍스트를 실시간으로 첫 번째 버블에 표시
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -381,8 +380,24 @@ export function useChat(
 
               if (data.type === "text" && data.content) {
                 receivedRaw += data.content;
+                // 실시간으로 첫 번째 버블에 텍스트 표시
+                const displayText = stripPersonaPrefix(receivedRaw);
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === assistantId ? { ...msg, content: displayText } : msg
+                  )
+                );
               } else if (data.type === "sources" && data.sources) {
                 collectedSources = data.sources;
+                // 소스가 도착하면 즉시 마지막 버블에 첨부
+                const lastBubbleId = bubbleIds[bubbleIds.length - 1];
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === lastBubbleId
+                      ? { ...msg, sources: data.sources! }
+                      : msg
+                  )
+                );
               } else if (data.type === "done" && data.content) {
                 fullText = stripPersonaPrefix(data.content);
               } else if (data.type === "error") {
@@ -400,7 +415,7 @@ export function useChat(
 
       if (!fullText) fullText = stripPersonaPrefix(receivedRaw);
 
-      // 전체 텍스트를 문단 단위로 분리하여 버블 생성/업데이트
+      // 완료 후 문단 분리하여 멀티버블로 재배치
       const paragraphs = normalizePersonaMarkers(fullText)
         .split("\n\n")
         .map((p) => stripPersonaPrefix(p.trim()))
@@ -426,7 +441,7 @@ export function useChat(
         ]);
       }
 
-      // 각 버블에 전체 문단 내용을 한번에 표시
+      // 각 버블에 최종 문단 내용 배치
       setMessages((prev) =>
         prev.map((msg) => {
           const idx = bubbleIds.indexOf(msg.id);
@@ -437,7 +452,7 @@ export function useChat(
         })
       );
 
-      // 소스는 마지막 버블에 첨부
+      // 소스는 마지막 버블에 첨부 (OG 이미지 업데이트 포함)
       if (collectedSources.length > 0) {
         const lastBubbleId = bubbleIds[bubbleIds.length - 1];
         setMessages((prev) =>

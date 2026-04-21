@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { withRetry } from "@/lib/gemini";
 import { buildMorningBriefPrompt, buildEveningReflectionPrompt } from "@/lib/prompts";
 import type { DailyTaskSnapshot, GoalSnapshot, MoodKind } from "@/types";
 
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
         ? "지금 아침이야. 오늘 하루를 시작하는 메시지를 보내줘."
         : "지금 저녁이야. 오늘 하루를 마무리하는 메시지를 보내줘.";
 
-    const result = await model.generateContent(trigger);
+    const result = await withRetry(() => model.generateContent(trigger));
     const text = result.response.text();
 
     const res: DailyRitualResponse = { content: text };

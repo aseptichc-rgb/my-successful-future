@@ -1,7 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import type { BuiltinPersonaId, PersonaOverride, PersonaOverrideInput } from "@/types";
+import { useEffect, useState } from "react";
+import type {
+  BuiltinPersonaId,
+  PersonaSchedule,
+  PersonaOverride,
+  PersonaOverrideInput,
+} from "@/types";
 import { PERSONAS } from "@/lib/personas";
 import { mergePersona } from "@/lib/persona-resolver";
 import {
@@ -9,7 +14,10 @@ import {
   MAX_PERSONA_DESC_LEN,
   MAX_PERSONA_SYSTEM_PROMPT_LEN,
 } from "@/lib/constants/persona";
+import { useAuth } from "@/lib/auth-context";
+import { onPersonaScheduleSnapshot } from "@/lib/firebase";
 import PersonaRefDocsModal from "./PersonaRefDocsModal";
+import PersonaScheduleModal from "./PersonaScheduleModal";
 
 interface PersonaEditorModalProps {
   personaId: BuiltinPersonaId;
@@ -43,6 +51,22 @@ export default function PersonaEditorModal({
   const [saving, setSaving] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [refDocsOpen, setRefDocsOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [schedule, setSchedule] = useState<PersonaSchedule | null>(null);
+
+  const { firebaseUser } = useAuth();
+  const uid = firebaseUser?.uid;
+
+  useEffect(() => {
+    if (!uid) {
+      setSchedule(null);
+      return;
+    }
+    const unsub = onPersonaScheduleSnapshot(uid, personaId, (cfg) => {
+      setSchedule(cfg);
+    });
+    return unsub;
+  }, [uid, personaId]);
 
   const hasOverride = !!override;
   const canSave = !saving && name.trim().length >= 1;
@@ -185,6 +209,26 @@ export default function PersonaEditorModal({
               </button>
             </div>
           </div>
+
+          <div className="rounded-lg border border-violet-100 bg-violet-50/40 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-800">📰 정시 뉴스 알림</p>
+                <p className="mt-0.5 text-[11px] text-gray-500">
+                  {schedule?.enabled
+                    ? `켜짐 · ${schedule.scheduledTimes?.map((s) => s.time).join(", ") || "시간 미설정"} · 키워드 ${schedule.keywords?.[0] ?? ""}${(schedule.keywords?.length || 0) > 1 ? ` 외 ${schedule.keywords.length - 1}` : ""}`
+                    : "꺼짐 · 클릭해서 키워드와 발송 시각을 설정하세요"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setScheduleOpen(true)}
+                className="shrink-0 rounded-md border border-violet-200 bg-white px-2.5 py-1 text-[11px] font-medium text-violet-700 hover:bg-violet-50"
+              >
+                알림 설정
+              </button>
+            </div>
+          </div>
         </div>
 
         {confirmReset && (
@@ -249,6 +293,15 @@ export default function PersonaEditorModal({
           personaName={name || merged.name}
           personaIcon={icon || merged.icon}
           onClose={() => setRefDocsOpen(false)}
+        />
+      )}
+
+      {scheduleOpen && (
+        <PersonaScheduleModal
+          personaId={personaId}
+          personaName={name || merged.name}
+          personaIcon={icon || merged.icon}
+          onClose={() => setScheduleOpen(false)}
         />
       )}
     </div>

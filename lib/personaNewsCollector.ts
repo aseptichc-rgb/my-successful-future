@@ -14,6 +14,7 @@
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { withRetry } from "./gemini";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { PERSONA_SPECIALTIES } from "@/lib/personas";
@@ -23,6 +24,8 @@ import {
   getKstDateString,
   scheduleDocId,
 } from "@/lib/newsSchedule";
+import { fetchMarketOverview } from "@/lib/stockSource";
+import { buildFinanceNewsContext } from "@/lib/naverFinanceNews";
 import type {
   BuiltinPersonaId,
   CollectedArticle,
@@ -111,7 +114,7 @@ async function fetchArticlesForPersona(
     .slice(0, 3);
 
   const today = getKstDateString();
-  const systemPrompt = `당신은 "${personaId}" 도메인 전문 큐레이터입니다.
+  let systemPrompt = `당신은 "${personaId}" 도메인 전문 큐레이터입니다.
 오늘(${today}) 자정 이후 보도된 한국·글로벌 뉴스 중에서, 다음 키워드와 직접 관련된 핵심 기사를 ${MAX_ARTICLES_PER_SLOT}건 이내로 골라주세요.
 키워드: ${keywords.join(", ")}
 
@@ -123,6 +126,23 @@ async function fetchArticlesForPersona(
 
 만약 오늘 의미 있는 신규 기사가 없다면 "[브리핑] [NO_NEWS]" 한 줄만 출력하세요.`;
 
+  // fund-trader: 실시간 시장 시세 + 금융 뉴스를 큐레이션 컨텍스트에 주입
+  if (personaId === "fund-trader") {
+    try {
+      const [marketCtx, newsCtx] = await Promise.all([
+        fetchMarketOverview().catch(() => null),
+        buildFinanceNewsContext().catch(() => null),
+      ]);
+      if (marketCtx) systemPrompt += `\n${marketCtx}`;
+      if (newsCtx) systemPrompt += `\n${newsCtx}`;
+      if (marketCtx || newsCtx) {
+        systemPrompt += `\n위 실시간 데이터를 브리핑에 반영하세요. 시장 시세 변동과 금융 뉴스를 결합하여 요약하세요.`;
+      }
+    } catch {
+      // 시장 데이터 조회 실패 시 기존 Google Search만으로 진행
+    }
+  }
+
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
     model: MODEL,
@@ -130,9 +150,9 @@ async function fetchArticlesForPersona(
     tools: [{ googleSearch: {} } as never],
   });
 
-  const result = await model.generateContent(
+  const result = await withRetry(() => model.generateContent(
     `[오늘 ${today}] 위 키워드 중심으로 가장 신선한 기사를 검색해줘.`
-  );
+  ));
   const response = result.response;
   const text = response.text();
 

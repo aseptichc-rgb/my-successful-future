@@ -5,6 +5,7 @@
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { withRetry } from "./gemini";
 import { buildKeywordAlertPrompt } from "./prompts";
 import { formatDate } from "./locale";
 import type { NewsSource } from "@/types";
@@ -96,7 +97,7 @@ export async function runKeywordAlert(
     const todayStr = `${kst.getUTCFullYear()}년 ${kst.getUTCMonth() + 1}월 ${kst.getUTCDate()}일`;
     const messageWithDate = `[오늘 날짜: ${todayStr}] ${searchQuery}`;
 
-    const result = await model.generateContent(messageWithDate);
+    const result = await withRetry(() => model.generateContent(messageWithDate));
     const response = result.response;
     const rawText = response.text();
 

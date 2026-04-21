@@ -512,3 +512,73 @@ ${lines.join("\n")}
 - 위 데이터에 없는 종목·지수·통화의 가격은 절대 추측하지 마세요.
 - 출처를 언급할 때는 "네이버 금융 기준"이라고만 명시하세요.`;
 }
+
+// ── 시장 개황 자동 조회 (금융 애널리스트 페르소나용) ──────
+// 사용자가 구체적 종목을 묻지 않아도, fund-trader 페르소나가 활성화되면
+// 주요 지수 + 환율을 자동으로 시스템 프롬프트에 주입한다.
+const OVERVIEW_INDEXES: IndexCode[] = ["KOSPI", "KOSDAQ", "KOSPI200"];
+const OVERVIEW_FX: string[] = ["FX_USDKRW", "FX_JPYKRW"];
+const OVERVIEW_STOCKS: { name: string; code: string }[] = [
+  { name: "삼성전자", code: "005930" },
+  { name: "SK하이닉스", code: "000660" },
+  { name: "현대차", code: "005380" },
+  { name: "NAVER", code: "035420" },
+  { name: "카카오", code: "035720" },
+];
+
+/**
+ * 금융 애널리스트(fund-trader) 페르소나가 활성일 때 자동 호출.
+ * 주요 지수 3종 + 핵심 대형주 5종 + 환율 2종을 병렬 조회하여
+ * 시장 개황 텍스트 블록을 반환한다.
+ *
+ * 이미 buildStockContext 에서 사용자가 특정 종목을 질문한 경우,
+ * 중복 데이터는 상위에서 병합/제거한다.
+ *
+ * 전체 실패 시 null 반환 (상위에서 무시).
+ */
+export async function fetchMarketOverview(): Promise<string | null> {
+  try {
+    const [indexResults, stockResults, fxResults] = await Promise.all([
+      Promise.all(OVERVIEW_INDEXES.map((i) => fetchIndexQuote(i))),
+      Promise.all(OVERVIEW_STOCKS.map((t) => fetchStockQuote(t.name, t.code))),
+      Promise.all(OVERVIEW_FX.map((c) => fetchFxQuote(c))),
+    ]);
+
+    const indexQuotes = indexResults.filter((q): q is StockQuote => q !== null);
+    const stockQuotes = stockResults.filter((q): q is StockQuote => q !== null);
+    const fxQuotes = fxResults.filter((q): q is FxQuote => q !== null);
+
+    if (indexQuotes.length === 0 && stockQuotes.length === 0 && fxQuotes.length === 0) {
+      return null;
+    }
+
+    const lines: string[] = [];
+    if (indexQuotes.length > 0) {
+      lines.push("[주요 지수]");
+      for (const q of indexQuotes) lines.push(formatQuoteLine(q, true));
+    }
+    if (stockQuotes.length > 0) {
+      lines.push("[시가총액 상위 종목]");
+      for (const q of stockQuotes) lines.push(formatQuoteLine(q, false));
+    }
+    if (fxQuotes.length > 0) {
+      lines.push("[주요 환율]");
+      for (const q of fxQuotes) lines.push(formatFxLine(q));
+    }
+
+    return `
+
+## 📊 시장 개황 (${formatKstNow()} 기준, 출처: NAVER 금융)
+${lines.join("\n")}
+
+[중요 — 반드시 준수]
+- 위 숫자는 NAVER에서 방금 조회한 실제 데이터입니다. 그대로 전달하세요.
+- 숫자를 변경·반올림하지 마세요.
+- 위 데이터에 없는 종목·지수·통화의 가격은 절대 추측하지 마세요.
+- 사용자가 시장 동향을 물으면 위 데이터를 기반으로 분석하세요.
+- 출처를 언급할 때는 "네이버 금융 기준"이라고만 명시하세요.`;
+  } catch (err) {
+    console.error("[fetchMarketOverview] 시장 개황 조회 실패:", err);
+    return null;
+  }
+}

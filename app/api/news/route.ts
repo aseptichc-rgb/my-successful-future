@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { withRetry } from "@/lib/gemini";
 
 export const maxDuration = 60;
 
@@ -22,14 +23,14 @@ export async function POST(request: NextRequest) {
       tools: [{ googleSearch: {} } as never],
     });
 
-    const result = await model.generateContent(
+    const result = await withRetry(() => model.generateContent(
       `다음 주제에 대한 최신 뉴스를 검색하고, 각 뉴스의 제목, 출처, 날짜, URL, 요약을 JSON 배열로 반환해주세요.
 주제: ${query}
 ${topic ? `도메인: ${topic}` : ""}
 
 반드시 아래 JSON 형식으로만 응답하세요:
 [{"title": "...", "publisher": "...", "publishedAt": "...", "url": "...", "summary": "..."}]`
-    );
+    ));
 
     const text = result.response.text();
 

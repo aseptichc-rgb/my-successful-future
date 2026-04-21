@@ -7,7 +7,8 @@ import { getAdminAuth } from "@/lib/firebase-admin";
 import { getRecentArticlesForPersona } from "@/lib/personaNewsCollector";
 import { isBuiltinPersona, PERSONAS } from "@/lib/personas";
 import { mergePersona } from "@/lib/persona-resolver";
-import { buildStockContext } from "@/lib/stockSource";
+import { buildStockContext, fetchMarketOverview } from "@/lib/stockSource";
+import { buildFinanceNewsContext } from "@/lib/naverFinanceNews";
 import type { PersonaOverride } from "@/types";
 import type { BuiltinPersonaId, NewsTopic, PersonaId, GoalSnapshot, DailyTaskSnapshot, MoodKind } from "@/types";
 
@@ -123,26 +124,6 @@ export async function POST(request: NextRequest) {
 
     const { message, history = [], topic = "전체", persona = "default", participants, userPersona, futurePersona, userMemory, activeGoals, dailyTasks, personaMemory, councilContext, isCouncilFinal, useCollectedNews, customPersona, mood, sessionId } = body;
 
-    // 토론 모드에서 사용: 이 페르소나가 자동 수집해둔 최근 기사 주입
-    let collectedArticles:
-      | { title: string; publisher: string; url: string; briefing?: string }[]
-      | undefined;
-    if (useCollectedNews && isBuiltinPersona(persona as string)) {
-      try {
-        const items = await getRecentArticlesForPersona(persona as BuiltinPersonaId, 5);
-        if (items.length > 0) {
-          collectedArticles = items.map((it) => ({
-            title: it.source.title,
-            publisher: it.source.publisher,
-            url: it.source.url,
-            briefing: it.briefing,
-          }));
-        }
-      } catch {
-        // 조회 실패 시 토론은 그대로 진행 — 컨텍스트만 비어 있을 뿐
-      }
-    }
-
     // 대화 히스토리 + 현재 메시지
     const conversationMessages = [
       ...history,
@@ -150,7 +131,6 @@ export async function POST(request: NextRequest) {
     ];
 
     // 선택적 인증 — Authorization 헤더가 있으면 사용자별 참조 문서까지 로드.
-    // 헤더가 없거나 검증 실패해도 기존 동작을 깨지 않도록 전역 문서는 항상 로드.
     let authedUid: string | null = null;
     try {
       const header = request.headers.get("authorization") || request.headers.get("Authorization");
@@ -165,49 +145,74 @@ export async function POST(request: NextRequest) {
       console.warn("[chat] optional auth 실패 — 전역 참조 문서만 사용:", err);
     }
 
-    // 활성 첨부 문서 + Google Docs 상시 참조 문서 + 실시간 주식 시세를 병렬 로드.
-    // Google Docs 는 5분 캐시 되므로 매 요청마다 외부 호출되지 않음.
-    // 주식 시세는 NAVER에 10초 캐시 + 3초 타임아웃 → 일반 질문에도 지연 최소.
-    const [sessionDocs, referenceDocs, stockContext] = await Promise.all([
+    // fund-trader 페르소나 여부 판별 (시장 개황 + 금융 뉴스 자동 주입 대상)
+    const isFundTrader = persona === "fund-trader";
+
+    // 모든 외부 조회를 한 번에 병렬 실행 — 순차 대기를 최소화
+    const [sessionDocs, referenceDocs, stockContext, marketOverview, financeNewsContext, collectedArticlesRaw, personaOverrideSnap] = await Promise.all([
       sessionId ? loadActiveDocuments(sessionId) : Promise.resolve([]),
       loadReferenceDocumentsForUser(authedUid, persona as string | undefined),
       buildStockContext(message).catch((err) => {
         console.warn("[chat] 주식 시세 조회 실패, 시세 컨텍스트 없이 진행:", err);
         return null;
       }),
+      // fund-trader: 주요 지수·환율·대형주 시장 개황 자동 조회
+      isFundTrader
+        ? fetchMarketOverview().catch((err) => {
+            console.warn("[chat] 시장 개황 조회 실패:", err);
+            return null;
+          })
+        : Promise.resolve(null),
+      // fund-trader: 네이버 증권 최신 금융 뉴스 자동 조회
+      isFundTrader
+        ? buildFinanceNewsContext().catch((err) => {
+            console.warn("[chat] 금융 뉴스 조회 실패:", err);
+            return null;
+          })
+        : Promise.resolve(null),
+      // 토론 모드: 페르소나 자동수집 기사 조회
+      (useCollectedNews && isBuiltinPersona(persona as string))
+        ? getRecentArticlesForPersona(persona as BuiltinPersonaId, 5).catch(() => [])
+        : Promise.resolve([]),
+      // 빌트인 페르소나 오버라이드 조회
+      (authedUid && isBuiltinPersona(persona as string) && persona !== "future-self")
+        ? getAdminDb().collection("users").doc(authedUid).collection("personaOverrides").doc(persona as string).get().catch(() => null)
+        : Promise.resolve(null),
     ]);
     const attachedDocuments = [...referenceDocs, ...sessionDocs];
 
-    // 빌트인 페르소나에 대한 사용자 오버라이드 로드 (future-self 제외 — 별도 빌더)
+    const collectedArticles = collectedArticlesRaw.length > 0
+      ? collectedArticlesRaw.map((it) => ({
+          title: it.source.title,
+          publisher: it.source.publisher,
+          url: it.source.url,
+          briefing: it.briefing,
+        }))
+      : undefined;
+
     let builtinPersonaOverride:
       | { name: string; icon: string; description: string; systemPromptAddition: string }
       | undefined;
-    if (
-      authedUid &&
-      isBuiltinPersona(persona as string) &&
-      persona !== "future-self"
-    ) {
-      try {
-        const db = getAdminDb();
-        const snap = await db
-          .collection("users")
-          .doc(authedUid)
-          .collection("personaOverrides")
-          .doc(persona as string)
-          .get();
-        if (snap.exists) {
-          const ov = snap.data() as PersonaOverride;
-          const merged = mergePersona(PERSONAS[persona as keyof typeof PERSONAS], ov);
-          builtinPersonaOverride = {
-            name: merged.name,
-            icon: merged.icon,
-            description: merged.description,
-            systemPromptAddition: merged.systemPromptAddition,
-          };
-        }
-      } catch (err) {
-        console.warn("[chat] persona override 로드 실패, 기본값 사용:", err);
-      }
+    if (personaOverrideSnap && personaOverrideSnap.exists) {
+      const ov = personaOverrideSnap.data() as PersonaOverride;
+      const merged = mergePersona(PERSONAS[persona as keyof typeof PERSONAS], ov);
+      builtinPersonaOverride = {
+        name: merged.name,
+        icon: merged.icon,
+        description: merged.description,
+        systemPromptAddition: merged.systemPromptAddition,
+      };
+    }
+
+    // fund-trader: 시세 컨텍스트 병합 — 사용자가 특정 종목을 물었으면(stockContext)
+    // 해당 시세 + 시장 개황을 합산. 종목 질문 없으면 시장 개황만 주입.
+    let mergedStockContext = stockContext || undefined;
+    if (isFundTrader) {
+      const parts: string[] = [];
+      if (marketOverview) parts.push(marketOverview);
+      if (stockContext) parts.push(stockContext);
+      if (financeNewsContext) parts.push(financeNewsContext);
+      if (parts.length > 0) mergedStockContext = parts.join("\n");
     }
 
     // 시스템 프롬프트 빌드 (lib/prompts.ts에서만 관리)
@@ -229,7 +234,7 @@ export async function POST(request: NextRequest) {
         mood,
         attachedDocuments,
         builtinPersonaOverride,
-        stockContext: stockContext || undefined,
+        stockContext: mergedStockContext,
       }
     );
 

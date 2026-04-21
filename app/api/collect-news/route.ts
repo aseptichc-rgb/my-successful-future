@@ -19,7 +19,7 @@ import {
   KST_OFFSET_MINUTES,
   CRON_TOLERANCE_MINUTES,
 } from "@/lib/constants/keyword-alert";
-import { resolvePersona, postBriefMessages } from "@/lib/persona-brief-poster";
+import { resolvePersona, postBriefMessages, type ResolvedPersona } from "@/lib/persona-brief-poster";
 import type { BuiltinPersonaId, KeywordAlertConfig, ScheduledNewsSlot, NewsSource, PersonaSchedule } from "@/types";
 
 export const maxDuration = 60;
@@ -100,8 +100,9 @@ async function processScheduledKeywordAlerts(): Promise<ScheduledFireResult[]> {
     for (const slot of slots) {
       const slotMin = parseHhmmToMinute(slot.time);
       if (slotMin === null) continue;
-      const diff = Math.abs(slotMin - minuteOfDay);
-      if (diff > CRON_TOLERANCE_MINUTES) continue;
+      // 슬롯 시각이 아직 도래하지 않았으면 스킵 (허용 오차 포함)
+      if (slotMin > minuteOfDay + CRON_TOLERANCE_MINUTES) continue;
+      // 오늘 이미 발사했으면 스킵
       if (slot.lastFiredYmd === ymd) continue;
 
       try {
@@ -232,6 +233,27 @@ async function findLatestSessionForPersona(
   }
 }
 
+/**
+ * 기존 세션이 없을 때 페르소나 브리핑 전용 세션을 자동 생성한다.
+ * 사용자가 로그인하지 않은 상태에서도 크론이 메시지를 남길 수 있도록 하기 위함.
+ */
+async function createSessionForPersona(
+  uid: string,
+  persona: ResolvedPersona
+): Promise<string> {
+  const db = getAdminDb();
+  const ref = await db.collection("sessions").add({
+    uid,
+    title: `${persona.icon} ${persona.name}`,
+    sessionType: "ai",
+    participants: [uid],
+    participantNames: { [uid]: "나" },
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  return ref.id;
+}
+
 async function markPersonaScheduleSlotFired(
   uid: string,
   personaId: string,
@@ -281,8 +303,9 @@ async function processPersonaSchedules(): Promise<PersonaScheduleFireResult[]> {
     for (const slot of slots) {
       const slotMin = parseHhmmToMinute(slot.time);
       if (slotMin === null) continue;
-      const diff = Math.abs(slotMin - minuteOfDay);
-      if (diff > CRON_TOLERANCE_MINUTES) continue;
+      // 슬롯 시각이 아직 도래하지 않았으면 스킵 (허용 오차 포함)
+      if (slotMin > minuteOfDay + CRON_TOLERANCE_MINUTES) continue;
+      // 오늘 이미 발사했으면 스킵
       if (slot.lastFiredYmd === ymd) continue;
 
       try {
@@ -292,11 +315,10 @@ async function processPersonaSchedules(): Promise<PersonaScheduleFireResult[]> {
           continue;
         }
 
-        const sessionId = await findLatestSessionForPersona(uid, personaId);
+        let sessionId = await findLatestSessionForPersona(uid, personaId);
         if (!sessionId) {
-          // 사용자가 아직 이 페르소나와 대화한 적이 없음 — 슬롯 소비하지 않고 다음 크론에서 재시도
-          out.push({ personaId, uid, slotTime: slot.time, status: "no-session" });
-          continue;
+          // 기존 세션이 없으면 자동 생성 — 로그인하지 않아도 브리핑이 쌓이도록
+          sessionId = await createSessionForPersona(uid, persona);
         }
 
         const result = await runKeywordAlert(keywords);

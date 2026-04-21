@@ -7,6 +7,37 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 const MODEL = "gemini-2.0-flash";
 
+const MAX_RETRIES = 5;
+const BASE_DELAY_MS = 2000;
+
+/**
+ * 429 Rate Limit 에러를 지수 백오프로 재시도하는 헬퍼.
+ * 429가 아닌 에러는 즉시 throw 한다.
+ * 최대 5회 재시도, 대기: 2s → 4s → 8s → 16s → 32s
+ */
+export async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await fn();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      const is429 = msg.includes("429") || msg.includes("Resource exhausted");
+      if (!is429 || attempt === MAX_RETRIES) {
+        // 429 최종 실패 시 사용자 친화적 메시지로 변환
+        if (is429) {
+          throw new Error(
+            "현재 AI 서버 요청이 많아 일시적으로 응답할 수 없습니다. 잠시 후 다시 시도해 주세요."
+          );
+        }
+        throw error;
+      }
+      const delay = BASE_DELAY_MS * Math.pow(2, attempt);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+  throw new Error("withRetry: unreachable");
+}
+
 /**
  * 메시지에서 `@페르소나이름` 형태의 멘션 토큰을 제거한다.
  * 멘션이 검색 쿼리에 그대로 포함되면 NewsAPI/RSS/Google Search가
@@ -77,7 +108,7 @@ export function streamChatResponse(
         const messageWithDate = `[오늘 날짜: ${todayStr}] ${sanitizedContent}`;
 
         const chat = model.startChat({ history });
-        const result = await chat.sendMessageStream(messageWithDate);
+        const result = await withRetry(() => chat.sendMessageStream(messageWithDate));
 
         let fullText = "";
 
@@ -160,10 +191,8 @@ export function streamChatResponse(
           }
         }
 
+        // 소스를 먼저 전송 (OG 이미지 없이) → done 이벤트 → 클라이언트가 즉시 표시
         if (sources.length > 0) {
-          // 모든 뉴스 소스에서 OG 이미지 병렬 추출
-          await fetchOgImages(sources);
-
           const sourcesData: ChatStreamEvent = {
             type: "sources",
             sources,
@@ -180,10 +209,31 @@ export function streamChatResponse(
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify(doneData)}\n\n`)
         );
+
+        // OG 이미지를 후속 이벤트로 전송 — 본문 응답을 블로킹하지 않음
+        if (sources.length > 0) {
+          try {
+            await fetchOgImages(sources);
+            const updatedSourcesData: ChatStreamEvent = {
+              type: "sources",
+              sources,
+            };
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify(updatedSourcesData)}\n\n`)
+            );
+          } catch {
+            // OG 이미지 실패 시 무시 — 소스는 이미 전송됨
+          }
+        }
+
         controller.close();
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.";
+        const raw =
+          error instanceof Error ? error.message : String(error);
+        const is429 = raw.includes("429") || raw.includes("Resource exhausted");
+        const errorMessage = is429
+          ? "현재 AI 서버 요청이 많아 일시적으로 응답할 수 없습니다. 잠시 후 다시 시도해 주세요."
+          : raw || "알 수 없는 오류가 발생했습니다.";
         const errorData: ChatStreamEvent = {
           type: "error",
           error: errorMessage,
@@ -209,7 +259,7 @@ export async function generateText(prompt: string, maxTokens: number = 800): Pro
       temperature: 0.3,
     },
   });
-  const result = await model.generateContent(prompt);
+  const result = await withRetry(() => model.generateContent(prompt));
   return result.response.text();
 }
 

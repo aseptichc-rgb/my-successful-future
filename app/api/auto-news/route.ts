@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { withRetry } from "@/lib/gemini";
 import { buildAutoNewsPrompt, buildFutureSelfPrompt } from "@/lib/prompts";
 import { PERSONA_SPECIALTIES, isBuiltinPersona } from "@/lib/personas";
 import { formatDate } from "@/lib/locale";
+import { fetchMarketOverview } from "@/lib/stockSource";
+import { buildFinanceNewsContext } from "@/lib/naverFinanceNews";
 import type { AutoNewsRequest, AutoNewsResponse, BuiltinPersonaId, NewsSource, PersonaId } from "@/types";
 
 export const maxDuration = 60;
@@ -122,6 +125,17 @@ export async function POST(request: NextRequest) {
         customTopics
       );
 
+      // fund-trader: 자동 브리핑에 실시간 시장 개황 + 금융 뉴스 주입
+      if (builtinId === "fund-trader") {
+        const [marketCtx, newsCtx] = await Promise.all([
+          fetchMarketOverview().catch(() => null),
+          buildFinanceNewsContext().catch(() => null),
+        ]);
+        if (marketCtx) systemPrompt += `\n${marketCtx}`;
+        if (newsCtx) systemPrompt += `\n${newsCtx}`;
+        systemPrompt += `\n\n위 실시간 시세와 뉴스 데이터를 반드시 브리핑에 반영하세요. 시장 개황을 언급하고, 주요 뉴스를 분석 관점에서 코멘트하세요.`;
+      }
+
       const allKeywords = [...specialty.searchKeywords, ...(customTopics || [])];
       const selectedKeywords = allKeywords
         .sort(() => Math.random() - 0.5)
@@ -140,7 +154,7 @@ export async function POST(request: NextRequest) {
     const todayStr = `${kst.getUTCFullYear()}년 ${kst.getUTCMonth() + 1}월 ${kst.getUTCDate()}일`;
     const messageWithDate = `[오늘 날짜: ${todayStr}] ${searchQuery}`;
 
-    const result = await model.generateContent(messageWithDate);
+    const result = await withRetry(() => model.generateContent(messageWithDate));
     const response = result.response;
     const text = response.text();
 
