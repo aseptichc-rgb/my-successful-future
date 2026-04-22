@@ -33,7 +33,7 @@ import type {
   PersonaNewsSchedule,
 } from "@/types";
 
-const MODEL = "gemini-2.0-flash";
+const MODEL = "gemini-2.5-flash-lite";
 const MAX_ARTICLES_PER_SLOT = 3;
 const ARTICLE_RETENTION_DAYS = 3;     // 3일 지난 기사 정리 대상
 

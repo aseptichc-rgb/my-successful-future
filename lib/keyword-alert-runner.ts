@@ -10,7 +10,7 @@ import { buildKeywordAlertPrompt } from "./prompts";
 import { formatDate } from "./locale";
 import type { NewsSource } from "@/types";
 
-const MODEL = "gemini-2.0-flash";
+const MODEL = "gemini-2.5-flash-lite";
 
 interface GroundingMeta {
   groundingChunks?: { web?: { uri?: string; title?: string } }[];

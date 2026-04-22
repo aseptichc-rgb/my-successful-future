@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
     const result = await withRetry(() => model.generateContent(
       `다음 뉴스 내용을 한국어로 요약해주세요. 원문을 그대로 재현하지 말고, AI가 재작성한 형태로 제공하세요.

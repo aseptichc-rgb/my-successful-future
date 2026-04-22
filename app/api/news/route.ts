@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
 
     // Gemini + Google Search를 통한 뉴스 검색
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash",
+      model: "gemini-2.5-flash-lite",
       tools: [{ googleSearch: {} } as never],
     });
 

@@ -11,7 +11,7 @@ import type { AutoNewsRequest, AutoNewsResponse, BuiltinPersonaId, NewsSource, P
 export const maxDuration = 60;
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const MODEL = "gemini-2.0-flash";
+const MODEL = "gemini-2.5-flash-lite";
 
 /** Gemini grounding metadata 타입 */
 interface GroundingMeta {

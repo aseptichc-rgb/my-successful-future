@@ -5,7 +5,7 @@ import { fetchFromNewsAPI, fetchFromRSS } from "@/lib/newsSource";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
-const MODEL = "gemini-2.0-flash";
+const MODEL = "gemini-2.5-flash-lite";
 
 const MAX_RETRIES = 5;
 const BASE_DELAY_MS = 2000;
