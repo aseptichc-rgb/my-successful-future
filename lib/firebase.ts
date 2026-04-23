@@ -7,9 +7,11 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
+  signInWithCustomToken,
   GoogleAuthProvider,
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  onIdTokenChanged,
   type Auth,
   type User as FirebaseUser,
 } from "firebase/auth";
@@ -103,7 +105,11 @@ export async function signOut() {
   return firebaseSignOut(getAuthInstance());
 }
 
-export { onAuthStateChanged, type FirebaseUser };
+export async function signInWithCustomTokenClient(token: string) {
+  return signInWithCustomToken(getAuthInstance(), token);
+}
+
+export { onAuthStateChanged, onIdTokenChanged, type FirebaseUser };
 
 // ── 유저 프로필 CRUD ──────────────────────────────────
 export async function createUserProfile(

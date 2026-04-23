@@ -3,9 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Firebase Auth는 클라이언트 사이드에서 관리되므로
-  // 쿠키 기반의 간단한 인증 체크 사용
-  const authCookie = request.cookies.get("firebase-auth-token");
+  // /api/session/login 에서 발급한 httpOnly 세션 쿠키 존재 여부만 가볍게 본다.
+  // 실제 검증은 API 라우트의 verifyRequestUser 가 담당.
+  const authCookie = request.cookies.get("__session");
 
   const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/signup");
   const isChatPage = pathname.startsWith("/chat");

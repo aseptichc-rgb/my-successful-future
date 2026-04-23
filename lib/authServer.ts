@@ -10,25 +10,42 @@ export interface AuthedUser {
   email?: string;
 }
 
+const SESSION_COOKIE_NAME = "__session";
+
 /**
- * Authorization: Bearer <idToken> 헤더에서 토큰을 검증하고 uid 반환.
- * 실패 시 throw — 호출부에서 401/403 응답 처리.
+ * 우선 Authorization: Bearer <idToken> 헤더로 검증하고,
+ * 없으면 httpOnly 세션 쿠키(__session)로 폴백해 검증한다.
+ * 둘 다 없거나 유효하지 않으면 throw — 호출부에서 401/403 응답 처리.
+ *
+ * 세션 쿠키 폴백이 필요한 이유: PWA 클라이언트가 콜드부트 직후
+ * Firebase SDK 복원이 끝나기 전에 API를 호출하는 경우, 또는
+ * 쿠키 기반 자동 복구 직전에 첫 요청이 새는 케이스를 막기 위함.
  */
 export async function verifyRequestUser(request: NextRequest): Promise<AuthedUser> {
   const header = request.headers.get("authorization") || request.headers.get("Authorization");
-  if (!header || !header.startsWith("Bearer ")) {
-    throw new AuthError(401, "Authorization 헤더가 필요합니다.");
+  if (header && header.startsWith("Bearer ")) {
+    const token = header.slice(7).trim();
+    if (token) {
+      try {
+        const decoded = await getAdminAuth().verifyIdToken(token);
+        return { uid: decoded.uid, email: decoded.email };
+      } catch {
+        // 헤더 검증 실패 시 쿠키 폴백 시도
+      }
+    }
   }
-  const token = header.slice(7).trim();
-  if (!token) {
-    throw new AuthError(401, "토큰이 비어 있습니다.");
+
+  const cookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;
+  if (cookie) {
+    try {
+      const decoded = await getAdminAuth().verifySessionCookie(cookie, true);
+      return { uid: decoded.uid, email: decoded.email };
+    } catch {
+      throw new AuthError(401, "세션이 만료되었습니다. 다시 로그인해주세요.");
+    }
   }
-  try {
-    const decoded = await getAdminAuth().verifyIdToken(token);
-    return { uid: decoded.uid, email: decoded.email };
-  } catch {
-    throw new AuthError(401, "유효하지 않은 토큰입니다.");
-  }
+
+  throw new AuthError(401, "인증 정보가 필요합니다.");
 }
 
 /**
