@@ -46,15 +46,14 @@ export default function CouncilLauncher({ onLaunch, onClose, disabled }: Council
     selected.length >= 1 &&
     selected.length <= 4;
 
-  const handleLaunch = async () => {
+  const handleLaunch = () => {
     if (!canLaunch) return;
     setLaunching(true);
-    try {
-      await onLaunch(question.trim(), selected, mode);
-      onClose();
-    } finally {
-      setLaunching(false);
-    }
+    // 모달을 즉시 닫고 토론은 백그라운드로 진행 (라이브 토론은 스트리밍이라 오래 걸림)
+    onLaunch(question.trim(), selected, mode).catch((err) => {
+      console.error("[CouncilLauncher] onLaunch failed:", err);
+    });
+    onClose();
   };
 
   return (

@@ -37,6 +37,10 @@ export default function AdvisorsPage() {
   const [editingBuiltin, setEditingBuiltin] = useState<BuiltinPersonaId | null>(null);
   const [refDocsTarget, setRefDocsTarget] = useState<{ id: PersonaId; name: string; icon: string } | null>(null);
   const [scheduleTarget, setScheduleTarget] = useState<{ id: PersonaId; name: string; icon: string } | null>(null);
+  // 복수 자문단 방 만들기 모달
+  const [multiSelectOpen, setMultiSelectOpen] = useState(false);
+  const [selectedAdvisorIds, setSelectedAdvisorIds] = useState<PersonaId[]>([]);
+  const [multiCreating, setMultiCreating] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -86,25 +90,95 @@ export default function AdvisorsPage() {
     }
   };
 
+  // 복수 자문단 방 만들기
+  const toggleAdvisorSelection = (personaId: PersonaId) => {
+    setSelectedAdvisorIds((prev) =>
+      prev.includes(personaId)
+        ? prev.filter((id) => id !== personaId)
+        : [...prev, personaId],
+    );
+  };
+
+  const handleCreateMultiAdvisor = async () => {
+    if (!firebaseUser || multiCreating) return;
+    if (selectedAdvisorIds.length < 2) return;
+    const displayName = user?.displayName || firebaseUser.displayName || "사용자";
+
+    setMultiCreating(true);
+    try {
+      // 방 제목은 선택한 자문단 이름들로 자동 생성
+      const names = selectedAdvisorIds
+        .map((id) => getPersona(id, customMap).name)
+        .slice(0, 3);
+      const titleBase = names.join(", ");
+      const suffix = selectedAdvisorIds.length > 3
+        ? ` 외 ${selectedAdvisorIds.length - 3}명`
+        : "";
+      const title = `${titleBase}${suffix} 자문단`;
+
+      const sessionId = await createSession(
+        firebaseUser.uid,
+        title,
+        displayName,
+        "ai",
+        undefined,
+        undefined,
+        selectedAdvisorIds,
+      );
+      router.push(`/chat/${sessionId}`);
+    } catch (err) {
+      console.error("복수 자문단 세션 생성 실패:", err);
+      setMultiCreating(false);
+    }
+  };
+
+  const openMultiSelect = () => {
+    setSelectedAdvisorIds([]);
+    setMultiSelectOpen(true);
+  };
+
   if (loading || !firebaseUser) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-black/10 border-t-[#0071e3]" />
       </div>
     );
   }
 
   return (
-    <div className="flex h-full flex-col bg-gray-50">
-      <header className="border-b border-gray-200 bg-white px-4 py-4">
-        <h1 className="text-lg font-bold text-gray-900">🧭 자문단</h1>
-        <p className="mt-1 text-xs text-gray-500">
-          분야별 AI 전문가에게 조언을 구해보세요. 한 명을 골라 대화를 시작합니다.
-        </p>
+    <div className="flex h-full flex-col bg-[#f5f5f7]">
+      <header className="border-b border-black/[0.06] bg-white px-5 py-5 sm:px-6 sm:py-7">
+        <div className="mx-auto max-w-3xl">
+          <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.005em] text-[#1d1d1f] sm:text-[32px]">
+            자문단
+          </h1>
+          <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
+            분야별 AI 전문가에게 조언을 구해보세요. 한 명, 혹은 여러 명을 한 방에.
+          </p>
+        </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 pb-24 lg:pb-4">
+      <div className="flex-1 overflow-y-auto px-5 py-8 pb-24 sm:px-6 lg:pb-8">
         <div className="mx-auto max-w-3xl">
+          {/* 카운슬 CTA — 여러 자문단을 한 방에 소집 */}
+          <button
+            type="button"
+            onClick={openMultiSelect}
+            className="mb-8 flex w-full items-center justify-between gap-4 rounded-[18px] bg-gradient-to-r from-[#0071e3] to-[#2997ff] px-5 py-4 text-left text-white shadow-apple transition-transform hover:scale-[1.01]"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="text-[16px] font-semibold leading-[1.2] tracking-[-0.022em]">
+                🪑 여러 전문가에게 한 번에 물어보기
+              </p>
+              <p className="mt-1 text-[13px] leading-[1.4] tracking-[-0.01em] text-white/85">
+                오늘 고민, 2명 이상 자문단에게 동시에 의견을 받아보세요.
+              </p>
+            </div>
+            <span className="shrink-0 text-[14px] font-medium" aria-hidden>
+              시작하기 ›
+            </span>
+          </button>
+
           {/* 빌트인 자문단 */}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
             {ADVISOR_IDS.map((personaId) => {
@@ -117,54 +191,54 @@ export default function AdvisorsPage() {
               return (
                 <div
                   key={personaId}
-                  className="group relative flex flex-col items-start gap-2 rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm transition-all hover:border-blue-300 hover:shadow-md"
+                  className="group relative flex flex-col items-start gap-2 rounded-[18px] bg-white p-5 text-left transition-all hover:shadow-apple"
                 >
                   <button
                     onClick={() => handleCardClick(personaId)}
                     disabled={isCreating}
-                    className="flex w-full flex-col items-start gap-2 text-left disabled:opacity-50"
+                    className="flex w-full flex-col items-start gap-3 text-left disabled:opacity-50"
                   >
-                    <div className="text-3xl">{persona.icon}</div>
+                    <div className="text-[34px] leading-none">{persona.icon}</div>
                     <div className="w-full">
-                      <p className="truncate text-sm font-semibold text-gray-900">
+                      <p className="truncate text-[17px] font-semibold tracking-[-0.022em] text-[#1d1d1f]">
                         {persona.name}
                         {isOverridden && (
-                          <span className="ml-1 text-[9px] font-normal text-violet-600">·수정됨</span>
+                          <span className="ml-1.5 text-[10px] font-normal tracking-[-0.01em] text-[#0071e3]">·수정됨</span>
                         )}
                       </p>
-                      <p className="mt-0.5 line-clamp-2 text-xs text-gray-500">
+                      <p className="mt-1 line-clamp-2 text-[13px] leading-[1.4] tracking-[-0.01em] text-black/56">
                         {persona.description}
                       </p>
                     </div>
-                    <div className="mt-1 flex w-full items-center justify-between">
+                    <div className="flex w-full items-center justify-between">
                       {latest?.lastMessageAt?.toDate ? (
-                        <span className="text-[10px] text-gray-400">
+                        <span className="text-[11px] tracking-[-0.01em] text-black/48">
                           {formatRelativeDate(latest.lastMessageAt.toDate())}
                         </span>
                       ) : (
-                        <span className="text-[10px] text-gray-300">대화 시작 전</span>
+                        <span className="text-[11px] tracking-[-0.01em] text-black/30">대화 시작 전</span>
                       )}
                       {isCreating && (
-                        <span className="h-3 w-3 animate-spin rounded-full border border-gray-300 border-t-blue-600" />
+                        <span className="h-3 w-3 animate-spin rounded-full border border-black/10 border-t-[#0071e3]" />
                       )}
                     </div>
                     {latest?.lastMessage && (
-                      <p className="line-clamp-1 w-full text-[11px] text-gray-400">
+                      <p className="line-clamp-1 w-full text-[11px] tracking-[-0.01em] text-black/40">
                         {latest.lastMessage}
                       </p>
                     )}
                   </button>
-                  <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  <div className="absolute right-3 top-3 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         setScheduleTarget({ id: personaId, name: persona.name, icon: persona.icon });
                       }}
-                      className="rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] text-gray-500 hover:text-violet-700"
+                      className="rounded-pill bg-[#f5f5f7] px-2 py-1 text-[10px] font-medium tracking-[-0.01em] text-black/60 transition-colors hover:text-[#1d1d1f]"
                       aria-label="뉴스 키워드 설정"
                     >
-                      📰 뉴스
+                      뉴스
                     </button>
                     <button
                       type="button"
@@ -172,10 +246,10 @@ export default function AdvisorsPage() {
                         e.stopPropagation();
                         setRefDocsTarget({ id: personaId, name: persona.name, icon: persona.icon });
                       }}
-                      className="rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] text-gray-500 hover:text-blue-700"
+                      className="rounded-pill bg-[#f5f5f7] px-2 py-1 text-[10px] font-medium tracking-[-0.01em] text-black/60 transition-colors hover:text-[#1d1d1f]"
                       aria-label="참조 문서"
                     >
-                      📘 문서
+                      문서
                     </button>
                     <button
                       type="button"
@@ -183,10 +257,10 @@ export default function AdvisorsPage() {
                         e.stopPropagation();
                         setEditingBuiltin(personaId as BuiltinPersonaId);
                       }}
-                      className="rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] text-gray-500 hover:text-blue-700"
+                      className="rounded-pill bg-[#f5f5f7] px-2 py-1 text-[10px] font-medium tracking-[-0.01em] text-black/60 transition-colors hover:text-[#1d1d1f]"
                       aria-label="역할 편집"
                     >
-                      ✎ 편집
+                      편집
                     </button>
                   </div>
                 </div>
@@ -195,11 +269,13 @@ export default function AdvisorsPage() {
           </div>
 
           {/* 내 멘토 섹션 */}
-          <div className="mt-8">
-            <div className="mb-3 flex items-center justify-between">
+          <div className="mt-12">
+            <div className="mb-4 flex items-end justify-between">
               <div>
-                <h2 className="text-sm font-bold text-gray-900">✨ 내 멘토</h2>
-                <p className="mt-0.5 text-[11px] text-gray-500">
+                <h2 className="text-[22px] font-semibold leading-[1.18] tracking-[-0.005em] text-[#1d1d1f]">
+                  내 멘토
+                </h2>
+                <p className="mt-1 text-[13px] tracking-[-0.01em] text-black/56">
                   본인 전용. 말투와 관점을 직접 설계할 수 있어요.
                 </p>
               </div>
@@ -209,15 +285,16 @@ export default function AdvisorsPage() {
                   setEditingCustom(null);
                   setBuilderOpen(true);
                 }}
-                className="rounded-lg border border-violet-300 bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-700 hover:bg-violet-100"
+                className="rounded-pill border border-[#0071e3] px-4 py-2 text-[13px] font-medium text-[#0071e3] transition-colors hover:bg-[#0071e3]/5"
               >
                 + 멘토 만들기
               </button>
             </div>
 
             {customList.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-6 text-center text-xs text-gray-400">
-                아직 만든 멘토가 없어요. 회계사 아버지, 창업 선배, 나만의 코치 등을 직접 설계해보세요.
+              <div className="rounded-[18px] bg-white p-10 text-center text-[14px] tracking-[-0.022em] text-black/48">
+                아직 만든 멘토가 없어요.<br />
+                회계사 아버지, 창업 선배, 나만의 코치 — 직접 설계해보세요.
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
@@ -227,46 +304,46 @@ export default function AdvisorsPage() {
                   return (
                     <div
                       key={cp.id}
-                      className="group relative flex flex-col items-start gap-2 rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white p-4 text-left shadow-sm transition-all hover:border-violet-400 hover:shadow-md"
+                      className="group relative flex flex-col items-start gap-2 rounded-[18px] bg-white p-5 text-left transition-all hover:shadow-apple"
                     >
                       <button
                         onClick={() => handleCardClick(cp.id)}
                         disabled={isCreating}
-                        className="flex w-full flex-col items-start gap-2 text-left disabled:opacity-50"
+                        className="flex w-full flex-col items-start gap-3 text-left disabled:opacity-50"
                       >
-                        <div className="text-3xl">{cp.icon}</div>
+                        <div className="text-[34px] leading-none">{cp.icon}</div>
                         <div className="w-full">
-                          <p className="truncate text-sm font-semibold text-gray-900">
+                          <p className="truncate text-[17px] font-semibold tracking-[-0.022em] text-[#1d1d1f]">
                             {cp.name}
                           </p>
-                          <p className="mt-0.5 line-clamp-2 text-xs text-gray-500">
+                          <p className="mt-1 line-clamp-2 text-[13px] leading-[1.4] tracking-[-0.01em] text-black/56">
                             {cp.description || "내가 만든 멘토"}
                           </p>
                         </div>
-                        <div className="mt-1 flex w-full items-center justify-between">
+                        <div className="flex w-full items-center justify-between">
                           {latest?.lastMessageAt?.toDate ? (
-                            <span className="text-[10px] text-gray-400">
+                            <span className="text-[11px] tracking-[-0.01em] text-black/48">
                               {formatRelativeDate(latest.lastMessageAt.toDate())}
                             </span>
                           ) : (
-                            <span className="text-[10px] text-gray-300">대화 시작 전</span>
+                            <span className="text-[11px] tracking-[-0.01em] text-black/30">대화 시작 전</span>
                           )}
                           {isCreating && (
-                            <span className="h-3 w-3 animate-spin rounded-full border border-gray-300 border-t-violet-600" />
+                            <span className="h-3 w-3 animate-spin rounded-full border border-black/10 border-t-[#0071e3]" />
                           )}
                         </div>
                       </button>
-                      <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                      <div className="absolute right-3 top-3 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             setScheduleTarget({ id: cp.id, name: cp.name, icon: cp.icon });
                           }}
-                          className="rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] text-gray-500 hover:text-violet-700"
+                          className="rounded-pill bg-[#f5f5f7] px-2 py-1 text-[10px] font-medium tracking-[-0.01em] text-black/60 transition-colors hover:text-[#1d1d1f]"
                           aria-label="뉴스 키워드 설정"
                         >
-                          📰 뉴스
+                          뉴스
                         </button>
                         <button
                           type="button"
@@ -274,10 +351,10 @@ export default function AdvisorsPage() {
                             e.stopPropagation();
                             setRefDocsTarget({ id: cp.id, name: cp.name, icon: cp.icon });
                           }}
-                          className="rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] text-gray-500 hover:text-blue-700"
+                          className="rounded-pill bg-[#f5f5f7] px-2 py-1 text-[10px] font-medium tracking-[-0.01em] text-black/60 transition-colors hover:text-[#1d1d1f]"
                           aria-label="참조 문서"
                         >
-                          📘 문서
+                          문서
                         </button>
                         <button
                           type="button"
@@ -286,7 +363,7 @@ export default function AdvisorsPage() {
                             setEditingCustom(cp);
                             setBuilderOpen(true);
                           }}
-                          className="rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] text-gray-500 hover:text-violet-700"
+                          className="rounded-pill bg-[#f5f5f7] px-2 py-1 text-[10px] font-medium tracking-[-0.01em] text-black/60 transition-colors hover:text-[#1d1d1f]"
                         >
                           편집
                         </button>
@@ -346,6 +423,133 @@ export default function AdvisorsPage() {
             setEditingCustom(null);
           }}
         />
+      )}
+
+      {multiSelectOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
+          onClick={() => !multiCreating && setMultiSelectOpen(false)}
+        >
+          <div
+            className="flex max-h-[85vh] w-full max-w-md flex-col rounded-t-[18px] bg-white shadow-apple-lg sm:rounded-[18px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between border-b border-black/[0.06] px-6 py-5">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-[20px] font-semibold leading-[1.2] tracking-[-0.005em] text-[#1d1d1f]">
+                  여러 자문단과 대화
+                </h2>
+                <p className="mt-1.5 text-[13px] leading-[1.4] tracking-[-0.01em] text-black/60">
+                  한 방에 모을 자문단을 2명 이상 선택하세요.
+                </p>
+              </div>
+              <button
+                onClick={() => !multiCreating && setMultiSelectOpen(false)}
+                disabled={multiCreating}
+                className="shrink-0 rounded-full p-1.5 text-black/40 transition-colors hover:bg-black/[0.04] hover:text-black/70 disabled:opacity-50"
+                aria-label="닫기"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-3 py-3">
+              <p className="px-2 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-black/40">
+                전문 자문단
+              </p>
+              {ADVISOR_IDS.map((personaId) => {
+                const base = PERSONAS[personaId as keyof typeof PERSONAS];
+                const persona = mergePersona(base, overrideMap[personaId as string]);
+                const checked = selectedAdvisorIds.includes(personaId);
+                return (
+                  <button
+                    key={personaId}
+                    type="button"
+                    onClick={() => toggleAdvisorSelection(personaId)}
+                    className={`flex w-full items-center gap-3 rounded-[12px] px-3 py-2.5 text-left transition-colors ${
+                      checked ? "bg-[#0071e3]/8" : "hover:bg-black/[0.03]"
+                    }`}
+                  >
+                    <div
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-[5px] border transition-colors ${
+                        checked ? "border-[#0071e3] bg-[#0071e3]" : "border-black/15"
+                      }`}
+                    >
+                      {checked && (
+                        <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="text-xl">{persona.icon}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[14px] font-medium tracking-[-0.01em] text-[#1d1d1f]">{persona.name}</p>
+                      <p className="truncate text-[12px] tracking-[-0.01em] text-black/56">{persona.description}</p>
+                    </div>
+                  </button>
+                );
+              })}
+
+              {customList.length > 0 && (
+                <>
+                  <p className="px-2 pb-2 pt-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-black/40">
+                    내 멘토
+                  </p>
+                  {customList.map((cp) => {
+                    const checked = selectedAdvisorIds.includes(cp.id);
+                    return (
+                      <button
+                        key={cp.id}
+                        type="button"
+                        onClick={() => toggleAdvisorSelection(cp.id)}
+                        className={`flex w-full items-center gap-3 rounded-[12px] px-3 py-2.5 text-left transition-colors ${
+                          checked ? "bg-[#0071e3]/8" : "hover:bg-black/[0.03]"
+                        }`}
+                      >
+                        <div
+                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-[5px] border transition-colors ${
+                            checked ? "border-[#0071e3] bg-[#0071e3]" : "border-black/15"
+                          }`}
+                        >
+                          {checked && (
+                            <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+                        <span className="text-xl">{cp.icon}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[14px] font-medium tracking-[-0.01em] text-[#1d1d1f]">{cp.name}</p>
+                          <p className="truncate text-[12px] tracking-[-0.01em] text-black/56">{cp.description || "내가 만든 멘토"}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </>
+              )}
+            </div>
+
+            <div className="border-t border-black/[0.06] px-6 py-4">
+              <button
+                type="button"
+                onClick={handleCreateMultiAdvisor}
+                disabled={selectedAdvisorIds.length < 2 || multiCreating}
+                className="w-full rounded-pill bg-[#0071e3] py-3 text-[14px] font-medium text-white transition-colors hover:bg-[#0077ed] disabled:bg-black/10 disabled:text-black/40"
+              >
+                {multiCreating
+                  ? "만드는 중…"
+                  : selectedAdvisorIds.length < 2
+                    ? "2명 이상 선택해주세요"
+                    : `${selectedAdvisorIds.length}명과 대화 시작`}
+              </button>
+              <p className="mt-2.5 text-center text-[11px] tracking-[-0.01em] text-black/48">
+                대화방 안에서 @이름 으로 특정 자문단을 지목할 수도 있습니다.
+              </p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

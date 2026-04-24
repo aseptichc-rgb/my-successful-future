@@ -15,11 +15,11 @@ export default function NewsCard({ source }: Props) {
       href={source.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="block overflow-hidden rounded-xl border border-gray-200 bg-white transition-shadow hover:shadow-md"
+      className="block overflow-hidden rounded-[12px] bg-white transition-shadow hover:shadow-apple"
     >
-      {/* 썸네일 이미지 */}
+      {/* 썸네일 */}
       {source.imageUrl && !imgError ? (
-        <div className="relative h-40 w-full bg-gray-100">
+        <div className="relative h-40 w-full bg-[#f5f5f7]">
           <img
             src={source.imageUrl}
             alt=""
@@ -29,9 +29,9 @@ export default function NewsCard({ source }: Props) {
           />
         </div>
       ) : (
-        <div className="flex h-24 w-full items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="flex h-24 w-full items-center justify-center bg-[#f5f5f7]">
           <svg
-            className="h-8 w-8 text-gray-300"
+            className="h-7 w-7 text-black/20"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -50,22 +50,22 @@ export default function NewsCard({ source }: Props) {
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <h3 className="line-clamp-2 text-sm font-semibold text-gray-900">
+            <h3 className="line-clamp-2 text-[14px] font-semibold leading-[1.29] tracking-[-0.016em] text-[#1d1d1f]">
               {source.title}
             </h3>
             {source.summary && (
-              <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-gray-500">
+              <p className="mt-2 line-clamp-2 text-[12px] leading-[1.45] tracking-[-0.01em] text-black/56">
                 {source.summary}
               </p>
             )}
-            <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
-              <span className="font-medium text-gray-600">{source.publisher}</span>
+            <div className="mt-2.5 flex items-center gap-2 text-[11px] tracking-[-0.01em] text-black/48">
+              <span className="font-medium text-black/70">{source.publisher}</span>
               <span>·</span>
               <span>{source.publishedAt}</span>
             </div>
           </div>
           <svg
-            className="mt-0.5 h-4 w-4 shrink-0 text-gray-300"
+            className="mt-0.5 h-4 w-4 shrink-0 text-black/30"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

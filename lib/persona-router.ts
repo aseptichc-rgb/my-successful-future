@@ -112,3 +112,27 @@ export function routeToPersonas(
 
   return selected;
 }
+
+/**
+ * 복수 자문단이 활성화된 방에서 "가장 적절한 한 명"을 고른다.
+ * - 메시지 내용의 키워드 매칭으로 활성 페르소나 중 최고 점수 1명만 반환한다.
+ * - 매칭이 전혀 없으면 활성 목록의 첫 번째(기본적으로는 뉴스봇이 아닌 첫 전문가)를 반환한다.
+ * - 멘션(@)이나 대화 지속(conversationPersonaRef) 상황에서는 호출되지 않도록 useChat 쪽에서 제어한다.
+ */
+export function pickBestFromActive(
+  message: string,
+  activePersonaIds: PersonaId[],
+): PersonaId {
+  if (activePersonaIds.length === 0) return "default";
+  if (activePersonaIds.length === 1) return activePersonaIds[0];
+
+  // 빌트인 키워드 매칭 결과 중 active 셋에 포함된 것을 우선 반환
+  const routed = routeToPersonas(message, "ai");
+  for (const pid of routed) {
+    if (activePersonaIds.includes(pid)) return pid;
+  }
+
+  // 매칭 실패 — 뉴스봇(default)을 제외한 첫 활성 페르소나, 없으면 맨 앞
+  const firstNonDefault = activePersonaIds.find((p) => p !== "default");
+  return firstNonDefault || activePersonaIds[0];
+}

@@ -43,46 +43,45 @@ const markdownComponents: Components = {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-blue-600 underline"
+      className="text-[#0066cc] hover:underline"
     >
       {children}
     </a>
   ),
   code: ({ children, className }) => {
-    // 인라인 코드(언어 클래스 없음)와 블록 코드 구분
     const isBlock = /language-/.test(className ?? "");
     if (isBlock) {
       return <code className={className}>{children}</code>;
     }
     return (
-      <code className="rounded bg-gray-200 px-1 py-0.5 text-xs">
+      <code className="rounded-[5px] bg-black/[0.06] px-1.5 py-0.5 text-[13px] tracking-[-0.01em]">
         {children}
       </code>
     );
   },
   pre: ({ children }) => (
-    <pre className="my-2 overflow-x-auto rounded-lg bg-gray-100 p-3 text-xs text-gray-800 border border-gray-200/70">
+    <pre className="my-2 overflow-x-auto rounded-[8px] bg-black/[0.04] p-3 text-[13px] tracking-[-0.01em] text-[#1d1d1f]">
       {children}
     </pre>
   ),
   blockquote: ({ children }) => (
-    <blockquote className="border-l-2 border-gray-300 pl-3 italic text-gray-600">
+    <blockquote className="border-l-2 border-black/15 pl-3 italic text-black/70">
       {children}
     </blockquote>
   ),
-  hr: () => <hr className="my-3 border-gray-200" />,
+  hr: () => <hr className="my-3 border-black/[0.08]" />,
   table: ({ children }) => (
     <div className="my-2 overflow-x-auto">
-      <table className="min-w-full text-xs">{children}</table>
+      <table className="min-w-full text-[13px]">{children}</table>
     </div>
   ),
   th: ({ children }) => (
-    <th className="border border-gray-300 px-2 py-1 font-semibold">
+    <th className="border border-black/10 px-2 py-1 font-semibold">
       {children}
     </th>
   ),
   td: ({ children }) => (
-    <td className="border border-gray-300 px-2 py-1">{children}</td>
+    <td className="border border-black/10 px-2 py-1">{children}</td>
   ),
 };
 
@@ -92,51 +91,51 @@ function MessageBubble({ message, showPersonaHeader = true }: Props) {
   const isCouncilFinal = message.councilRound === 999;
   const isCouncilQuestion = isUser && isCouncil && message.councilRound === 0;
 
-  // 카운슬 버블 스타일 (Apple iMessage 톤)
+  // Apple iMessage 버블 팔레트 — 단일 액센트(Apple Blue)로 수렴
   const bubbleClass = isUser
     ? isCouncilQuestion
-      ? "bg-indigo-500 text-white"
-      : "bg-[#007aff] text-white"
+      ? "bg-black text-white"
+      : "bg-[#0071e3] text-white"
     : isCouncilFinal
-      ? "bg-amber-50 border border-amber-200 text-gray-900"
+      ? "bg-white border border-black/[0.08] text-[#1d1d1f]"
       : isCouncil
-        ? "bg-indigo-50 border border-indigo-100 text-gray-900"
-        : "bg-[#f2f2f7] text-gray-900";
+        ? "bg-[#f5f5f7] border border-black/[0.04] text-[#1d1d1f]"
+        : "bg-[#f5f5f7] text-[#1d1d1f]";
 
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div className={`max-w-[85%] sm:max-w-[78%] rounded-[22px] px-4 py-2.5 shadow-[0_1px_1px_rgba(0,0,0,0.04)] ${bubbleClass}`}>
+      <div className={`max-w-[85%] sm:max-w-[78%] rounded-[22px] px-4 py-2.5 ${bubbleClass}`}>
         {/* 카운슬 질문 표시 */}
         {isCouncilQuestion && (
-          <div className="mb-1.5 inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold text-indigo-100">
+          <div className="mb-1.5 inline-flex items-center gap-1 rounded-pill bg-white/15 px-2 py-0.5 text-[10px] font-medium tracking-[-0.01em] text-white/90">
             🪑 카운슬 질문
           </div>
         )}
 
-        {/* 사용자 메시지: 발신자 이름 표시 (다중 사용자 대화 시) */}
+        {/* 사용자 메시지: 발신자 이름 */}
         {isUser && message.senderName && !isCouncilQuestion && (
-          <div className="mb-1 text-xs font-semibold text-white/85">
+          <div className="mb-1 text-[11px] font-semibold tracking-[-0.01em] text-white/85">
             {message.senderName}
           </div>
         )}
 
-        {/* 페르소나 표시 (연속 메시지에서는 첫 번째만 표시) */}
+        {/* 페르소나 표시 (연속 메시지에서는 첫 번째만) */}
         {!isUser && message.personaName && showPersonaHeader && (
-          <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-gray-600">
+          <div className="mb-1.5 flex flex-wrap items-center gap-1.5 text-[12px] font-semibold tracking-[-0.01em] text-black/60">
             <span>{message.personaIcon}</span>
             <span>{message.personaName}</span>
             {isCouncil && !isCouncilFinal && typeof message.councilRound === "number" && (
-              <span className="rounded-full bg-indigo-200 px-1.5 py-0.5 text-[9px] text-indigo-800">
+              <span className="rounded-pill bg-black/[0.06] px-2 py-0.5 text-[10px] font-medium text-black/70">
                 라운드 {message.councilRound}
               </span>
             )}
             {isCouncilFinal && (
-              <span className="rounded-full bg-amber-200 px-1.5 py-0.5 text-[9px] text-amber-800">
+              <span className="rounded-pill bg-[#0071e3]/10 px-2 py-0.5 text-[10px] font-medium text-[#0071e3]">
                 종합
               </span>
             )}
             {message.scheduledSlot && (
-              <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-[9px] font-medium text-rose-700">
+              <span className="rounded-pill bg-black/[0.06] px-2 py-0.5 text-[10px] font-medium text-black/60">
                 ⏰ {message.scheduledSlot} 정시
               </span>
             )}
@@ -144,23 +143,23 @@ function MessageBubble({ message, showPersonaHeader = true }: Props) {
         )}
 
         {isUser ? (
-          // 사용자 메시지는 마크다운 해석 없이 원문 그대로
-          <div className="whitespace-pre-wrap text-[15px] leading-[1.55] break-words">
+          <div className="whitespace-pre-wrap text-[15px] leading-[1.47] tracking-[-0.022em] break-words">
             {message.content}
           </div>
         ) : (
-          // AI 응답은 마크다운 렌더링
-          <div className="text-[15px] leading-[1.6] break-words">
+          <div className="text-[15px] leading-[1.5] tracking-[-0.022em] break-words">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
               {message.content}
             </ReactMarkdown>
           </div>
         )}
 
-        {/* 어시스턴트 메시지의 뉴스 카드 */}
+        {/* 뉴스 카드 */}
         {!isUser && message.sources && message.sources.length > 0 && (
-          <div className="mt-3 space-y-2 border-t border-gray-200 pt-3">
-            <p className="text-xs font-medium text-gray-500">관련 뉴스</p>
+          <div className="mt-3 space-y-2 border-t border-black/[0.08] pt-3">
+            <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-black/48">
+              관련 뉴스
+            </p>
             {message.sources.map((source, i) => (
               <NewsCard key={i} source={source} />
             ))}

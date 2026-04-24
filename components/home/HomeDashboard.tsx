@@ -1,14 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { onSessionsSnapshot } from "@/lib/firebase";
+import { createSession, onSessionsSnapshot } from "@/lib/firebase";
 import { formatRelativeDate } from "@/lib/locale";
-import { useGoals } from "@/hooks/useGoals";
-import { useDailyTasks } from "@/hooks/useDailyTasks";
-import DailyChecklistPanel from "@/components/chat/DailyChecklistPanel";
+import { PERSONAS, getPersona } from "@/lib/personas";
+import { useCustomPersonas } from "@/hooks/useCustomPersonas";
 import NewChatModal from "@/components/chat/NewChatModal";
-import type { ChatSession } from "@/types";
+import type { ChatSession, PersonaId } from "@/types";
+
+// 홈에서 먼저 노출할 빌트인 자문단 (default·future-self 제외)
+const ADVISOR_PREVIEW_IDS: PersonaId[] = [
+  "entrepreneur",
+  "fund-trader",
+  "tech-cto",
+  "policy-analyst",
+  "healthcare-expert",
+];
 
 interface Props {
   uid: string;
@@ -32,15 +40,9 @@ export default function HomeDashboard({ uid, displayName, futureSelfId }: Props)
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [showNewChat, setShowNewChat] = useState(false);
+  const [advisorLaunching, setAdvisorLaunching] = useState<PersonaId | null>(null);
 
-  const { goals, activeSnapshots } = useGoals(uid);
-  const {
-    tasksWithTodayState,
-    progress,
-    addTask,
-    toggleTask,
-    removeTask,
-  } = useDailyTasks(uid);
+  const { map: customPersonaMap, list: customPersonaList } = useCustomPersonas(uid);
 
   useEffect(() => {
     if (!uid) return;
@@ -56,11 +58,8 @@ export default function HomeDashboard({ uid, displayName, futureSelfId }: Props)
     };
   }, [uid]);
 
-  // 최근 대화 5개 (DM + 그룹, 고정 우선)
   const recentChats = useMemo(() => {
-    const list = sessions.filter(
-      (s) => s.sessionType === "dm" || s.sessionType === "group"
-    );
+    const list = sessions.filter((s) => s.sessionType !== "future-self");
     const sorted = [...list].sort((a, b) => {
       const aPinned = a.pinnedBy?.includes(uid) ? 1 : 0;
       const bPinned = b.pinnedBy?.includes(uid) ? 1 : 0;
@@ -72,9 +71,6 @@ export default function HomeDashboard({ uid, displayName, futureSelfId }: Props)
     return sorted.slice(0, 5);
   }, [sessions, uid]);
 
-  const activeGoal = goals[0];
-  const activeGoalSnap = activeSnapshots[0];
-
   const goFutureSelf = () => {
     if (futureSelfId) router.push(`/chat/${futureSelfId}`);
   };
@@ -82,201 +78,306 @@ export default function HomeDashboard({ uid, displayName, futureSelfId }: Props)
   const goInbox = () => router.push("/chat/inbox");
   const goSession = (id: string) => router.push(`/chat/${id}`);
 
+  // 홈의 자문단 미니 카드 클릭: 해당 페르소나와의 최근 AI 세션이 있으면 거기로,
+  // 없으면 새로 만들고 이동. 자문단 페이지의 handleCardClick 과 동일한 규칙.
+  const handleAdvisorMiniClick = useCallback(
+    async (personaId: PersonaId) => {
+      if (!uid || advisorLaunching) return;
+      const persona = getPersona(personaId, customPersonaMap);
+      const existing = sessions.find(
+        (s) => s.sessionType === "ai" && s.title?.includes(persona.name),
+      );
+      if (existing) {
+        router.push(`/chat/${existing.id}?persona=${personaId}`);
+        return;
+      }
+      setAdvisorLaunching(personaId);
+      try {
+        const sessionId = await createSession(
+          uid,
+          `${persona.name}님과의 대화`,
+          displayName,
+          "ai",
+        );
+        router.push(`/chat/${sessionId}?persona=${personaId}`);
+      } catch (err) {
+        console.error("자문단 세션 생성 실패:", err);
+        setAdvisorLaunching(null);
+      }
+    },
+    [uid, displayName, sessions, customPersonaMap, router, advisorLaunching],
+  );
+
   return (
-    <div className="flex-1 overflow-y-auto bg-[#f8f9fb]">
-      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
-        {/* 인사 헤더 */}
-        <header className="mb-5">
-          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
-            안녕하세요, {displayName}님 <span aria-hidden>👋</span>
-          </h1>
-          <p className="mt-1 text-xs text-gray-500 sm:text-sm">
+    <div className="flex-1 overflow-y-auto bg-[#f5f5f7]">
+      {/* Hero — Apple-style immersive black section */}
+      <section className="bg-black text-white">
+        <div className="mx-auto max-w-3xl px-5 pt-12 pb-10 sm:px-6 sm:pt-16 sm:pb-12">
+          <p className="text-[13px] font-medium uppercase tracking-wide text-white/60">
             {todayKoreanLabel()}
           </p>
-        </header>
+          <h1 className="mt-3 text-[40px] font-semibold leading-[1.07] tracking-[-0.015em] sm:text-[56px]">
+            안녕하세요,<br />
+            <span className="text-white/70">{displayName}</span>님.
+          </h1>
+          <p className="mt-4 text-[17px] leading-[1.47] tracking-[-0.022em] text-white/80">
+            오늘도 미래의 당신과 함께, 한 걸음 더.
+          </p>
 
-        {/* 오늘의 목표 진행률 */}
-        <section className="mb-4 rounded-2xl border border-gray-200/70 bg-white p-4 shadow-sm">
-          <div className="mb-2 flex items-center justify-between">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-base">🎯</span>
-              <h2 className="text-sm font-semibold text-gray-900">나의 목표</h2>
-              {goals.length > 0 && (
-                <span className="text-xs text-gray-400">({goals.length})</span>
-              )}
-            </div>
+          <div className="mt-7 flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={goFutureSelf}
-              className="text-xs font-medium text-blue-600 hover:text-blue-700"
+              disabled={!futureSelfId}
+              className="inline-flex items-center gap-1.5 rounded-pill bg-[#0071e3] px-[22px] py-[11px] text-[14px] font-medium text-white transition-colors hover:bg-[#0077ed] disabled:opacity-50"
             >
-              관리 →
+              미래의 나와 대화하기
+            </button>
+            <button
+              type="button"
+              onClick={goAdvisors}
+              className="inline-flex items-center gap-1.5 rounded-pill border border-white/30 px-[22px] py-[11px] text-[14px] font-medium text-white transition-colors hover:bg-white/10"
+            >
+              자문단 만나보기<span aria-hidden>›</span>
             </button>
           </div>
+        </div>
+      </section>
 
-          {activeGoal ? (
+      {/* Advisors mini strip — 홈에서 바로 자문단 진입 */}
+      <section className="bg-white">
+        <div className="mx-auto max-w-3xl px-5 py-10 sm:px-6 sm:py-12">
+          <div className="mb-5 flex items-end justify-between gap-3">
+            <div>
+              <h2 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.003em] text-[#1d1d1f] sm:text-[32px]">
+                내 자문단
+              </h2>
+              <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
+                오늘의 고민, 들어줄 전문가를 골라보세요.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={goAdvisors}
+              className="shrink-0 text-[14px] font-medium text-[#0066cc] hover:underline"
+            >
+              전체 보기 ›
+            </button>
+          </div>
+          <div className="-mx-5 flex gap-3 overflow-x-auto px-5 pb-2 hide-scrollbar sm:mx-0 sm:px-0">
+            {ADVISOR_PREVIEW_IDS.map((personaId) => {
+              const persona = PERSONAS[personaId as keyof typeof PERSONAS];
+              const launching = advisorLaunching === personaId;
+              return (
+                <button
+                  key={personaId}
+                  type="button"
+                  onClick={() => handleAdvisorMiniClick(personaId)}
+                  disabled={launching || !!advisorLaunching}
+                  className="flex w-[168px] shrink-0 flex-col items-start gap-2 rounded-[18px] bg-[#f5f5f7] p-4 text-left transition-all hover:shadow-apple disabled:opacity-60"
+                >
+                  <div className="text-[30px] leading-none">{persona.icon}</div>
+                  <p className="w-full truncate text-[15px] font-semibold tracking-[-0.022em] text-[#1d1d1f]">
+                    {persona.name}
+                  </p>
+                  <p className="line-clamp-2 w-full text-[12px] leading-[1.35] tracking-[-0.01em] text-black/56">
+                    {persona.description}
+                  </p>
+                  {launching && (
+                    <span className="mt-1 h-3 w-3 animate-spin rounded-full border border-black/10 border-t-[#0071e3]" />
+                  )}
+                </button>
+              );
+            })}
+            {customPersonaList.slice(0, 4).map((cp) => {
+              const launching = advisorLaunching === cp.id;
+              return (
+                <button
+                  key={cp.id}
+                  type="button"
+                  onClick={() => handleAdvisorMiniClick(cp.id as PersonaId)}
+                  disabled={launching || !!advisorLaunching}
+                  className="flex w-[168px] shrink-0 flex-col items-start gap-2 rounded-[18px] bg-[#f5f5f7] p-4 text-left transition-all hover:shadow-apple disabled:opacity-60"
+                >
+                  <div className="text-[30px] leading-none">{cp.icon}</div>
+                  <p className="w-full truncate text-[15px] font-semibold tracking-[-0.022em] text-[#1d1d1f]">
+                    {cp.name}
+                  </p>
+                  <p className="line-clamp-2 w-full text-[12px] leading-[1.35] tracking-[-0.01em] text-black/56">
+                    {cp.description || "내가 만든 멘토"}
+                  </p>
+                  {launching && (
+                    <span className="mt-1 h-3 w-3 animate-spin rounded-full border border-black/10 border-t-[#0071e3]" />
+                  )}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={goAdvisors}
+              className="flex w-[168px] shrink-0 flex-col items-start justify-center gap-1 rounded-[18px] border border-dashed border-black/15 p-4 text-left text-black/60 transition-colors hover:border-[#0071e3] hover:text-[#0071e3]"
+            >
+              <div className="text-[30px] leading-none">＋</div>
+              <p className="text-[14px] font-medium tracking-[-0.01em]">새 멘토 만들기</p>
+              <p className="text-[11px] tracking-[-0.01em] text-black/48">나만의 AI를 설계해요.</p>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Quick entry tiles — alternating white section */}
+      <section className="bg-[#f5f5f7]">
+        <div className="mx-auto max-w-3xl px-5 py-10 sm:px-6 sm:py-12">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <button
               type="button"
               onClick={goFutureSelf}
-              className="w-full rounded-xl border border-gray-100 bg-gray-50/60 px-3 py-3 text-left hover:bg-gray-100 transition-colors"
+              disabled={!futureSelfId}
+              className="group relative overflow-hidden rounded-[18px] bg-black p-6 text-left text-white transition-all hover:shadow-apple-lg disabled:opacity-60"
             >
-              <div className="flex items-start justify-between gap-2">
-                <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">
-                  {activeGoal.title}
-                </p>
-                <span className="shrink-0 text-xs font-semibold text-blue-600">
-                  {activeGoal.progress ?? 0}%
-                </span>
-              </div>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-200">
-                <div
-                  className="h-full bg-blue-500 transition-all"
-                  style={{ width: `${activeGoal.progress ?? 0}%` }}
-                />
-              </div>
-              {activeGoalSnap?.daysLeft !== undefined && (
-                <p className="mt-2 text-[11px] text-gray-500">
-                  {activeGoalSnap.daysLeft > 0
-                    ? `D-${activeGoalSnap.daysLeft}`
-                    : activeGoalSnap.daysLeft === 0
-                    ? "오늘 마감"
-                    : `${Math.abs(activeGoalSnap.daysLeft)}일 지남`}
-                </p>
-              )}
-            </button>
-          ) : (
-            <div className="rounded-xl border border-dashed border-gray-200 px-3 py-5 text-center">
-              <p className="text-xs text-gray-500">
-                아직 등록된 목표가 없어요.
+              <p className="text-[13px] font-medium uppercase tracking-wide text-white/60">
+                Future Self
               </p>
-              <button
-                type="button"
-                onClick={goFutureSelf}
-                className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-700"
-              >
-                미래의 나와 대화하며 목표 세우기 →
-              </button>
-            </div>
-          )}
-        </section>
+              <p className="mt-3 text-[24px] font-semibold leading-[1.14] tracking-[-0.005em]">
+                미래의 나와 대화
+              </p>
+              <p className="mt-1 text-[14px] leading-[1.29] tracking-[-0.016em] text-white/70">
+                오늘 하루를 함께 정리해요.
+              </p>
+              <p className="mt-5 inline-flex items-center gap-0.5 text-[14px] font-medium text-[#2997ff]">
+                시작하기<span aria-hidden>›</span>
+              </p>
+            </button>
+            <button
+              type="button"
+              onClick={goAdvisors}
+              className="group relative overflow-hidden rounded-[18px] bg-white p-6 text-left text-[#1d1d1f] transition-all hover:shadow-apple"
+            >
+              <p className="text-[13px] font-medium uppercase tracking-wide text-black/56">
+                Advisors
+              </p>
+              <p className="mt-3 text-[24px] font-semibold leading-[1.14] tracking-[-0.005em]">
+                여러 전문가에게 한 번에
+              </p>
+              <p className="mt-1 text-[14px] leading-[1.29] tracking-[-0.016em] text-black/60">
+                고민 하나에 여러 관점을 모아 듣기.
+              </p>
+              <p className="mt-5 inline-flex items-center gap-0.5 text-[14px] font-medium text-[#0066cc]">
+                자문단 열기<span aria-hidden>›</span>
+              </p>
+            </button>
+          </div>
+        </div>
+      </section>
 
-        {/* 오늘 체크리스트 (기존 패널 재사용) */}
-        <section className="mb-4 overflow-hidden rounded-2xl border border-gray-200/70 bg-white shadow-sm">
-          <DailyChecklistPanel
-            tasksWithTodayState={tasksWithTodayState}
-            progress={progress}
-            onAdd={addTask}
-            onToggle={toggleTask}
-            onRemove={removeTask}
-          />
-        </section>
-
-        {/* 빠른 진입 CTA */}
-        <section className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={goFutureSelf}
-            disabled={!futureSelfId}
-            className="rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 p-4 text-left text-white shadow-sm transition-transform hover:scale-[1.01] disabled:opacity-60"
-          >
-            <div className="text-2xl">🌟</div>
-            <div className="mt-2 text-sm font-semibold">미래의 나와 대화</div>
-            <div className="mt-0.5 text-[11px] text-white/80">
-              오늘 하루를 함께 정리해요
+      {/* Recent chats — return to light gray */}
+      <section className="bg-[#f5f5f7]">
+        <div className="mx-auto max-w-3xl px-5 py-10 sm:px-6 sm:py-12">
+          <div className="mb-5 flex items-end justify-between gap-3">
+            <div>
+              <h2 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.003em] text-[#1d1d1f] sm:text-[32px]">
+                최근 대화
+              </h2>
+              <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
+                이어서 나누던 이야기를 다시 열어보세요.
+              </p>
             </div>
-          </button>
-          <button
-            type="button"
-            onClick={goAdvisors}
-            className="rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 p-4 text-left text-white shadow-sm transition-transform hover:scale-[1.01]"
-          >
-            <div className="text-2xl">🧭</div>
-            <div className="mt-2 text-sm font-semibold">자문단 열기</div>
-            <div className="mt-0.5 text-[11px] text-white/90">
-              고민을 여러 전문가에게 묻기
-            </div>
-          </button>
-        </section>
-
-        {/* 최근 대화 */}
-        <section className="rounded-2xl border border-gray-200/70 bg-white p-4 shadow-sm">
-          <div className="mb-2 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-base">💬</span>
-              <h2 className="text-sm font-semibold text-gray-900">최근 대화</h2>
-            </div>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               <button
                 type="button"
                 onClick={goInbox}
-                className="text-xs font-medium text-blue-600 hover:text-blue-700"
+                className="text-[14px] font-medium text-[#0066cc] hover:underline"
               >
-                전체 보기 →
+                전체 보기 ›
               </button>
               <button
                 type="button"
                 onClick={() => setShowNewChat(true)}
-                className="rounded-md bg-blue-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-blue-700"
+                className="rounded-pill bg-[#0071e3] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#0077ed]"
               >
                 + 새 대화
               </button>
             </div>
           </div>
 
-          {sessionsLoading ? (
-            <div className="px-2 py-6 text-center text-xs text-gray-400">
-              불러오는 중...
-            </div>
-          ) : recentChats.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-gray-200 px-3 py-6 text-center">
-              <p className="text-xs text-gray-500">
-                아직 대화가 없어요. 새 대화를 시작해보세요.
-              </p>
-            </div>
-          ) : (
-            <ul className="divide-y divide-gray-100">
-              {recentChats.map((s) => {
-                const unread = s.unreadCounts?.[uid] || 0;
-                const ts = s.lastMessageAt || s.updatedAt;
-                const when = ts?.toDate ? formatRelativeDate(ts.toDate()) : "";
-                const icon = s.sessionType === "dm" ? "💬" : "👥";
-                return (
-                  <li key={s.id}>
-                    <button
-                      type="button"
-                      onClick={() => goSession(s.id)}
-                      className="flex w-full items-start gap-2 py-2.5 text-left hover:bg-gray-50 transition-colors"
+          <div className="overflow-hidden rounded-[18px] bg-white shadow-apple">
+            {sessionsLoading ? (
+              <div className="py-10 text-center text-[14px] text-black/48">
+                불러오는 중…
+              </div>
+            ) : recentChats.length === 0 ? (
+              <div className="py-12 text-center">
+                <p className="text-[15px] tracking-[-0.022em] text-black/60">
+                  아직 대화가 없어요.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowNewChat(true)}
+                  className="mt-3 inline-flex items-center gap-1 text-[14px] font-medium text-[#0066cc] hover:underline"
+                >
+                  새 대화 시작하기<span aria-hidden>›</span>
+                </button>
+              </div>
+            ) : (
+              <ul>
+                {recentChats.map((s, idx) => {
+                  const unread = s.unreadCounts?.[uid] || 0;
+                  const ts = s.lastMessageAt || s.updatedAt;
+                  const when = ts?.toDate ? formatRelativeDate(ts.toDate()) : "";
+                  const icon =
+                    s.sessionType === "ai"
+                      ? "🤖"
+                      : s.sessionType === "dm"
+                        ? "💬"
+                        : "👥";
+                  return (
+                    <li
+                      key={s.id}
+                      className={idx !== 0 ? "border-t border-black/5" : ""}
                     >
-                      <span className="mt-0.5 text-base shrink-0">{icon}</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-gray-900">
-                          {s.title || "새 대화"}
-                        </p>
-                        {s.lastMessage && (
-                          <p className="mt-0.5 truncate text-xs text-gray-500">
-                            {s.lastMessageSenderName && (
-                              <span className="font-medium">
-                                {s.lastMessageSenderName}:{" "}
-                              </span>
-                            )}
-                            {s.lastMessage}
-                          </p>
-                        )}
-                        <p className="mt-0.5 text-[10px] text-gray-400">{when}</p>
-                      </div>
-                      {unread > 0 && (
-                        <span className="mt-1 shrink-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
-                          {unread > 99 ? "99+" : unread}
+                      <button
+                        type="button"
+                        onClick={() => goSession(s.id)}
+                        className="flex w-full items-start gap-3 px-5 py-4 text-left transition-colors hover:bg-black/[0.02]"
+                      >
+                        <span
+                          aria-hidden
+                          className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f5f5f7] text-[16px]"
+                        >
+                          {icon}
                         </span>
-                      )}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
-      </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[15px] font-medium tracking-[-0.022em] text-[#1d1d1f]">
+                            {s.title || "새 대화"}
+                          </p>
+                          {s.lastMessage && (
+                            <p className="mt-0.5 truncate text-[13px] tracking-[-0.01em] text-black/56">
+                              {s.lastMessageSenderName && (
+                                <span className="font-medium text-black/70">
+                                  {s.lastMessageSenderName}:{" "}
+                                </span>
+                              )}
+                              {s.lastMessage}
+                            </p>
+                          )}
+                          <p className="mt-1 text-[11px] tracking-[-0.01em] text-black/48">
+                            {when}
+                          </p>
+                        </div>
+                        {unread > 0 && (
+                          <span className="mt-1 flex h-[20px] min-w-[20px] shrink-0 items-center justify-center rounded-full bg-[#0071e3] px-1.5 text-[11px] font-semibold text-white">
+                            {unread > 99 ? "99+" : unread}
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+      </section>
 
       {showNewChat && (
         <NewChatModal

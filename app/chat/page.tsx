@@ -19,6 +19,13 @@ export default function ChatPage() {
       return;
     }
 
+    // 온보딩 미완료 사용자는 위저드로. user 프로필이 아직 로드 중일 수 있으니
+    // user 객체가 있는데 onboardedAt 이 없을 때만 분기 (null/undefined 혼동 방지).
+    if (user && !user.onboardedAt) {
+      router.replace("/onboarding");
+      return;
+    }
+
     const displayName = user?.displayName || firebaseUser.displayName || "사용자";
 
     // future-self 세션 id만 확보(없으면 생성). 자동 redirect는 더 이상 하지 않음.
@@ -27,14 +34,14 @@ export default function ChatPage() {
       .catch((err) => {
         console.warn("미래의 나 세션 준비 실패:", err);
       });
-  }, [firebaseUser, loading, router, user?.displayName]);
+  }, [firebaseUser, loading, router, user, user?.displayName]);
 
   if (loading || !firebaseUser) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-center text-gray-400">
-          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
-          <p>불러오는 중...</p>
+      <div className="flex h-full items-center justify-center bg-[#f5f5f7]">
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-black/10 border-t-[#0071e3]" />
+          <p className="text-[14px] tracking-[-0.022em] text-black/48">불러오는 중…</p>
         </div>
       </div>
     );

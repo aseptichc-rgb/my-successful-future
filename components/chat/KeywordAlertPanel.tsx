@@ -4,6 +4,22 @@ import { useState, useCallback } from "react";
 import type { KeywordAlertConfig } from "@/types";
 import { MAX_SCHEDULED_SLOTS, HHMM_PATTERN } from "@/lib/constants/keyword-alert";
 
+// "YYYY-MM-DD" (KST) → 짧은 라벨
+function formatLastFiredShort(ymd: string | undefined): string {
+  if (!ymd) return "발사 전";
+  const now = new Date();
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const todayYmd = `${kst.getUTCFullYear()}-${String(kst.getUTCMonth() + 1).padStart(2, "0")}-${String(kst.getUTCDate()).padStart(2, "0")}`;
+  if (ymd === todayYmd) return "오늘 ✓";
+  const [y, m, d] = ymd.split("-").map((v) => parseInt(v, 10));
+  const fired = Date.UTC(y, (m || 1) - 1, d || 1);
+  const today = Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate());
+  const diff = Math.round((today - fired) / (24 * 60 * 60 * 1000));
+  if (diff === 1) return "어제";
+  if (diff > 1) return `${diff}일 전`;
+  return ymd;
+}
+
 interface KeywordAlertPanelProps {
   config: KeywordAlertConfig | null;
   isChecking: boolean;
@@ -189,21 +205,38 @@ export default function KeywordAlertPanel({
 
             {scheduledTimes.length > 0 ? (
               <div className="mt-3 flex flex-wrap gap-1.5">
-                {scheduledTimes.map((slot) => (
-                  <span
-                    key={slot.time}
-                    className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-medium text-rose-700 ring-1 ring-rose-200"
-                  >
-                    🕐 {slot.time}
-                    <button
-                      onClick={() => onRemoveScheduledTime(slot.time)}
-                      className="ml-0.5 hover:text-rose-900"
-                      aria-label={`${slot.time} 삭제`}
+                {scheduledTimes.map((slot) => {
+                  const firedLabel = formatLastFiredShort(slot.lastFiredYmd);
+                  const isToday = firedLabel === "오늘 ✓";
+                  const isPristine = firedLabel === "발사 전";
+                  return (
+                    <span
+                      key={slot.time}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-medium text-rose-700 ring-1 ring-rose-200"
                     >
-                      ×
-                    </button>
-                  </span>
-                ))}
+                      🕐 {slot.time}
+                      <span
+                        className={`rounded-full px-1.5 py-px text-[10px] font-semibold ${
+                          isToday
+                            ? "bg-emerald-100 text-emerald-700"
+                            : isPristine
+                              ? "bg-gray-100 text-gray-500"
+                              : "bg-amber-100 text-amber-700"
+                        }`}
+                        title={slot.lastFiredYmd ? `마지막 발사: ${slot.lastFiredYmd}` : "아직 발사된 적 없음"}
+                      >
+                        {firedLabel}
+                      </span>
+                      <button
+                        onClick={() => onRemoveScheduledTime(slot.time)}
+                        className="ml-0.5 hover:text-rose-900"
+                        aria-label={`${slot.time} 삭제`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  );
+                })}
               </div>
             ) : (
               <p className="mt-2 text-xs text-gray-500">

@@ -67,26 +67,26 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               if (toast.sessionId) router.push(`/chat/${toast.sessionId}`);
               setToast(null);
             }}
-            className="fixed bottom-20 right-2 left-2 z-50 max-w-xs mx-auto cursor-pointer rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-lg transition-all animate-in slide-in-from-top lg:absolute lg:top-2 lg:bottom-auto lg:left-auto lg:mx-0"
+            className="fixed bottom-20 right-2 left-2 z-50 max-w-xs mx-auto cursor-pointer rounded-[14px] bg-white px-4 py-3 shadow-apple-lg transition-all animate-in slide-in-from-top lg:absolute lg:top-3 lg:right-3 lg:left-auto lg:bottom-auto lg:mx-0"
           >
-            <p className="text-sm font-semibold text-gray-900">{toast.title}</p>
-            <p className="mt-0.5 text-xs text-gray-500 truncate">{toast.body}</p>
+            <p className="text-[14px] font-semibold tracking-[-0.022em] text-[#1d1d1f]">{toast.title}</p>
+            <p className="mt-0.5 truncate text-[12px] tracking-[-0.01em] text-black/56">{toast.body}</p>
           </div>
         )}
 
         {/* 알림 권한 요청 프롬프트 */}
         {showNotifPrompt && (
-          <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex max-w-[calc(100vw-1rem)] items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm shadow-lg lg:absolute lg:top-2 lg:bottom-auto lg:px-4 lg:py-3">
-            <p className="text-sm text-blue-800">새 메시지 알림을 받으시겠습니까?</p>
+          <div className="nav-glass fixed bottom-20 left-1/2 z-50 flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-3 rounded-pill border border-black/[0.06] px-4 py-2.5 shadow-apple lg:absolute lg:top-3 lg:bottom-auto">
+            <p className="text-[13px] tracking-[-0.01em] text-[#1d1d1f]">새 메시지 알림을 받으시겠습니까?</p>
             <button
               onClick={handleEnableNotifications}
-              className="rounded-lg bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700"
+              className="rounded-pill bg-[#0071e3] px-3 py-1 text-[12px] font-medium text-white transition-colors hover:bg-[#0077ed]"
             >
               허용
             </button>
             <button
               onClick={() => setShowNotifPrompt(false)}
-              className="text-xs text-blue-600 hover:text-blue-800"
+              className="text-[12px] font-medium text-black/48 transition-colors hover:text-black/80"
             >
               나중에
             </button>

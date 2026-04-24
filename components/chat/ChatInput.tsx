@@ -102,6 +102,29 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput
     [mentionStart, mentionQuery],
   );
 
+  /** 커서 위치에 "@" 를 삽입하고 멘션 드롭다운을 연다. 자문단 호출을 눈에 띄게 만드는 용도. */
+  const insertAtMention = useCallback(() => {
+    const el = textareaRef.current;
+    const pos = el?.selectionStart ?? input.length;
+    const prevChar = pos > 0 ? input[pos - 1] : "";
+    const needsSpace = pos > 0 && prevChar !== " " && prevChar !== "\n";
+    const insertion = `${needsSpace ? " " : ""}@`;
+    const next = `${input.slice(0, pos)}${insertion}${input.slice(pos)}`;
+    const filtered = getFilteredPersonas("", customPersonaMap);
+    setInput(next);
+    setMentionStart(pos + insertion.length - 1);
+    setMentionQuery("");
+    setMentionIndex(0);
+    if (filtered.length > 0) setShowMention(true);
+    setTimeout(() => {
+      const target = textareaRef.current;
+      if (!target) return;
+      target.focus();
+      const caret = pos + insertion.length;
+      target.setSelectionRange(caret, caret);
+    }, 0);
+  }, [input, customPersonaMap]);
+
   const handleSubmit = useCallback(
     async (e: FormEvent) => {
       e.preventDefault();
@@ -155,8 +178,8 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput
   return (
     <>
       {isOverLimit && (
-        <div className="mx-auto mb-1.5 max-w-3xl text-center text-sm text-red-600">
-          ⚠️ 메시지는 {maxLength}자 이내로 입력해주세요. (현재 {input.length}자)
+        <div className="mx-auto mb-2 max-w-3xl text-center text-[13px] tracking-[-0.01em] text-[#ff3b30]">
+          메시지는 {maxLength}자 이내로 입력해주세요. (현재 {input.length}자)
         </div>
       )}
       <form
@@ -185,28 +208,40 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput
             maxLength={maxLength + 50}
             placeholder={placeholder}
             rows={1}
-            className={`w-full resize-none rounded-[22px] border bg-[#f2f2f7] pl-4 pr-14 py-2.5 text-[15px] leading-[1.45] text-gray-900 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-1 transition-colors ${
+            className={`w-full resize-none rounded-[22px] border bg-[#f5f5f7] pl-[18px] pr-14 py-3 text-[15px] leading-[1.47] tracking-[-0.022em] text-[#1d1d1f] placeholder:text-black/40 transition-colors focus:outline-none focus:bg-white ${
               isOverLimit
-                ? "border-red-300 focus:border-red-400 focus:ring-red-400"
-                : "border-transparent focus:border-[#007aff]/40 focus:ring-[#007aff]/30"
+                ? "border-[#ff3b30]/40 focus:border-[#ff3b30]"
+                : "border-transparent focus:border-[#0071e3]"
             }`}
           />
-          <div
-            className={`pointer-events-none absolute bottom-1.5 right-2 text-[10px] sm:text-xs ${
-              isOverLimit
-                ? "text-red-500 font-semibold"
-                : input.length > maxLength * 0.8
-                  ? "text-yellow-500"
-                  : "text-gray-400"
-            }`}
-          >
-            {input.length}/{maxLength}
-          </div>
+          {input.length > 0 && (
+            <div
+              className={`pointer-events-none absolute bottom-2 right-3 text-[11px] tracking-[-0.01em] ${
+                isOverLimit
+                  ? "text-[#ff3b30] font-semibold"
+                  : input.length > maxLength * 0.8
+                    ? "text-[#ff9500]"
+                    : "text-black/40"
+              }`}
+            >
+              {input.length}/{maxLength}
+            </div>
+          )}
         </div>
+        <button
+          type="button"
+          onClick={insertAtMention}
+          disabled={disabled}
+          className="shrink-0 rounded-full bg-[#f5f5f7] w-11 h-11 text-[17px] font-semibold text-[#0071e3] transition-colors hover:bg-black/[0.06] disabled:opacity-50"
+          aria-label="자문단 호출 (@)"
+          title="자문단 호출"
+        >
+          @
+        </button>
         <button
           type="submit"
           disabled={disabled || !input.trim() || isOverLimit}
-          className="shrink-0 rounded-full bg-[#007aff] px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 active:opacity-80 disabled:opacity-40 transition-opacity sm:px-6"
+          className="shrink-0 rounded-pill bg-[#0071e3] px-[22px] py-3 text-[14px] font-medium text-white transition-colors hover:bg-[#0077ed] active:bg-[#006adf] disabled:bg-black/20 disabled:cursor-not-allowed sm:px-7"
         >
           전송
         </button>

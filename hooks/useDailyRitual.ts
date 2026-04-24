@@ -6,14 +6,12 @@ import {
   saveDailyRitualConfig,
   onDailyRitualConfigSnapshot,
 } from "@/lib/firebase";
-import type { DailyRitualConfig, DailyTaskSnapshot, GoalSnapshot, MoodKind } from "@/types";
+import type { DailyRitualConfig, MoodKind } from "@/types";
 
 interface UseDailyRitualOptions {
   userPersona?: string;
   futurePersona?: string;
   userMemory?: string;
-  activeGoals?: GoalSnapshot[];
-  dailyTasks?: DailyTaskSnapshot[];
   mood?: MoodKind;
 }
 
@@ -78,7 +76,7 @@ export function useDailyRitual(
     async (kind: "morning" | "evening") => {
       if (!uid || !sessionId) return;
       if (inFlightRef.current) return;
-      const { futurePersona, userPersona, userMemory, activeGoals, dailyTasks, mood } = optionsRef.current;
+      const { futurePersona, userPersona, userMemory, mood } = optionsRef.current;
       if (!futurePersona || futurePersona.trim().length === 0) return;
 
       inFlightRef.current = true;
@@ -91,8 +89,6 @@ export function useDailyRitual(
             currentPersona: userPersona || undefined,
             futurePersona,
             userMemory: userMemory || undefined,
-            activeGoals: activeGoals && activeGoals.length > 0 ? activeGoals : undefined,
-            dailyTasks: dailyTasks && dailyTasks.length > 0 ? dailyTasks : undefined,
             mood: mood && mood !== "unknown" ? mood : undefined,
           }),
         });

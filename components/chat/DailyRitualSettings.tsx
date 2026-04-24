@@ -17,6 +17,39 @@ const DEFAULTS = {
   eveningTime: "22:00",
 };
 
+// "YYYY-MM-DD" (KST) → "오늘 ✓" | "어제" | "N일 전" | "(발사 기록 없음)"
+function formatLastFired(ymd: string | undefined): { label: string; tone: "ok" | "stale" | "none" } {
+  if (!ymd) return { label: "(아직 발사 기록 없음)", tone: "none" };
+  const now = new Date();
+  const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const todayYmd = `${kstNow.getUTCFullYear()}-${String(kstNow.getUTCMonth() + 1).padStart(2, "0")}-${String(kstNow.getUTCDate()).padStart(2, "0")}`;
+  if (ymd === todayYmd) return { label: "오늘 발사됨 ✓", tone: "ok" };
+  // 일수 차이 계산 (KST 기준 자정)
+  const [y, m, d] = ymd.split("-").map((v) => parseInt(v, 10));
+  const fired = Date.UTC(y, (m || 1) - 1, d || 1);
+  const today = Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate());
+  const diffDays = Math.round((today - fired) / (24 * 60 * 60 * 1000));
+  if (diffDays === 1) return { label: "어제 발사됨", tone: "ok" };
+  if (diffDays > 1 && diffDays <= 7) return { label: `${diffDays}일 전 발사됨`, tone: "stale" };
+  if (diffDays > 7) return { label: `${diffDays}일 전 발사됨 (오래됨)`, tone: "stale" };
+  return { label: ymd, tone: "ok" };
+}
+
+function LastFiredBadge({ ymd }: { ymd: string | undefined }) {
+  const { label, tone } = formatLastFired(ymd);
+  const cls =
+    tone === "ok"
+      ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+      : tone === "stale"
+        ? "bg-amber-50 text-amber-700 ring-amber-200"
+        : "bg-gray-50 text-gray-500 ring-gray-200";
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset ${cls}`}>
+      {label}
+    </span>
+  );
+}
+
 export default function DailyRitualSettings({ config, onUpdate, onClose }: DailyRitualSettingsProps) {
   const current = { ...DEFAULTS, ...(config || {}) };
   const [enabled, setEnabled] = useState(current.enabled);
@@ -60,7 +93,7 @@ export default function DailyRitualSettings({ config, onUpdate, onClose }: Daily
           <div>
             <p className="text-sm font-medium text-gray-900">리추얼 활성화</p>
             <p className="mt-0.5 text-xs text-gray-600">
-              브라우저가 열려 있을 때 설정된 시각에 메시지가 도착합니다
+              설정된 시각에 서버가 자동으로 메시지를 보내드립니다 (앱이 꺼져 있어도 동작)
             </p>
           </div>
           <input
@@ -86,13 +119,16 @@ export default function DailyRitualSettings({ config, onUpdate, onClose }: Daily
               />
             </div>
             <p className="mt-1 text-xs text-gray-500">오늘 하루의 초점을 1개 정해줍니다</p>
-            <input
-              type="time"
-              value={morningTime}
-              onChange={(e) => setMorningTime(e.target.value)}
-              disabled={!morningEnabled}
-              className="mt-2 rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-900 disabled:opacity-50"
-            />
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                type="time"
+                value={morningTime}
+                onChange={(e) => setMorningTime(e.target.value)}
+                disabled={!morningEnabled}
+                className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-900 disabled:opacity-50"
+              />
+              {morningEnabled && <LastFiredBadge ymd={config?.lastMorningDate} />}
+            </div>
           </div>
 
           <div className="rounded-lg border border-gray-200 p-3">
@@ -109,18 +145,21 @@ export default function DailyRitualSettings({ config, onUpdate, onClose }: Daily
               />
             </div>
             <p className="mt-1 text-xs text-gray-500">하루를 돌아보는 따뜻한 메시지를 보냅니다</p>
-            <input
-              type="time"
-              value={eveningTime}
-              onChange={(e) => setEveningTime(e.target.value)}
-              disabled={!eveningEnabled}
-              className="mt-2 rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-900 disabled:opacity-50"
-            />
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                type="time"
+                value={eveningTime}
+                onChange={(e) => setEveningTime(e.target.value)}
+                disabled={!eveningEnabled}
+                className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-900 disabled:opacity-50"
+              />
+              {eveningEnabled && <LastFiredBadge ymd={config?.lastEveningDate} />}
+            </div>
           </div>
         </div>
 
         <div className="mt-5 rounded-md bg-gray-50 p-2 text-xs text-gray-500">
-          💡 이 기능은 브라우저가 켜져 있을 때만 동작합니다. 백그라운드 푸시는 추후 지원 예정입니다.
+          💡 매시간 정각마다 서버가 발사 여부를 확인합니다. 설정 시각 ±15분 이내에 메시지가 도착할 수 있어요.
         </div>
 
         <div className="mt-5 flex justify-end gap-2">

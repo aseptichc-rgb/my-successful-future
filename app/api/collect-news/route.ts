@@ -11,6 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { collectForPersona } from "@/lib/personaNewsCollector";
 import { runKeywordAlert } from "@/lib/keyword-alert-runner";
 import { getAdminDb } from "@/lib/firebase-admin";
@@ -20,7 +21,17 @@ import {
   CRON_TOLERANCE_MINUTES,
 } from "@/lib/constants/keyword-alert";
 import { resolvePersona, postBriefMessages, type ResolvedPersona } from "@/lib/persona-brief-poster";
-import type { BuiltinPersonaId, KeywordAlertConfig, ScheduledNewsSlot, NewsSource, PersonaSchedule } from "@/types";
+import { withRetry } from "@/lib/gemini";
+import { buildMorningBriefPrompt, buildEveningReflectionPrompt } from "@/lib/prompts";
+import type {
+  BuiltinPersonaId,
+  KeywordAlertConfig,
+  ScheduledNewsSlot,
+  NewsSource,
+  PersonaSchedule,
+  DailyRitualConfig,
+  User,
+} from "@/types";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -352,6 +363,194 @@ async function processPersonaSchedules(): Promise<PersonaScheduleFireResult[]> {
   return out;
 }
 
+// ── 데일리 리추얼 (아침 브리프 / 저녁 회고) ───────────────────
+// 클라이언트 폴링(useDailyRitual)과 병행. 사용자가 화면을 켜놓지 않아도
+// 정해진 시각이 도래하면 서버 cron이 발사한다. lastMorningDate/lastEveningDate
+// 로 일일 1회 보장 → 클라이언트와의 더블 발사도 방지된다.
+interface DailyRitualFireResult {
+  uid: string;
+  kind: "morning" | "evening";
+  status: "fired" | "no-future-persona" | "no-session" | "skipped" | "error";
+  sessionId?: string;
+}
+
+const RITUAL_GEMINI_MODEL = "gemini-2.5-flash-lite";
+
+async function findOrCreateFutureSelfSession(uid: string, displayName: string): Promise<string | null> {
+  const db = getAdminDb();
+  try {
+    const existing = await db
+      .collection("sessions")
+      .where("uid", "==", uid)
+      .where("sessionType", "==", "future-self")
+      .limit(1)
+      .get();
+    if (!existing.empty) return existing.docs[0].id;
+
+    const ref = await db.collection("sessions").add({
+      uid,
+      title: "🌟 미래의 나와의 대화",
+      sessionType: "future-self",
+      participants: [uid],
+      participantNames: { [uid]: displayName || "나" },
+      pinnedBy: [uid],
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    return ref.id;
+  } catch (err) {
+    console.error(`[collect-news] future-self 세션 확보 실패 (${uid}):`, err);
+    return null;
+  }
+}
+
+async function postDailyRitualMessages(
+  sessionId: string,
+  kind: "morning" | "evening",
+  content: string,
+): Promise<void> {
+  const db = getAdminDb();
+  const kindLabel = kind === "morning" ? "☀️ 아침 브리프" : "🌙 저녁 회고";
+  const paragraphs = content
+    .split("\n\n")
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+  if (paragraphs.length === 0) return;
+
+  for (let i = 0; i < paragraphs.length; i++) {
+    const text = i === 0 ? `${kindLabel}\n\n${paragraphs[i]}` : paragraphs[i];
+    await db.collection("messages").add({
+      sessionId,
+      role: "assistant",
+      content: text,
+      sources: [],
+      personaId: "future-self",
+      personaName: "미래의 나",
+      personaIcon: "🌟",
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  }
+
+  const lastPreview = paragraphs[paragraphs.length - 1];
+  await db.collection("sessions").doc(sessionId).set(
+    {
+      updatedAt: FieldValue.serverTimestamp(),
+      lastMessage: lastPreview.length > 100 ? lastPreview.slice(0, 100) + "..." : lastPreview,
+      lastMessageAt: FieldValue.serverTimestamp(),
+      lastMessageSenderName: "미래의 나",
+    },
+    { merge: true }
+  );
+}
+
+async function fireDailyRitual(
+  uid: string,
+  kind: "morning" | "evening",
+  config: DailyRitualConfig,
+  ymd: string,
+): Promise<DailyRitualFireResult> {
+  const db = getAdminDb();
+
+  // 사용자 정보 로드 (futurePersona 필수)
+  const userSnap = await db.collection("users").doc(uid).get();
+  if (!userSnap.exists) return { uid, kind, status: "no-future-persona" };
+  const userData = userSnap.data() as User;
+  const futurePersona = (userData.futurePersona || "").trim();
+  if (!futurePersona) return { uid, kind, status: "no-future-persona" };
+
+  // 세션 확보
+  let sessionId = config.sessionId;
+  if (!sessionId) {
+    const newId = await findOrCreateFutureSelfSession(uid, userData.displayName || "나");
+    if (!newId) return { uid, kind, status: "no-session" };
+    sessionId = newId;
+  } else {
+    // 저장된 sessionId가 여전히 유효한지 확인
+    const sessSnap = await db.collection("sessions").doc(sessionId).get();
+    if (!sessSnap.exists) {
+      const newId = await findOrCreateFutureSelfSession(uid, userData.displayName || "나");
+      if (!newId) return { uid, kind, status: "no-session" };
+      sessionId = newId;
+    }
+  }
+
+  // Gemini 호출 (mood 는 서버에서는 unknown — 클라이언트 폴링 기반이라 여기선 생략)
+  const apiKey = process.env.GEMINI_API_KEY || "";
+  if (!apiKey) return { uid, kind, status: "error", sessionId };
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const systemPrompt =
+    kind === "morning"
+      ? buildMorningBriefPrompt(userData.userPersona, futurePersona, userData.userMemory, undefined)
+      : buildEveningReflectionPrompt(userData.userPersona, futurePersona, userData.userMemory, undefined);
+  const model = genAI.getGenerativeModel({ model: RITUAL_GEMINI_MODEL, systemInstruction: systemPrompt });
+  const trigger =
+    kind === "morning"
+      ? "지금 아침이야. 오늘 하루를 시작하는 메시지를 보내줘."
+      : "지금 저녁이야. 오늘 하루를 마무리하는 메시지를 보내줘.";
+
+  const result = await withRetry(() => model.generateContent(trigger));
+  const text = result.response.text();
+  if (!text || !text.trim()) return { uid, kind, status: "error", sessionId };
+
+  await postDailyRitualMessages(sessionId, kind, text);
+
+  // lastMorningDate/lastEveningDate 업데이트 → 일일 1회 보장
+  const update: Partial<DailyRitualConfig> =
+    kind === "morning"
+      ? { lastMorningDate: ymd, sessionId }
+      : { lastEveningDate: ymd, sessionId };
+  await db.collection("dailyRitualConfigs").doc(uid).set(update, { merge: true });
+
+  return { uid, kind, status: "fired", sessionId };
+}
+
+async function processDailyRituals(): Promise<DailyRitualFireResult[]> {
+  const db = getAdminDb();
+  const { minuteOfDay, ymd } = kstNow();
+  const out: DailyRitualFireResult[] = [];
+
+  let snap;
+  try {
+    snap = await db.collection("dailyRitualConfigs").where("enabled", "==", true).get();
+  } catch (err) {
+    console.error("[collect-news] daily ritual 스캔 실패:", err);
+    return out;
+  }
+
+  for (const docSnap of snap.docs) {
+    const uid = docSnap.id;
+    const config = docSnap.data() as DailyRitualConfig;
+
+    // 아침 브리프
+    if (config.morningEnabled && config.lastMorningDate !== ymd) {
+      const targetMin = parseHhmmToMinute(config.morningTime || "07:00");
+      if (targetMin !== null && targetMin <= minuteOfDay + CRON_TOLERANCE_MINUTES && targetMin >= minuteOfDay - 60) {
+        try {
+          out.push(await fireDailyRitual(uid, "morning", config, ymd));
+        } catch (err) {
+          console.error(`[collect-news] 아침 브리프 실패 (${uid}):`, err);
+          out.push({ uid, kind: "morning", status: "error" });
+        }
+      }
+    }
+
+    // 저녁 회고
+    if (config.eveningEnabled && config.lastEveningDate !== ymd) {
+      const targetMin = parseHhmmToMinute(config.eveningTime || "22:00");
+      if (targetMin !== null && targetMin <= minuteOfDay + CRON_TOLERANCE_MINUTES && targetMin >= minuteOfDay - 60) {
+        try {
+          out.push(await fireDailyRitual(uid, "evening", config, ymd));
+        } catch (err) {
+          console.error(`[collect-news] 저녁 회고 실패 (${uid}):`, err);
+          out.push({ uid, kind: "evening", status: "error" });
+        }
+      }
+    }
+  }
+
+  return out;
+}
+
 export async function POST(req: NextRequest) {
   if (!authorize(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -388,7 +587,14 @@ export async function POST(req: NextRequest) {
     console.error("[collect-news] 페르소나 스케줄 처리 전체 실패:", err);
   }
 
-  return NextResponse.json({ ok: true, summary, results, scheduled, personaSchedules });
+  let dailyRituals: DailyRitualFireResult[] = [];
+  try {
+    dailyRituals = await processDailyRituals();
+  } catch (err) {
+    console.error("[collect-news] 데일리 리추얼 처리 전체 실패:", err);
+  }
+
+  return NextResponse.json({ ok: true, summary, results, scheduled, personaSchedules, dailyRituals });
 }
 
 // Vercel Cron은 GET 으로도 호출할 수 있게 한다.

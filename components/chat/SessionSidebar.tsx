@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { onSessionsSnapshot, deleteSession, pinSession, unpinSession, muteSession, unmuteSession } from "@/lib/firebase";
 import { formatRelativeDate } from "@/lib/locale";
+import { getSessionParticipantCounts } from "@/lib/sessionMeta";
 import type { ChatSession } from "@/types";
 
 interface SessionSidebarProps {
@@ -125,7 +126,8 @@ export default function SessionSidebar({ uid, isOpen, onClose }: SessionSidebarP
                 })
                 .map((session) => {
                 const isActive = session.id === currentSessionId;
-                const participantCount = session.participants?.length || 1;
+                const { total: participantCount, humans: humanCount } =
+                  getSessionParticipantCounts(session);
                 const sessionType = session.sessionType || "ai";
                 const unreadCount = session.unreadCounts?.[uid] || 0;
                 const isPinned = session.pinnedBy?.includes(uid) || false;
@@ -203,7 +205,7 @@ export default function SessionSidebar({ uid, isOpen, onClose }: SessionSidebarP
                             hover:bg-red-50 hover:text-red-500
                             ${isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"}
                           `}
-                          title={participantCount > 1 ? "대화방 나가기" : "대화 삭제"}
+                          title={humanCount > 1 ? "대화방 나가기" : "대화 삭제"}
                           disabled={deletingId === session.id}
                         >
                           {deletingId === session.id ? (

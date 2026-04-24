@@ -4,9 +4,9 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { Timestamp } from "firebase/firestore";
 import { getMessages, addMessage, updateSessionTitle, onMessagesSnapshot, getSessionById, incrementUnreadCounts, updateUserMemory, onPersonaMemoriesSnapshot, updatePersonaMemory, getAuth_ } from "@/lib/firebase";
 import { getPersona, PERSONAS, isCustomPersonaId } from "@/lib/personas";
-import { routeToPersonas } from "@/lib/persona-router";
+import { routeToPersonas, pickBestFromActive } from "@/lib/persona-router";
 import { detectBotCommand } from "@/lib/externalBots";
-import type { ActiveCouncilState, ChatMessage, ChatSession, ChatStreamEvent, CouncilTurn, CustomPersona, DailyTaskSnapshot, GoalSnapshot, MoodKind, NewsSource, NewsTopic, PersonaId, SessionType } from "@/types";
+import type { ActiveCouncilState, ChatMessage, ChatSession, ChatStreamEvent, CouncilTurn, CustomPersona, MoodKind, NewsSource, NewsTopic, PersonaId, SessionType } from "@/types";
 
 /** 응답 텍스트에서 AI가 붙인 [이름] 접두사를 제거 */
 function stripPersonaPrefix(text: string): string {
@@ -31,6 +31,20 @@ function normalizePersonaMarkers(text: string): string {
 }
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/**
+ * 고유 메시지 placeholder ID 생성기.
+ * 왜: Date.now() 단독으로는 순차 await 사이에 동일 밀리초로 충돌해서
+ *     placeholder 한 개에 두 라운드의 content가 덮어씌워지는 버그가 있었다.
+ *     crypto.randomUUID() 로 충돌 가능성 0.
+ */
+function makeMessageId(prefix: string): string {
+  const rand =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `${prefix}-${rand}`;
+}
 
 /**
  * /api/chat 요청에 Firebase ID 토큰을 실어 보낸다.
@@ -86,14 +100,8 @@ export function useChat(
   userMemory?: string,
   onMemoryUpdated?: (memory: string) => void,
   initialPersona?: PersonaId,
-  activeGoals?: GoalSnapshot[],
-  dailyTasks?: DailyTaskSnapshot[],
   customPersonaMap?: Record<string, CustomPersona>,
 ) {
-  const activeGoalsRef = useRef<GoalSnapshot[] | undefined>(activeGoals);
-  activeGoalsRef.current = activeGoals;
-  const dailyTasksRef = useRef<DailyTaskSnapshot[] | undefined>(dailyTasks);
-  dailyTasksRef.current = dailyTasks;
   const customPersonaMapRef = useRef<Record<string, CustomPersona> | undefined>(customPersonaMap);
   customPersonaMapRef.current = customPersonaMap;
   // 페르소나별 기억 샤드 (Firestore subscribe)
@@ -128,12 +136,15 @@ export function useChat(
   const userMessageCountRef = useRef(0);
 
   // 세션 정보 로드 + future-self 세션이면 activePersonas 자동 설정
+  // 복수 자문단이 저장된 방이면(session.advisorIds) 해당 목록으로 복원한다.
   useEffect(() => {
     if (sessionId) {
       getSessionById(sessionId).then((s) => {
         setSession(s);
         if (s?.sessionType === "future-self") {
           setActivePersonas(["future-self"]);
+        } else if (s?.advisorIds && s.advisorIds.length > 0) {
+          setActivePersonas(s.advisorIds);
         }
       });
     }
@@ -330,8 +341,6 @@ export function useChat(
           userPersona: userPersona || undefined,
           futurePersona: futurePersona || undefined,
           userMemory: userMemory || undefined,
-          activeGoals: activeGoalsRef.current && activeGoalsRef.current.length > 0 ? activeGoalsRef.current : undefined,
-          dailyTasks: dailyTasksRef.current && dailyTasksRef.current.length > 0 ? dailyTasksRef.current : undefined,
           personaMemory: personaMemory && personaMemory.trim().length > 0 ? personaMemory : undefined,
           customPersona: customPayload
             ? {
@@ -423,7 +432,7 @@ export function useChat(
 
       // 첫 번째 버블(assistantId)은 이미 있으므로 나머지 문단용 버블만 추가
       while (bubbleIds.length < paragraphs.length) {
-        const newId = `temp-${personaId}-${Date.now()}-${bubbleIds.length}`;
+        const newId = makeMessageId(`temp-${personaId}-p${bubbleIds.length}`);
         bubbleIds.push(newId);
         setMessages((prev) => [
           ...prev,
@@ -490,7 +499,7 @@ export function useChat(
 
       // 사용자 메시지를 즉시 UI에 추가 (발신자 정보 포함)
       const userMessage: ChatMessage = {
-        id: `temp-user-${Date.now()}`,
+        id: makeMessageId("temp-user"),
         sessionId,
         role: "user",
         content,
@@ -631,6 +640,9 @@ export function useChat(
       const participantCount = session?.participants?.length ?? 1;
       const nonDefaultActive = activePersonas.filter((p) => p !== "default");
       const soloAutoRespond = participantCount <= 1 && nonDefaultActive.length > 0;
+      // 자문단이 2명 이상 참여한 AI 방 — 메시지 내용에 따라 "가장 적절한 한 명"만 답한다.
+      const isMultiAdvisorAiRoom =
+        currentSessionType === "ai" && nonDefaultActive.length >= 2;
 
       // DM/그룹 채팅: @멘션도 없고 진행 중인 AI 대화도 없으면 메시지만 저장
       // 단, 1인 방이고 뉴스봇 외 활성 페르소나가 있으면 아래 루트로 떨어져 자동 응답한다.
@@ -670,7 +682,15 @@ export function useChat(
       if (mentionedPersonas.length > 0) {
         // @멘션된 페르소나가 있으면 해당 페르소나만 응답
         respondPersonas = mentionedPersonas;
-        conversationPersonaRef.current = mentionedPersonas.length === 1 ? mentionedPersonas[0] : null;
+        // 복수 자문단 방에서는 다음 턴에도 내용 기반 라우팅이 계속 동작해야 하므로 락을 걸지 않는다.
+        if (!isMultiAdvisorAiRoom) {
+          conversationPersonaRef.current = mentionedPersonas.length === 1 ? mentionedPersonas[0] : null;
+        } else {
+          conversationPersonaRef.current = null;
+        }
+      } else if (isMultiAdvisorAiRoom) {
+        // 복수 자문단 방: 메시지 내용에 맞는 활성 자문단 "한 명"만 응답
+        respondPersonas = [pickBestFromActive(content, nonDefaultActive)];
       } else if (conversationPersonaRef.current) {
         respondPersonas = [conversationPersonaRef.current];
       } else if (soloAutoRespond) {
@@ -685,7 +705,7 @@ export function useChat(
         for (const personaId of respondPersonas) {
           const persona = getPersona(personaId, customPersonaMapRef.current);
 
-          const assistantId = `temp-${personaId}-${Date.now()}`;
+          const assistantId = makeMessageId(`temp-${personaId}`);
           const assistantMessage: ChatMessage = {
             id: assistantId,
             sessionId,
@@ -776,7 +796,7 @@ export function useChat(
       setIsLoading(true);
 
       // 사용자 질문 메시지 저장 (카운슬 그룹에 묶음)
-      const userMsgId = `temp-user-${Date.now()}`;
+      const userMsgId = makeMessageId("temp-user");
       const userMessage: ChatMessage = {
         id: userMsgId,
         sessionId,
@@ -814,7 +834,7 @@ export function useChat(
           const round = i + 1;
           setRespondingPersona(personaId);
 
-          const assistantId = `temp-council-${personaId}-${Date.now()}`;
+          const assistantId = makeMessageId(`temp-council-${personaId}`);
           const assistantMessage: ChatMessage = {
             id: assistantId,
             sessionId,
@@ -848,8 +868,6 @@ export function useChat(
                 userPersona: userPersona || undefined,
                 futurePersona: futurePersona || undefined,
                 userMemory: userMemory || undefined,
-                activeGoals: activeGoalsRef.current && activeGoalsRef.current.length > 0 ? activeGoalsRef.current : undefined,
-                dailyTasks: dailyTasksRef.current && dailyTasksRef.current.length > 0 ? dailyTasksRef.current : undefined,
                 personaMemory: personaMemoryForThis && personaMemoryForThis.trim().length > 0 ? personaMemoryForThis : undefined,
                 councilContext: priorRounds.length > 0 ? priorRounds : undefined,
                 isCouncilFinal: isFinal,
@@ -964,7 +982,15 @@ export function useChat(
       const persona = getPersona(personaId, customPersonaMapRef.current);
       setRespondingPersona(personaId);
 
-      const assistantId = `temp-newsdebate-${personaId}-${Date.now()}`;
+      const assistantId = makeMessageId(`temp-newsdebate-${personaId}`);
+      console.debug(
+        "[council] round",
+        round,
+        "persona",
+        personaId,
+        "priorTurns",
+        priorTurns.map((t) => `${t.kind}:${t.speakerName}`).join(" | "),
+      );
       const placeholder: ChatMessage = {
         id: assistantId,
         sessionId,
@@ -1005,14 +1031,6 @@ export function useChat(
             userPersona: userPersona || undefined,
             futurePersona: futurePersona || undefined,
             userMemory: userMemory || undefined,
-            activeGoals:
-              activeGoalsRef.current && activeGoalsRef.current.length > 0
-                ? activeGoalsRef.current
-                : undefined,
-            dailyTasks:
-              dailyTasksRef.current && dailyTasksRef.current.length > 0
-                ? dailyTasksRef.current
-                : undefined,
             personaMemory:
               personaMemoryForThis && personaMemoryForThis.trim().length > 0
                 ? personaMemoryForThis
@@ -1074,6 +1092,17 @@ export function useChat(
           return { ok: false, content: "", personaName: persona.name };
         }
 
+        console.debug(
+          "[council] round",
+          round,
+          "persona",
+          personaId,
+          "done — cleaned[0..80]:",
+          cleaned.slice(0, 80),
+          "len:",
+          cleaned.length,
+        );
+
         addMessage(
           sessionId,
           "assistant",
@@ -1117,7 +1146,7 @@ export function useChat(
       setIsLoading(true);
 
       // 사용자 질문 저장
-      const userMsgId = `temp-user-${Date.now()}`;
+      const userMsgId = makeMessageId("temp-user");
       const userMessage: ChatMessage = {
         id: userMsgId,
         sessionId,
@@ -1213,7 +1242,7 @@ export function useChat(
       if (!trimmed) return;
 
       // 사용자 메시지를 카운슬 그룹에 추가
-      const userMsgId = `temp-user-interject-${Date.now()}`;
+      const userMsgId = makeMessageId("temp-user-interject");
       const userMessage: ChatMessage = {
         id: userMsgId,
         sessionId,

@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import { LABELS } from "@/lib/labels";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -62,8 +63,8 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <div className="w-full max-w-md space-y-8 rounded-2xl bg-white p-8 shadow-lg">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900">AI 뉴스 챗봇</h1>
-          <p className="mt-2 text-gray-500">로그인하여 최신 뉴스를 확인하세요</p>
+          <h1 className="text-3xl font-bold text-gray-900">{LABELS.appName}</h1>
+          <p className="mt-2 text-gray-500">{LABELS.appTagline}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">

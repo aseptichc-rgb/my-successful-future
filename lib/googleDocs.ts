@@ -7,11 +7,14 @@
  * - 반환 구조는 lib/prompts.ts 의 attachedDocuments 포맷과 동일하게 맞춤.
  */
 
+import { TTLCache } from "./memoryCache";
+
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 8 * 1000;
 const MAX_TEXT_LENGTH = 40_000; // 프롬프트 과대 주입 방지
 const EXPORT_URL_TEMPLATE = "https://docs.google.com/document/d/{id}/export?format=txt";
 const MAX_USER_DOCS = 10; // 사용자당 참조 문서 상한 (프롬프트 폭주 방지)
+const USER_DOCS_LIST_TTL_MS = 60 * 1000; // 사용자 참조 문서 "목록" 캐시 (컨텐츠는 별도 5분 캐시)
 
 /**
  * Google Docs URL 에서 문서 ID 만 추출.
@@ -42,6 +45,14 @@ interface CacheEntry {
 }
 
 const cache = new Map<string, CacheEntry>();
+
+/**
+ * 사용자별 참조 문서 ID 목록 캐시.
+ * Firestore 에는 document ID 만 저장되고 실제 콘텐츠는 Google Docs 에서 별도 5분 캐시됨.
+ * 이 캐시는 "어떤 ID 들을 읽어야 하는가" 만 60초 동안 기억하여 매 요청 Firestore 쿼리를 피함.
+ * 키 형식: `${uid}|${personaId ?? ""}`
+ */
+const userDocIdsCache = new TTLCache<string[]>(USER_DOCS_LIST_TTL_MS);
 
 /**
  * 환경변수 `GOOGLE_DOCS_REFERENCE_IDS` (쉼표 구분) 에 지정된 문서들을 가져온다.
@@ -133,24 +144,27 @@ export async function loadReferenceDocumentsForUser(
   const globalIds = resolveDocIds();
   let userIds: string[] = [];
   if (uid) {
+    const cacheKey = `${uid}|${personaId ?? ""}`;
     try {
-      // 동적 import — 클라이언트 번들에 admin SDK 가 섞이지 않도록.
-      const { getAdminDb } = await import("./firebase-admin");
-      const snap = await getAdminDb()
-        .collection("userReferenceDocs")
-        .where("uid", "==", uid)
-        .where("active", "==", true)
-        .limit(MAX_USER_DOCS)
-        .get();
-      userIds = snap.docs
-        .filter((d) => {
-          if (!personaId) return true;
-          const raw = d.data().personaIds;
-          if (!Array.isArray(raw) || raw.length === 0) return true;
-          return raw.map(String).includes(personaId);
-        })
-        .map((d) => String(d.data().googleDocId || ""))
-        .filter(Boolean);
+      userIds = await userDocIdsCache.getOrLoad(cacheKey, async () => {
+        // 동적 import — 클라이언트 번들에 admin SDK 가 섞이지 않도록.
+        const { getAdminDb } = await import("./firebase-admin");
+        const snap = await getAdminDb()
+          .collection("userReferenceDocs")
+          .where("uid", "==", uid)
+          .where("active", "==", true)
+          .limit(MAX_USER_DOCS)
+          .get();
+        return snap.docs
+          .filter((d) => {
+            if (!personaId) return true;
+            const raw = d.data().personaIds;
+            if (!Array.isArray(raw) || raw.length === 0) return true;
+            return raw.map(String).includes(personaId);
+          })
+          .map((d) => String(d.data().googleDocId || ""))
+          .filter(Boolean);
+      });
     } catch (err) {
       console.error("[googleDocs] 사용자 참조 문서 조회 실패:", err);
     }

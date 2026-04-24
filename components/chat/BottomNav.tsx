@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname, useParams } from "next/navigation";
-import { onSessionsSnapshot, ensureFutureSelfSession, updateSessionTitle } from "@/lib/firebase";
+import { onSessionsSnapshot, ensureFutureSelfSession, updateSessionTitle, deleteSession } from "@/lib/firebase";
 import { formatRelativeDate } from "@/lib/locale";
+import { getSessionParticipantCounts } from "@/lib/sessionMeta";
 import NewChatModal from "@/components/chat/NewChatModal";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ChatSession } from "@/types";
 
 const MAX_TITLE_LEN = 80;
@@ -15,7 +17,7 @@ interface BottomNavProps {
   displayName: string;
 }
 
-type Tab = "future" | "advisors" | "inbox";
+type Tab = "future" | "advisors" | "inbox" | "settings";
 
 export default function BottomNav({ uid, displayName }: BottomNavProps) {
   const router = useRouter();
@@ -28,6 +30,8 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const renameCancelledRef = useRef(false);
+  const [pendingDelete, setPendingDelete] = useState<ChatSession | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const beginRename = (e: React.MouseEvent, session: ChatSession) => {
     e.stopPropagation();
@@ -53,8 +57,35 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
     }
   };
 
+  const beginDelete = (e: React.MouseEvent, session: ChatSession) => {
+    e.stopPropagation();
+    if (deletingId) return;
+    setPendingDelete(session);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    const session = pendingDelete;
+    setDeletingId(session.id);
+    try {
+      await deleteSession(session.id, uid);
+      setPendingDelete(null);
+      // 현재 보고 있던 방을 떠난 경우 홈으로
+      if (activeSessionId === session.id) {
+        router.push("/chat");
+      }
+    } catch (err) {
+      console.error("세션 나가기/삭제 실패:", err);
+      window.alert("처리에 실패했습니다. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const pendingIsLeaveOnly = (pendingDelete?.participants?.length || 1) > 1;
+
   const getParticipantInfo = (session: ChatSession): { total: number; preview: string } => {
-    const total = session.participants?.length || Object.keys(session.participantNames || {}).length || 0;
+    const { total } = getSessionParticipantCounts(session);
     const others = Object.entries(session.participantNames || {})
       .filter(([u]) => u !== uid)
       .map(([, n]) => n)
@@ -85,11 +116,9 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
     .filter((s) => s.sessionType === "dm" || s.sessionType === "group")
     .reduce((sum, s) => sum + (s.unreadCounts?.[uid] || 0), 0);
 
-  // 데스크톱 사이드바에 표시할 대화 목록 (DM + 그룹, 고정 우선)
+  // 데스크톱 사이드바에 표시할 대화 목록 (future-self는 상단 전용 버튼으로 따로 있으므로 제외, 그 외 전부 표시)
   const chatList = useMemo(() => {
-    const list = sessions.filter(
-      (s) => s.sessionType === "dm" || s.sessionType === "group"
-    );
+    const list = sessions.filter((s) => s.sessionType !== "future-self");
     return list.sort((a, b) => {
       const aPinned = a.pinnedBy?.includes(uid) ? 1 : 0;
       const bPinned = b.pinnedBy?.includes(uid) ? 1 : 0;
@@ -102,6 +131,7 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
 
   // 현재 활성 탭 판정 (모바일 바텀 탭에서만 사용)
   const activeTab: Tab | null = (() => {
+    if (pathname === "/settings") return "settings";
     if (pathname === "/chat/advisors") return "advisors";
     if (pathname === "/chat/inbox") return "inbox";
     if (pathname?.startsWith("/chat/")) {
@@ -122,6 +152,7 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
   const goAdvisors = () => router.push("/chat/advisors");
   const goInbox = () => router.push("/chat/inbox");
   const goSession = (id: string) => router.push(`/chat/${id}`);
+  const goSettings = () => router.push("/settings");
 
   const mobileTabs: {
     id: Tab;
@@ -133,6 +164,7 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
     { id: "future", label: "미래의 나", icon: "🌟", onClick: goFuture },
     { id: "advisors", label: "자문단", icon: "🧭", onClick: goAdvisors },
     { id: "inbox", label: "받은편지함", icon: "💬", onClick: goInbox, badge: inboxUnread },
+    { id: "settings", label: "설정", icon: "⚙️", onClick: goSettings },
   ];
 
   const formatSessionDate = (timestamp: { toDate?: () => Date } | undefined) => {
@@ -144,7 +176,12 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
     const unreadCount = session.unreadCounts?.[uid] || 0;
     const isPinned = session.pinnedBy?.includes(uid) || false;
     const isMuted = session.mutedBy?.includes(uid) || false;
-    const typeIcon = session.sessionType === "dm" ? "💬" : "👥";
+    const typeIcon =
+      session.sessionType === "ai"
+        ? "🤖"
+        : session.sessionType === "dm"
+          ? "💬"
+          : "👥";
     const isActive = activeSessionId === session.id;
     const isEditing = editingId === session.id;
     const { total: participantCount, preview: participantPreview } = getParticipantInfo(session);
@@ -162,11 +199,16 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
               goSession(session.id);
             }
           }}
-          className={`group flex w-full cursor-pointer items-start gap-2 border-b border-gray-100 px-3 py-2.5 text-left transition-colors ${
-            isActive ? "bg-blue-50" : "bg-white hover:bg-gray-50"
+          className={`group flex w-full cursor-pointer items-start gap-2.5 border-b border-black/[0.04] px-3 py-3 text-left transition-colors ${
+            isActive ? "bg-[#0071e3]/8" : "bg-white hover:bg-black/[0.02]"
           }`}
         >
-          <span className="mt-0.5 text-base shrink-0">{typeIcon}</span>
+          <span
+            aria-hidden
+            className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f5f5f7] text-[14px]"
+          >
+            {typeIcon}
+          </span>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1">
               {isEditing ? (
@@ -188,56 +230,78 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
                     }
                   }}
                   onBlur={() => saveRename(session)}
-                  className="w-full min-w-0 rounded border border-blue-300 bg-white px-1.5 py-0.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  className="w-full min-w-0 rounded-[8px] border border-[#0071e3]/40 bg-white px-2 py-1 text-[13px] text-[#1d1d1f] focus:outline-none focus:border-[#0071e3]"
                 />
               ) : (
                 <>
-                  <p className={`truncate text-sm ${isActive ? "font-semibold text-blue-700" : "font-medium text-gray-900"}`}>
+                  <p className={`truncate text-[13px] tracking-[-0.01em] ${isActive ? "font-semibold text-[#0071e3]" : "font-medium text-[#1d1d1f]"}`}>
                     {session.title || "새 대화"}
                   </p>
-                  {isPinned && <span className="shrink-0 text-[10px] text-gray-400" title="고정됨">📌</span>}
-                  {isMuted && <span className="shrink-0 text-[10px] text-gray-400" title="음소거">🔇</span>}
+                  {isPinned && <span className="shrink-0 text-[10px] text-black/40" title="고정됨">📌</span>}
+                  {isMuted && <span className="shrink-0 text-[10px] text-black/40" title="음소거">🔇</span>}
                 </>
               )}
             </div>
             {!isEditing && participantCount > 0 && (
-              <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-gray-500">
-                <svg className="h-3 w-3 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] tracking-[-0.01em] text-black/56">
+                <svg className="h-3 w-3 shrink-0 text-black/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                <span className="shrink-0 font-medium text-gray-600">{participantCount}명</span>
+                <span className="shrink-0 font-medium text-black/70">{participantCount}명</span>
                 {participantPreview && (
-                  <span className="truncate text-gray-500">· {participantPreview}</span>
+                  <span className="truncate text-black/56">· {participantPreview}</span>
                 )}
               </p>
             )}
             {!isEditing && session.lastMessage && (
-              <p className="mt-0.5 truncate text-xs text-gray-500">
+              <p className="mt-0.5 truncate text-[12px] tracking-[-0.01em] text-black/56">
                 {session.lastMessageSenderName && (
-                  <span className="font-medium">{session.lastMessageSenderName}: </span>
+                  <span className="font-medium text-black/70">{session.lastMessageSenderName}: </span>
                 )}
                 {session.lastMessage}
               </p>
             )}
-            <div className="mt-0.5 flex items-center gap-2 text-[10px] text-gray-400">
-              <span>{formatSessionDate(session.lastMessageAt || session.updatedAt)}</span>
+            <div className="mt-1 text-[10px] tracking-[-0.01em] text-black/48">
+              {formatSessionDate(session.lastMessageAt || session.updatedAt)}
             </div>
           </div>
           {!isEditing && (
-            <button
-              type="button"
-              onClick={(e) => beginRename(e, session)}
-              className="mt-0.5 shrink-0 rounded p-1 text-gray-300 opacity-0 transition-opacity hover:bg-gray-100 hover:text-gray-600 group-hover:opacity-100 focus:opacity-100"
-              title="이름 변경"
-              aria-label="대화 이름 변경"
-            >
-              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-            </button>
+            <div className="mt-0.5 flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+              <button
+                type="button"
+                onClick={(e) => beginRename(e, session)}
+                className="rounded-[8px] p-1 text-black/30 transition-colors hover:bg-black/[0.04] hover:text-black/60"
+                title="이름 변경"
+                aria-label="대화 이름 변경"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={(e) => beginDelete(e, session)}
+                disabled={deletingId === session.id}
+                className="rounded-[8px] p-1 text-black/30 transition-colors hover:bg-[#ff3b30]/10 hover:text-[#ff3b30] disabled:opacity-50"
+                title={(session.participants?.length || 1) > 1 ? "대화방 나가기" : "대화 삭제"}
+                aria-label={(session.participants?.length || 1) > 1 ? "대화방 나가기" : "대화 삭제"}
+              >
+                {deletingId === session.id ? (
+                  <span className="block h-3.5 w-3.5 animate-spin rounded-full border border-black/10 border-t-[#ff3b30]" />
+                ) : (session.participants?.length || 1) > 1 ? (
+                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                ) : (
+                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                )}
+              </button>
+            </div>
           )}
           {unreadCount > 0 && !isEditing && (
-            <span className="mt-1 shrink-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+            <span className="mt-1 shrink-0 flex h-[20px] min-w-[20px] items-center justify-center rounded-full bg-[#0071e3] px-1.5 text-[10px] font-semibold text-white">
               {unreadCount > 99 ? "99+" : unreadCount}
             </span>
           )}
@@ -248,22 +312,22 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
 
   return (
     <>
-      {/* 모바일: 바텀 탭 (기존 동작 유지) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-gray-200/70 bg-white/85 backdrop-blur-xl safe-pb lg:hidden">
+      {/* 모바일: 바텀 탭 — Apple 글라스 내비게이션 */}
+      <nav className="nav-glass fixed bottom-0 left-0 right-0 z-30 flex border-t border-black/[0.06] safe-pb lg:hidden">
         {mobileTabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
               onClick={tab.onClick}
-              className={`relative flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] transition-colors ${
-                isActive ? "text-[#007aff]" : "text-gray-500 hover:text-gray-700"
+              className={`relative flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] tracking-[-0.01em] transition-colors ${
+                isActive ? "text-[#0071e3]" : "text-black/56 hover:text-black/80"
               }`}
             >
               <span className="text-xl leading-none">{tab.icon}</span>
-              <span className={isActive ? "font-semibold" : ""}>{tab.label}</span>
+              <span className={isActive ? "font-semibold" : "font-medium"}>{tab.label}</span>
               {tab.badge && tab.badge > 0 ? (
-                <span className="absolute right-1/4 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                <span className="absolute right-1/4 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#0071e3] px-1 text-[10px] font-semibold text-white">
                   {tab.badge > 99 ? "99+" : tab.badge}
                 </span>
               ) : null}
@@ -272,44 +336,56 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
         })}
       </nav>
 
-      {/* 데스크톱: 좌측 사이드바 (기존 대화 목록이 바로 노출됨) */}
-      <aside className="hidden lg:flex lg:w-72 lg:flex-col lg:border-r lg:border-gray-200 lg:bg-white">
-        {/* 상단 빠른 이동: 미래의 나 / 자문단 */}
-        <div className="flex items-center gap-1 border-b border-gray-200 p-2">
+      {/* 데스크톱: 좌측 사이드바 */}
+      <aside className="hidden lg:flex lg:w-72 lg:flex-col lg:border-r lg:border-black/[0.08] lg:bg-white">
+        {/* 상단 빠른 이동 */}
+        <div className="flex items-center gap-1.5 border-b border-black/[0.06] p-2.5">
           <button
             onClick={goFuture}
             title="미래의 나"
-            className={`flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-pill px-3 py-2 text-[12px] font-medium tracking-[-0.01em] transition-colors ${
               activeTab === "future"
-                ? "bg-blue-50 text-blue-600"
-                : "text-gray-600 hover:bg-gray-100"
+                ? "bg-[#0071e3] text-white"
+                : "text-black/70 hover:bg-black/[0.04]"
             }`}
           >
-            <span className="text-base leading-none">🌟</span>
+            <span className="text-[14px] leading-none">🌟</span>
             <span>미래의 나</span>
           </button>
           <button
             onClick={goAdvisors}
             title="자문단"
-            className={`flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-pill px-3 py-2 text-[12px] font-medium tracking-[-0.01em] transition-colors ${
               activeTab === "advisors"
-                ? "bg-blue-50 text-blue-600"
-                : "text-gray-600 hover:bg-gray-100"
+                ? "bg-[#0071e3] text-white"
+                : "text-black/70 hover:bg-black/[0.04]"
             }`}
           >
-            <span className="text-base leading-none">🧭</span>
+            <span className="text-[14px] leading-none">🧭</span>
             <span>자문단</span>
+          </button>
+          <button
+            onClick={goSettings}
+            title="설정"
+            aria-label="설정"
+            className={`flex shrink-0 items-center justify-center rounded-pill px-2.5 py-2 text-[14px] leading-none transition-colors ${
+              activeTab === "settings"
+                ? "bg-[#0071e3] text-white"
+                : "text-black/70 hover:bg-black/[0.04]"
+            }`}
+          >
+            ⚙️
           </button>
         </div>
 
         {/* 대화 목록 헤더 */}
-        <div className="flex items-center justify-between border-b border-gray-200 px-3 py-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+        <div className="flex items-center justify-between border-b border-black/[0.06] px-4 py-2.5">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-black/48">
             대화 ({chatList.length})
           </h2>
           <button
             onClick={() => setShowNewChat(true)}
-            className="rounded-md bg-blue-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-blue-700"
+            className="rounded-pill bg-[#0071e3] px-3 py-1 text-[11px] font-medium text-white transition-colors hover:bg-[#0077ed]"
           >
             + 새 대화
           </button>
@@ -318,7 +394,7 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
         {/* 대화 목록 */}
         <div className="flex-1 overflow-y-auto">
           {chatList.length === 0 ? (
-            <div className="px-4 py-8 text-center text-xs text-gray-400">
+            <div className="px-5 py-10 text-center text-[12px] tracking-[-0.01em] text-black/48">
               아직 대화가 없습니다.
               <br />
               새 대화를 만들어 보세요.
@@ -336,6 +412,24 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
           onClose={() => setShowNewChat(false)}
         />
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title={pendingIsLeaveOnly ? "대화방에서 나갈까요?" : "대화를 삭제할까요?"}
+        description={
+          pendingIsLeaveOnly
+            ? `"${pendingDelete?.title || "이 대화"}"에서 나가면 더 이상 새 메시지를 받을 수 없습니다.`
+            : `"${pendingDelete?.title || "이 대화"}"의 모든 메시지가 함께 삭제되며 되돌릴 수 없습니다.`
+        }
+        confirmLabel={pendingIsLeaveOnly ? "나가기" : "삭제"}
+        cancelLabel="취소"
+        destructive
+        loading={!!deletingId}
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          if (!deletingId) setPendingDelete(null);
+        }}
+      />
     </>
   );
 }

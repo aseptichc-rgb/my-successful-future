@@ -22,7 +22,7 @@ interface Props {
   onClose: () => void;
 }
 
-const DEFAULT_SLOT_TIME = "09:00";
+const DEFAULT_SLOT_TIME = "07:00";
 
 export default function PersonaScheduleModal({
   personaId,

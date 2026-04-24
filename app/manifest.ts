@@ -14,25 +14,9 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#0f172a",
     lang: "ko-KR",
     categories: ["news", "productivity", "lifestyle"],
+    // PNG 아이콘 에셋이 public/icons/ 에 배치되면 아래 엔트리를 되살릴 것.
+    // 현재는 파일이 없어서 404 가 콘솔 노이즈를 만들기에 favicon 만 노출.
     icons: [
-      {
-        src: "/icons/icon-192.png",
-        sizes: "192x192",
-        type: "image/png",
-        purpose: "any",
-      },
-      {
-        src: "/icons/icon-512.png",
-        sizes: "512x512",
-        type: "image/png",
-        purpose: "any",
-      },
-      {
-        src: "/icons/icon-maskable-512.png",
-        sizes: "512x512",
-        type: "image/png",
-        purpose: "maskable",
-      },
       {
         src: "/favicon.ico",
         sizes: "any",

@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import { LABELS } from "@/lib/labels";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -37,7 +38,8 @@ export default function SignupPage() {
     setLoading(true);
     try {
       await signUp(email, password, displayName);
-      router.push("/chat");
+      // 신규 가입자는 무조건 3단계 온보딩을 거치도록
+      router.push("/onboarding");
     } catch {
       setError("회원가입에 실패했습니다. 이미 사용 중인 이메일일 수 있습니다.");
     } finally {
@@ -50,7 +52,7 @@ export default function SignupPage() {
       <div className="w-full max-w-md space-y-8 rounded-2xl bg-white p-8 shadow-lg">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900">회원가입</h1>
-          <p className="mt-2 text-gray-500">AI 뉴스 챗봇에 가입하세요</p>
+          <p className="mt-2 text-gray-500">{LABELS.appTagline}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">

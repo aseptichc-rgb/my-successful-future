@@ -38,7 +38,7 @@ import {
   type Firestore,
   type Unsubscribe,
 } from "firebase/firestore";
-import type { User, ChatSession, ChatMessage, Invitation, InviteLink, NewsSource, NewsTopic, SessionType, UserPresence, AutoNewsConfig, KeywordAlertConfig, PersonaId, Goal, DailyRitualConfig, DailyTask, PersonaMemory, CustomPersona, PersonaOverride, PersonaOverrideInput, BuiltinPersonaId, PersonaSchedule, ScheduledNewsSlot } from "@/types";
+import type { User, ChatSession, ChatMessage, Invitation, InviteLink, NewsSource, NewsTopic, SessionType, UserPresence, AutoNewsConfig, KeywordAlertConfig, PersonaId, DailyRitualConfig, PersonaMemory, CustomPersona, PersonaOverride, PersonaOverrideInput, BuiltinPersonaId, PersonaSchedule, ScheduledNewsSlot } from "@/types";
 
 // ── Firebase 지연 초기화 ─────────────────────────────
 const firebaseConfig = {
@@ -133,22 +133,45 @@ export async function getUserProfile(uid: string): Promise<User | null> {
   return { uid: snap.id, ...snap.data() } as User;
 }
 
+/**
+ * setDoc + merge 사용 이유:
+ * - updateDoc 은 문서가 존재해야만 성공. 구글 로그인 등 createUserProfile 흐름을
+ *   타지 않은 사용자는 users/{uid} 문서가 없을 수 있다.
+ * - merge:true 로 하면 문서 생성·부분 갱신 모두 한 번에 처리되고, 이미 있는 필드는 보존.
+ * - 온보딩·설정에서 이 함수들이 실패하면 UI 가 영원히 "저장 중…" 으로 멈추는 문제를 예방.
+ */
 export async function updatePreferredTopics(uid: string, topics: NewsTopic[]) {
   const db = getDbInstance();
-  await updateDoc(doc(db, "users", uid), { preferredTopics: topics });
+  await setDoc(doc(db, "users", uid), { preferredTopics: topics }, { merge: true });
 }
 
 export async function updateUserPersona(uid: string, userPersona: string) {
   const db = getDbInstance();
-  await updateDoc(doc(db, "users", uid), { userPersona });
+  await setDoc(doc(db, "users", uid), { userPersona }, { merge: true });
 }
 
 export async function updateFuturePersona(uid: string, futurePersona: string) {
   const db = getDbInstance();
-  await updateDoc(doc(db, "users", uid), {
-    futurePersona,
-    futurePersonaUpdatedAt: serverTimestamp(),
-  });
+  await setDoc(
+    doc(db, "users", uid),
+    {
+      futurePersona,
+      futurePersonaUpdatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+}
+
+/**
+ * 3단계 온보딩 완료 표시. 홈 진입 시 이 필드 부재면 /onboarding 으로 분기한다.
+ */
+export async function markOnboarded(uid: string) {
+  const db = getDbInstance();
+  await setDoc(
+    doc(db, "users", uid),
+    { onboardedAt: serverTimestamp() },
+    { merge: true },
+  );
 }
 
 /**
@@ -214,7 +237,8 @@ export async function createSession(
   displayName: string = "",
   sessionType: SessionType = "ai",
   participantUids?: string[],
-  participantNamesMap?: Record<string, string>
+  participantNamesMap?: Record<string, string>,
+  advisorIds?: PersonaId[],
 ): Promise<string> {
   const db = getDbInstance();
   const participants = participantUids || [uid];
@@ -228,7 +252,7 @@ export async function createSession(
     participantNames[uid] = displayName || "나";
   }
 
-  const ref = await addDoc(collection(db, "sessions"), {
+  const payload: Record<string, unknown> = {
     uid,
     title,
     sessionType,
@@ -236,7 +260,13 @@ export async function createSession(
     participantNames,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  });
+  };
+  // Firestore는 undefined 필드를 거부하므로, 값이 있을 때만 포함한다.
+  if (advisorIds && advisorIds.length > 0) {
+    payload.advisorIds = advisorIds;
+  }
+
+  const ref = await addDoc(collection(db, "sessions"), payload);
   return ref.id;
 }
 
@@ -437,22 +467,22 @@ export function onInvitationsSnapshot(
   );
 }
 
-export async function acceptInvitation(invitationId: string, uid: string, displayName: string) {
-  const db = getDbInstance();
-  const invDoc = await getDoc(doc(db, "invitations", invitationId));
-  if (!invDoc.exists()) return;
-
-  const inv = invDoc.data();
-
-  // 초대 상태 업데이트
-  await updateDoc(doc(db, "invitations", invitationId), { status: "accepted" });
-
-  // 세션에 참여자 추가
-  await updateDoc(doc(db, "sessions", inv.sessionId), {
-    participants: arrayUnion(uid),
-    [`participantNames.${uid}`]: displayName,
-    updatedAt: serverTimestamp(),
+/**
+ * 초대 수락.
+ * Firestore 규칙상 "아직 참여자가 아닌 사용자"는 sessions 문서를 직접 update 할 수 없으므로
+ * 서버 API(Admin SDK) 경유. 세션 쿠키로 uid 인증.
+ */
+export async function acceptInvitation(invitationId: string, _uid: string, displayName: string) {
+  const res = await fetch("/api/invitations/accept", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ invitationId, displayName }),
   });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(data.error || "초대 수락 실패");
+  }
 }
 
 export async function declineInvitation(invitationId: string) {
@@ -522,37 +552,36 @@ export async function getInviteLinkByToken(token: string): Promise<InviteLink | 
   return { id: d.id, ...d.data() } as InviteLink;
 }
 
+/**
+ * 초대 링크로 대화방 참여.
+ * Firestore 규칙상 비참여자는 sessions 문서에 read/update 모두 불가.
+ * 서버 API(Admin SDK) 경유 — 세션 쿠키로 uid 인증, 링크 유효성 및 만료도 서버에서 검증.
+ */
 export async function joinSessionViaLink(
   token: string,
-  uid: string,
+  _uid: string,
   displayName: string
 ): Promise<{ success: boolean; sessionId?: string; error?: string }> {
-  const inviteLink = await getInviteLinkByToken(token);
-  if (!inviteLink) {
-    return { success: false, error: "유효하지 않은 초대 링크입니다." };
+  try {
+    const res = await fetch("/api/invites/join", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, displayName }),
+    });
+    const data = (await res.json().catch(() => ({}))) as {
+      success?: boolean;
+      sessionId?: string;
+      error?: string;
+    };
+    if (!res.ok || !data.success) {
+      return { success: false, error: data.error || "대화방 참여 실패" };
+    }
+    return { success: true, sessionId: data.sessionId };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "대화방 참여 실패";
+    return { success: false, error: message };
   }
-
-  if (inviteLink.expiresAt.toMillis() < Date.now()) {
-    return { success: false, error: "만료된 초대 링크입니다." };
-  }
-
-  const session = await getSessionById(inviteLink.sessionId);
-  if (!session) {
-    return { success: false, error: "존재하지 않는 대화방입니다." };
-  }
-
-  if (session.participants?.includes(uid)) {
-    return { success: true, sessionId: inviteLink.sessionId };
-  }
-
-  const db = getDbInstance();
-  await updateDoc(doc(db, "sessions", inviteLink.sessionId), {
-    participants: arrayUnion(uid),
-    [`participantNames.${uid}`]: displayName,
-    updatedAt: serverTimestamp(),
-  });
-
-  return { success: true, sessionId: inviteLink.sessionId };
 }
 
 // ── 실시간 세션 리스너 ──────────────────────────────
@@ -840,105 +869,6 @@ export async function updateKeywordAlertLastChecked(sessionId: string) {
   });
 }
 
-// ── 목표 CRUD ───────────────────────────────────────
-// 저장 위치: users/{uid}/goals/{goalId}
-export async function createGoal(
-  uid: string,
-  data: Pick<Goal, "title" | "category"> & Partial<Pick<Goal, "description" | "targetDate" | "progress" | "milestones">>
-): Promise<string> {
-  const db = getDbInstance();
-  const ref = await addDoc(collection(db, "users", uid, "goals"), {
-    title: data.title,
-    description: data.description || "",
-    category: data.category,
-    ...(data.targetDate && { targetDate: data.targetDate }),
-    progress: data.progress ?? 0,
-    milestones: data.milestones || [],
-    checkinCount: 0,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
-  return ref.id;
-}
-
-export async function updateGoal(
-  uid: string,
-  goalId: string,
-  updates: Partial<Goal>
-) {
-  const db = getDbInstance();
-  // id, createdAt 은 업데이트 대상에서 제거
-  const { id: _id, createdAt: _createdAt, ...rest } = updates as Partial<Goal> & { id?: string; createdAt?: unknown };
-  void _id;
-  void _createdAt;
-  await updateDoc(doc(db, "users", uid, "goals", goalId), {
-    ...rest,
-    updatedAt: serverTimestamp(),
-  });
-}
-
-export async function checkinGoal(
-  uid: string,
-  goalId: string,
-  progress: number,
-  note?: string
-) {
-  const db = getDbInstance();
-  await updateDoc(doc(db, "users", uid, "goals", goalId), {
-    progress: Math.max(0, Math.min(100, Math.round(progress))),
-    ...(note !== undefined && { lastCheckinNote: note }),
-    lastCheckinAt: serverTimestamp(),
-    checkinCount: increment(1),
-    updatedAt: serverTimestamp(),
-  });
-}
-
-export async function deleteGoal(uid: string, goalId: string) {
-  const db = getDbInstance();
-  await deleteDoc(doc(db, "users", uid, "goals", goalId));
-}
-
-export async function getGoals(uid: string): Promise<Goal[]> {
-  const db = getDbInstance();
-  const snap = await getDocs(collection(db, "users", uid, "goals"));
-  const goals = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Goal);
-  return sortGoals(goals);
-}
-
-export function onGoalsSnapshot(
-  uid: string,
-  callback: (goals: Goal[]) => void
-): Unsubscribe {
-  const db = getDbInstance();
-  return onSnapshot(
-    collection(db, "users", uid, "goals"),
-    (snap) => {
-      const goals = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Goal);
-      callback(sortGoals(goals));
-    },
-    (error) => {
-      console.warn("목표 리스너 에러:", error.message);
-    }
-  );
-}
-
-// 마감 임박순 정렬 (targetDate 없는 것은 뒤로)
-function sortGoals(goals: Goal[]): Goal[] {
-  return [...goals].sort((a, b) => {
-    const aHas = !!a.targetDate;
-    const bHas = !!b.targetDate;
-    if (aHas && bHas) {
-      return (a.targetDate!.toMillis() - b.targetDate!.toMillis());
-    }
-    if (aHas) return -1;
-    if (bHas) return 1;
-    // 둘 다 마감일 없음 → 최신 업데이트 우선
-    const au = a.updatedAt?.toMillis?.() ?? 0;
-    const bu = b.updatedAt?.toMillis?.() ?? 0;
-    return bu - au;
-  });
-}
-
 // ── 데일리 리추얼 설정 CRUD ─────────────────────────
 // 문서 ID = uid (사용자 1명당 1개 설정)
 export async function saveDailyRitualConfig(
@@ -974,112 +904,6 @@ export function onDailyRitualConfigSnapshot(
     },
     (error) => {
       console.warn("데일리 리추얼 설정 리스너 에러:", error.message);
-    }
-  );
-}
-
-// ── 데일리 체크리스트 CRUD ──────────────────────────
-// 저장 위치: users/{uid}/dailyTasks/{taskId}
-function kstDateString(date: Date = new Date()): string {
-  const kst = new Date(date.getTime() + 9 * 60 * 60 * 1000);
-  const y = kst.getUTCFullYear();
-  const m = String(kst.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(kst.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-function yesterdayKst(): string {
-  const d = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  return kstDateString(d);
-}
-
-export async function createDailyTask(
-  uid: string,
-  title: string,
-  icon?: string
-): Promise<string> {
-  const db = getDbInstance();
-  // 가장 마지막 order 값 찾기
-  const existing = await getDocs(collection(db, "users", uid, "dailyTasks"));
-  const maxOrder = existing.docs.reduce((max, d) => {
-    const o = (d.data() as DailyTask).order ?? 0;
-    return o > max ? o : max;
-  }, -1);
-  const ref = await addDoc(collection(db, "users", uid, "dailyTasks"), {
-    title,
-    ...(icon && { icon }),
-    order: maxOrder + 1,
-    streakCount: 0,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
-  return ref.id;
-}
-
-export async function updateDailyTask(
-  uid: string,
-  taskId: string,
-  updates: Partial<Pick<DailyTask, "title" | "icon" | "order">>
-) {
-  const db = getDbInstance();
-  await updateDoc(doc(db, "users", uid, "dailyTasks", taskId), {
-    ...updates,
-    updatedAt: serverTimestamp(),
-  });
-}
-
-export async function deleteDailyTask(uid: string, taskId: string) {
-  const db = getDbInstance();
-  await deleteDoc(doc(db, "users", uid, "dailyTasks", taskId));
-}
-
-/**
- * 오늘 체크 / 체크 해제 토글.
- * 체크: lastCompletedDate=today, 이전 값이 어제면 streak+1, 아니면 streak=1
- * 언체크: 체크 직전 값으로 롤백 (prevCompletedDate → lastCompletedDate)
- */
-export async function toggleDailyTaskToday(uid: string, task: DailyTask) {
-  const db = getDbInstance();
-  const today = kstDateString();
-  const yesterday = yesterdayKst();
-  const isDoneToday = task.lastCompletedDate === today;
-
-  if (isDoneToday) {
-    // 언체크 → 직전 상태로 되돌림
-    const prev = task.prevCompletedDate;
-    const newStreak = prev && prev === yesterday ? Math.max(task.streakCount - 1, 0) : 0;
-    await updateDoc(doc(db, "users", uid, "dailyTasks", task.id), {
-      lastCompletedDate: prev ?? null,
-      prevCompletedDate: null,
-      streakCount: newStreak,
-      updatedAt: serverTimestamp(),
-    });
-  } else {
-    // 체크
-    const newStreak = task.lastCompletedDate === yesterday ? task.streakCount + 1 : 1;
-    await updateDoc(doc(db, "users", uid, "dailyTasks", task.id), {
-      prevCompletedDate: task.lastCompletedDate ?? null,
-      lastCompletedDate: today,
-      streakCount: newStreak,
-      updatedAt: serverTimestamp(),
-    });
-  }
-}
-
-export function onDailyTasksSnapshot(
-  uid: string,
-  callback: (tasks: DailyTask[]) => void
-): Unsubscribe {
-  const db = getDbInstance();
-  return onSnapshot(
-    collection(db, "users", uid, "dailyTasks"),
-    (snap) => {
-      const tasks = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as DailyTask);
-      tasks.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-      callback(tasks);
-    },
-    (error) => {
-      console.warn("데일리 체크리스트 리스너 에러:", error.message);
     }
   );
 }

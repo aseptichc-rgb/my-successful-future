@@ -93,6 +93,7 @@ export interface User {
   userMemory?: string;                 // AI가 누적 추출한 사용자 인사이트 (요약 텍스트)
   userMemoryUpdatedAt?: Timestamp;     // 메모리 마지막 업데이트 시각
   userMemoryMessageCount?: number;     // 마지막 메모리 업데이트 시점의 메시지 수
+  onboardedAt?: Timestamp;             // 3단계 온보딩 위저드 완료 시각. 없으면 위저드 재노출.
   createdAt: Timestamp;
 }
 
@@ -107,6 +108,8 @@ export interface ChatSession {
   sessionType: SessionType;     // 세션 유형 (기본값 "ai")
   participants: string[];       // 참여자 uid 배열 (방장 포함)
   participantNames: Record<string, string>; // uid → displayName 매핑
+  /** 이 방에 소속된 AI 자문단(페르소나) 목록. 복수 가능. 생성 시 고정된다. */
+  advisorIds?: PersonaId[];
   lastMessage?: string;         // 마지막 메시지 미리보기
   lastMessageAt?: Timestamp;    // 마지막 메시지 시간
   lastMessageSenderName?: string; // 마지막 메시지 발신자
@@ -233,46 +236,6 @@ export interface PersonaSchedule {
   updatedAt: Timestamp;
 }
 
-// ── 목표 & 마일스톤 ──────────────────────────────────
-export type GoalCategory =
-  | "career"
-  | "health"
-  | "learning"
-  | "finance"
-  | "relationship"
-  | "other";
-
-export interface GoalMilestone {
-  title: string;
-  done: boolean;
-  doneAt?: Timestamp;
-}
-
-export interface Goal {
-  id: string;
-  title: string;
-  description?: string;
-  category: GoalCategory;
-  targetDate?: Timestamp;          // 마감일 (선택)
-  progress: number;                // 진척률 0~100
-  milestones?: GoalMilestone[];
-  lastCheckinAt?: Timestamp;
-  lastCheckinNote?: string;        // 마지막 체크인 시 남긴 메모
-  checkinCount: number;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
-}
-
-/** /api/chat 요청에 포함될 수 있는 가벼운 goal 스냅샷 */
-export interface GoalSnapshot {
-  title: string;
-  category: GoalCategory;
-  progress: number;
-  targetDateISO?: string;          // YYYY-MM-DD
-  daysLeft?: number;               // 양수=남은 일, 음수=지남
-  lastCheckinNote?: string;
-}
-
 // ── 페르소나별 기억 샤드 ─────────────────────────────
 export interface PersonaMemory {
   personaId: string;
@@ -280,25 +243,6 @@ export interface PersonaMemory {
   topics?: string[];
   messageCount: number;            // 이 페르소나 대화에서 마지막 추출 시점의 메시지 수
   lastUpdatedAt: Timestamp;
-}
-
-// ── 데일리 체크리스트 ────────────────────────────────
-export interface DailyTask {
-  id: string;
-  title: string;
-  icon?: string;
-  order: number;
-  streakCount: number;           // 연속 완료 일수
-  lastCompletedDate?: string;    // "YYYY-MM-DD" (KST) 마지막 완료일
-  prevCompletedDate?: string;    // 1단계 되돌리기용 (체크 직전 값)
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
-}
-
-export interface DailyTaskSnapshot {
-  title: string;
-  done: boolean;
-  streakCount: number;
 }
 
 // ── 데일리 리추얼 ────────────────────────────────────

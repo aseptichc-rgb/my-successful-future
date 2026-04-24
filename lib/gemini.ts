@@ -66,19 +66,29 @@ export function streamChatResponse(
   messages: MessageParam[],
   systemPrompt: string,
   useWebSearch: boolean = true,
-  topic: NewsTopic = "전체"
+  topic: NewsTopic = "전체",
+  /** true 이면 Gemini 2.5 계열의 reasoning 토큰을 할당해 더 깊은 분석을 유도한다.
+   *  뉴스봇·자동 브리핑처럼 빠른 전달이 중요한 경로에서는 false 를 유지. */
+  enableThinking: boolean = false,
 ): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
 
   return new ReadableStream({
     async start(controller) {
       try {
+        // SDK 타입에 아직 등재되지 않은 `thinkingConfig` 옵션을 안전하게 주입하기 위해
+        // Record 로 받아서 동적으로 조립한다.
+        const generationConfig: Record<string, unknown> = {
+          maxOutputTokens: 2048,
+        };
+        if (enableThinking) {
+          generationConfig.thinkingConfig = { thinkingBudget: 1024 };
+        }
+
         const model = genAI.getGenerativeModel({
           model: MODEL,
           systemInstruction: systemPrompt,
-          generationConfig: {
-            maxOutputTokens: 1024,
-          },
+          generationConfig: generationConfig as never,
           ...(useWebSearch && {
             tools: [{ googleSearch: {} } as never],
           }),
@@ -175,23 +185,7 @@ export function streamChatResponse(
           // grounding metadata 추출 실패 시 무시
         }
 
-        // Gemini grounding에서 출처를 못 찾은 경우 NewsAPI/RSS 폴백
-        if (sources.length === 0 && useWebSearch) {
-          const userQuery = stripMentions(messages[messages.length - 1]?.content || "");
-          try {
-            const newsApiResults = await fetchFromNewsAPI(userQuery, topic);
-            if (newsApiResults.length > 0) {
-              sources.push(...newsApiResults.slice(0, 5));
-            } else {
-              const rssResults = await fetchFromRSS(userQuery);
-              sources.push(...rssResults.slice(0, 5));
-            }
-          } catch {
-            // 폴백 실패 시 무시
-          }
-        }
-
-        // 소스를 먼저 전송 (OG 이미지 없이) → done 이벤트 → 클라이언트가 즉시 표시
+        // grounding 출처가 있으면 먼저 전송 (텍스트 직후, done 전)
         if (sources.length > 0) {
           const sourcesData: ChatStreamEvent = {
             type: "sources",
@@ -202,6 +196,8 @@ export function streamChatResponse(
           );
         }
 
+        // done 이벤트를 먼저 보내서 사용자가 응답 완료를 즉시 체감하게 한다.
+        // NewsAPI/RSS 폴백 및 OG 이미지는 그 이후 백그라운드에서 추가 sources 로 전송.
         const doneData: ChatStreamEvent = {
           type: "done",
           content: fullText,
@@ -209,6 +205,31 @@ export function streamChatResponse(
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify(doneData)}\n\n`)
         );
+
+        // Grounding 실패 시 NewsAPI/RSS 폴백 — done 이후로 지연.
+        // 본문 스트림이 끝난 뒤에 백그라운드로 조회하여 sources 이벤트 추가 송출.
+        if (sources.length === 0 && useWebSearch) {
+          try {
+            const userQuery = stripMentions(messages[messages.length - 1]?.content || "");
+            const newsApiResults = await fetchFromNewsAPI(userQuery, topic);
+            const fallbackResults =
+              newsApiResults.length > 0
+                ? newsApiResults.slice(0, 5)
+                : (await fetchFromRSS(userQuery)).slice(0, 5);
+            if (fallbackResults.length > 0) {
+              sources.push(...fallbackResults);
+              const fallbackData: ChatStreamEvent = {
+                type: "sources",
+                sources,
+              };
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify(fallbackData)}\n\n`)
+              );
+            }
+          } catch {
+            // 폴백 실패 시 무시 — 본문 응답은 이미 done 처리됨
+          }
+        }
 
         // OG 이미지를 후속 이벤트로 전송 — 본문 응답을 블로킹하지 않음
         if (sources.length > 0) {

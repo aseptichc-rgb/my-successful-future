@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { withRetry } from "@/lib/gemini";
 import { buildMorningBriefPrompt, buildEveningReflectionPrompt } from "@/lib/prompts";
-import type { DailyTaskSnapshot, GoalSnapshot, MoodKind } from "@/types";
+import type { MoodKind } from "@/types";
 
 export const maxDuration = 60;
 
@@ -16,8 +16,6 @@ interface DailyRitualRequest {
   currentPersona?: string;
   futurePersona: string;
   userMemory?: string;
-  activeGoals?: GoalSnapshot[];
-  dailyTasks?: DailyTaskSnapshot[];
   mood?: MoodKind;
 }
 
@@ -28,7 +26,7 @@ interface DailyRitualResponse {
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as DailyRitualRequest;
-    const { kind, currentPersona, futurePersona, userMemory, activeGoals, dailyTasks, mood } = body;
+    const { kind, currentPersona, futurePersona, userMemory, mood } = body;
 
     if (!kind || (kind !== "morning" && kind !== "evening")) {
       return NextResponse.json(
@@ -46,8 +44,8 @@ export async function POST(request: NextRequest) {
 
     const systemPrompt =
       kind === "morning"
-        ? buildMorningBriefPrompt(currentPersona, futurePersona, userMemory, activeGoals || [], dailyTasks, mood)
-        : buildEveningReflectionPrompt(currentPersona, futurePersona, userMemory, activeGoals || [], dailyTasks, mood);
+        ? buildMorningBriefPrompt(currentPersona, futurePersona, userMemory, mood)
+        : buildEveningReflectionPrompt(currentPersona, futurePersona, userMemory, mood);
 
     const model = genAI.getGenerativeModel({
       model: MODEL,
