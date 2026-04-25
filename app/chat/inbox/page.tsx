@@ -39,7 +39,7 @@ export default function InboxPage() {
   if (loading || !firebaseUser) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-black/10 border-t-[#0071e3]" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-black/10 border-t-[#1E1B4B]" />
       </div>
     );
   }
@@ -125,13 +125,13 @@ export default function InboxPage() {
         >
           <span
             aria-hidden
-            className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#f5f5f7] text-[16px]"
+            className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F0EDE6] text-[16px]"
           >
             {typeIcon}
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <p className="truncate text-[15px] font-medium tracking-[-0.022em] text-[#1d1d1f]">
+              <p className="truncate text-[15px] font-medium tracking-[-0.022em] text-[#1E1B4B]">
                 {session.title || "새 대화"}
               </p>
               {isPinned && <span className="shrink-0 text-[11px] text-black/40" title="고정됨">📌</span>}
@@ -158,18 +158,18 @@ export default function InboxPage() {
             </div>
           </div>
           {unreadCount > 0 ? (
-            <span className="mt-1 flex h-[20px] min-w-[20px] shrink-0 items-center justify-center rounded-full bg-[#0071e3] px-1.5 text-[11px] font-semibold text-white">
+            <span className="mt-1 flex h-[20px] min-w-[20px] shrink-0 items-center justify-center rounded-full bg-[#1E1B4B] px-1.5 text-[11px] font-semibold text-white">
               {unreadCount > 99 ? "99+" : unreadCount}
             </span>
           ) : (
             <button
               onClick={(e) => handleDelete(e, session)}
-              className="mt-0.5 shrink-0 rounded-full p-1.5 text-black/30 opacity-0 transition-all hover:bg-[#ff3b30]/10 hover:text-[#ff3b30] group-hover:opacity-100"
+              className="mt-0.5 shrink-0 rounded-full p-1.5 text-black/30 opacity-0 transition-all hover:bg-[#D85A30]/10 hover:text-[#D85A30] group-hover:opacity-100"
               title={humanCount > 1 ? "대화방 나가기" : "대화 삭제"}
               disabled={deletingId === session.id}
             >
               {deletingId === session.id ? (
-                <div className="h-3.5 w-3.5 animate-spin rounded-full border border-black/10 border-t-[#ff3b30]" />
+                <div className="h-3.5 w-3.5 animate-spin rounded-full border border-black/10 border-t-[#D85A30]" />
               ) : (
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -211,20 +211,20 @@ export default function InboxPage() {
   const displayName = user?.displayName || firebaseUser.displayName || "사용자";
 
   return (
-    <div className="flex h-full flex-col bg-[#f5f5f7]">
+    <div className="flex h-full flex-col bg-[#F0EDE6]">
       <header className="border-b border-black/[0.06] bg-white px-5 py-5 sm:px-6 sm:py-7">
         <div className="mx-auto flex max-w-3xl items-end justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.005em] text-[#1d1d1f] sm:text-[32px]">
-              받은편지함
+            <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.005em] text-[#1E1B4B] sm:text-[32px]">
+              채팅
             </h1>
             <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
-              사람과의 1:1 대화, 그룹 채팅, AI 자문단 대화를 한 곳에서.
+              친구·자문단·AI와 나눈 모든 대화가 여기 모여요.
             </p>
           </div>
           <button
             onClick={() => setShowModal(true)}
-            className="shrink-0 rounded-pill bg-[#0071e3] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#0077ed]"
+            className="shrink-0 rounded-pill bg-[#1E1B4B] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#2A2766]"
           >
             + 새 대화
           </button>
@@ -234,7 +234,7 @@ export default function InboxPage() {
       <div className="flex-1 overflow-y-auto pb-24 lg:pb-4">
         {/* DM 섹션 */}
         <section>
-          <h2 className="sticky top-0 z-10 border-b border-black/[0.06] bg-[#f5f5f7]/85 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-black/48 backdrop-blur-xl">
+          <h2 className="sticky top-0 z-10 border-b border-black/[0.06] bg-[#F0EDE6]/85 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-black/48 backdrop-blur-xl">
             다이렉트 메시지 ({sortedDms.length})
           </h2>
           {sortedDms.length === 0 ? (
@@ -248,7 +248,7 @@ export default function InboxPage() {
 
         {/* 그룹 섹션 */}
         <section className="mt-2">
-          <h2 className="sticky top-0 z-10 border-b border-black/[0.06] bg-[#f5f5f7]/85 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-black/48 backdrop-blur-xl">
+          <h2 className="sticky top-0 z-10 border-b border-black/[0.06] bg-[#F0EDE6]/85 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-black/48 backdrop-blur-xl">
             그룹 ({sortedGroups.length})
           </h2>
           {sortedGroups.length === 0 ? (
@@ -262,7 +262,7 @@ export default function InboxPage() {
 
         {/* AI 자문단 섹션 */}
         <section className="mt-2">
-          <h2 className="sticky top-0 z-10 border-b border-black/[0.06] bg-[#f5f5f7]/85 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-black/48 backdrop-blur-xl">
+          <h2 className="sticky top-0 z-10 border-b border-black/[0.06] bg-[#F0EDE6]/85 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-black/48 backdrop-blur-xl">
             AI 자문단 ({sortedAis.length})
           </h2>
           {sortedAis.length === 0 ? (

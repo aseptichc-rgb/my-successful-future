@@ -178,7 +178,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput
   return (
     <>
       {isOverLimit && (
-        <div className="mx-auto mb-2 max-w-3xl text-center text-[13px] tracking-[-0.01em] text-[#ff3b30]">
+        <div className="mx-auto mb-2 max-w-3xl text-center text-[13px] tracking-[-0.01em] text-[#D85A30]">
           메시지는 {maxLength}자 이내로 입력해주세요. (현재 {input.length}자)
         </div>
       )}
@@ -208,19 +208,19 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput
             maxLength={maxLength + 50}
             placeholder={placeholder}
             rows={1}
-            className={`w-full resize-none rounded-[22px] border bg-[#f5f5f7] pl-[18px] pr-14 py-3 text-[15px] leading-[1.47] tracking-[-0.022em] text-[#1d1d1f] placeholder:text-black/40 transition-colors focus:outline-none focus:bg-white ${
+            className={`w-full resize-none rounded-[22px] border bg-[#F0EDE6] pl-[18px] pr-14 py-3 text-[15px] leading-[1.47] tracking-[-0.022em] text-[#1E1B4B] placeholder:text-black/40 transition-colors focus:outline-none focus:bg-white ${
               isOverLimit
-                ? "border-[#ff3b30]/40 focus:border-[#ff3b30]"
-                : "border-transparent focus:border-[#0071e3]"
+                ? "border-[#D85A30]/40 focus:border-[#D85A30]"
+                : "border-transparent focus:border-[#1E1B4B]"
             }`}
           />
           {input.length > 0 && (
             <div
               className={`pointer-events-none absolute bottom-2 right-3 text-[11px] tracking-[-0.01em] ${
                 isOverLimit
-                  ? "text-[#ff3b30] font-semibold"
+                  ? "text-[#D85A30] font-semibold"
                   : input.length > maxLength * 0.8
-                    ? "text-[#ff9500]"
+                    ? "text-[#BC8E40]"
                     : "text-black/40"
               }`}
             >
@@ -232,7 +232,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput
           type="button"
           onClick={insertAtMention}
           disabled={disabled}
-          className="shrink-0 rounded-full bg-[#f5f5f7] w-11 h-11 text-[17px] font-semibold text-[#0071e3] transition-colors hover:bg-black/[0.06] disabled:opacity-50"
+          className="shrink-0 rounded-full bg-[#F0EDE6] w-11 h-11 text-[17px] font-semibold text-[#1E1B4B] transition-colors hover:bg-black/[0.06] disabled:opacity-50"
           aria-label="자문단 호출 (@)"
           title="자문단 호출"
         >
@@ -241,7 +241,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput
         <button
           type="submit"
           disabled={disabled || !input.trim() || isOverLimit}
-          className="shrink-0 rounded-pill bg-[#0071e3] px-[22px] py-3 text-[14px] font-medium text-white transition-colors hover:bg-[#0077ed] active:bg-[#006adf] disabled:bg-black/20 disabled:cursor-not-allowed sm:px-7"
+          className="shrink-0 rounded-pill bg-[#1E1B4B] px-[22px] py-3 text-[14px] font-medium text-white transition-colors hover:bg-[#2A2766] active:bg-[#006adf] disabled:bg-black/20 disabled:cursor-not-allowed sm:px-7"
         >
           전송
         </button>

@@ -43,7 +43,7 @@ const markdownComponents: Components = {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-[#0066cc] hover:underline"
+      className="text-[#1E1B4B] hover:underline"
     >
       {children}
     </a>
@@ -60,7 +60,7 @@ const markdownComponents: Components = {
     );
   },
   pre: ({ children }) => (
-    <pre className="my-2 overflow-x-auto rounded-[8px] bg-black/[0.04] p-3 text-[13px] tracking-[-0.01em] text-[#1d1d1f]">
+    <pre className="my-2 overflow-x-auto rounded-[8px] bg-black/[0.04] p-3 text-[13px] tracking-[-0.01em] text-[#1E1B4B]">
       {children}
     </pre>
   ),
@@ -85,79 +85,127 @@ const markdownComponents: Components = {
   ),
 };
 
+// 카카오톡: 시간 표시는 HH:MM (KST 24시간제)
+function formatKstTime(date: Date): string {
+  return new Intl.DateTimeFormat("ko-KR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Seoul",
+  }).format(date);
+}
+
 function MessageBubble({ message, showPersonaHeader = true }: Props) {
   const isUser = message.role === "user";
   const isCouncil = !!message.councilGroupId;
   const isCouncilFinal = message.councilRound === 999;
   const isCouncilQuestion = isUser && isCouncil && message.councilRound === 0;
 
-  // Apple iMessage 버블 팔레트 — 단일 액센트(Apple Blue)로 수렴
+  // Firestore Timestamp 가 아직 서버에서 확정되지 않았을 수 있어 안전하게 처리
+  let timeLabel = "";
+  try {
+    const d = message.createdAt?.toDate?.();
+    if (d) timeLabel = formatKstTime(d);
+  } catch {
+    timeLabel = "";
+  }
+
+  // KakaoTalk 말풍선 팔레트 — 사용자=노란색(#FEE500), 상대=흰색+테두리.
+  // 꼬리는 "발신자 쪽 상단 코너"를 살짝 줄여 표현한다 (사용자=top-right, 상대=top-left).
   const bubbleClass = isUser
     ? isCouncilQuestion
-      ? "bg-black text-white"
-      : "bg-[#0071e3] text-white"
+      ? "bg-black text-white rounded-[18px] rounded-tr-[4px]"
+      : "bg-[#FEE500] text-[#1E1B4B] rounded-[18px] rounded-tr-[4px]"
     : isCouncilFinal
-      ? "bg-white border border-black/[0.08] text-[#1d1d1f]"
+      ? "bg-white border border-[#1E1B4B]/30 text-[#1E1B4B] rounded-[18px] rounded-tl-[4px]"
       : isCouncil
-        ? "bg-[#f5f5f7] border border-black/[0.04] text-[#1d1d1f]"
-        : "bg-[#f5f5f7] text-[#1d1d1f]";
+        ? "bg-[#F0EDE6] border border-black/[0.04] text-[#1E1B4B] rounded-[18px] rounded-tl-[4px]"
+        : "bg-white border border-black/[0.08] text-[#1E1B4B] rounded-[18px] rounded-tl-[4px]";
+
+  const showOuterPersonaName = !isUser && message.personaName && showPersonaHeader;
+  const showOuterSenderName = isUser && message.senderName && !isCouncilQuestion;
+  const avatarIcon = !isUser && message.personaIcon ? message.personaIcon : null;
 
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div className={`max-w-[85%] sm:max-w-[78%] rounded-[22px] px-4 py-2.5 ${bubbleClass}`}>
-        {/* 카운슬 질문 표시 */}
-        {isCouncilQuestion && (
-          <div className="mb-1.5 inline-flex items-center gap-1 rounded-pill bg-white/15 px-2 py-0.5 text-[10px] font-medium tracking-[-0.01em] text-white/90">
-            🪑 카운슬 질문
-          </div>
-        )}
+    <div className={`flex gap-2 ${isUser ? "justify-end" : "justify-start"}`}>
+      {/* 좌측 아바타 — AI/상대 메시지에서만. 연속 메시지(헤더 숨김 시)는 자리만 비워둠. */}
+      {!isUser && (
+        <div className="h-9 w-9 shrink-0">
+          {showPersonaHeader && avatarIcon && (
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#F0EDE6] text-[18px]">
+              {avatarIcon}
+            </div>
+          )}
+        </div>
+      )}
 
-        {/* 사용자 메시지: 발신자 이름 */}
-        {isUser && message.senderName && !isCouncilQuestion && (
-          <div className="mb-1 text-[11px] font-semibold tracking-[-0.01em] text-white/85">
-            {message.senderName}
-          </div>
-        )}
-
-        {/* 페르소나 표시 (연속 메시지에서는 첫 번째만) */}
-        {!isUser && message.personaName && showPersonaHeader && (
-          <div className="mb-1.5 flex flex-wrap items-center gap-1.5 text-[12px] font-semibold tracking-[-0.01em] text-black/60">
-            <span>{message.personaIcon}</span>
+      <div
+        className={`flex max-w-[78%] flex-col ${isUser ? "items-end" : "items-start"}`}
+      >
+        {/* 페르소나명/카운슬 라운드 — 말풍선 외부 위쪽 (KakaoTalk 패턴) */}
+        {showOuterPersonaName && (
+          <div className="mb-1 flex flex-wrap items-center gap-1.5 px-1 text-[12px] font-medium tracking-[-0.01em] text-black/60">
             <span>{message.personaName}</span>
             {isCouncil && !isCouncilFinal && typeof message.councilRound === "number" && (
-              <span className="rounded-pill bg-black/[0.06] px-2 py-0.5 text-[10px] font-medium text-black/70">
+              <span className="rounded-pill bg-black/[0.06] px-1.5 py-0 text-[10px] text-black/70">
                 라운드 {message.councilRound}
               </span>
             )}
             {isCouncilFinal && (
-              <span className="rounded-pill bg-[#0071e3]/10 px-2 py-0.5 text-[10px] font-medium text-[#0071e3]">
+              <span className="rounded-pill bg-[#1E1B4B]/10 px-1.5 py-0 text-[10px] text-[#1E1B4B]">
                 종합
               </span>
             )}
             {message.scheduledSlot && (
-              <span className="rounded-pill bg-black/[0.06] px-2 py-0.5 text-[10px] font-medium text-black/60">
+              <span className="rounded-pill bg-black/[0.06] px-1.5 py-0 text-[10px] text-black/60">
                 ⏰ {message.scheduledSlot} 정시
               </span>
             )}
           </div>
         )}
 
-        {isUser ? (
-          <div className="whitespace-pre-wrap text-[15px] leading-[1.47] tracking-[-0.022em] break-words">
-            {message.content}
-          </div>
-        ) : (
-          <div className="text-[15px] leading-[1.5] tracking-[-0.022em] break-words">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-              {message.content}
-            </ReactMarkdown>
+        {/* 발신자 이름 — 사용자(그룹/DM)에서만 말풍선 외부 위쪽 */}
+        {showOuterSenderName && (
+          <div className="mb-1 px-1 text-[12px] font-medium tracking-[-0.01em] text-black/60">
+            {message.senderName}
           </div>
         )}
 
-        {/* 뉴스 카드 */}
+        {/* 말풍선 + 시간 — KakaoTalk 처럼 시간은 말풍선 바깥(발신자 안쪽)에 붙임 */}
+        <div
+          className={`flex items-end gap-1 ${isUser ? "flex-row-reverse" : "flex-row"}`}
+        >
+          <div className={`px-3.5 py-2 ${bubbleClass}`}>
+            {isCouncilQuestion && (
+              <div className="mb-1.5 inline-flex items-center gap-1 rounded-pill bg-white/15 px-2 py-0.5 text-[10px] font-medium tracking-[-0.01em] text-white/90">
+                🪑 카운슬 질문
+              </div>
+            )}
+
+            {isUser ? (
+              <div className="whitespace-pre-wrap break-words text-[15px] leading-[1.47] tracking-[-0.022em]">
+                {message.content}
+              </div>
+            ) : (
+              <div className="break-words text-[15px] leading-[1.5] tracking-[-0.022em]">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                  {message.content}
+                </ReactMarkdown>
+              </div>
+            )}
+          </div>
+
+          {timeLabel && (
+            <span className="mb-0.5 shrink-0 text-[10px] tracking-[-0.01em] text-black/40">
+              {timeLabel}
+            </span>
+          )}
+        </div>
+
+        {/* 뉴스 카드 — 말풍선 아래 별도 영역 */}
         {!isUser && message.sources && message.sources.length > 0 && (
-          <div className="mt-3 space-y-2 border-t border-black/[0.08] pt-3">
-            <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-black/48">
+          <div className="mt-2 w-full space-y-2">
+            <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-black/40">
               관련 뉴스
             </p>
             {message.sources.map((source, i) => (

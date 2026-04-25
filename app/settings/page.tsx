@@ -52,8 +52,8 @@ export default function SettingsPage() {
 
   if (authLoading || !firebaseUser) {
     return (
-      <div className="flex h-full items-center justify-center bg-[#f5f5f7]">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-black/10 border-t-[#0071e3]" />
+      <div className="flex h-full items-center justify-center bg-[#F0EDE6]">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-black/10 border-t-[#1E1B4B]" />
       </div>
     );
   }
@@ -68,12 +68,12 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="flex h-full flex-col bg-[#f5f5f7]">
+    <div className="flex h-full flex-col bg-[#F0EDE6]">
       {/* 헤더 */}
       <header className="border-b border-black/[0.06] bg-white px-5 py-5 sm:px-6 sm:py-7">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
           <div>
-            <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.005em] text-[#1d1d1f] sm:text-[32px]">
+            <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.005em] text-[#1E1B4B] sm:text-[32px]">
               {LABELS.settings}
             </h1>
             <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
@@ -83,7 +83,7 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="shrink-0 rounded-pill bg-[#f5f5f7] px-4 py-2 text-[13px] font-medium text-black/70 transition-colors hover:bg-black/[0.06]"
+            className="shrink-0 rounded-pill bg-[#F0EDE6] px-4 py-2 text-[13px] font-medium text-black/70 transition-colors hover:bg-black/[0.06]"
           >
             닫기
           </button>
@@ -101,14 +101,14 @@ export default function SettingsPage() {
           >
             <span className="text-[26px] leading-none">🙂</span>
             <div className="min-w-0 flex-1">
-              <p className="text-[16px] font-semibold tracking-[-0.022em] text-[#1d1d1f]">
+              <p className="text-[16px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
                 {LABELS.currentSelf}
               </p>
               <p className="mt-0.5 text-[13px] leading-[1.4] tracking-[-0.01em] text-black/56">
                 {summarize(userPersona) || LABELS.currentSelfHint}
               </p>
             </div>
-            <span className="mt-1 shrink-0 text-[14px] font-medium text-[#0066cc]">
+            <span className="mt-1 shrink-0 text-[14px] font-medium text-[#1E1B4B]">
               {LABELS.edit} ›
             </span>
           </button>
@@ -121,14 +121,14 @@ export default function SettingsPage() {
           >
             <span className="text-[26px] leading-none">🌟</span>
             <div className="min-w-0 flex-1">
-              <p className="text-[16px] font-semibold tracking-[-0.022em] text-[#1d1d1f]">
+              <p className="text-[16px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
                 {LABELS.futureSelf}
               </p>
               <p className="mt-0.5 line-clamp-2 text-[13px] leading-[1.4] tracking-[-0.01em] text-black/56">
                 {summarize(futurePersona, 100) || LABELS.futureSelfHint}
               </p>
             </div>
-            <span className="mt-1 shrink-0 text-[14px] font-medium text-[#0066cc]">
+            <span className="mt-1 shrink-0 text-[14px] font-medium text-[#1E1B4B]">
               {LABELS.edit} ›
             </span>
           </button>
@@ -143,11 +143,11 @@ export default function SettingsPage() {
             <span className="text-[26px] leading-none">☀️</span>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <p className="text-[16px] font-semibold tracking-[-0.022em] text-[#1d1d1f]">
+                <p className="text-[16px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
                   {LABELS.dailyRitual}
                 </p>
                 {dailyRitualConfig?.enabled && (
-                  <span className="rounded-pill bg-[#0071e3]/10 px-2 py-0.5 text-[10px] font-semibold tracking-[0.04em] text-[#0071e3]">
+                  <span className="rounded-pill bg-[#1E1B4B]/10 px-2 py-0.5 text-[10px] font-semibold tracking-[0.04em] text-[#1E1B4B]">
                     ON
                   </span>
                 )}
@@ -158,7 +158,7 @@ export default function SettingsPage() {
                   : LABELS.dailyRitualHint}
               </p>
             </div>
-            <span className="mt-1 shrink-0 text-[14px] font-medium text-[#0066cc]">
+            <span className="mt-1 shrink-0 text-[14px] font-medium text-[#1E1B4B]">
               {LABELS.edit} ›
             </span>
           </button>
@@ -171,14 +171,14 @@ export default function SettingsPage() {
           >
             <span className="text-[26px] leading-none">🧭</span>
             <div className="min-w-0 flex-1">
-              <p className="text-[16px] font-semibold tracking-[-0.022em] text-[#1d1d1f]">
+              <p className="text-[16px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
                 자문단 관리
               </p>
               <p className="mt-0.5 text-[13px] leading-[1.4] tracking-[-0.01em] text-black/56">
                 빌트인 자문단 편집, 내 멘토 만들기, 자문단별 예약 뉴스·참고 문서
               </p>
             </div>
-            <span className="mt-1 shrink-0 text-[14px] font-medium text-[#0066cc]">
+            <span className="mt-1 shrink-0 text-[14px] font-medium text-[#1E1B4B]">
               열기 ›
             </span>
           </button>
@@ -190,7 +190,7 @@ export default function SettingsPage() {
             </h2>
             <div className="mt-3 flex items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[14px] font-medium tracking-[-0.022em] text-[#1d1d1f]">
+                <p className="truncate text-[14px] font-medium tracking-[-0.022em] text-[#1E1B4B]">
                   {user?.displayName || "—"}
                 </p>
                 <p className="truncate text-[12px] tracking-[-0.01em] text-black/56">

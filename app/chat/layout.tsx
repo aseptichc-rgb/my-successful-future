@@ -69,7 +69,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             }}
             className="fixed bottom-20 right-2 left-2 z-50 max-w-xs mx-auto cursor-pointer rounded-[14px] bg-white px-4 py-3 shadow-apple-lg transition-all animate-in slide-in-from-top lg:absolute lg:top-3 lg:right-3 lg:left-auto lg:bottom-auto lg:mx-0"
           >
-            <p className="text-[14px] font-semibold tracking-[-0.022em] text-[#1d1d1f]">{toast.title}</p>
+            <p className="text-[14px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">{toast.title}</p>
             <p className="mt-0.5 truncate text-[12px] tracking-[-0.01em] text-black/56">{toast.body}</p>
           </div>
         )}
@@ -77,10 +77,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         {/* 알림 권한 요청 프롬프트 */}
         {showNotifPrompt && (
           <div className="nav-glass fixed bottom-20 left-1/2 z-50 flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-3 rounded-pill border border-black/[0.06] px-4 py-2.5 shadow-apple lg:absolute lg:top-3 lg:bottom-auto">
-            <p className="text-[13px] tracking-[-0.01em] text-[#1d1d1f]">새 메시지 알림을 받으시겠습니까?</p>
+            <p className="text-[13px] tracking-[-0.01em] text-[#1E1B4B]">새 메시지 알림을 받으시겠습니까?</p>
             <button
               onClick={handleEnableNotifications}
-              className="rounded-pill bg-[#0071e3] px-3 py-1 text-[12px] font-medium text-white transition-colors hover:bg-[#0077ed]"
+              className="rounded-pill bg-[#1E1B4B] px-3 py-1 text-[12px] font-medium text-white transition-colors hover:bg-[#2A2766]"
             >
               허용
             </button>

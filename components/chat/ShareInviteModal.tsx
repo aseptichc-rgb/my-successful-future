@@ -43,7 +43,7 @@ export default function ShareInviteModal({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const shareText = `${fromName}님이 AI 뉴스 챗봇 대화에 초대했습니다.\n대화 주제: ${sessionTitle}`;
+  const shareText = `${fromName}님이 Anima 대화에 초대했습니다.\n대화 주제: ${sessionTitle}`;
 
   const handleSMS = async () => {
     const url = await generateLink();
@@ -53,7 +53,7 @@ export default function ShareInviteModal({
 
   const handleEmail = async () => {
     const url = await generateLink();
-    const subject = encodeURIComponent(`[AI 뉴스 챗봇] ${fromName}님의 대화 초대`);
+    const subject = encodeURIComponent(`[Anima] ${fromName}님의 대화 초대`);
     const body = encodeURIComponent(
       `${shareText}\n\n아래 링크를 클릭하여 대화에 참여하세요:\n${url}\n\n* 이 링크는 7일간 유효합니다.`
     );
@@ -79,7 +79,7 @@ export default function ShareInviteModal({
     Kakao.Share.sendDefault({
       objectType: "feed",
       content: {
-        title: "AI 뉴스 챗봇 대화 초대",
+        title: "Anima 대화 초대",
         description: `${fromName}님이 "${sessionTitle}" 대화에 초대했습니다.`,
         imageUrl: `${window.location.origin}/og-image.png`,
         link: {
@@ -103,7 +103,7 @@ export default function ShareInviteModal({
     const url = await generateLink();
     if (navigator.share) {
       await navigator.share({
-        title: "AI 뉴스 챗봇 대화 초대",
+        title: "Anima 대화 초대",
         text: shareText,
         url,
       });

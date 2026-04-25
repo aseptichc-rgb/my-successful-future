@@ -333,6 +333,29 @@ export interface CollectedArticle {
 }
 
 /**
+ * 페르소나가 자기 도메인에서 누적해온 일일 흐름 한 줄 요약.
+ * 매 슬롯 수집이 성공한 직후 collector 가 append 하며, 최근 N개만 보관한다.
+ * Firestore 경로: personaDomainTimeline/{personaId} (단일 문서, entries 배열)
+ *
+ * 목적: 각 페르소나가 같은 도메인의 흐름을 시간 축으로 추적하고 있다는 걸
+ * 시스템 프롬프트에 주입해, 다른 페르소나와의 전문성 격차를 만든다.
+ */
+export interface PersonaDomainTimelineEntry {
+  /** YYYY-MM-DD (KST) */
+  date: string;
+  /** 슬롯 인덱스 (0 또는 1) — 같은 날 두 슬롯이 생기면 둘 다 보관 */
+  slotIndex: number;
+  /** 한 줄 브리핑 — collector 가 그 슬롯에서 만들어둔 것을 그대로 저장 */
+  briefing: string;
+}
+
+export interface PersonaDomainTimeline {
+  personaId: BuiltinPersonaId;
+  entries: PersonaDomainTimelineEntry[];
+  updatedAt: unknown;
+}
+
+/**
  * 페르소나별 일일 수집 스케줄.
  * 같은 날짜+페르소나 조합이면 항상 동일한 시각이 나오도록 결정론적으로 생성된다.
  * Firestore 경로: personaNewsSchedule/{YYYY-MM-DD}_{personaId}

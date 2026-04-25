@@ -16,7 +16,7 @@
 
 export const LABELS = {
   // 앱 브랜딩
-  appName: "미래의 나",
+  appName: "Anima",
   appTagline: "미래의 나와 자문단, 당신만을 위한 대화",
 
   // 주요 영역

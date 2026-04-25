@@ -180,14 +180,14 @@ export default function OnboardingPage() {
 
   if (authLoading || !firebaseUser) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f5f5f7]">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-black/10 border-t-[#0071e3]" />
+      <div className="flex min-h-screen items-center justify-center bg-[#F0EDE6]">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-black/10 border-t-[#1E1B4B]" />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#f5f5f7]">
+    <div className="flex min-h-screen flex-col bg-[#F0EDE6]">
       {/* 진행 바 */}
       <div className="sticky top-0 z-10 border-b border-black/[0.06] bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center justify-between px-5 py-3 sm:px-6">
@@ -196,7 +196,7 @@ export default function OnboardingPage() {
               <span
                 key={n}
                 className={`h-1.5 w-8 rounded-full transition-colors ${
-                  n <= step ? "bg-[#0071e3]" : "bg-black/10"
+                  n <= step ? "bg-[#1E1B4B]" : "bg-black/10"
                 }`}
               />
             ))}
@@ -220,7 +220,7 @@ export default function OnboardingPage() {
         <div className="mx-auto max-w-2xl">
           {step === 1 && (
             <div>
-              <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.003em] text-[#1d1d1f] sm:text-[32px]">
+              <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.003em] text-[#1E1B4B] sm:text-[32px]">
                 {LABELS.currentSelf}는 어떤 사람인가요?
               </h1>
               <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
@@ -228,7 +228,7 @@ export default function OnboardingPage() {
               </p>
 
               {/* 관심사 */}
-              <h2 className="mt-8 text-[15px] font-semibold tracking-[-0.022em] text-[#1d1d1f]">
+              <h2 className="mt-8 text-[15px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
                 요즘 관심 있는 주제
               </h2>
               <p className="mt-1 text-[13px] tracking-[-0.01em] text-black/56">
@@ -244,13 +244,13 @@ export default function OnboardingPage() {
                       onClick={() => toggleTopic(t.id)}
                       className={`flex items-center gap-3 rounded-[14px] border px-4 py-3 text-left transition-colors ${
                         active
-                          ? "border-[#0071e3] bg-[#0071e3]/5"
+                          ? "border-[#1E1B4B] bg-[#1E1B4B]/5"
                           : "border-black/10 bg-white hover:border-black/20"
                       }`}
                     >
                       <span className="text-[22px]">{t.emoji}</span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[14px] font-semibold tracking-[-0.022em] text-[#1d1d1f]">
+                        <p className="text-[14px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
                           {t.label}
                         </p>
                         <p className="truncate text-[12px] tracking-[-0.01em] text-black/56">
@@ -259,7 +259,7 @@ export default function OnboardingPage() {
                       </div>
                       <span
                         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] border transition-colors ${
-                          active ? "border-[#0071e3] bg-[#0071e3]" : "border-black/15"
+                          active ? "border-[#1E1B4B] bg-[#1E1B4B]" : "border-black/15"
                         }`}
                       >
                         {active && (
@@ -280,7 +280,7 @@ export default function OnboardingPage() {
               </div>
 
               {/* 자기소개 */}
-              <h2 className="mt-8 text-[15px] font-semibold tracking-[-0.022em] text-[#1d1d1f]">
+              <h2 className="mt-8 text-[15px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
                 나를 한 줄로 소개한다면 <span className="font-normal text-black/48">(선택)</span>
               </h2>
               <textarea
@@ -289,7 +289,7 @@ export default function OnboardingPage() {
                 rows={4}
                 maxLength={500}
                 placeholder="예: 30대 초반 개발자. 스타트업에서 서버 개발을 하고 있고, 요즘은 AI·투자에 관심이 많아요."
-                className="mt-3 w-full resize-none rounded-[14px] border border-black/10 bg-white px-4 py-3 text-[14px] tracking-[-0.01em] text-[#1d1d1f] placeholder:text-black/40 focus:border-[#0071e3] focus:outline-none"
+                className="mt-3 w-full resize-none rounded-[14px] border border-black/10 bg-white px-4 py-3 text-[14px] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
               />
               <div className="mt-3 flex flex-wrap gap-2">
                 {USER_PERSONA_EXAMPLES.map((ex, i) => (
@@ -297,7 +297,7 @@ export default function OnboardingPage() {
                     key={i}
                     type="button"
                     onClick={() => setUserPersona(ex)}
-                    className="rounded-pill border border-black/10 bg-white px-3 py-1.5 text-[12px] tracking-[-0.01em] text-black/70 transition-colors hover:border-[#0071e3] hover:text-[#0071e3]"
+                    className="rounded-pill border border-black/10 bg-white px-3 py-1.5 text-[12px] tracking-[-0.01em] text-black/70 transition-colors hover:border-[#1E1B4B] hover:text-[#1E1B4B]"
                   >
                     {ex.length > 28 ? ex.slice(0, 28) + "…" : ex}
                   </button>
@@ -308,7 +308,7 @@ export default function OnboardingPage() {
 
           {step === 2 && (
             <div>
-              <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.003em] text-[#1d1d1f] sm:text-[32px]">
+              <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.003em] text-[#1E1B4B] sm:text-[32px]">
                 {LABELS.futureSelf}는 어떤 모습인가요?
               </h1>
               <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
@@ -320,7 +320,7 @@ export default function OnboardingPage() {
                 rows={6}
                 maxLength={500}
                 placeholder="예: 5년 뒤 월 1,000만 원을 벌며 원하는 시간에 원하는 일을 하고 있다. 매일 아침 운동과 독서로 하루를 시작한다."
-                className="mt-6 w-full resize-none rounded-[14px] border border-black/10 bg-white px-4 py-3 text-[14px] leading-[1.5] tracking-[-0.01em] text-[#1d1d1f] placeholder:text-black/40 focus:border-[#0071e3] focus:outline-none"
+                className="mt-6 w-full resize-none rounded-[14px] border border-black/10 bg-white px-4 py-3 text-[14px] leading-[1.5] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
               />
               <div className="mt-2 text-right text-[11px] tracking-[-0.01em] text-black/40">
                 {futurePersona.length}/500
@@ -331,7 +331,7 @@ export default function OnboardingPage() {
                     key={i}
                     type="button"
                     onClick={() => setFuturePersona(ex)}
-                    className="rounded-pill border border-black/10 bg-white px-3 py-1.5 text-[12px] tracking-[-0.01em] text-black/70 transition-colors hover:border-[#0071e3] hover:text-[#0071e3]"
+                    className="rounded-pill border border-black/10 bg-white px-3 py-1.5 text-[12px] tracking-[-0.01em] text-black/70 transition-colors hover:border-[#1E1B4B] hover:text-[#1E1B4B]"
                   >
                     {ex.length > 32 ? ex.slice(0, 32) + "…" : ex}
                   </button>
@@ -345,7 +345,7 @@ export default function OnboardingPage() {
 
           {step === 3 && (
             <div>
-              <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.003em] text-[#1d1d1f] sm:text-[32px]">
+              <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.003em] text-[#1E1B4B] sm:text-[32px]">
                 나를 도와줄 {LABELS.advisors}을 골라볼까요?
               </h1>
               <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
@@ -364,18 +364,18 @@ export default function OnboardingPage() {
                       onClick={() => toggleAdvisor(id)}
                       className={`flex items-start gap-3 rounded-[14px] border p-4 text-left transition-colors ${
                         active
-                          ? "border-[#0071e3] bg-[#0071e3]/5"
+                          ? "border-[#1E1B4B] bg-[#1E1B4B]/5"
                           : "border-black/10 bg-white hover:border-black/20"
                       }`}
                     >
                       <span className="text-[28px] leading-none">{p.icon}</span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
-                          <p className="truncate text-[15px] font-semibold tracking-[-0.022em] text-[#1d1d1f]">
+                          <p className="truncate text-[15px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
                             {p.name}
                           </p>
                           {recommended && (
-                            <span className="shrink-0 rounded-pill bg-[#0071e3]/10 px-2 py-0.5 text-[10px] font-semibold tracking-[-0.01em] text-[#0071e3]">
+                            <span className="shrink-0 rounded-pill bg-[#1E1B4B]/10 px-2 py-0.5 text-[10px] font-semibold tracking-[-0.01em] text-[#1E1B4B]">
                               추천
                             </span>
                           )}
@@ -386,7 +386,7 @@ export default function OnboardingPage() {
                       </div>
                       <span
                         className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] border transition-colors ${
-                          active ? "border-[#0071e3] bg-[#0071e3]" : "border-black/15"
+                          active ? "border-[#1E1B4B] bg-[#1E1B4B]" : "border-black/15"
                         }`}
                       >
                         {active && (
@@ -412,7 +412,7 @@ export default function OnboardingPage() {
           )}
 
           {error && (
-            <p className="mt-5 text-center text-[13px] tracking-[-0.01em] text-[#ff3b30]">
+            <p className="mt-5 text-center text-[13px] tracking-[-0.01em] text-[#D85A30]">
               {error}
             </p>
           )}
@@ -435,7 +435,7 @@ export default function OnboardingPage() {
               type="button"
               onClick={goNext}
               disabled={saving}
-              className="rounded-pill bg-[#0071e3] px-6 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-white transition-colors hover:bg-[#0077ed] disabled:opacity-50"
+              className="rounded-pill bg-[#1E1B4B] px-6 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-white transition-colors hover:bg-[#2A2766] disabled:opacity-50"
             >
               {LABELS.next}
             </button>
@@ -444,7 +444,7 @@ export default function OnboardingPage() {
               type="button"
               onClick={finish}
               disabled={saving}
-              className="rounded-pill bg-[#0071e3] px-6 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-white transition-colors hover:bg-[#0077ed] disabled:opacity-50"
+              className="rounded-pill bg-[#1E1B4B] px-6 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-white transition-colors hover:bg-[#2A2766] disabled:opacity-50"
             >
               {saving ? "저장 중…" : `${LABELS.start} →`}
             </button>

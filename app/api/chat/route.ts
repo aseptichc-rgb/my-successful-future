@@ -4,7 +4,7 @@ import { buildSystemPrompt } from "@/lib/prompts";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { loadReferenceDocumentsForUser } from "@/lib/googleDocs";
 import { getAdminAuth } from "@/lib/firebase-admin";
-import { getRecentArticlesForPersona } from "@/lib/personaNewsCollector";
+import { getRecentArticlesForPersona, getRecentDomainTimeline } from "@/lib/personaNewsCollector";
 import { isBuiltinPersona, PERSONAS } from "@/lib/personas";
 import { mergePersona } from "@/lib/persona-resolver";
 import { buildStockContext, detectStockQuery, fetchMarketOverview } from "@/lib/stockSource";
@@ -85,6 +85,11 @@ interface ChatApiRequest {
   personaMemory?: string;
   councilContext?: { personaName: string; content: string; isUser?: boolean }[];
   isCouncilFinal?: boolean;
+  /**
+   * 카운슬 토론에서 이번 질문의 1차 담당자 페르소나 ID.
+   * useChat.ts 의 sendCouncilQuestion 이 pickPrimaryPersona 결과로 채워 보낸다.
+   */
+  primaryPersonaId?: PersonaId;
   /** true 이면 서버가 이 페르소나의 최근 자동수집 기사 5건을 시스템 프롬프트에 주입한다. */
   useCollectedNews?: boolean;
   customPersona?: CustomPersonaPayload;
@@ -171,7 +176,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { message, history = [], topic = "전체", persona = "default", participants, userPersona, futurePersona, userMemory, personaMemory, councilContext, isCouncilFinal, useCollectedNews, customPersona, mood, sessionId } = body;
+    const { message, history = [], topic = "전체", persona = "default", participants, userPersona, futurePersona, userMemory, personaMemory, councilContext, isCouncilFinal, primaryPersonaId, useCollectedNews, customPersona, mood, sessionId } = body;
 
     // 대화 히스토리 + 현재 메시지
     const conversationMessages = [
@@ -207,7 +212,7 @@ export async function POST(request: NextRequest) {
     const needsReferenceDocs = persona !== "future-self";
 
     // 모든 외부 조회를 한 번에 병렬 실행 — 순차 대기를 최소화
-    const [sessionDocs, referenceDocs, stockContext, marketOverview, financeNewsContext, collectedArticlesRaw, personaOverride] = await Promise.all([
+    const [sessionDocs, referenceDocs, stockContext, marketOverview, financeNewsContext, collectedArticlesRaw, personaOverride, domainTimelineRaw] = await Promise.all([
       sessionId ? loadActiveDocuments(sessionId) : Promise.resolve([]),
       needsReferenceDocs
         ? loadReferenceDocumentsForUser(authedUid, persona as string | undefined)
@@ -254,6 +259,11 @@ export async function POST(request: NextRequest) {
             }
           }).catch(() => null)
         : Promise.resolve(null),
+      // 누적 도메인 타임라인 — 같은 분야의 다른 페르소나 대비 전문성 격차를 만들기 위해
+      // 빌트인 비뉴스봇 페르소나에 한해 최근 7개 흐름을 주입.
+      (isBuiltinPersona(persona as string) && persona !== "default" && persona !== "future-self")
+        ? getRecentDomainTimeline(persona as BuiltinPersonaId, 7).catch(() => [])
+        : Promise.resolve([]),
     ]);
     const attachedDocuments = [...referenceDocs, ...sessionDocs];
 
@@ -307,7 +317,9 @@ export async function POST(request: NextRequest) {
         personaMemory,
         councilContext,
         isCouncilFinal,
+        primaryPersonaId,
         collectedArticles,
+        domainTimeline: domainTimelineRaw.length > 0 ? domainTimelineRaw : undefined,
         customPersona,
         mood,
         attachedDocuments,

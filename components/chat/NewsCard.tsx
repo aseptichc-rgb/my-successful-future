@@ -19,7 +19,7 @@ export default function NewsCard({ source }: Props) {
     >
       {/* 썸네일 */}
       {source.imageUrl && !imgError ? (
-        <div className="relative h-40 w-full bg-[#f5f5f7]">
+        <div className="relative h-40 w-full bg-[#F0EDE6]">
           <img
             src={source.imageUrl}
             alt=""
@@ -29,7 +29,7 @@ export default function NewsCard({ source }: Props) {
           />
         </div>
       ) : (
-        <div className="flex h-24 w-full items-center justify-center bg-[#f5f5f7]">
+        <div className="flex h-24 w-full items-center justify-center bg-[#F0EDE6]">
           <svg
             className="h-7 w-7 text-black/20"
             fill="none"
@@ -50,7 +50,7 @@ export default function NewsCard({ source }: Props) {
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <h3 className="line-clamp-2 text-[14px] font-semibold leading-[1.29] tracking-[-0.016em] text-[#1d1d1f]">
+            <h3 className="line-clamp-2 text-[14px] font-semibold leading-[1.29] tracking-[-0.016em] text-[#1E1B4B]">
               {source.title}
             </h3>
             {source.summary && (

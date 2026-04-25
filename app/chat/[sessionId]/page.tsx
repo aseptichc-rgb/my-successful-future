@@ -250,7 +250,7 @@ export default function ChatSessionPage() {
   if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-black/10 border-t-[#0071e3]" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-black/10 border-t-[#1E1B4B]" />
       </div>
     );
   }
@@ -262,7 +262,18 @@ export default function ChatSessionPage() {
       {/* 헤더 — Apple 글라스 */}
       <header className="nav-glass sticky top-0 z-10 flex flex-col gap-2 border-b border-black/[0.06] px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-3">
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <h1 className="max-w-[60vw] truncate text-[17px] font-semibold tracking-[-0.022em] text-[#1d1d1f] sm:max-w-none sm:text-[19px]">
+          {/* 카카오톡 채팅방 스타일 — 좌측 상단 ‹ 백버튼으로 대화 목록(홈)으로 복귀 */}
+          <button
+            onClick={() => router.push("/chat")}
+            className="-ml-1 flex shrink-0 items-center justify-center rounded-full p-1.5 text-black/70 transition-colors hover:bg-black/[0.06]"
+            title="홈으로"
+            aria-label="홈으로 돌아가기"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <h1 className="max-w-[60vw] truncate text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B] sm:max-w-none sm:text-[19px]">
             {isFutureSelfSession ? (
               <>🌟 미래의 나와의 대화</>
             ) : isDirectChat ? (
@@ -271,7 +282,7 @@ export default function ChatSessionPage() {
                 {session?.title || "대화"}
               </>
             ) : (
-              "AI 뉴스 챗봇"
+              "Anima"
             )}
           </h1>
           {!isFutureSelfSession && (
@@ -294,7 +305,7 @@ export default function ChatSessionPage() {
             </>
           )}
           {isFutureSelfSession && !futurePersona && (
-            <span className="rounded-pill bg-[#0071e3]/10 px-2.5 py-0.5 text-[11px] font-medium tracking-[-0.01em] text-[#0071e3]">
+            <span className="rounded-pill bg-[#1E1B4B]/10 px-2.5 py-0.5 text-[11px] font-medium tracking-[-0.01em] text-[#1E1B4B]">
               미래의 나를 먼저 정의해주세요 →
             </span>
           )}
@@ -318,8 +329,8 @@ export default function ChatSessionPage() {
               onClick={() => setShowFuturePersonaModal(true)}
               className={`shrink-0 rounded-pill px-3.5 py-1.5 text-[13px] font-medium tracking-[-0.01em] transition-colors ${
                 futurePersona
-                  ? "bg-[#f5f5f7] text-black/80 hover:bg-black/[0.06]"
-                  : "bg-[#0071e3] text-white hover:bg-[#0077ed] animate-pulse"
+                  ? "bg-[#F0EDE6] text-black/80 hover:bg-black/[0.06]"
+                  : "bg-[#1E1B4B] text-white hover:bg-[#2A2766] animate-pulse"
               }`}
               title="미래의 나 정의"
             >
@@ -333,8 +344,8 @@ export default function ChatSessionPage() {
               onClick={() => setShowDailyRitualSettings(true)}
               className={`shrink-0 rounded-pill px-3.5 py-1.5 text-[13px] font-medium tracking-[-0.01em] transition-colors ${
                 dailyRitualConfig?.enabled
-                  ? "bg-[#0071e3]/10 text-[#0071e3] hover:bg-[#0071e3]/15"
-                  : "bg-[#f5f5f7] text-black/80 hover:bg-black/[0.06]"
+                  ? "bg-[#1E1B4B]/10 text-[#1E1B4B] hover:bg-[#1E1B4B]/15"
+                  : "bg-[#F0EDE6] text-black/80 hover:bg-black/[0.06]"
               }`}
               title="데일리 리추얼 설정"
             >
@@ -346,7 +357,7 @@ export default function ChatSessionPage() {
           {(!isDirectChat || isFutureSelfSession) && (
             <button
               onClick={() => setShowCouncilLauncher(true)}
-              className="shrink-0 rounded-pill bg-[#f5f5f7] px-3.5 py-1.5 text-[13px] font-medium tracking-[-0.01em] text-black/80 transition-colors hover:bg-black/[0.06]"
+              className="shrink-0 rounded-pill bg-[#F0EDE6] px-3.5 py-1.5 text-[13px] font-medium tracking-[-0.01em] text-black/80 transition-colors hover:bg-black/[0.06]"
               title="카운슬 소집"
             >
               🪑<span className="hidden sm:inline"> 카운슬</span>
@@ -357,7 +368,7 @@ export default function ChatSessionPage() {
           {isDirectChat && (
             <button
               onClick={() => setShowPeerAssist(true)}
-              className="shrink-0 rounded-pill bg-[#f5f5f7] px-3.5 py-1.5 text-[13px] font-medium tracking-[-0.01em] text-black/80 transition-colors hover:bg-black/[0.06]"
+              className="shrink-0 rounded-pill bg-[#F0EDE6] px-3.5 py-1.5 text-[13px] font-medium tracking-[-0.01em] text-black/80 transition-colors hover:bg-black/[0.06]"
               title="AI 도우미 — 요약 · 답장 제안 · 번역"
             >
               🤖<span className="hidden sm:inline"> AI 도우미</span>
@@ -370,8 +381,8 @@ export default function ChatSessionPage() {
               onClick={() => setShowPersonaModal(true)}
               className={`shrink-0 rounded-pill px-3 py-1.5 transition-colors ${
                 userPersona
-                  ? "bg-[#0071e3]/10 text-[#0071e3] hover:bg-[#0071e3]/15"
-                  : "bg-[#f5f5f7] text-black/70 hover:bg-black/[0.06]"
+                  ? "bg-[#1E1B4B]/10 text-[#1E1B4B] hover:bg-[#1E1B4B]/15"
+                  : "bg-[#F0EDE6] text-black/70 hover:bg-black/[0.06]"
               }`}
               title={isFutureSelfSession ? "현재의 나 (보조 정보)" : "내 페르소나 설정"}
             >
@@ -393,8 +404,8 @@ export default function ChatSessionPage() {
               }}
               className={`shrink-0 rounded-pill px-3 py-1.5 transition-colors ${
                 autoNewsConfig?.enabled || keywordAlertConfig?.enabled
-                  ? "bg-[#0071e3]/10 text-[#0071e3] hover:bg-[#0071e3]/15"
-                  : "bg-[#f5f5f7] text-black/70 hover:bg-black/[0.06]"
+                  ? "bg-[#1E1B4B]/10 text-[#1E1B4B] hover:bg-[#1E1B4B]/15"
+                  : "bg-[#F0EDE6] text-black/70 hover:bg-black/[0.06]"
               }`}
               title={isFutureSelfSession ? "자동 메시지 설정" : "자동 알림 설정"}
             >
@@ -403,7 +414,7 @@ export default function ChatSessionPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
                 {(autoNewsConfig?.enabled || keywordAlertConfig?.enabled) && (isAutoNewsChecking || isKeywordAlertChecking) && (
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#0071e3]" />
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#1E1B4B]" />
                 )}
               </div>
             </button>
@@ -413,7 +424,7 @@ export default function ChatSessionPage() {
           {!isFutureSelfSession && (
             <button
               onClick={() => setShowInviteModal(true)}
-              className="shrink-0 rounded-pill bg-[#f5f5f7] px-3 py-1.5 text-black/70 transition-colors hover:bg-black/[0.06]"
+              className="shrink-0 rounded-pill bg-[#F0EDE6] px-3 py-1.5 text-black/70 transition-colors hover:bg-black/[0.06]"
               title="사용자 초대"
             >
               <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -426,7 +437,7 @@ export default function ChatSessionPage() {
           {!isFutureSelfSession && (
             <button
               onClick={() => setShowShareModal(true)}
-              className="shrink-0 rounded-pill bg-[#f5f5f7] px-3 py-1.5 text-black/70 transition-colors hover:bg-black/[0.06]"
+              className="shrink-0 rounded-pill bg-[#F0EDE6] px-3 py-1.5 text-black/70 transition-colors hover:bg-black/[0.06]"
               title="초대 링크 공유"
             >
               <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -441,24 +452,15 @@ export default function ChatSessionPage() {
           )}
 
           <button
-            onClick={() => router.push("/chat")}
-            className="hidden shrink-0 rounded-pill bg-[#f5f5f7] px-3 py-1.5 text-black/70 transition-colors hover:bg-black/[0.06] sm:inline-flex"
-            title="홈으로"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-[18px] w-[18px]" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-            </svg>
-          </button>
-          <button
             onClick={handleNewChat}
-            className="hidden shrink-0 rounded-pill bg-[#f5f5f7] px-3.5 py-1.5 text-[13px] font-medium tracking-[-0.01em] text-black/80 transition-colors hover:bg-black/[0.06] sm:inline-flex"
+            className="hidden shrink-0 rounded-pill bg-[#F0EDE6] px-3.5 py-1.5 text-[13px] font-medium tracking-[-0.01em] text-black/80 transition-colors hover:bg-black/[0.06] sm:inline-flex"
           >
             새 대화
           </button>
           {canLeaveOrDelete && (
             <button
               onClick={() => setShowLeaveConfirm(true)}
-              className="shrink-0 rounded-pill px-3 py-1.5 text-[13px] font-medium tracking-[-0.01em] text-[#ff3b30] transition-colors hover:bg-[#ff3b30]/10"
+              className="shrink-0 rounded-pill px-3 py-1.5 text-[13px] font-medium tracking-[-0.01em] text-[#D85A30] transition-colors hover:bg-[#D85A30]/10"
               title={isLeaveOnly ? "대화방 나가기" : "대화 삭제"}
               aria-label={isLeaveOnly ? "대화방 나가기" : "대화 삭제"}
             >
@@ -528,20 +530,20 @@ export default function ChatSessionPage() {
 
       {/* 에러 메시지 */}
       {error && (
-        <div className="px-4 py-2 text-center text-[13px] tracking-[-0.01em] text-[#ff3b30]">
+        <div className="px-4 py-2 text-center text-[13px] tracking-[-0.01em] text-[#D85A30]">
           {error}
         </div>
       )}
 
       {/* AI 대화 진행 중 표시 */}
       {isDirectChat && respondingConversationPersona && (
-        <div className="flex items-center justify-between border-t border-[#0071e3]/15 bg-[#0071e3]/8 px-4 py-2.5">
-          <p className="text-[12px] tracking-[-0.01em] text-[#0071e3]">
+        <div className="flex items-center justify-between border-t border-[#1E1B4B]/15 bg-[#1E1B4B]/8 px-4 py-2.5">
+          <p className="text-[12px] tracking-[-0.01em] text-[#1E1B4B]">
             🤖 AI 페르소나가 대화에 참여 중 — 메시지를 보내면 계속 응답합니다
           </p>
           <button
             onClick={dismissAI}
-            className="shrink-0 rounded-pill px-3 py-1 text-[12px] font-medium text-[#0071e3] transition-colors hover:bg-[#0071e3]/10"
+            className="shrink-0 rounded-pill px-3 py-1 text-[12px] font-medium text-[#1E1B4B] transition-colors hover:bg-[#1E1B4B]/10"
           >
             AI 종료
           </button>
@@ -663,7 +665,7 @@ export default function ChatSessionPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-[20px] font-semibold leading-[1.2] tracking-[-0.005em] text-[#1d1d1f]">
+              <h2 className="text-[20px] font-semibold leading-[1.2] tracking-[-0.005em] text-[#1E1B4B]">
                 자동 알림 종류
               </h2>
               <button
@@ -681,14 +683,14 @@ export default function ChatSessionPage() {
                   setShowAlertChooser(false);
                   setShowKeywordAlertPanel(true);
                 }}
-                className="flex w-full items-start gap-3 rounded-[14px] bg-[#f5f5f7] p-4 text-left transition-colors hover:bg-black/[0.06]"
+                className="flex w-full items-start gap-3 rounded-[14px] bg-[#F0EDE6] p-4 text-left transition-colors hover:bg-black/[0.06]"
               >
                 <span className="text-2xl">🔔</span>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="text-[15px] font-semibold tracking-[-0.022em] text-[#1d1d1f]">내 키워드 알림</p>
+                    <p className="text-[15px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">내 키워드 알림</p>
                     {keywordAlertConfig?.enabled && (
-                      <span className="rounded-pill bg-[#0071e3] px-2 py-0.5 text-[10px] font-semibold tracking-[0.04em] text-white">ON</span>
+                      <span className="rounded-pill bg-[#1E1B4B] px-2 py-0.5 text-[10px] font-semibold tracking-[0.04em] text-white">ON</span>
                     )}
                   </div>
                   <p className="mt-0.5 text-[12px] leading-[1.4] tracking-[-0.01em] text-black/60">
@@ -701,14 +703,14 @@ export default function ChatSessionPage() {
                   setShowAlertChooser(false);
                   setShowAutoNewsPanel(true);
                 }}
-                className="flex w-full items-start gap-3 rounded-[14px] bg-[#f5f5f7] p-4 text-left transition-colors hover:bg-black/[0.06]"
+                className="flex w-full items-start gap-3 rounded-[14px] bg-[#F0EDE6] p-4 text-left transition-colors hover:bg-black/[0.06]"
               >
                 <span className="text-2xl">🤖</span>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="text-[15px] font-semibold tracking-[-0.022em] text-[#1d1d1f]">AI 페르소나 자동 뉴스</p>
+                    <p className="text-[15px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">AI 페르소나 자동 뉴스</p>
                     {autoNewsConfig?.enabled && (
-                      <span className="rounded-pill bg-[#0071e3] px-2 py-0.5 text-[10px] font-semibold tracking-[0.04em] text-white">ON</span>
+                      <span className="rounded-pill bg-[#1E1B4B] px-2 py-0.5 text-[10px] font-semibold tracking-[0.04em] text-white">ON</span>
                     )}
                   </div>
                   <p className="mt-0.5 text-[12px] leading-[1.4] tracking-[-0.01em] text-black/60">

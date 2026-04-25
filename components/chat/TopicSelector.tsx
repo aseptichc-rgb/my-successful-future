@@ -26,8 +26,8 @@ export default function TopicSelector({ selected, onChange }: Props) {
             onClick={() => onChange(value)}
             className={`shrink-0 rounded-pill px-4 py-1.5 text-[13px] font-medium tracking-[-0.01em] transition-colors ${
               isActive
-                ? "bg-[#1d1d1f] text-white"
-                : "bg-[#f5f5f7] text-black/70 hover:bg-black/[0.06]"
+                ? "bg-[#1E1B4B] text-white"
+                : "bg-[#F0EDE6] text-black/70 hover:bg-black/[0.06]"
             }`}
           >
             {label}

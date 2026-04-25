@@ -7,6 +7,7 @@ import { formatRelativeDate } from "@/lib/locale";
 import { getSessionParticipantCounts } from "@/lib/sessionMeta";
 import NewChatModal from "@/components/chat/NewChatModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import Logo from "@/components/ui/Logo";
 import type { ChatSession } from "@/types";
 
 const MAX_TITLE_LEN = 80;
@@ -17,7 +18,7 @@ interface BottomNavProps {
   displayName: string;
 }
 
-type Tab = "future" | "advisors" | "inbox" | "settings";
+type Tab = "home" | "future" | "advisors" | "inbox" | "settings";
 
 export default function BottomNav({ uid, displayName }: BottomNavProps) {
   const router = useRouter();
@@ -132,6 +133,7 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
   // 현재 활성 탭 판정 (모바일 바텀 탭에서만 사용)
   const activeTab: Tab | null = (() => {
     if (pathname === "/settings") return "settings";
+    if (pathname === "/chat") return "home";
     if (pathname === "/chat/advisors") return "advisors";
     if (pathname === "/chat/inbox") return "inbox";
     if (pathname?.startsWith("/chat/")) {
@@ -142,9 +144,10 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
       if (session.sessionType === "ai") return "advisors";
       return "inbox";
     }
-    return "future";
+    return "home";
   })();
 
+  const goHome = () => router.push("/chat");
   const goFuture = () => {
     if (futureSelfId) router.push(`/chat/${futureSelfId}`);
     else router.push("/chat");
@@ -161,9 +164,10 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
     onClick: () => void;
     badge?: number;
   }[] = [
+    { id: "home", label: "홈", icon: "🏠", onClick: goHome },
     { id: "future", label: "미래의 나", icon: "🌟", onClick: goFuture },
     { id: "advisors", label: "자문단", icon: "🧭", onClick: goAdvisors },
-    { id: "inbox", label: "받은편지함", icon: "💬", onClick: goInbox, badge: inboxUnread },
+    { id: "inbox", label: "채팅", icon: "💬", onClick: goInbox, badge: inboxUnread },
     { id: "settings", label: "설정", icon: "⚙️", onClick: goSettings },
   ];
 
@@ -200,12 +204,12 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
             }
           }}
           className={`group flex w-full cursor-pointer items-start gap-2.5 border-b border-black/[0.04] px-3 py-3 text-left transition-colors ${
-            isActive ? "bg-[#0071e3]/8" : "bg-white hover:bg-black/[0.02]"
+            isActive ? "bg-[#1E1B4B]/8" : "bg-white hover:bg-black/[0.02]"
           }`}
         >
           <span
             aria-hidden
-            className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f5f5f7] text-[14px]"
+            className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F0EDE6] text-[14px]"
           >
             {typeIcon}
           </span>
@@ -230,11 +234,11 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
                     }
                   }}
                   onBlur={() => saveRename(session)}
-                  className="w-full min-w-0 rounded-[8px] border border-[#0071e3]/40 bg-white px-2 py-1 text-[13px] text-[#1d1d1f] focus:outline-none focus:border-[#0071e3]"
+                  className="w-full min-w-0 rounded-[8px] border border-[#1E1B4B]/40 bg-white px-2 py-1 text-[13px] text-[#1E1B4B] focus:outline-none focus:border-[#1E1B4B]"
                 />
               ) : (
                 <>
-                  <p className={`truncate text-[13px] tracking-[-0.01em] ${isActive ? "font-semibold text-[#0071e3]" : "font-medium text-[#1d1d1f]"}`}>
+                  <p className={`truncate text-[13px] tracking-[-0.01em] ${isActive ? "font-semibold text-[#1E1B4B]" : "font-medium text-[#1E1B4B]"}`}>
                     {session.title || "새 대화"}
                   </p>
                   {isPinned && <span className="shrink-0 text-[10px] text-black/40" title="고정됨">📌</span>}
@@ -282,12 +286,12 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
                 type="button"
                 onClick={(e) => beginDelete(e, session)}
                 disabled={deletingId === session.id}
-                className="rounded-[8px] p-1 text-black/30 transition-colors hover:bg-[#ff3b30]/10 hover:text-[#ff3b30] disabled:opacity-50"
+                className="rounded-[8px] p-1 text-black/30 transition-colors hover:bg-[#D85A30]/10 hover:text-[#D85A30] disabled:opacity-50"
                 title={(session.participants?.length || 1) > 1 ? "대화방 나가기" : "대화 삭제"}
                 aria-label={(session.participants?.length || 1) > 1 ? "대화방 나가기" : "대화 삭제"}
               >
                 {deletingId === session.id ? (
-                  <span className="block h-3.5 w-3.5 animate-spin rounded-full border border-black/10 border-t-[#ff3b30]" />
+                  <span className="block h-3.5 w-3.5 animate-spin rounded-full border border-black/10 border-t-[#D85A30]" />
                 ) : (session.participants?.length || 1) > 1 ? (
                   <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -301,7 +305,7 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
             </div>
           )}
           {unreadCount > 0 && !isEditing && (
-            <span className="mt-1 shrink-0 flex h-[20px] min-w-[20px] items-center justify-center rounded-full bg-[#0071e3] px-1.5 text-[10px] font-semibold text-white">
+            <span className="mt-1 shrink-0 flex h-[20px] min-w-[20px] items-center justify-center rounded-full bg-[#1E1B4B] px-1.5 text-[10px] font-semibold text-white">
               {unreadCount > 99 ? "99+" : unreadCount}
             </span>
           )}
@@ -321,13 +325,13 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
               key={tab.id}
               onClick={tab.onClick}
               className={`relative flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] tracking-[-0.01em] transition-colors ${
-                isActive ? "text-[#0071e3]" : "text-black/56 hover:text-black/80"
+                isActive ? "text-[#1E1B4B]" : "text-black/56 hover:text-black/80"
               }`}
             >
               <span className="text-xl leading-none">{tab.icon}</span>
               <span className={isActive ? "font-semibold" : "font-medium"}>{tab.label}</span>
               {tab.badge && tab.badge > 0 ? (
-                <span className="absolute right-1/4 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#0071e3] px-1 text-[10px] font-semibold text-white">
+                <span className="absolute right-1/4 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#1E1B4B] px-1 text-[10px] font-semibold text-white">
                   {tab.badge > 99 ? "99+" : tab.badge}
                 </span>
               ) : null}
@@ -338,14 +342,38 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
 
       {/* 데스크톱: 좌측 사이드바 */}
       <aside className="hidden lg:flex lg:w-72 lg:flex-col lg:border-r lg:border-black/[0.08] lg:bg-white">
+        {/* 브랜드 락업 */}
+        <div className="flex items-center justify-between border-b border-black/[0.06] px-4 py-3">
+          <button
+            type="button"
+            onClick={goHome}
+            aria-label="Anima 홈"
+            className="flex items-center transition-opacity hover:opacity-80"
+          >
+            <Logo variant="lockup" tone="light" size={26} priority />
+          </button>
+        </div>
+
         {/* 상단 빠른 이동 */}
         <div className="flex items-center gap-1.5 border-b border-black/[0.06] p-2.5">
+          <button
+            onClick={goHome}
+            title="홈"
+            aria-label="홈"
+            className={`flex shrink-0 items-center justify-center rounded-pill px-2.5 py-2 text-[14px] leading-none transition-colors ${
+              activeTab === "home"
+                ? "bg-[#1E1B4B] text-white"
+                : "text-black/70 hover:bg-black/[0.04]"
+            }`}
+          >
+            🏠
+          </button>
           <button
             onClick={goFuture}
             title="미래의 나"
             className={`flex flex-1 items-center justify-center gap-1.5 rounded-pill px-3 py-2 text-[12px] font-medium tracking-[-0.01em] transition-colors ${
               activeTab === "future"
-                ? "bg-[#0071e3] text-white"
+                ? "bg-[#1E1B4B] text-white"
                 : "text-black/70 hover:bg-black/[0.04]"
             }`}
           >
@@ -357,7 +385,7 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
             title="자문단"
             className={`flex flex-1 items-center justify-center gap-1.5 rounded-pill px-3 py-2 text-[12px] font-medium tracking-[-0.01em] transition-colors ${
               activeTab === "advisors"
-                ? "bg-[#0071e3] text-white"
+                ? "bg-[#1E1B4B] text-white"
                 : "text-black/70 hover:bg-black/[0.04]"
             }`}
           >
@@ -370,7 +398,7 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
             aria-label="설정"
             className={`flex shrink-0 items-center justify-center rounded-pill px-2.5 py-2 text-[14px] leading-none transition-colors ${
               activeTab === "settings"
-                ? "bg-[#0071e3] text-white"
+                ? "bg-[#1E1B4B] text-white"
                 : "text-black/70 hover:bg-black/[0.04]"
             }`}
           >
@@ -385,7 +413,7 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
           </h2>
           <button
             onClick={() => setShowNewChat(true)}
-            className="rounded-pill bg-[#0071e3] px-3 py-1 text-[11px] font-medium text-white transition-colors hover:bg-[#0077ed]"
+            className="rounded-pill bg-[#1E1B4B] px-3 py-1 text-[11px] font-medium text-white transition-colors hover:bg-[#2A2766]"
           >
             + 새 대화
           </button>

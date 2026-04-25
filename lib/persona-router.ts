@@ -114,6 +114,37 @@ export function routeToPersonas(
 }
 
 /**
+ * 카운슬 토론에서 "이번 질문의 1차 담당자" 한 명을 고른다.
+ * 결과는 buildCouncilContextSection 에서 1차 담당자/보조 페르소나의 톤·길이를 분리하는 데 쓰인다.
+ *
+ * - participants 안에서만 고르며, future-self 는 항상 후보에서 제외한다(종합 발언자 역할).
+ * - 키워드 매칭이 전혀 없으면 null 반환 → 호출자는 "공동 담당" 기본 톤을 사용한다.
+ */
+export function pickPrimaryPersona(
+  message: string,
+  participants: PersonaId[]
+): PersonaId | null {
+  const candidates = participants.filter((p) => p !== "future-self" && p !== "default");
+  if (candidates.length === 0) return null;
+
+  const lowerMsg = message.toLowerCase();
+  let best: { personaId: PersonaId; score: number } | null = null;
+
+  for (const rule of ROUTING_RULES) {
+    if (!candidates.includes(rule.personaId)) continue;
+    let score = 0;
+    for (const keyword of rule.keywords) {
+      if (lowerMsg.includes(keyword.toLowerCase())) score += 1;
+    }
+    if (score > 0 && (!best || score > best.score)) {
+      best = { personaId: rule.personaId, score };
+    }
+  }
+
+  return best ? best.personaId : null;
+}
+
+/**
  * 복수 자문단이 활성화된 방에서 "가장 적절한 한 명"을 고른다.
  * - 메시지 내용의 키워드 매칭으로 활성 페르소나 중 최고 점수 1명만 반환한다.
  * - 매칭이 전혀 없으면 활성 목록의 첫 번째(기본적으로는 뉴스봇이 아닌 첫 전문가)를 반환한다.

@@ -140,16 +140,16 @@ export default function AdvisorsPage() {
   if (loading || !firebaseUser) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-black/10 border-t-[#0071e3]" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-black/10 border-t-[#1E1B4B]" />
       </div>
     );
   }
 
   return (
-    <div className="flex h-full flex-col bg-[#f5f5f7]">
+    <div className="flex h-full flex-col bg-[#F0EDE6]">
       <header className="border-b border-black/[0.06] bg-white px-5 py-5 sm:px-6 sm:py-7">
         <div className="mx-auto max-w-3xl">
-          <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.005em] text-[#1d1d1f] sm:text-[32px]">
+          <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.005em] text-[#1E1B4B] sm:text-[32px]">
             자문단
           </h1>
           <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
@@ -164,7 +164,7 @@ export default function AdvisorsPage() {
           <button
             type="button"
             onClick={openMultiSelect}
-            className="mb-8 flex w-full items-center justify-between gap-4 rounded-[18px] bg-gradient-to-r from-[#0071e3] to-[#2997ff] px-5 py-4 text-left text-white shadow-apple transition-transform hover:scale-[1.01]"
+            className="mb-8 flex w-full items-center justify-between gap-4 rounded-[18px] bg-gradient-to-r from-[#1E1B4B] to-[#4F4BA8] px-5 py-4 text-left text-white shadow-apple transition-transform hover:scale-[1.01]"
           >
             <div className="min-w-0 flex-1">
               <p className="text-[16px] font-semibold leading-[1.2] tracking-[-0.022em]">
@@ -200,10 +200,10 @@ export default function AdvisorsPage() {
                   >
                     <div className="text-[34px] leading-none">{persona.icon}</div>
                     <div className="w-full">
-                      <p className="truncate text-[17px] font-semibold tracking-[-0.022em] text-[#1d1d1f]">
+                      <p className="truncate text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
                         {persona.name}
                         {isOverridden && (
-                          <span className="ml-1.5 text-[10px] font-normal tracking-[-0.01em] text-[#0071e3]">·수정됨</span>
+                          <span className="ml-1.5 text-[10px] font-normal tracking-[-0.01em] text-[#1E1B4B]">·수정됨</span>
                         )}
                       </p>
                       <p className="mt-1 line-clamp-2 text-[13px] leading-[1.4] tracking-[-0.01em] text-black/56">
@@ -219,7 +219,7 @@ export default function AdvisorsPage() {
                         <span className="text-[11px] tracking-[-0.01em] text-black/30">대화 시작 전</span>
                       )}
                       {isCreating && (
-                        <span className="h-3 w-3 animate-spin rounded-full border border-black/10 border-t-[#0071e3]" />
+                        <span className="h-3 w-3 animate-spin rounded-full border border-black/10 border-t-[#1E1B4B]" />
                       )}
                     </div>
                     {latest?.lastMessage && (
@@ -235,7 +235,7 @@ export default function AdvisorsPage() {
                         e.stopPropagation();
                         setScheduleTarget({ id: personaId, name: persona.name, icon: persona.icon });
                       }}
-                      className="rounded-pill bg-[#f5f5f7] px-2 py-1 text-[10px] font-medium tracking-[-0.01em] text-black/60 transition-colors hover:text-[#1d1d1f]"
+                      className="rounded-pill bg-[#F0EDE6] px-2 py-1 text-[10px] font-medium tracking-[-0.01em] text-black/60 transition-colors hover:text-[#1E1B4B]"
                       aria-label="뉴스 키워드 설정"
                     >
                       뉴스
@@ -246,7 +246,7 @@ export default function AdvisorsPage() {
                         e.stopPropagation();
                         setRefDocsTarget({ id: personaId, name: persona.name, icon: persona.icon });
                       }}
-                      className="rounded-pill bg-[#f5f5f7] px-2 py-1 text-[10px] font-medium tracking-[-0.01em] text-black/60 transition-colors hover:text-[#1d1d1f]"
+                      className="rounded-pill bg-[#F0EDE6] px-2 py-1 text-[10px] font-medium tracking-[-0.01em] text-black/60 transition-colors hover:text-[#1E1B4B]"
                       aria-label="참조 문서"
                     >
                       문서
@@ -257,7 +257,7 @@ export default function AdvisorsPage() {
                         e.stopPropagation();
                         setEditingBuiltin(personaId as BuiltinPersonaId);
                       }}
-                      className="rounded-pill bg-[#f5f5f7] px-2 py-1 text-[10px] font-medium tracking-[-0.01em] text-black/60 transition-colors hover:text-[#1d1d1f]"
+                      className="rounded-pill bg-[#F0EDE6] px-2 py-1 text-[10px] font-medium tracking-[-0.01em] text-black/60 transition-colors hover:text-[#1E1B4B]"
                       aria-label="역할 편집"
                     >
                       편집
@@ -272,7 +272,7 @@ export default function AdvisorsPage() {
           <div className="mt-12">
             <div className="mb-4 flex items-end justify-between">
               <div>
-                <h2 className="text-[22px] font-semibold leading-[1.18] tracking-[-0.005em] text-[#1d1d1f]">
+                <h2 className="text-[22px] font-semibold leading-[1.18] tracking-[-0.005em] text-[#1E1B4B]">
                   내 멘토
                 </h2>
                 <p className="mt-1 text-[13px] tracking-[-0.01em] text-black/56">
@@ -285,7 +285,7 @@ export default function AdvisorsPage() {
                   setEditingCustom(null);
                   setBuilderOpen(true);
                 }}
-                className="rounded-pill border border-[#0071e3] px-4 py-2 text-[13px] font-medium text-[#0071e3] transition-colors hover:bg-[#0071e3]/5"
+                className="rounded-pill border border-[#1E1B4B] px-4 py-2 text-[13px] font-medium text-[#1E1B4B] transition-colors hover:bg-[#1E1B4B]/5"
               >
                 + 멘토 만들기
               </button>
@@ -313,7 +313,7 @@ export default function AdvisorsPage() {
                       >
                         <div className="text-[34px] leading-none">{cp.icon}</div>
                         <div className="w-full">
-                          <p className="truncate text-[17px] font-semibold tracking-[-0.022em] text-[#1d1d1f]">
+                          <p className="truncate text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
                             {cp.name}
                           </p>
                           <p className="mt-1 line-clamp-2 text-[13px] leading-[1.4] tracking-[-0.01em] text-black/56">
@@ -329,7 +329,7 @@ export default function AdvisorsPage() {
                             <span className="text-[11px] tracking-[-0.01em] text-black/30">대화 시작 전</span>
                           )}
                           {isCreating && (
-                            <span className="h-3 w-3 animate-spin rounded-full border border-black/10 border-t-[#0071e3]" />
+                            <span className="h-3 w-3 animate-spin rounded-full border border-black/10 border-t-[#1E1B4B]" />
                           )}
                         </div>
                       </button>
@@ -340,7 +340,7 @@ export default function AdvisorsPage() {
                             e.stopPropagation();
                             setScheduleTarget({ id: cp.id, name: cp.name, icon: cp.icon });
                           }}
-                          className="rounded-pill bg-[#f5f5f7] px-2 py-1 text-[10px] font-medium tracking-[-0.01em] text-black/60 transition-colors hover:text-[#1d1d1f]"
+                          className="rounded-pill bg-[#F0EDE6] px-2 py-1 text-[10px] font-medium tracking-[-0.01em] text-black/60 transition-colors hover:text-[#1E1B4B]"
                           aria-label="뉴스 키워드 설정"
                         >
                           뉴스
@@ -351,7 +351,7 @@ export default function AdvisorsPage() {
                             e.stopPropagation();
                             setRefDocsTarget({ id: cp.id, name: cp.name, icon: cp.icon });
                           }}
-                          className="rounded-pill bg-[#f5f5f7] px-2 py-1 text-[10px] font-medium tracking-[-0.01em] text-black/60 transition-colors hover:text-[#1d1d1f]"
+                          className="rounded-pill bg-[#F0EDE6] px-2 py-1 text-[10px] font-medium tracking-[-0.01em] text-black/60 transition-colors hover:text-[#1E1B4B]"
                           aria-label="참조 문서"
                         >
                           문서
@@ -363,7 +363,7 @@ export default function AdvisorsPage() {
                             setEditingCustom(cp);
                             setBuilderOpen(true);
                           }}
-                          className="rounded-pill bg-[#f5f5f7] px-2 py-1 text-[10px] font-medium tracking-[-0.01em] text-black/60 transition-colors hover:text-[#1d1d1f]"
+                          className="rounded-pill bg-[#F0EDE6] px-2 py-1 text-[10px] font-medium tracking-[-0.01em] text-black/60 transition-colors hover:text-[#1E1B4B]"
                         >
                           편집
                         </button>
@@ -436,7 +436,7 @@ export default function AdvisorsPage() {
           >
             <div className="flex items-start justify-between border-b border-black/[0.06] px-6 py-5">
               <div className="min-w-0 flex-1">
-                <h2 className="text-[20px] font-semibold leading-[1.2] tracking-[-0.005em] text-[#1d1d1f]">
+                <h2 className="text-[20px] font-semibold leading-[1.2] tracking-[-0.005em] text-[#1E1B4B]">
                   여러 자문단과 대화
                 </h2>
                 <p className="mt-1.5 text-[13px] leading-[1.4] tracking-[-0.01em] text-black/60">
@@ -469,12 +469,12 @@ export default function AdvisorsPage() {
                     type="button"
                     onClick={() => toggleAdvisorSelection(personaId)}
                     className={`flex w-full items-center gap-3 rounded-[12px] px-3 py-2.5 text-left transition-colors ${
-                      checked ? "bg-[#0071e3]/8" : "hover:bg-black/[0.03]"
+                      checked ? "bg-[#1E1B4B]/8" : "hover:bg-black/[0.03]"
                     }`}
                   >
                     <div
                       className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-[5px] border transition-colors ${
-                        checked ? "border-[#0071e3] bg-[#0071e3]" : "border-black/15"
+                        checked ? "border-[#1E1B4B] bg-[#1E1B4B]" : "border-black/15"
                       }`}
                     >
                       {checked && (
@@ -485,7 +485,7 @@ export default function AdvisorsPage() {
                     </div>
                     <span className="text-xl">{persona.icon}</span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[14px] font-medium tracking-[-0.01em] text-[#1d1d1f]">{persona.name}</p>
+                      <p className="truncate text-[14px] font-medium tracking-[-0.01em] text-[#1E1B4B]">{persona.name}</p>
                       <p className="truncate text-[12px] tracking-[-0.01em] text-black/56">{persona.description}</p>
                     </div>
                   </button>
@@ -505,12 +505,12 @@ export default function AdvisorsPage() {
                         type="button"
                         onClick={() => toggleAdvisorSelection(cp.id)}
                         className={`flex w-full items-center gap-3 rounded-[12px] px-3 py-2.5 text-left transition-colors ${
-                          checked ? "bg-[#0071e3]/8" : "hover:bg-black/[0.03]"
+                          checked ? "bg-[#1E1B4B]/8" : "hover:bg-black/[0.03]"
                         }`}
                       >
                         <div
                           className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-[5px] border transition-colors ${
-                            checked ? "border-[#0071e3] bg-[#0071e3]" : "border-black/15"
+                            checked ? "border-[#1E1B4B] bg-[#1E1B4B]" : "border-black/15"
                           }`}
                         >
                           {checked && (
@@ -521,7 +521,7 @@ export default function AdvisorsPage() {
                         </div>
                         <span className="text-xl">{cp.icon}</span>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-[14px] font-medium tracking-[-0.01em] text-[#1d1d1f]">{cp.name}</p>
+                          <p className="truncate text-[14px] font-medium tracking-[-0.01em] text-[#1E1B4B]">{cp.name}</p>
                           <p className="truncate text-[12px] tracking-[-0.01em] text-black/56">{cp.description || "내가 만든 멘토"}</p>
                         </div>
                       </button>
@@ -536,7 +536,7 @@ export default function AdvisorsPage() {
                 type="button"
                 onClick={handleCreateMultiAdvisor}
                 disabled={selectedAdvisorIds.length < 2 || multiCreating}
-                className="w-full rounded-pill bg-[#0071e3] py-3 text-[14px] font-medium text-white transition-colors hover:bg-[#0077ed] disabled:bg-black/10 disabled:text-black/40"
+                className="w-full rounded-pill bg-[#1E1B4B] py-3 text-[14px] font-medium text-white transition-colors hover:bg-[#2A2766] disabled:bg-black/10 disabled:text-black/40"
               >
                 {multiCreating
                   ? "만드는 중…"

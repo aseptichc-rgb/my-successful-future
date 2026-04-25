@@ -38,9 +38,9 @@ export default function ChatPage() {
 
   if (loading || !firebaseUser) {
     return (
-      <div className="flex h-full items-center justify-center bg-[#f5f5f7]">
+      <div className="flex h-full items-center justify-center bg-[#F0EDE6]">
         <div className="text-center">
-          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-black/10 border-t-[#0071e3]" />
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-black/10 border-t-[#1E1B4B]" />
           <p className="text-[14px] tracking-[-0.022em] text-black/48">불러오는 중…</p>
         </div>
       </div>

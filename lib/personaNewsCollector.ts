@@ -30,12 +30,15 @@ import type {
   BuiltinPersonaId,
   CollectedArticle,
   NewsSource,
+  PersonaDomainTimeline,
+  PersonaDomainTimelineEntry,
   PersonaNewsSchedule,
 } from "@/types";
 
 const MODEL = "gemini-2.5-flash-lite";
 const MAX_ARTICLES_PER_SLOT = 3;
 const ARTICLE_RETENTION_DAYS = 3;     // 3일 지난 기사 정리 대상
+const DOMAIN_TIMELINE_MAX_ENTRIES = 14; // 페르소나가 누적 보관하는 도메인 흐름 최대치 (대략 1주일치)
 
 interface GroundingMeta {
   groundingChunks?: { web?: { uri?: string; title?: string } }[];
@@ -245,6 +248,18 @@ export async function collectForPersona(
       return "no-news";
     }
 
+    // 5-pre) 도메인 누적 타임라인에도 한 줄 추가 (브리핑이 비어있지 않을 때만)
+    if (result.briefing && result.briefing.trim().length > 0) {
+      appendDomainTimeline(personaId, {
+        date,
+        slotIndex: due,
+        briefing: result.briefing.trim(),
+      }).catch((err) => {
+        // 타임라인 누적 실패는 메인 수집 결과에 영향 없음 (best-effort)
+        console.warn(`[collectForPersona] ${personaId} 타임라인 갱신 실패:`, err);
+      });
+    }
+
     // 5) 기사들을 personaNews/{personaId}/items 컬렉션에 저장
     const itemsCol = db
       .collection("personaNews")
@@ -313,6 +328,64 @@ export async function getRecentArticlesForPersona(
     return snap.docs.map((d) => d.data() as CollectedArticle);
   } catch (err) {
     console.error(`[getRecentArticlesForPersona] ${personaId} 조회 실패:`, err);
+    return [];
+  }
+}
+
+/**
+ * 페르소나의 누적 도메인 타임라인에 새 한 줄을 추가한다.
+ * 같은 (date, slotIndex) 가 이미 있으면 덮어쓴다.
+ * 트랜잭션으로 read-modify-write 경합을 방지하고, 최신 N개만 보관.
+ */
+async function appendDomainTimeline(
+  personaId: BuiltinPersonaId,
+  entry: PersonaDomainTimelineEntry
+): Promise<void> {
+  const db = getAdminDb();
+  const ref = db.collection("personaDomainTimeline").doc(personaId);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const cur = snap.exists ? (snap.data() as PersonaDomainTimeline) : null;
+    const existing = cur?.entries ?? [];
+    // dedupe: 같은 날짜·슬롯이면 새 항목으로 교체
+    const filtered = existing.filter(
+      (e) => !(e.date === entry.date && e.slotIndex === entry.slotIndex)
+    );
+    filtered.push(entry);
+    // 최신순 정렬 후 상한 적용
+    filtered.sort((a, b) => {
+      if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+      return b.slotIndex - a.slotIndex;
+    });
+    const trimmed = filtered.slice(0, DOMAIN_TIMELINE_MAX_ENTRIES);
+    tx.set(
+      ref,
+      {
+        personaId,
+        entries: trimmed,
+        updatedAt: Timestamp.now(),
+      } satisfies PersonaDomainTimeline,
+      { merge: false }
+    );
+  });
+}
+
+/**
+ * 페르소나가 최근 추적해온 도메인 흐름 한 줄 요약 N개를 최신순으로 반환.
+ * 시스템 프롬프트에 "내가 최근에 봐온 흐름" 섹션으로 주입된다.
+ */
+export async function getRecentDomainTimeline(
+  personaId: BuiltinPersonaId,
+  limit = 7
+): Promise<PersonaDomainTimelineEntry[]> {
+  try {
+    const db = getAdminDb();
+    const snap = await db.collection("personaDomainTimeline").doc(personaId).get();
+    if (!snap.exists) return [];
+    const data = snap.data() as PersonaDomainTimeline | undefined;
+    return (data?.entries ?? []).slice(0, limit);
+  } catch (err) {
+    console.error(`[getRecentDomainTimeline] ${personaId} 조회 실패:`, err);
     return [];
   }
 }

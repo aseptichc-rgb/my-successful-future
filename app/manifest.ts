@@ -2,25 +2,42 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "AI 뉴스 챗봇 — 미래의 나",
-    short_name: "미래의 나",
+    name: "Anima — listening within",
+    short_name: "Anima",
     description:
-      "AI가 국내외 최신 뉴스를 실시간으로 전달하고, 미래의 나와 대화할 수 있는 챗봇 서비스",
+      "내 안의 목소리들과 대화하는 AI. 미래의 나, 분야별 자문단 페르소나.",
     start_url: "/",
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#ffffff",
-    theme_color: "#0f172a",
+    background_color: "#F7F3EC",
+    theme_color: "#1E1B4B",
     lang: "ko-KR",
-    categories: ["news", "productivity", "lifestyle"],
-    // PNG 아이콘 에셋이 public/icons/ 에 배치되면 아래 엔트리를 되살릴 것.
-    // 현재는 파일이 없어서 404 가 콘솔 노이즈를 만들기에 favicon 만 노출.
+    categories: ["lifestyle", "productivity", "health"],
     icons: [
       {
-        src: "/favicon.ico",
+        src: "/icon",
         sizes: "any",
-        type: "image/x-icon",
+        type: "image/svg+xml",
+        purpose: "any",
+      },
+      {
+        src: "/icons/icon-192.png",
+        sizes: "192x192",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icons/icon-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icons/icon-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
       },
     ],
   };

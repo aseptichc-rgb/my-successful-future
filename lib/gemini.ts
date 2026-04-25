@@ -122,15 +122,26 @@ export function streamChatResponse(
 
         let fullText = "";
 
-        for await (const chunk of result.stream) {
-          const text = chunk.text();
-          if (text) {
-            fullText += text;
-            const sseData: ChatStreamEvent = { type: "text", content: text };
-            controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify(sseData)}\n\n`)
-            );
+        // SDK(@google/generative-ai 0.24.x)가 thinking + googleSearch + streaming
+        // 조합에서 간헐적으로 "Failed to parse stream"을 던진다.
+        // 이미 누적된 텍스트가 있으면 정상 종료로 처리해 사용자가 잘린 응답이라도 받게 한다.
+        try {
+          for await (const chunk of result.stream) {
+            const text = chunk.text();
+            if (text) {
+              fullText += text;
+              const sseData: ChatStreamEvent = { type: "text", content: text };
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify(sseData)}\n\n`)
+              );
+            }
           }
+        } catch (streamErr) {
+          if (fullText.length === 0) throw streamErr;
+          console.warn(
+            "[gemini] stream 파싱 중 오류 — 누적된 텍스트로 graceful 종료:",
+            streamErr instanceof Error ? streamErr.message : streamErr
+          );
         }
 
         // Grounding metadata에서 실제 기사 URL 추출

@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { Timestamp } from "firebase/firestore";
 import { getMessages, addMessage, updateSessionTitle, onMessagesSnapshot, getSessionById, incrementUnreadCounts, updateUserMemory, onPersonaMemoriesSnapshot, updatePersonaMemory, getAuth_ } from "@/lib/firebase";
 import { getPersona, PERSONAS, isCustomPersonaId } from "@/lib/personas";
-import { routeToPersonas, pickBestFromActive } from "@/lib/persona-router";
+import { routeToPersonas, pickBestFromActive, pickPrimaryPersona } from "@/lib/persona-router";
 import { detectBotCommand } from "@/lib/externalBots";
 import type { ActiveCouncilState, ChatMessage, ChatSession, ChatStreamEvent, CouncilTurn, CustomPersona, MoodKind, NewsSource, NewsTopic, PersonaId, SessionType } from "@/types";
 
@@ -788,7 +788,14 @@ export function useChat(
       if (personaIds.length === 0) return;
 
       // 미래의 나는 항상 마지막 종합자로 자동 포함
-      const rounds: PersonaId[] = personaIds.filter((p) => p !== "future-self");
+      const nonFinal: PersonaId[] = personaIds.filter((p) => p !== "future-self");
+
+      // 1차 담당자 라우팅: 질문이 특정 도메인에 걸리면 해당 페르소나가 먼저 발언하도록 재정렬.
+      // 매칭이 없으면 원래 순서를 유지(공동 발언 모드).
+      const primaryPersonaId = pickPrimaryPersona(question, nonFinal);
+      const rounds: PersonaId[] = primaryPersonaId
+        ? [primaryPersonaId, ...nonFinal.filter((p) => p !== primaryPersonaId)]
+        : [...nonFinal];
       rounds.push("future-self");
 
       const councilGroupId = `council-${Date.now()}`;
@@ -871,6 +878,7 @@ export function useChat(
                 personaMemory: personaMemoryForThis && personaMemoryForThis.trim().length > 0 ? personaMemoryForThis : undefined,
                 councilContext: priorRounds.length > 0 ? priorRounds : undefined,
                 isCouncilFinal: isFinal,
+                primaryPersonaId: primaryPersonaId ?? undefined,
                 customPersona: customPayloadP
                   ? {
                       id: customPayloadP.id,

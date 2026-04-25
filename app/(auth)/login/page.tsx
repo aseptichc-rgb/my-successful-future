@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { LABELS } from "@/lib/labels";
+import Logo from "@/components/ui/Logo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -60,11 +61,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md space-y-8 rounded-2xl bg-white p-8 shadow-lg">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900">{LABELS.appName}</h1>
-          <p className="mt-2 text-gray-500">{LABELS.appTagline}</p>
+    <div className="flex min-h-screen items-center justify-center bg-cream">
+      <div className="w-full max-w-md space-y-8 rounded-2xl bg-white p-8 shadow-anima">
+        <div className="flex flex-col items-center text-center">
+          <Logo variant="lockup" tone="light" size={36} priority />
+          <p className="mt-3 text-anima-caption">{LABELS.appTagline}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">

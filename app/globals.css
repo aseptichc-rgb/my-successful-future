@@ -1,50 +1,378 @@
 @import "tailwindcss";
 
+/*
+ * Anima Brand System
+ * "안에서 듣는다 — listening within"
+ * 한 화면에 Primary + Cream + Soul 세 색만. Soul은 화면당 1~2회 포인트.
+ */
 :root {
-  /* Apple palette */
-  --background: #ffffff;
-  --foreground: #1d1d1f;
-  --surface: #f5f5f7;
-  --surface-2: #fafafc;
-  --surface-dark: #1d1d1f;
-  --border-subtle: rgba(0, 0, 0, 0.08);
-  --border-soft: rgba(0, 0, 0, 0.04);
+  /* Brand palette — frozen tokens, do not introduce new hues */
+  --indigo: #1E1B4B;        /* Primary — 본문, 마크 외곽선, 다크 surface */
+  --indigo-700: #2A2766;
+  --indigo-500: #4F4BA8;
+  --indigo-300: #A6A3D1;
 
-  /* Interactive — Apple Blue is the singular chromatic accent */
-  --accent: #0071e3;
-  --accent-press: #0077ed;
-  --link-light: #0066cc;
-  --link-dark: #2997ff;
-  --focus-ring: #0071e3;
+  --soul: #D85A30;          /* Coral Warm — 중심점, 핵심 CTA, 페르소나 디폴트 */
+  --soul-press: #BE4B26;
+  --soul-soft: #F2C9B8;
 
-  /* Text */
-  --text-secondary: rgba(0, 0, 0, 0.8);
-  --text-tertiary: rgba(0, 0, 0, 0.56);
-  --text-quaternary: rgba(0, 0, 0, 0.48);
+  --cream: #F7F3EC;         /* Bone — 라이트모드 배경, 카드 */
+  --mist: #E8E6DF;          /* Cool Gray — 구분선, 보조 표면 */
+  --mist-soft: #F0EDE6;
+  --charcoal: #1A1A1A;      /* 헤드라인 텍스트, 다크 텍스트 */
 
-  /* Nav glass */
-  --nav-bg: rgba(255, 255, 255, 0.72);
-  --nav-bg-dark: rgba(0, 0, 0, 0.8);
+  /* Semantic mapping */
+  --background: var(--cream);
+  --foreground: var(--indigo);
+  --surface: #FBF8F2;       /* card on cream */
+  --surface-2: var(--mist-soft);
+  --surface-dark: var(--indigo);
+  --border-subtle: rgba(30, 27, 75, 0.10);
+  --border-soft: rgba(30, 27, 75, 0.06);
+  --hairline: rgba(30, 27, 75, 0.14);
 
-  /* Shadows — Apple uses one soft diffused shadow, or none */
-  --shadow-card: 3px 5px 30px 0 rgba(0, 0, 0, 0.06);
-  --shadow-card-hover: 3px 5px 30px 0 rgba(0, 0, 0, 0.12);
-  --shadow-product: 3px 5px 30px 0 rgba(0, 0, 0, 0.22);
+  /* Interactive */
+  --accent: var(--soul);
+  --accent-press: var(--soul-press);
+  --link: var(--indigo);
+  --link-hover: var(--soul);
+  --focus-ring: var(--indigo);
+
+  /* Text scale */
+  --text-secondary: rgba(30, 27, 75, 0.78);
+  --text-tertiary: rgba(30, 27, 75, 0.56);
+  --text-quaternary: rgba(30, 27, 75, 0.42);
+
+  /* Glass nav — Cream-tinted */
+  --nav-bg: rgba(247, 243, 236, 0.78);
+  --nav-bg-dark: rgba(30, 27, 75, 0.84);
+
+  /* Shadows — almost nothing. 임상적 절제. */
+  --shadow-card: 0 1px 2px rgba(30, 27, 75, 0.04), 0 8px 24px rgba(30, 27, 75, 0.04);
+  --shadow-card-hover: 0 1px 2px rgba(30, 27, 75, 0.06), 0 12px 32px rgba(30, 27, 75, 0.08);
+  --shadow-product: 0 2px 4px rgba(30, 27, 75, 0.06), 0 24px 48px rgba(30, 27, 75, 0.10);
 }
 
 @theme inline {
+  /* Brand tokens exposed to Tailwind */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
   --color-accent: var(--accent);
-  --color-link: var(--link-light);
+  --color-link: var(--link);
 
+  --color-indigo: var(--indigo);
+  --color-indigo-700: var(--indigo-700);
+  --color-indigo-500: var(--indigo-500);
+  --color-indigo-300: var(--indigo-300);
+  --color-soul: var(--soul);
+  --color-soul-press: var(--soul-press);
+  --color-soul-soft: var(--soul-soft);
+  --color-cream: var(--cream);
+  --color-mist: var(--mist);
+  --color-mist-soft: var(--mist-soft);
+  --color-charcoal: var(--charcoal);
+
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-quaternary: var(--text-quaternary);
+  --color-hairline: var(--hairline);
+  --color-border-subtle: var(--border-subtle);
+
+  /* Typography stacks
+   * Display: serif — 명상적 사상적 톤
+   * UI: Pretendard(Korean) + Inter(Latin) — 모던 그로테스크
+   * Mono: 인용·날짜 — 임상적 정확성 */
   --font-sans:
-    "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont,
-    var(--font-noto-sans-kr), "Helvetica Neue", Helvetica, Arial, sans-serif;
+    "Pretendard Variable", "Pretendard", "Inter", var(--font-noto-kr),
+    -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+    "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-display:
-    "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont,
-    var(--font-noto-sans-kr), "Helvetica Neue", Helvetica, Arial, sans-serif;
+    var(--font-fraunces), "GT Sectra", "Tiempos Headline", Georgia,
+    "Times New Roman", serif;
+  --font-mono:
+    var(--font-jetbrains), "JetBrains Mono", "SF Mono", "ABC Diatype Mono",
+    "D2 Coding", ui-monospace, Menlo, Consolas, monospace;
+
+  /* ────────────────────────────────────────────────────────────────
+   * Tailwind 팔레트 재정의 — 모든 hue를 Anima 3축으로 흡수
+   *   blues family (blue/indigo/sky/cyan/violet/purple/fuchsia)  → Indigo
+   *   neutrals    (slate/gray/zinc/neutral/stone)                → Cream/Mist/Indigo
+   *   warms       (red/rose/pink/orange)                         → Soul (Coral)
+   *   amber/yellow                                               → 절제된 warm-warning
+   *   greens      (emerald/green/teal/lime)                      → Sage
+   *
+   * 결과: 기존 컴포넌트의 bg-blue-500, text-slate-700 등이 자동으로
+   *       Anima 브랜드 톤으로 매핑됨. 한 곳만 수정해서 전체 서비스 반영.
+   * ──────────────────────────────────────────────────────────────── */
+
+  /* Indigo axis (blues family + indigo itself) */
+  --color-indigo-50: #EFEEF7;
+  --color-indigo-100: #DEDCEE;
+  --color-indigo-200: #BFBCDC;
+  --color-indigo-400: #7B77BD;
+  --color-indigo-600: #3A3786;
+  --color-indigo-800: #1E1B4B;
+  --color-indigo-900: #16143A;
+  --color-indigo-950: #0E0C26;
+  /* indigo-300/500/700 already defined as brand tokens above */
+
+  --color-blue-50: #EFEEF7;
+  --color-blue-100: #DEDCEE;
+  --color-blue-200: #BFBCDC;
+  --color-blue-300: #A6A3D1;
+  --color-blue-400: #7B77BD;
+  --color-blue-500: #4F4BA8;
+  --color-blue-600: #3A3786;
+  --color-blue-700: #2A2766;
+  --color-blue-800: #1E1B4B;
+  --color-blue-900: #16143A;
+  --color-blue-950: #0E0C26;
+
+  --color-sky-50: #EFEEF7;
+  --color-sky-100: #DEDCEE;
+  --color-sky-200: #BFBCDC;
+  --color-sky-300: #A6A3D1;
+  --color-sky-400: #7B77BD;
+  --color-sky-500: #4F4BA8;
+  --color-sky-600: #3A3786;
+  --color-sky-700: #2A2766;
+  --color-sky-800: #1E1B4B;
+  --color-sky-900: #16143A;
+  --color-sky-950: #0E0C26;
+
+  --color-cyan-50: #EFEEF7;
+  --color-cyan-100: #DEDCEE;
+  --color-cyan-200: #BFBCDC;
+  --color-cyan-300: #A6A3D1;
+  --color-cyan-400: #7B77BD;
+  --color-cyan-500: #4F4BA8;
+  --color-cyan-600: #3A3786;
+  --color-cyan-700: #2A2766;
+  --color-cyan-800: #1E1B4B;
+  --color-cyan-900: #16143A;
+  --color-cyan-950: #0E0C26;
+
+  --color-violet-50: #EFEEF7;
+  --color-violet-100: #DEDCEE;
+  --color-violet-200: #BFBCDC;
+  --color-violet-300: #A6A3D1;
+  --color-violet-400: #7B77BD;
+  --color-violet-500: #4F4BA8;
+  --color-violet-600: #3A3786;
+  --color-violet-700: #2A2766;
+  --color-violet-800: #1E1B4B;
+  --color-violet-900: #16143A;
+  --color-violet-950: #0E0C26;
+
+  --color-purple-50: #EFEEF7;
+  --color-purple-100: #DEDCEE;
+  --color-purple-200: #BFBCDC;
+  --color-purple-300: #A6A3D1;
+  --color-purple-400: #7B77BD;
+  --color-purple-500: #4F4BA8;
+  --color-purple-600: #3A3786;
+  --color-purple-700: #2A2766;
+  --color-purple-800: #1E1B4B;
+  --color-purple-900: #16143A;
+  --color-purple-950: #0E0C26;
+
+  --color-fuchsia-50: #FBEAE2;
+  --color-fuchsia-100: #F2C9B8;
+  --color-fuchsia-200: #EAA88E;
+  --color-fuchsia-300: #E08C6A;
+  --color-fuchsia-400: #DC7048;
+  --color-fuchsia-500: #D85A30;
+  --color-fuchsia-600: #BE4B26;
+  --color-fuchsia-700: #983B1D;
+  --color-fuchsia-800: #722C16;
+  --color-fuchsia-900: #4D1D0E;
+  --color-fuchsia-950: #2A1007;
+
+  /* Neutrals (slate/gray/zinc/neutral/stone) → Cream / Mist / Indigo */
+  --color-slate-50: #F7F3EC;
+  --color-slate-100: #F0EDE6;
+  --color-slate-200: #E8E6DF;
+  --color-slate-300: #D7D4CC;
+  --color-slate-400: #9B98AE;
+  --color-slate-500: #6F6C88;
+  --color-slate-600: #4F4D6E;
+  --color-slate-700: #2E2C56;
+  --color-slate-800: #221F45;
+  --color-slate-900: #1E1B4B;
+  --color-slate-950: #0F0D2A;
+
+  --color-gray-50: #F7F3EC;
+  --color-gray-100: #F0EDE6;
+  --color-gray-200: #E8E6DF;
+  --color-gray-300: #D7D4CC;
+  --color-gray-400: #9B98AE;
+  --color-gray-500: #6F6C88;
+  --color-gray-600: #4F4D6E;
+  --color-gray-700: #2E2C56;
+  --color-gray-800: #221F45;
+  --color-gray-900: #1E1B4B;
+  --color-gray-950: #0F0D2A;
+
+  --color-zinc-50: #F7F3EC;
+  --color-zinc-100: #F0EDE6;
+  --color-zinc-200: #E8E6DF;
+  --color-zinc-300: #D7D4CC;
+  --color-zinc-400: #9B98AE;
+  --color-zinc-500: #6F6C88;
+  --color-zinc-600: #4F4D6E;
+  --color-zinc-700: #2E2C56;
+  --color-zinc-800: #221F45;
+  --color-zinc-900: #1E1B4B;
+  --color-zinc-950: #0F0D2A;
+
+  --color-neutral-50: #F7F3EC;
+  --color-neutral-100: #F0EDE6;
+  --color-neutral-200: #E8E6DF;
+  --color-neutral-300: #D7D4CC;
+  --color-neutral-400: #9B98AE;
+  --color-neutral-500: #6F6C88;
+  --color-neutral-600: #4F4D6E;
+  --color-neutral-700: #2E2C56;
+  --color-neutral-800: #221F45;
+  --color-neutral-900: #1E1B4B;
+  --color-neutral-950: #0F0D2A;
+
+  --color-stone-50: #F7F3EC;
+  --color-stone-100: #F0EDE6;
+  --color-stone-200: #E8E6DF;
+  --color-stone-300: #D7D4CC;
+  --color-stone-400: #9B98AE;
+  --color-stone-500: #6F6C88;
+  --color-stone-600: #4F4D6E;
+  --color-stone-700: #2E2C56;
+  --color-stone-800: #221F45;
+  --color-stone-900: #1E1B4B;
+  --color-stone-950: #0F0D2A;
+
+  /* Soul axis (warms: red/rose/pink/orange) — Coral 정중앙 */
+  --color-red-50: #FBEAE2;
+  --color-red-100: #F2C9B8;
+  --color-red-200: #EAA88E;
+  --color-red-300: #E08C6A;
+  --color-red-400: #DC7048;
+  --color-red-500: #D85A30;
+  --color-red-600: #BE4B26;
+  --color-red-700: #983B1D;
+  --color-red-800: #722C16;
+  --color-red-900: #4D1D0E;
+  --color-red-950: #2A1007;
+
+  --color-rose-50: #FBEAE2;
+  --color-rose-100: #F2C9B8;
+  --color-rose-200: #EAA88E;
+  --color-rose-300: #E08C6A;
+  --color-rose-400: #DC7048;
+  --color-rose-500: #D85A30;
+  --color-rose-600: #BE4B26;
+  --color-rose-700: #983B1D;
+  --color-rose-800: #722C16;
+  --color-rose-900: #4D1D0E;
+  --color-rose-950: #2A1007;
+
+  --color-pink-50: #FBEAE2;
+  --color-pink-100: #F2C9B8;
+  --color-pink-200: #EAA88E;
+  --color-pink-300: #E08C6A;
+  --color-pink-400: #DC7048;
+  --color-pink-500: #D85A30;
+  --color-pink-600: #BE4B26;
+  --color-pink-700: #983B1D;
+  --color-pink-800: #722C16;
+  --color-pink-900: #4D1D0E;
+  --color-pink-950: #2A1007;
+
+  --color-orange-50: #FBEAE2;
+  --color-orange-100: #F2C9B8;
+  --color-orange-200: #EAA88E;
+  --color-orange-300: #E08C6A;
+  --color-orange-400: #DC7048;
+  --color-orange-500: #D85A30;
+  --color-orange-600: #BE4B26;
+  --color-orange-700: #983B1D;
+  --color-orange-800: #722C16;
+  --color-orange-900: #4D1D0E;
+  --color-orange-950: #2A1007;
+
+  /* Amber / Yellow — 절제된 warm warning. 채도 낮춤 */
+  --color-amber-50: #F7F0E1;
+  --color-amber-100: #EFE0BD;
+  --color-amber-200: #E2C58C;
+  --color-amber-300: #D2A85F;
+  --color-amber-400: #BC8E40;
+  --color-amber-500: #A07530;
+  --color-amber-600: #835D24;
+  --color-amber-700: #66481B;
+  --color-amber-800: #4B3413;
+  --color-amber-900: #33240C;
+  --color-amber-950: #1F1607;
+
+  --color-yellow-50: #F7F0E1;
+  --color-yellow-100: #EFE0BD;
+  --color-yellow-200: #E2C58C;
+  --color-yellow-300: #D2A85F;
+  --color-yellow-400: #BC8E40;
+  --color-yellow-500: #A07530;
+  --color-yellow-600: #835D24;
+  --color-yellow-700: #66481B;
+  --color-yellow-800: #4B3413;
+  --color-yellow-900: #33240C;
+  --color-yellow-950: #1F1607;
+
+  /* Greens (emerald/green/teal/lime) → Sage. 브랜드와 호환되는 차분한 녹 */
+  --color-emerald-50: #EDF1EC;
+  --color-emerald-100: #DCE4DA;
+  --color-emerald-200: #B7C5B3;
+  --color-emerald-300: #92A78D;
+  --color-emerald-400: #6E8867;
+  --color-emerald-500: #5B7554;
+  --color-emerald-600: #4A6243;
+  --color-emerald-700: #3B4F36;
+  --color-emerald-800: #2E3D2A;
+  --color-emerald-900: #232E20;
+  --color-emerald-950: #161D14;
+
+  --color-green-50: #EDF1EC;
+  --color-green-100: #DCE4DA;
+  --color-green-200: #B7C5B3;
+  --color-green-300: #92A78D;
+  --color-green-400: #6E8867;
+  --color-green-500: #5B7554;
+  --color-green-600: #4A6243;
+  --color-green-700: #3B4F36;
+  --color-green-800: #2E3D2A;
+  --color-green-900: #232E20;
+  --color-green-950: #161D14;
+
+  --color-teal-50: #EDF1EC;
+  --color-teal-100: #DCE4DA;
+  --color-teal-200: #B7C5B3;
+  --color-teal-300: #92A78D;
+  --color-teal-400: #6E8867;
+  --color-teal-500: #5B7554;
+  --color-teal-600: #4A6243;
+  --color-teal-700: #3B4F36;
+  --color-teal-800: #2E3D2A;
+  --color-teal-900: #232E20;
+  --color-teal-950: #161D14;
+
+  --color-lime-50: #EDF1EC;
+  --color-lime-100: #DCE4DA;
+  --color-lime-200: #B7C5B3;
+  --color-lime-300: #92A78D;
+  --color-lime-400: #6E8867;
+  --color-lime-500: #5B7554;
+  --color-lime-600: #4A6243;
+  --color-lime-700: #3B4F36;
+  --color-lime-800: #2E3D2A;
+  --color-lime-900: #232E20;
+  --color-lime-950: #161D14;
 }
 
 html,
@@ -55,17 +383,29 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   font-feature-settings: "kern", "liga", "calt", "ss01";
-  /* Apple tracks tight at all sizes */
-  letter-spacing: -0.022em;
+  /* 호흡감 있는 자간 — 너무 타이트하지 않게 */
+  letter-spacing: -0.01em;
 }
 
-/* Display-size headings use SF Pro Display cadence */
+/* Display headings — 세리프, Light 무게로 명상적 톤 */
 h1,
 h2,
 h3 {
   font-family: var(--font-display);
-  letter-spacing: -0.005em;
-  line-height: 1.1;
+  font-weight: 300;
+  letter-spacing: -0.015em;
+  line-height: 1.12;
+  color: var(--indigo);
+}
+
+h4,
+h5,
+h6 {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--indigo);
 }
 
 /* iOS safe-area helper */
@@ -83,25 +423,34 @@ h3 {
   }
 }
 
-/* Apple glass navigation — translucent + saturated backdrop blur */
+/* Cream-tinted glass — 차분한 반투명 */
 @utility nav-glass {
   background-color: var(--nav-bg);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(140%) blur(18px);
+  -webkit-backdrop-filter: saturate(140%) blur(18px);
+  border-bottom: 1px solid var(--hairline);
 }
 
 @utility nav-glass-dark {
   background-color: var(--nav-bg-dark);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(140%) blur(18px);
+  -webkit-backdrop-filter: saturate(140%) blur(18px);
+  border-bottom: 1px solid rgba(247, 243, 236, 0.08);
 }
 
-/* Signature pill radius — Apple uses 980px for CTA capsules */
+/* CTA capsule — 절제된 라운드. 980px 대신 풀 라운드 */
 @utility rounded-pill {
-  border-radius: 980px;
+  border-radius: 9999px;
 }
 
-/* Soft Apple-style product shadow */
+/* Soft Anima shadow — 거의 없는 듯이 */
+@utility shadow-anima {
+  box-shadow: var(--shadow-card);
+}
+@utility shadow-anima-lg {
+  box-shadow: var(--shadow-product);
+}
+/* Backwards-compat aliases (전 코드에서 shadow-apple* 사용 중) */
 @utility shadow-apple {
   box-shadow: var(--shadow-card);
 }
@@ -109,41 +458,93 @@ h3 {
   box-shadow: var(--shadow-product);
 }
 
-/* Display type — tight headline cadence */
+/* Display type — 세리프 헤드라인 */
 @utility text-display-hero {
   font-family: var(--font-display);
-  font-size: clamp(2rem, 4.2vw, 3.5rem);
-  font-weight: 600;
-  line-height: 1.07;
-  letter-spacing: -0.005em;
+  font-size: clamp(2.25rem, 4.6vw, 4rem);
+  font-weight: 300;
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+  color: var(--indigo);
 }
 
 @utility text-display-section {
   font-family: var(--font-display);
-  font-size: clamp(1.5rem, 2.8vw, 2.5rem);
-  font-weight: 600;
-  line-height: 1.1;
-  letter-spacing: -0.003em;
+  font-size: clamp(1.625rem, 3vw, 2.5rem);
+  font-weight: 300;
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  color: var(--indigo);
 }
 
-/* Body text — Apple tracks body tight too */
+@utility text-display-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* Body text */
+@utility text-anima-body {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  letter-spacing: -0.005em;
+  font-weight: 400;
+  color: var(--indigo);
+}
+
+@utility text-anima-caption {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.4;
+  letter-spacing: 0;
+  font-weight: 400;
+  color: var(--text-tertiary);
+}
+
+@utility text-anima-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.3;
+  letter-spacing: 0.04em;
+  font-weight: 400;
+  color: var(--text-tertiary);
+}
+
+/* Backwards-compat aliases */
 @utility text-apple-body {
-  font-size: 17px;
-  line-height: 1.47;
-  letter-spacing: -0.022em;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
   font-weight: 400;
+  color: var(--indigo);
 }
-
 @utility text-apple-caption {
-  font-size: 14px;
-  line-height: 1.29;
-  letter-spacing: -0.016em;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.4;
   font-weight: 400;
+  color: var(--text-tertiary);
 }
 
-/* Apple focus ring — 2px solid accent */
+/* Hairline divider — 1px max, 항상 1.5px 이하 원칙 */
+@utility hairline {
+  border-color: var(--hairline);
+}
+
+/* Aperture — 동심원 마크 모티프, hover에 라임 맞추는 핀포인트 */
+@utility aperture-dot {
+  background-color: var(--soul);
+  border-radius: 9999px;
+}
+
+/* Focus ring — Indigo 1.5px (브랜드 원칙: 모든 라인은 1.5px 이하) */
 :focus-visible {
-  outline: 2px solid var(--focus-ring);
+  outline: 1.5px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -159,6 +560,21 @@ button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid var(--focus-ring);
+  outline: 1.5px solid var(--focus-ring);
   outline-offset: 2px;
+}
+
+/* Selection — Soul tinted */
+::selection {
+  background-color: var(--soul-soft);
+  color: var(--indigo);
+}
+
+/* Default link */
+a {
+  color: var(--link);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--link-hover);
 }

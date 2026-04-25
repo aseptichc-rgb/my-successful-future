@@ -58,7 +58,7 @@ function ChatWindow({ messages, isLoading, respondingPersona, customPersonaMap, 
       {messages.length === 0 && !isLoading && (
         <div className="flex h-full items-center justify-center">
           <div className="text-center">
-            <p className="text-[28px] font-semibold leading-[1.14] tracking-[-0.005em] text-[#1d1d1f]">
+            <p className="text-[28px] font-semibold leading-[1.14] tracking-[-0.005em] text-[#1E1B4B]">
               {emptyTitle || "AI 뉴스 어시스턴트"}
             </p>
             <p className="mt-2 text-[15px] tracking-[-0.022em] text-black/56">
@@ -114,13 +114,17 @@ function ChatWindow({ messages, isLoading, respondingPersona, customPersonaMap, 
         {isLoading && respondingPersona && (() => {
           const p = getPersona(respondingPersona, customPersonaMap);
           return (
-            <div className="mt-4 flex justify-start">
-              <div className="rounded-[22px] bg-[#f5f5f7] px-4 py-3">
-                <div className="mb-1.5 flex items-center gap-1.5 text-[12px] font-semibold tracking-[-0.01em] text-black/56">
-                  <span>{p.icon}</span>
-                  <span>{p.name} 응답 중…</span>
+            <div className="mt-4 flex justify-start gap-2">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#F0EDE6] text-[18px]">
+                {p.icon}
+              </div>
+              <div className="flex max-w-[78%] flex-col items-start">
+                <div className="mb-1 px-1 text-[12px] font-medium tracking-[-0.01em] text-black/60">
+                  {p.name} 응답 중…
                 </div>
-                <LoadingDots />
+                <div className="rounded-[18px] rounded-tl-[4px] border border-black/[0.08] bg-white px-3.5 py-2.5">
+                  <LoadingDots />
+                </div>
               </div>
             </div>
           );
