@@ -31,7 +31,10 @@ export function useCustomPersonas(uid: string | undefined) {
   }, [map]);
 
   const create = useCallback(
-    async (data: Pick<CustomPersona, "name" | "icon" | "description" | "systemPromptAddition">) => {
+    async (
+      data: Pick<CustomPersona, "name" | "icon" | "description" | "systemPromptAddition"> &
+        Partial<Pick<CustomPersona, "photoUrl">>
+    ) => {
       if (!uid) return;
       return createCustomPersona(uid, data);
     },
@@ -39,7 +42,10 @@ export function useCustomPersonas(uid: string | undefined) {
   );
 
   const edit = useCallback(
-    async (id: string, updates: Partial<Pick<CustomPersona, "name" | "icon" | "description" | "systemPromptAddition">>) => {
+    async (
+      id: string,
+      updates: Partial<Pick<CustomPersona, "name" | "icon" | "description" | "systemPromptAddition" | "photoUrl">>
+    ) => {
       if (!uid) return;
       await updateCustomPersona(uid, id, updates);
     },

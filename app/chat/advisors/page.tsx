@@ -13,6 +13,7 @@ import PersonaEditorModal from "@/components/chat/PersonaEditorModal";
 import { mergePersona } from "@/lib/persona-resolver";
 import PersonaRefDocsModal from "@/components/chat/PersonaRefDocsModal";
 import PersonaScheduleModal from "@/components/chat/PersonaScheduleModal";
+import PersonaIcon from "@/components/ui/PersonaIcon";
 import type { BuiltinPersonaId, ChatSession, CustomPersona, PersonaId } from "@/types";
 
 // 자문단으로 노출할 페르소나 (future-self는 별도 홈, default 뉴스봇은 일반 뉴스용이라 포함)
@@ -198,7 +199,9 @@ export default function AdvisorsPage() {
                     disabled={isCreating}
                     className="flex w-full flex-col items-start gap-3 text-left disabled:opacity-50"
                   >
-                    <div className="text-[34px] leading-none">{persona.icon}</div>
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F0EDE6] text-[#1E1B4B]">
+                      <PersonaIcon personaId={personaId} fallbackEmoji={persona.icon} className="h-7 w-7" />
+                    </div>
                     <div className="w-full">
                       <p className="truncate text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
                         {persona.name}
@@ -311,7 +314,14 @@ export default function AdvisorsPage() {
                         disabled={isCreating}
                         className="flex w-full flex-col items-start gap-3 text-left disabled:opacity-50"
                       >
-                        <div className="text-[34px] leading-none">{cp.icon}</div>
+                        <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#F0EDE6] text-[#1E1B4B] text-[28px]">
+                          <PersonaIcon
+                            personaId={cp.id}
+                            fallbackEmoji={cp.icon}
+                            photoUrl={cp.photoUrl}
+                            className={cp.photoUrl ? "h-12 w-12" : "h-7 w-7"}
+                          />
+                        </div>
                         <div className="w-full">
                           <p className="truncate text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
                             {cp.name}
@@ -483,7 +493,9 @@ export default function AdvisorsPage() {
                         </svg>
                       )}
                     </div>
-                    <span className="text-xl">{persona.icon}</span>
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#F0EDE6] text-[#1E1B4B]">
+                      <PersonaIcon personaId={personaId} fallbackEmoji={persona.icon} className="h-4 w-4" />
+                    </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[14px] font-medium tracking-[-0.01em] text-[#1E1B4B]">{persona.name}</p>
                       <p className="truncate text-[12px] tracking-[-0.01em] text-black/56">{persona.description}</p>
@@ -519,7 +531,14 @@ export default function AdvisorsPage() {
                             </svg>
                           )}
                         </div>
-                        <span className="text-xl">{cp.icon}</span>
+                        <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-[#F0EDE6] text-[#1E1B4B] text-[16px]">
+                          <PersonaIcon
+                            personaId={cp.id}
+                            fallbackEmoji={cp.icon}
+                            photoUrl={cp.photoUrl}
+                            className={cp.photoUrl ? "h-7 w-7" : "h-4 w-4"}
+                          />
+                        </span>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[14px] font-medium tracking-[-0.01em] text-[#1E1B4B]">{cp.name}</p>
                           <p className="truncate text-[12px] tracking-[-0.01em] text-black/56">{cp.description || "내가 만든 멘토"}</p>

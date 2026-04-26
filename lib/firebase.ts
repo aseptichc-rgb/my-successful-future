@@ -920,11 +920,12 @@ function generateCustomPersonaId(): string {
 
 export async function createCustomPersona(
   uid: string,
-  data: Pick<CustomPersona, "name" | "icon" | "description" | "systemPromptAddition">
+  data: Pick<CustomPersona, "name" | "icon" | "description" | "systemPromptAddition"> &
+    Partial<Pick<CustomPersona, "photoUrl">>
 ): Promise<string> {
   const db = getDbInstance();
   const id = generateCustomPersonaId();
-  await setDoc(doc(db, "users", uid, "customPersonas", id), {
+  const payload: Record<string, unknown> = {
     id,
     name: data.name,
     icon: data.icon || "✨",
@@ -932,20 +933,25 @@ export async function createCustomPersona(
     systemPromptAddition: data.systemPromptAddition,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  });
+  };
+  if (data.photoUrl) payload.photoUrl = data.photoUrl;
+  await setDoc(doc(db, "users", uid, "customPersonas", id), payload);
   return id;
 }
 
 export async function updateCustomPersona(
   uid: string,
   id: string,
-  updates: Partial<Pick<CustomPersona, "name" | "icon" | "description" | "systemPromptAddition">>
+  updates: Partial<Pick<CustomPersona, "name" | "icon" | "description" | "systemPromptAddition" | "photoUrl">>
 ) {
   const db = getDbInstance();
-  await updateDoc(doc(db, "users", uid, "customPersonas", id), {
-    ...updates,
-    updatedAt: serverTimestamp(),
-  });
+  // photoUrl: 빈 문자열은 "삭제 요청"으로 해석해 deleteField 처리
+  const { deleteField } = await import("firebase/firestore");
+  const payload: Record<string, unknown> = { ...updates, updatedAt: serverTimestamp() };
+  if ("photoUrl" in updates && !updates.photoUrl) {
+    payload.photoUrl = deleteField();
+  }
+  await updateDoc(doc(db, "users", uid, "customPersonas", id), payload);
 }
 
 export async function deleteCustomPersona(uid: string, id: string) {

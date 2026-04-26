@@ -9,9 +9,37 @@ import { onPersonaScheduleSnapshot } from "@/lib/firebase";
 
 interface CustomPersonaBuilderProps {
   initial?: CustomPersona;
-  onSave: (data: Pick<CustomPersona, "name" | "icon" | "description" | "systemPromptAddition">) => Promise<void>;
+  onSave: (
+    data: Pick<CustomPersona, "name" | "icon" | "description" | "systemPromptAddition"> &
+      Partial<Pick<CustomPersona, "photoUrl">>
+  ) => Promise<void>;
   onClose: () => void;
   onDelete?: () => Promise<void>;
+}
+
+const PHOTO_MAX_PX = 256;
+const PHOTO_QUALITY = 0.85;
+const PHOTO_INPUT_LIMIT_BYTES = 8 * 1024 * 1024; // 원본 8MB까지만 받기
+
+/**
+ * 클라이언트에서 이미지를 정사각 256px JPEG로 줄여 dataURL로 변환.
+ * Firestore 1MB 문서 제한 안에 안전하게 들어가도록 압축한다.
+ */
+async function compressImageToDataUrl(file: File): Promise<string> {
+  if (file.size > PHOTO_INPUT_LIMIT_BYTES) {
+    throw new Error("이미지 용량이 너무 커요. 8MB 이하로 올려주세요.");
+  }
+  const bitmap = await createImageBitmap(file);
+  const size = Math.min(bitmap.width, bitmap.height);
+  const sx = (bitmap.width - size) / 2;
+  const sy = (bitmap.height - size) / 2;
+  const canvas = document.createElement("canvas");
+  canvas.width = PHOTO_MAX_PX;
+  canvas.height = PHOTO_MAX_PX;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("이미지 처리에 실패했어요.");
+  ctx.drawImage(bitmap, sx, sy, size, size, 0, 0, PHOTO_MAX_PX, PHOTO_MAX_PX);
+  return canvas.toDataURL("image/jpeg", PHOTO_QUALITY);
 }
 
 const ICON_CHOICES = ["✨", "💼", "🎨", "📚", "🧭", "🎯", "💡", "🌿", "🔮", "👨‍🏫", "👩‍⚕️", "🧙", "🦉", "🐉", "🪴", "⚔️", "🏛️", "🎭"];
@@ -38,6 +66,9 @@ const TEMPLATE_PROMPTS = [
 export default function CustomPersonaBuilder({ initial, onSave, onClose, onDelete }: CustomPersonaBuilderProps) {
   const [name, setName] = useState(initial?.name || "");
   const [icon, setIcon] = useState(initial?.icon || "✨");
+  const [photoUrl, setPhotoUrl] = useState<string | undefined>(initial?.photoUrl);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [photoProcessing, setPhotoProcessing] = useState(false);
   const [description, setDescription] = useState(initial?.description || "");
   const [systemPromptAddition, setSystemPromptAddition] = useState(initial?.systemPromptAddition || "");
   const [saving, setSaving] = useState(false);
@@ -69,8 +100,31 @@ export default function CustomPersonaBuilder({ initial, onSave, onClose, onDelet
   const isDirty =
     name !== (initial?.name || "") ||
     icon !== (initial?.icon || "✨") ||
+    (photoUrl || "") !== (initial?.photoUrl || "") ||
     description !== (initial?.description || "") ||
     systemPromptAddition !== (initial?.systemPromptAddition || "");
+
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // 같은 파일 재선택 허용
+    if (!file) return;
+    setPhotoError(null);
+    setPhotoProcessing(true);
+    try {
+      const dataUrl = await compressImageToDataUrl(file);
+      setPhotoUrl(dataUrl);
+    } catch (err) {
+      console.error("프로필 사진 처리 실패:", err);
+      setPhotoError(err instanceof Error ? err.message : "이미지 처리에 실패했어요.");
+    } finally {
+      setPhotoProcessing(false);
+    }
+  };
+
+  const handlePhotoRemove = () => {
+    setPhotoUrl(undefined);
+    setPhotoError(null);
+  };
 
   const handleBackdropClose = () => {
     if (isDirty && !window.confirm("작성 중인 내용이 사라집니다. 닫을까요?")) return;
@@ -84,6 +138,7 @@ export default function CustomPersonaBuilder({ initial, onSave, onClose, onDelet
       await onSave({
         name: name.trim(),
         icon,
+        photoUrl: photoUrl || "",
         description: description.trim(),
         systemPromptAddition: systemPromptAddition.trim(),
       });
@@ -122,6 +177,48 @@ export default function CustomPersonaBuilder({ initial, onSave, onClose, onDelet
 
         <div className="space-y-4">
           <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">프로필 사진 (선택)</label>
+            <div className="flex items-center gap-3">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#F0EDE6] text-2xl text-[#1E1B4B]">
+                {photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={photoUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span aria-hidden>{icon}</span>
+                )}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="inline-flex w-fit cursor-pointer items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handlePhotoSelect}
+                    disabled={photoProcessing || saving}
+                  />
+                  {photoProcessing ? "처리 중..." : photoUrl ? "사진 변경" : "사진 올리기"}
+                </label>
+                {photoUrl && (
+                  <button
+                    type="button"
+                    onClick={handlePhotoRemove}
+                    disabled={photoProcessing || saving}
+                    className="w-fit text-[11px] text-gray-400 hover:text-red-600 disabled:opacity-50"
+                  >
+                    사진 제거
+                  </button>
+                )}
+                <p className="text-[11px] text-gray-400">
+                  사진을 올리면 채팅에서 아이콘 대신 사진이 보여요. 정사각으로 256px까지 자동 축소돼요.
+                </p>
+                {photoError && (
+                  <p className="text-[11px] text-red-600">{photoError}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">이름</label>
             <input
               type="text"
@@ -134,7 +231,9 @@ export default function CustomPersonaBuilder({ initial, onSave, onClose, onDelet
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">아이콘</label>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">
+              아이콘 <span className="text-[11px] font-normal text-gray-400">(사진이 없을 때 사용)</span>
+            </label>
             <div className="flex flex-wrap gap-1.5">
               {ICON_CHOICES.map((c) => (
                 <button

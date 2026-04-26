@@ -22,6 +22,8 @@ export interface Persona {
   id: PersonaId;
   name: string;
   icon: string;
+  /** 커스텀 페르소나용 프로필 사진 dataURL. 없으면 icon 사용. */
+  photoUrl?: string;
   description: string;
   systemPromptAddition: string;
 }
@@ -31,6 +33,8 @@ export interface CustomPersona {
   id: string;                       // "custom:xxxxx"
   name: string;
   icon: string;                     // 이모지 1자
+  /** 사용자가 업로드한 프로필 사진 (256px 정사각, JPEG dataURL). 있으면 icon 대신 노출. */
+  photoUrl?: string;
   description: string;              // 간략 설명
   systemPromptAddition: string;     // 톤/말투/전문성 자유 서술
   createdAt: Timestamp;

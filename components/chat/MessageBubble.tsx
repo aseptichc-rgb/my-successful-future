@@ -7,6 +7,8 @@ import NewsCard from "@/components/chat/NewsCard";
 interface Props {
   message: ChatMessage;
   showPersonaHeader?: boolean;
+  /** 커스텀 페르소나의 최신 프로필 사진 (있으면 personaIcon 대신 노출) */
+  personaPhotoUrl?: string;
 }
 
 /**
@@ -95,7 +97,7 @@ function formatKstTime(date: Date): string {
   }).format(date);
 }
 
-function MessageBubble({ message, showPersonaHeader = true }: Props) {
+function MessageBubble({ message, showPersonaHeader = true, personaPhotoUrl }: Props) {
   const isUser = message.role === "user";
   const isCouncil = !!message.councilGroupId;
   const isCouncilFinal = message.councilRound === 999;
@@ -131,9 +133,14 @@ function MessageBubble({ message, showPersonaHeader = true }: Props) {
       {/* 좌측 아바타 — AI/상대 메시지에서만. 연속 메시지(헤더 숨김 시)는 자리만 비워둠. */}
       {!isUser && (
         <div className="h-9 w-9 shrink-0">
-          {showPersonaHeader && avatarIcon && (
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#F0EDE6] text-[18px]">
-              {avatarIcon}
+          {showPersonaHeader && (personaPhotoUrl || avatarIcon) && (
+            <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-[#F0EDE6] text-[18px] text-[#1E1B4B]">
+              {personaPhotoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={personaPhotoUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                avatarIcon
+              )}
             </div>
           )}
         </div>

@@ -6,6 +6,7 @@ import { createSession, onSessionsSnapshot } from "@/lib/firebase";
 import { PERSONAS, getPersona } from "@/lib/personas";
 import { useCustomPersonas } from "@/hooks/useCustomPersonas";
 import Logo from "@/components/ui/Logo";
+import PersonaIcon from "@/components/ui/PersonaIcon";
 import type { ChatSession, PersonaId } from "@/types";
 
 // 시스템 영역에서 쓰는 모노크롬 라인 아이콘 — 색을 입히지 않고 currentColor만 따른다.
@@ -202,8 +203,8 @@ export default function HomeDashboard({ uid, displayName, futureSelfId }: Props)
                     disabled={launching || !!advisorLaunching}
                     className={rowClass}
                   >
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#F0EDE6] text-[22px]">
-                      {persona.icon}
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#F0EDE6] text-[#1E1B4B]">
+                      <PersonaIcon personaId={personaId} fallbackEmoji={persona.icon} className="h-[22px] w-[22px]" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[15px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
@@ -234,8 +235,13 @@ export default function HomeDashboard({ uid, displayName, futureSelfId }: Props)
                     disabled={launching || !!advisorLaunching}
                     className={rowClass}
                   >
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#F0EDE6] text-[22px]">
-                      {cp.icon}
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#F0EDE6] text-[#1E1B4B] text-[22px]">
+                      <PersonaIcon
+                        personaId={cp.id}
+                        fallbackEmoji={cp.icon}
+                        photoUrl={cp.photoUrl}
+                        className={cp.photoUrl ? "h-12 w-12" : "h-[22px] w-[22px]"}
+                      />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[15px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">

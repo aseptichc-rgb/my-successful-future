@@ -101,11 +101,16 @@ function ChatWindow({ messages, isLoading, respondingPersona, customPersonaMap, 
             prevMsg?.personaId === msg.personaId &&
             !!prevMsg?.content;
 
+          // 커스텀 페르소나면 최신 photoUrl 을 실시간 맵에서 조회 (사진 변경 즉시 반영)
+          const personaPhotoUrl =
+            msg.personaId && customPersonaMap?.[msg.personaId]?.photoUrl;
+
           return (
             <div key={msg.id} className={isContinuation ? "mt-1" : "mt-4 first:mt-0"}>
               <MessageBubble
                 message={msg}
                 showPersonaHeader={!isContinuation}
+                personaPhotoUrl={personaPhotoUrl || undefined}
               />
             </div>
           );
@@ -115,8 +120,13 @@ function ChatWindow({ messages, isLoading, respondingPersona, customPersonaMap, 
           const p = getPersona(respondingPersona, customPersonaMap);
           return (
             <div className="mt-4 flex justify-start gap-2">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#F0EDE6] text-[18px]">
-                {p.icon}
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#F0EDE6] text-[18px] text-[#1E1B4B]">
+                {p.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={p.photoUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  p.icon
+                )}
               </div>
               <div className="flex max-w-[78%] flex-col items-start">
                 <div className="mb-1 px-1 text-[12px] font-medium tracking-[-0.01em] text-black/60">

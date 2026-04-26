@@ -258,6 +258,7 @@ export function getPersona(id: PersonaId, customMap?: Record<string, CustomPerso
       id: c.id,
       name: c.name,
       icon: c.icon,
+      photoUrl: c.photoUrl,
       description: c.description,
       systemPromptAddition: c.systemPromptAddition,
     };
