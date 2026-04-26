@@ -47,3 +47,9 @@ next-env.d.ts
 # local tooling artifacts
 .claude/
 .playwright-mcp/
+test-results/
+playwright-report/
+
+# 임시 스크린샷 (UI 디버깅용)
+desktop-view.png
+mobile-view.png
