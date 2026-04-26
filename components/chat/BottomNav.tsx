@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { useRouter, usePathname, useParams } from "next/navigation";
 import { onSessionsSnapshot, ensureFutureSelfSession, updateSessionTitle, deleteSession } from "@/lib/firebase";
 import { formatRelativeDate } from "@/lib/locale";
@@ -9,6 +9,48 @@ import NewChatModal from "@/components/chat/NewChatModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Logo from "@/components/ui/Logo";
 import type { ChatSession } from "@/types";
+
+// 시스템 영역 모노크롬 아이콘 (currentColor 기반) — 색깔 이모지 대체용
+const IconHome = ({ className = "h-5 w-5" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1v-9z" />
+  </svg>
+);
+const IconStar = ({ className = "h-5 w-5" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M12 3.5l2.6 5.27 5.82.85-4.21 4.1.99 5.78L12 16.77l-5.2 2.73.99-5.78-4.21-4.1 5.82-.85L12 3.5z" />
+  </svg>
+);
+const IconCompass = ({ className = "h-5 w-5" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M15.5 8.5l-2 5.5-5.5 2 2-5.5 5.5-2z" />
+  </svg>
+);
+const IconChat = ({ className = "h-5 w-5" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M4 5h16v10H8l-4 4V5z" />
+  </svg>
+);
+const IconSettings = ({ className = "h-5 w-5" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06A2 2 0 1 1 4.13 16.92l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.65 8.83a1.7 1.7 0 0 0-.34-1.87l-.06-.06A2 2 0 1 1 7.08 4.07l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1.04-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06A2 2 0 1 1 19.93 7.08l-.06.06a1.7 1.7 0 0 0-.34 1.87V9c.27.66.93 1.1 1.65 1.1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z" />
+  </svg>
+);
+const IconBot = ({ className = "h-5 w-5" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <rect x="4" y="7" width="16" height="12" rx="2" />
+    <path d="M12 3v4M8 12h.01M16 12h.01M9 16h6" />
+  </svg>
+);
+const IconUsers = ({ className = "h-5 w-5" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M16 19v-2a3 3 0 0 0-3-3H6a3 3 0 0 0-3 3v2" />
+    <circle cx="9.5" cy="8" r="3" />
+    <path d="M21 19v-2a3 3 0 0 0-2.4-2.94M16.5 5.06a3 3 0 0 1 0 5.88" />
+  </svg>
+);
 
 const MAX_TITLE_LEN = 80;
 const MAX_INLINE_PARTICIPANTS = 3;
@@ -160,15 +202,15 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
   const mobileTabs: {
     id: Tab;
     label: string;
-    icon: string;
+    Icon: ComponentType<{ className?: string }>;
     onClick: () => void;
     badge?: number;
   }[] = [
-    { id: "home", label: "홈", icon: "🏠", onClick: goHome },
-    { id: "future", label: "미래의 나", icon: "🌟", onClick: goFuture },
-    { id: "advisors", label: "자문단", icon: "🧭", onClick: goAdvisors },
-    { id: "inbox", label: "채팅", icon: "💬", onClick: goInbox, badge: inboxUnread },
-    { id: "settings", label: "설정", icon: "⚙️", onClick: goSettings },
+    { id: "home", label: "홈", Icon: IconHome, onClick: goHome },
+    { id: "future", label: "미래의 나", Icon: IconStar, onClick: goFuture },
+    { id: "advisors", label: "자문단", Icon: IconCompass, onClick: goAdvisors },
+    { id: "inbox", label: "채팅", Icon: IconChat, onClick: goInbox, badge: inboxUnread },
+    { id: "settings", label: "설정", Icon: IconSettings, onClick: goSettings },
   ];
 
   const formatSessionDate = (timestamp: { toDate?: () => Date } | undefined) => {
@@ -180,12 +222,12 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
     const unreadCount = session.unreadCounts?.[uid] || 0;
     const isPinned = session.pinnedBy?.includes(uid) || false;
     const isMuted = session.mutedBy?.includes(uid) || false;
-    const typeIcon =
+    const TypeIconCmp =
       session.sessionType === "ai"
-        ? "🤖"
+        ? IconBot
         : session.sessionType === "dm"
-          ? "💬"
-          : "👥";
+          ? IconChat
+          : IconUsers;
     const isActive = activeSessionId === session.id;
     const isEditing = editingId === session.id;
     const { total: participantCount, preview: participantPreview } = getParticipantInfo(session);
@@ -209,9 +251,9 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
         >
           <span
             aria-hidden
-            className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F0EDE6] text-[14px]"
+            className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F0EDE6] text-[#1E1B4B]"
           >
-            {typeIcon}
+            <TypeIconCmp className="h-4 w-4" />
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1">
@@ -328,7 +370,7 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
                 isActive ? "text-[#1E1B4B]" : "text-black/56 hover:text-black/80"
               }`}
             >
-              <span className="text-xl leading-none">{tab.icon}</span>
+              <tab.Icon className="h-[22px] w-[22px]" />
               <span className={isActive ? "font-semibold" : "font-medium"}>{tab.label}</span>
               {tab.badge && tab.badge > 0 ? (
                 <span className="absolute right-1/4 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#1E1B4B] px-1 text-[10px] font-semibold text-white">
@@ -360,13 +402,13 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
             onClick={goHome}
             title="홈"
             aria-label="홈"
-            className={`flex shrink-0 items-center justify-center rounded-pill px-2.5 py-2 text-[14px] leading-none transition-colors ${
+            className={`flex shrink-0 items-center justify-center rounded-pill px-2.5 py-2 leading-none transition-colors ${
               activeTab === "home"
                 ? "bg-[#1E1B4B] text-white"
                 : "text-black/70 hover:bg-black/[0.04]"
             }`}
           >
-            🏠
+            <IconHome className="h-[18px] w-[18px]" />
           </button>
           <button
             onClick={goFuture}
@@ -377,7 +419,7 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
                 : "text-black/70 hover:bg-black/[0.04]"
             }`}
           >
-            <span className="text-[14px] leading-none">🌟</span>
+            <IconStar className="h-[16px] w-[16px]" />
             <span>미래의 나</span>
           </button>
           <button
@@ -389,20 +431,20 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
                 : "text-black/70 hover:bg-black/[0.04]"
             }`}
           >
-            <span className="text-[14px] leading-none">🧭</span>
+            <IconCompass className="h-[16px] w-[16px]" />
             <span>자문단</span>
           </button>
           <button
             onClick={goSettings}
             title="설정"
             aria-label="설정"
-            className={`flex shrink-0 items-center justify-center rounded-pill px-2.5 py-2 text-[14px] leading-none transition-colors ${
+            className={`flex shrink-0 items-center justify-center rounded-pill px-2.5 py-2 leading-none transition-colors ${
               activeTab === "settings"
                 ? "bg-[#1E1B4B] text-white"
                 : "text-black/70 hover:bg-black/[0.04]"
             }`}
           >
-            ⚙️
+            <IconSettings className="h-[18px] w-[18px]" />
           </button>
         </div>
 

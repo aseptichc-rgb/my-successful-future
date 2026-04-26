@@ -8,6 +8,18 @@ import { useCustomPersonas } from "@/hooks/useCustomPersonas";
 import Logo from "@/components/ui/Logo";
 import type { ChatSession, PersonaId } from "@/types";
 
+// 시스템 영역에서 쓰는 모노크롬 라인 아이콘 — 색을 입히지 않고 currentColor만 따른다.
+const StarIcon = ({ className = "h-5 w-5" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M12 3.5l2.6 5.27 5.82.85-4.21 4.1.99 5.78L12 16.77l-5.2 2.73.99-5.78-4.21-4.1 5.82-.85L12 3.5z" />
+  </svg>
+);
+const ChatIcon = ({ className = "h-5 w-5" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M4 5h16v10H8l-4 4V5z" />
+  </svg>
+);
+
 // 홈에서 먼저 노출할 빌트인 자문단 (default·future-self 제외)
 const ADVISOR_PREVIEW_IDS: PersonaId[] = [
   "entrepreneur",
@@ -147,8 +159,8 @@ export default function HomeDashboard({ uid, displayName, futureSelfId }: Props)
             disabled={!futureSelfId}
             className={rowClass}
           >
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#1E1B4B]/10 text-[22px]">
-              🌟
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#1E1B4B]/10 text-[#1E1B4B]">
+              <StarIcon className="h-[22px] w-[22px]" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-[15px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
@@ -276,8 +288,8 @@ export default function HomeDashboard({ uid, displayName, futureSelfId }: Props)
             onClick={goInbox}
             className={rowClass}
           >
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#F0EDE6] text-[22px]">
-              💬
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#F0EDE6] text-[#1E1B4B]">
+              <ChatIcon className="h-[22px] w-[22px]" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-[15px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
