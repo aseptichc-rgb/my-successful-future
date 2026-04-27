@@ -69,18 +69,7 @@ export default function PersonaEditorModal({
   const hasOverride = !!override;
   const canSave = !saving && name.trim().length >= 1;
 
-  const isDirty =
-    name !== merged.name ||
-    (photoUrl || "") !== (merged.photoUrl || "") ||
-    description !== merged.description ||
-    systemPromptAddition !== merged.systemPromptAddition.trim();
-
-  const handleBackdropClose = () => {
-    if (isDirty && !window.confirm("작성 중인 내용이 사라집니다. 닫을까요?")) return;
-    onClose();
-  };
-
-  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
@@ -136,10 +125,7 @@ export default function PersonaEditorModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={handleBackdropClose}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div
         className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
