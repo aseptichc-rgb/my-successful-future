@@ -5,6 +5,7 @@ import type { ChatMessage, CustomPersona, PersonaId, PersonaOverride } from "@/t
 import { getPersona } from "@/lib/personas";
 import MessageBubble from "@/components/chat/MessageBubble";
 import LoadingDots from "@/components/ui/LoadingDots";
+import PersonaIcon from "@/components/ui/PersonaIcon";
 
 interface Props {
   messages: ChatMessage[];
@@ -15,6 +16,12 @@ interface Props {
   /** 빈 대화방에 보여줄 헤드라인. 미지정이면 "AI 뉴스 어시스턴트" 기본값. */
   emptyTitle?: string;
   emptySubtitle?: string;
+  /** 빈 대화방 헤드라인 옆에 보여줄 페르소나(있으면 모노크롬 아이콘/사진으로 렌더). */
+  emptyPersona?: {
+    id: PersonaId;
+    photoUrl?: string;
+    fallbackEmoji?: string;
+  };
 }
 
 // KST 기준 오늘 00:00의 epoch(ms)
@@ -26,7 +33,7 @@ function kstTodayStartMs(): number {
   return kst.getTime() - 9 * 60 * 60 * 1000;
 }
 
-function ChatWindow({ messages, isLoading, respondingPersona, customPersonaMap, overrideMap, emptyTitle, emptySubtitle }: Props) {
+function ChatWindow({ messages, isLoading, respondingPersona, customPersonaMap, overrideMap, emptyTitle, emptySubtitle, emptyPersona }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [showOld, setShowOld] = useState(false);
 
@@ -58,7 +65,17 @@ function ChatWindow({ messages, isLoading, respondingPersona, customPersonaMap, 
     <div className="flex-1 overflow-y-auto bg-white px-3 py-5 sm:px-6 sm:py-6">
       {messages.length === 0 && !isLoading && (
         <div className="flex h-full items-center justify-center">
-          <div className="text-center">
+          <div className="flex flex-col items-center text-center">
+            {emptyPersona && (
+              <div className="mb-3 flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-[#F0EDE6] text-[#1E1B4B]">
+                <PersonaIcon
+                  personaId={emptyPersona.id as string}
+                  fallbackEmoji={emptyPersona.fallbackEmoji}
+                  photoUrl={emptyPersona.photoUrl}
+                  className={emptyPersona.photoUrl ? "h-16 w-16" : "h-9 w-9"}
+                />
+              </div>
+            )}
             <p className="text-[28px] font-semibold leading-[1.14] tracking-[-0.005em] text-[#1E1B4B]">
               {emptyTitle || "AI 뉴스 어시스턴트"}
             </p>
@@ -126,12 +143,12 @@ function ChatWindow({ messages, isLoading, respondingPersona, customPersonaMap, 
           return (
             <div className="mt-4 flex justify-start gap-2">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#F0EDE6] text-[18px] text-[#1E1B4B]">
-                {effectivePhoto ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={effectivePhoto} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  p.icon
-                )}
+                <PersonaIcon
+                  personaId={respondingPersona as string}
+                  fallbackEmoji={p.icon}
+                  photoUrl={effectivePhoto}
+                  className={effectivePhoto ? "h-9 w-9" : "h-5 w-5"}
+                />
               </div>
               <div className="flex max-w-[78%] flex-col items-start">
                 <div className="mb-1 px-1 text-[12px] font-medium tracking-[-0.01em] text-black/60">

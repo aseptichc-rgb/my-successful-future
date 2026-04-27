@@ -497,9 +497,11 @@ export default function ChatSessionPage() {
       {(() => {
         let emptyTitle: string | undefined;
         let emptySubtitle: string | undefined;
+        let emptyPersona: { id: PersonaId; photoUrl?: string; fallbackEmoji?: string } | undefined;
         if (isFutureSelfSession) {
-          emptyTitle = "🌟 미래의 나";
+          emptyTitle = "미래의 나";
           emptySubtitle = "오늘 하루를 함께 정리해봐요.";
+          emptyPersona = { id: "future-self" as PersonaId };
         } else if (isDirectChat) {
           emptyTitle = session?.title || "대화";
           emptySubtitle = "첫 메시지를 남겨보세요.";
@@ -511,12 +513,18 @@ export default function ChatSessionPage() {
               .map((id) => getPersona(id, customPersonaMap).name)
               .join(", ");
             const more = nonDefault.length > 3 ? ` 외 ${nonDefault.length - 3}명` : "";
-            emptyTitle = `🧭 ${names}${more}`;
+            emptyTitle = `${names}${more}`;
             emptySubtitle = "질문을 남기면 가장 적합한 자문단이 답해드려요.";
           } else if (nonDefault.length === 1) {
             const p = getPersona(nonDefault[0], customPersonaMap);
-            emptyTitle = `${p.icon} ${p.name}`;
+            const overridePhoto = overrideMap?.[nonDefault[0] as string]?.photoUrl;
+            emptyTitle = p.name;
             emptySubtitle = p.description || "전문가 관점의 조언을 받아보세요.";
+            emptyPersona = {
+              id: nonDefault[0],
+              photoUrl: overridePhoto || p.photoUrl,
+              fallbackEmoji: p.icon,
+            };
           }
         }
         return (
@@ -528,6 +536,7 @@ export default function ChatSessionPage() {
             overrideMap={overrideMap}
             emptyTitle={emptyTitle}
             emptySubtitle={emptySubtitle}
+            emptyPersona={emptyPersona}
           />
         );
       })()}
