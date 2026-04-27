@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createSession, onSessionsSnapshot } from "@/lib/firebase";
 import { PERSONAS, getPersona } from "@/lib/personas";
 import { useCustomPersonas } from "@/hooks/useCustomPersonas";
+import { usePersonaOverrides } from "@/hooks/usePersonaOverrides";
 import Logo from "@/components/ui/Logo";
 import PersonaIcon from "@/components/ui/PersonaIcon";
 import type { ChatSession, PersonaId } from "@/types";
@@ -53,6 +54,7 @@ export default function HomeDashboard({ uid, displayName, futureSelfId }: Props)
   const [advisorLaunching, setAdvisorLaunching] = useState<PersonaId | null>(null);
 
   const { map: customPersonaMap, list: customPersonaList } = useCustomPersonas(uid);
+  const { map: overrideMap } = usePersonaOverrides(uid);
 
   // 세션 구독 — 자문단 미니 클릭 시 기존 AI 세션을 재사용하기 위함
   useEffect(() => {
@@ -78,7 +80,7 @@ export default function HomeDashboard({ uid, displayName, futureSelfId }: Props)
   const handleAdvisorRowClick = useCallback(
     async (personaId: PersonaId) => {
       if (!uid || advisorLaunching) return;
-      const persona = getPersona(personaId, customPersonaMap);
+      const persona = getPersona(personaId, customPersonaMap, overrideMap);
       const existing = sessions.find(
         (s) => s.sessionType === "ai" && s.title?.includes(persona.name),
       );
@@ -100,7 +102,7 @@ export default function HomeDashboard({ uid, displayName, futureSelfId }: Props)
         setAdvisorLaunching(null);
       }
     },
-    [uid, displayName, sessions, customPersonaMap, router, advisorLaunching],
+    [uid, displayName, sessions, customPersonaMap, overrideMap, router, advisorLaunching],
   );
 
   const friendCount = ADVISOR_PREVIEW_IDS.length + customPersonaList.length;
@@ -193,7 +195,7 @@ export default function HomeDashboard({ uid, displayName, futureSelfId }: Props)
           </div>
           <ul>
             {ADVISOR_PREVIEW_IDS.map((personaId) => {
-              const persona = PERSONAS[personaId as keyof typeof PERSONAS];
+              const persona = getPersona(personaId, customPersonaMap, overrideMap);
               const launching = advisorLaunching === personaId;
               return (
                 <li key={personaId}>

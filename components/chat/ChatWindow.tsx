@@ -2,7 +2,7 @@
 
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { ChatMessage, CustomPersona, PersonaId, PersonaOverride } from "@/types";
-import { getPersona } from "@/lib/personas";
+import { resolvePersona } from "@/lib/persona-resolver";
 import MessageBubble from "@/components/chat/MessageBubble";
 import LoadingDots from "@/components/ui/LoadingDots";
 import PersonaIcon from "@/components/ui/PersonaIcon";
@@ -137,9 +137,8 @@ function ChatWindow({ messages, isLoading, respondingPersona, customPersonaMap, 
         })}
 
         {isLoading && respondingPersona && (() => {
-          const p = getPersona(respondingPersona, customPersonaMap);
-          const overridePhoto = overrideMap?.[respondingPersona as string]?.photoUrl;
-          const effectivePhoto = overridePhoto || p.photoUrl;
+          const p = resolvePersona(respondingPersona, customPersonaMap, overrideMap);
+          const effectivePhoto = p.photoUrl;
           return (
             <div className="mt-4 flex justify-start gap-2">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#F0EDE6] text-[18px] text-[#1E1B4B]">

@@ -1,7 +1,7 @@
 "use client";
 
 import { getPersona } from "@/lib/personas";
-import type { ActiveCouncilState, CustomPersona } from "@/types";
+import type { ActiveCouncilState, CustomPersona, PersonaOverride } from "@/types";
 
 interface Props {
   council: ActiveCouncilState;
@@ -9,6 +9,7 @@ interface Props {
   onAdvance: () => void;
   onEnd: () => void;
   customPersonaMap?: Record<string, CustomPersona>;
+  overrideMap?: Record<string, PersonaOverride>;
 }
 
 /**
@@ -24,9 +25,10 @@ export default function ActiveDebateBanner({
   onAdvance,
   onEnd,
   customPersonaMap,
+  overrideMap,
 }: Props) {
   const next = council.remainingPersonas[0];
-  const nextPersona = next ? getPersona(next, customPersonaMap) : null;
+  const nextPersona = next ? getPersona(next, customPersonaMap, overrideMap) : null;
   const remaining = council.remainingPersonas.length;
 
   return (

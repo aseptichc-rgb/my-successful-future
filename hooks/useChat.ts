@@ -6,7 +6,7 @@ import { getMessages, addMessage, updateSessionTitle, onMessagesSnapshot, getSes
 import { getPersona, PERSONAS, isCustomPersonaId } from "@/lib/personas";
 import { routeToPersonas, pickBestFromActive, pickPrimaryPersona } from "@/lib/persona-router";
 import { detectBotCommand } from "@/lib/externalBots";
-import type { ActiveCouncilState, ChatMessage, ChatSession, ChatStreamEvent, CouncilTurn, CustomPersona, MoodKind, NewsSource, NewsTopic, PersonaId, SessionType } from "@/types";
+import type { ActiveCouncilState, ChatMessage, ChatSession, ChatStreamEvent, CouncilTurn, CustomPersona, MoodKind, NewsSource, NewsTopic, PersonaId, PersonaOverride, SessionType } from "@/types";
 
 /** 응답 텍스트에서 AI가 붙인 [이름] 접두사를 제거 */
 function stripPersonaPrefix(text: string): string {
@@ -101,9 +101,12 @@ export function useChat(
   onMemoryUpdated?: (memory: string) => void,
   initialPersona?: PersonaId,
   customPersonaMap?: Record<string, CustomPersona>,
+  overrideMap?: Record<string, PersonaOverride>,
 ) {
   const customPersonaMapRef = useRef<Record<string, CustomPersona> | undefined>(customPersonaMap);
   customPersonaMapRef.current = customPersonaMap;
+  const overrideMapRef = useRef<Record<string, PersonaOverride> | undefined>(overrideMap);
+  overrideMapRef.current = overrideMap;
   // 페르소나별 기억 샤드 (Firestore subscribe)
   const [personaMemories, setPersonaMemories] = useState<Record<string, string>>({});
   const personaMemoriesRef = useRef<Record<string, string>>({});
@@ -233,7 +236,7 @@ export function useChat(
         }
         if (recentExchanges.length === 0) return;
 
-        const persona = getPersona(personaId, customPersonaMapRef.current);
+        const persona = getPersona(personaId, customPersonaMapRef.current, overrideMapRef.current);
         const existing = personaMemoriesRef.current[personaId] || "";
         const res = await fetch("/api/persona-memory", {
           method: "POST",
@@ -370,7 +373,7 @@ export function useChat(
       let collectedSources: NewsSource[] = [];
       let readerError: Error | null = null;
       const bubbleIds: string[] = [assistantId];
-      const persona = getPersona(personaId, customPersonaMapRef.current);
+      const persona = getPersona(personaId, customPersonaMapRef.current, overrideMapRef.current);
 
       // 스트리밍 텍스트를 실시간으로 첫 번째 버블에 표시
       try {
@@ -703,7 +706,7 @@ export function useChat(
 
       try {
         for (const personaId of respondPersonas) {
-          const persona = getPersona(personaId, customPersonaMapRef.current);
+          const persona = getPersona(personaId, customPersonaMapRef.current, overrideMapRef.current);
 
           const assistantId = makeMessageId(`temp-${personaId}`);
           const assistantMessage: ChatMessage = {
@@ -836,7 +839,7 @@ export function useChat(
       try {
         for (let i = 0; i < rounds.length; i++) {
           const personaId = rounds[i];
-          const persona = getPersona(personaId, customPersonaMapRef.current);
+          const persona = getPersona(personaId, customPersonaMapRef.current, overrideMapRef.current);
           const isFinal = personaId === "future-self" && i === rounds.length - 1;
           const round = i + 1;
           setRespondingPersona(personaId);
@@ -987,7 +990,7 @@ export function useChat(
       priorTurns: CouncilTurn[],
       isFinal: boolean
     ): Promise<{ ok: boolean; content: string; personaName: string }> => {
-      const persona = getPersona(personaId, customPersonaMapRef.current);
+      const persona = getPersona(personaId, customPersonaMapRef.current, overrideMapRef.current);
       setRespondingPersona(personaId);
 
       const assistantId = makeMessageId(`temp-newsdebate-${personaId}`);

@@ -55,7 +55,7 @@ export default function AdvisorsPage() {
 
   // 페르소나별 가장 최근 AI 세션 찾기 (제목에 페르소나 이름이 포함된 ai 세션 중 최신)
   const findLatestSessionFor = (personaId: PersonaId): ChatSession | null => {
-    const persona = getPersona(personaId, customMap);
+    const persona = getPersona(personaId, customMap, overrideMap);
     const matches = sessions.filter(
       (s) => s.sessionType === "ai" && s.title?.includes(persona.name),
     );
@@ -77,7 +77,7 @@ export default function AdvisorsPage() {
     // 없으면 새로 생성
     setCreating(personaId);
     try {
-      const persona = getPersona(personaId, customMap);
+      const persona = getPersona(personaId, customMap, overrideMap);
       const sessionId = await createSession(
         firebaseUser.uid,
         `${persona.name}님과의 대화`,
@@ -109,7 +109,7 @@ export default function AdvisorsPage() {
     try {
       // 방 제목은 선택한 자문단 이름들로 자동 생성
       const names = selectedAdvisorIds
-        .map((id) => getPersona(id, customMap).name)
+        .map((id) => getPersona(id, customMap, overrideMap).name)
         .slice(0, 3);
       const titleBase = names.join(", ");
       const suffix = selectedAdvisorIds.length > 3

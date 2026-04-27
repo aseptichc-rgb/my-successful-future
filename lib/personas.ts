@@ -1,4 +1,4 @@
-import type { Persona, PersonaId, BuiltinPersonaId, NewsTopic, CustomPersona } from "@/types";
+import type { Persona, PersonaId, BuiltinPersonaId, NewsTopic, CustomPersona, PersonaOverride } from "@/types";
 
 // ── 페르소나별 전문 분야 & 자동 뉴스 검색 키워드 ────────
 export interface PersonaSpecialty {
@@ -248,9 +248,23 @@ export function isCustomPersonaId(id: string): boolean {
  * 페르소나를 조회한다. 빌트인이면 PERSONAS, 커스텀이면 customMap에서 찾고,
  * 어디에도 없으면 default(뉴스봇) 폴백.
  */
-export function getPersona(id: PersonaId, customMap?: Record<string, CustomPersona>): Persona {
+export function getPersona(
+  id: PersonaId,
+  customMap?: Record<string, CustomPersona>,
+  overrideMap?: Record<string, PersonaOverride>
+): Persona {
   if (isBuiltinPersona(id as string)) {
-    return PERSONAS[id as BuiltinPersonaId];
+    const base = PERSONAS[id as BuiltinPersonaId];
+    const ov = overrideMap?.[id as string];
+    if (!ov) return base;
+    return {
+      id: base.id,
+      name: ov.name?.trim() || base.name,
+      icon: ov.icon?.trim() || base.icon,
+      photoUrl: ov.photoUrl || base.photoUrl,
+      description: ov.description?.trim() || base.description,
+      systemPromptAddition: ov.systemPromptAddition?.trim() || base.systemPromptAddition,
+    };
   }
   if (customMap && customMap[id as string]) {
     const c = customMap[id as string];

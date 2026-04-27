@@ -72,6 +72,7 @@ export default function ChatSessionPage() {
     () => { refreshUser().catch(() => {}); }, // 메모리 업데이트 후 user 프로필 리프레시
     initialPersona, // 자문단 카드에서 진입 시 ?persona= 로 전달된 페르소나
     customPersonaMap, // 커스텀 페르소나 맵
+    overrideMap, // 빌트인 페르소나 사용자 오버라이드
   );
   void personaMemories;
 
@@ -510,19 +511,18 @@ export default function ChatSessionPage() {
           if (nonDefault.length >= 2) {
             const names = nonDefault
               .slice(0, 3)
-              .map((id) => getPersona(id, customPersonaMap).name)
+              .map((id) => getPersona(id, customPersonaMap, overrideMap).name)
               .join(", ");
             const more = nonDefault.length > 3 ? ` 외 ${nonDefault.length - 3}명` : "";
             emptyTitle = `${names}${more}`;
             emptySubtitle = "질문을 남기면 가장 적합한 자문단이 답해드려요.";
           } else if (nonDefault.length === 1) {
-            const p = getPersona(nonDefault[0], customPersonaMap);
-            const overridePhoto = overrideMap?.[nonDefault[0] as string]?.photoUrl;
+            const p = getPersona(nonDefault[0], customPersonaMap, overrideMap);
             emptyTitle = p.name;
             emptySubtitle = p.description || "전문가 관점의 조언을 받아보세요.";
             emptyPersona = {
               id: nonDefault[0],
-              photoUrl: overridePhoto || p.photoUrl,
+              photoUrl: p.photoUrl,
               fallbackEmoji: p.icon,
             };
           }
@@ -584,6 +584,7 @@ export default function ChatSessionPage() {
             onAdvance={advanceCouncil}
             onEnd={endCouncil}
             customPersonaMap={customPersonaMap}
+            overrideMap={overrideMap}
           />
         )}
         <ChatInput
