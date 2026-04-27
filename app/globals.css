@@ -387,12 +387,12 @@ body {
   letter-spacing: -0.01em;
 }
 
-/* Display headings — 세리프, Light 무게로 명상적 톤 */
+/* Headings — 본문과 같은 산세리프(Pretendard/Inter)로 통일, Semibold 톤 */
 h1,
 h2,
 h3 {
-  font-family: var(--font-display);
-  font-weight: 300;
+  font-family: var(--font-sans);
+  font-weight: 600;
   letter-spacing: -0.015em;
   line-height: 1.12;
   color: var(--indigo);
@@ -458,20 +458,20 @@ h6 {
   box-shadow: var(--shadow-product);
 }
 
-/* Display type — 세리프 헤드라인 */
+/* Display type — 본문과 동일한 산세리프, Semibold 톤으로 통일 */
 @utility text-display-hero {
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-size: clamp(2.25rem, 4.6vw, 4rem);
-  font-weight: 300;
+  font-weight: 600;
   line-height: 1.06;
   letter-spacing: -0.02em;
   color: var(--indigo);
 }
 
 @utility text-display-section {
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-size: clamp(1.625rem, 3vw, 2.5rem);
-  font-weight: 300;
+  font-weight: 600;
   line-height: 1.12;
   letter-spacing: -0.015em;
   color: var(--indigo);
