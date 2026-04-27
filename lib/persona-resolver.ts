@@ -17,6 +17,7 @@ export function mergePersona(base: Persona, ov: PersonaOverride | null | undefin
     id: base.id,
     name: ov.name?.trim() || base.name,
     icon: ov.icon?.trim() || base.icon,
+    photoUrl: ov.photoUrl || base.photoUrl,
     description: ov.description?.trim() || base.description,
     systemPromptAddition: ov.systemPromptAddition?.trim() || base.systemPromptAddition,
   };
@@ -40,6 +41,7 @@ export function resolvePersona(
       id: c.id,
       name: c.name,
       icon: c.icon,
+      photoUrl: c.photoUrl,
       description: c.description,
       systemPromptAddition: c.systemPromptAddition,
     };

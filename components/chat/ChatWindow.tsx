@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import type { ChatMessage, CustomPersona, PersonaId } from "@/types";
+import type { ChatMessage, CustomPersona, PersonaId, PersonaOverride } from "@/types";
 import { getPersona } from "@/lib/personas";
 import MessageBubble from "@/components/chat/MessageBubble";
 import LoadingDots from "@/components/ui/LoadingDots";
@@ -11,6 +11,7 @@ interface Props {
   isLoading: boolean;
   respondingPersona?: PersonaId | null;
   customPersonaMap?: Record<string, CustomPersona>;
+  overrideMap?: Record<string, PersonaOverride>;
   /** 빈 대화방에 보여줄 헤드라인. 미지정이면 "AI 뉴스 어시스턴트" 기본값. */
   emptyTitle?: string;
   emptySubtitle?: string;
@@ -25,7 +26,7 @@ function kstTodayStartMs(): number {
   return kst.getTime() - 9 * 60 * 60 * 1000;
 }
 
-function ChatWindow({ messages, isLoading, respondingPersona, customPersonaMap, emptyTitle, emptySubtitle }: Props) {
+function ChatWindow({ messages, isLoading, respondingPersona, customPersonaMap, overrideMap, emptyTitle, emptySubtitle }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [showOld, setShowOld] = useState(false);
 
@@ -101,9 +102,11 @@ function ChatWindow({ messages, isLoading, respondingPersona, customPersonaMap, 
             prevMsg?.personaId === msg.personaId &&
             !!prevMsg?.content;
 
-          // 커스텀 페르소나면 최신 photoUrl 을 실시간 맵에서 조회 (사진 변경 즉시 반영)
+          // 커스텀 페르소나·빌트인 오버라이드 모두 최신 photoUrl 을 실시간 맵에서 조회 (사진 변경 즉시 반영)
           const personaPhotoUrl =
-            msg.personaId && customPersonaMap?.[msg.personaId]?.photoUrl;
+            msg.personaId &&
+            (customPersonaMap?.[msg.personaId]?.photoUrl ||
+              overrideMap?.[msg.personaId]?.photoUrl);
 
           return (
             <div key={msg.id} className={isContinuation ? "mt-1" : "mt-4 first:mt-0"}>
@@ -118,12 +121,14 @@ function ChatWindow({ messages, isLoading, respondingPersona, customPersonaMap, 
 
         {isLoading && respondingPersona && (() => {
           const p = getPersona(respondingPersona, customPersonaMap);
+          const overridePhoto = overrideMap?.[respondingPersona as string]?.photoUrl;
+          const effectivePhoto = overridePhoto || p.photoUrl;
           return (
             <div className="mt-4 flex justify-start gap-2">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#F0EDE6] text-[18px] text-[#1E1B4B]">
-                {p.photoUrl ? (
+                {effectivePhoto ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.photoUrl} alt="" className="h-full w-full object-cover" />
+                  <img src={effectivePhoto} alt="" className="h-full w-full object-cover" />
                 ) : (
                   p.icon
                 )}

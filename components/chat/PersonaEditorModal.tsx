@@ -16,6 +16,7 @@ import {
 } from "@/lib/constants/persona";
 import { useAuth } from "@/lib/auth-context";
 import { onPersonaScheduleSnapshot } from "@/lib/firebase";
+import { compressPersonaPhoto } from "@/lib/persona-photo";
 import PersonaRefDocsModal from "./PersonaRefDocsModal";
 import PersonaScheduleModal from "./PersonaScheduleModal";
 
@@ -26,11 +27,6 @@ interface PersonaEditorModalProps {
   onReset: () => Promise<void>;
   onClose: () => void;
 }
-
-const ICON_CHOICES = [
-  "📰", "💼", "🏥", "📊", "🖥️", "🏛️", "🌟",
-  "✨", "🎯", "💡", "🧭", "🔮", "👨‍🏫", "👩‍⚕️", "🧙", "🎭", "🦉", "⚔️",
-];
 
 export default function PersonaEditorModal({
   personaId,
@@ -43,7 +39,9 @@ export default function PersonaEditorModal({
   const merged = mergePersona(base, override ?? null);
 
   const [name, setName] = useState(merged.name);
-  const [icon, setIcon] = useState(merged.icon);
+  const [photoUrl, setPhotoUrl] = useState<string | undefined>(merged.photoUrl);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [photoProcessing, setPhotoProcessing] = useState(false);
   const [description, setDescription] = useState(merged.description);
   const [systemPromptAddition, setSystemPromptAddition] = useState(
     merged.systemPromptAddition.trim()
@@ -73,7 +71,7 @@ export default function PersonaEditorModal({
 
   const isDirty =
     name !== merged.name ||
-    icon !== merged.icon ||
+    (photoUrl || "") !== (merged.photoUrl || "") ||
     description !== merged.description ||
     systemPromptAddition !== merged.systemPromptAddition.trim();
 
@@ -82,13 +80,36 @@ export default function PersonaEditorModal({
     onClose();
   };
 
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setPhotoError(null);
+    setPhotoProcessing(true);
+    try {
+      const dataUrl = await compressPersonaPhoto(file);
+      setPhotoUrl(dataUrl);
+    } catch (err) {
+      console.error("프로필 사진 처리 실패:", err);
+      setPhotoError(err instanceof Error ? err.message : "이미지 처리에 실패했어요.");
+    } finally {
+      setPhotoProcessing(false);
+    }
+  };
+
+  const handlePhotoRemove = () => {
+    setPhotoUrl(undefined);
+    setPhotoError(null);
+  };
+
   const handleSave = async () => {
     if (!canSave) return;
     setSaving(true);
     try {
       await onSave({
         name: name.trim(),
-        icon: icon.trim(),
+        icon: merged.icon,
+        photoUrl: photoUrl || "",
         description: description.trim(),
         systemPromptAddition: systemPromptAddition.trim(),
       });
@@ -127,7 +148,7 @@ export default function PersonaEditorModal({
           자문단 역할 편집 — {base.name}
         </h2>
         <p className="mb-5 text-xs text-gray-500">
-          이름·아이콘·설명·시스템 프롬프트를 본인만의 스타일로 바꿀 수 있어요. 변경은 본인 계정에만 적용됩니다.
+          이름·프로필 사진·설명·시스템 프롬프트를 본인만의 스타일로 바꿀 수 있어요. 변경은 본인 계정에만 적용됩니다.
         </p>
 
         <div className="space-y-4">
@@ -143,22 +164,44 @@ export default function PersonaEditorModal({
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">아이콘</label>
-            <div className="flex flex-wrap gap-1.5">
-              {ICON_CHOICES.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setIcon(c)}
-                  className={`h-9 w-9 rounded-lg border text-xl transition-colors ${
-                    icon === c
-                      ? "border-violet-500 bg-violet-50"
-                      : "border-gray-200 hover:bg-gray-50"
-                  }`}
-                >
-                  {c}
-                </button>
-              ))}
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">프로필 사진 (선택)</label>
+            <div className="flex items-center gap-3">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#F0EDE6] text-2xl text-[#1E1B4B]">
+                {photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={photoUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span aria-hidden>{merged.icon}</span>
+                )}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="inline-flex w-fit cursor-pointer items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handlePhotoSelect}
+                    disabled={photoProcessing || saving}
+                  />
+                  {photoProcessing ? "처리 중..." : photoUrl ? "사진 변경" : "사진 올리기"}
+                </label>
+                {photoUrl && (
+                  <button
+                    type="button"
+                    onClick={handlePhotoRemove}
+                    disabled={photoProcessing || saving}
+                    className="w-fit text-[11px] text-gray-400 hover:text-red-600 disabled:opacity-50"
+                  >
+                    사진 제거
+                  </button>
+                )}
+                <p className="text-[11px] text-gray-400">
+                  사진을 올리면 채팅에서 기본 아이콘 대신 사진이 보여요. 정사각으로 256px까지 자동 축소돼요.
+                </p>
+                {photoError && (
+                  <p className="text-[11px] text-red-600">{photoError}</p>
+                )}
+              </div>
             </div>
           </div>
 
@@ -291,7 +334,7 @@ export default function PersonaEditorModal({
         <PersonaRefDocsModal
           personaId={personaId}
           personaName={name || merged.name}
-          personaIcon={icon || merged.icon}
+          personaIcon={merged.icon}
           onClose={() => setRefDocsOpen(false)}
         />
       )}
@@ -300,7 +343,7 @@ export default function PersonaEditorModal({
         <PersonaScheduleModal
           personaId={personaId}
           personaName={name || merged.name}
-          personaIcon={icon || merged.icon}
+          personaIcon={merged.icon}
           onClose={() => setScheduleOpen(false)}
         />
       )}

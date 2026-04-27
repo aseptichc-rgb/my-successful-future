@@ -199,8 +199,13 @@ export default function AdvisorsPage() {
                     disabled={isCreating}
                     className="flex w-full flex-col items-start gap-3 text-left disabled:opacity-50"
                   >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F0EDE6] text-[#1E1B4B]">
-                      <PersonaIcon personaId={personaId} fallbackEmoji={persona.icon} className="h-7 w-7" />
+                    <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#F0EDE6] text-[#1E1B4B]">
+                      <PersonaIcon
+                        personaId={personaId}
+                        fallbackEmoji={persona.icon}
+                        photoUrl={persona.photoUrl}
+                        className={persona.photoUrl ? "h-12 w-12" : "h-7 w-7"}
+                      />
                     </div>
                     <div className="w-full">
                       <p className="truncate text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
@@ -493,8 +498,13 @@ export default function AdvisorsPage() {
                         </svg>
                       )}
                     </div>
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#F0EDE6] text-[#1E1B4B]">
-                      <PersonaIcon personaId={personaId} fallbackEmoji={persona.icon} className="h-4 w-4" />
+                    <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-[#F0EDE6] text-[#1E1B4B]">
+                      <PersonaIcon
+                        personaId={personaId}
+                        fallbackEmoji={persona.icon}
+                        photoUrl={persona.photoUrl}
+                        className={persona.photoUrl ? "h-7 w-7" : "h-4 w-4"}
+                      />
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[14px] font-medium tracking-[-0.01em] text-[#1E1B4B]">{persona.name}</p>

@@ -8,6 +8,7 @@ import { useAutoNews } from "@/hooks/useAutoNews";
 import { useKeywordAlert } from "@/hooks/useKeywordAlert";
 import { useDailyRitual } from "@/hooks/useDailyRitual";
 import { useCustomPersonas } from "@/hooks/useCustomPersonas";
+import { usePersonaOverrides } from "@/hooks/usePersonaOverrides";
 import ChatWindow from "@/components/chat/ChatWindow";
 import TopicSelector from "@/components/chat/TopicSelector";
 import PersonaSelector from "@/components/chat/PersonaSelector";
@@ -50,6 +51,8 @@ export default function ChatSessionPage() {
 
   // 커스텀 페르소나 맵
   const { map: customPersonaMap } = useCustomPersonas(currentUid);
+  // 빌트인 페르소나 오버라이드 맵 (사진 등 사용자 커스터마이징 즉시 반영)
+  const { map: overrideMap } = usePersonaOverrides(currentUid);
 
   const {
     messages, isLoading, error, selectedTopic,
@@ -522,6 +525,7 @@ export default function ChatSessionPage() {
             isLoading={isLoading}
             respondingPersona={respondingPersona}
             customPersonaMap={customPersonaMap}
+            overrideMap={overrideMap}
             emptyTitle={emptyTitle}
             emptySubtitle={emptySubtitle}
           />

@@ -203,8 +203,13 @@ export default function HomeDashboard({ uid, displayName, futureSelfId }: Props)
                     disabled={launching || !!advisorLaunching}
                     className={rowClass}
                   >
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#F0EDE6] text-[#1E1B4B]">
-                      <PersonaIcon personaId={personaId} fallbackEmoji={persona.icon} className="h-[22px] w-[22px]" />
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#F0EDE6] text-[#1E1B4B]">
+                      <PersonaIcon
+                        personaId={personaId}
+                        fallbackEmoji={persona.icon}
+                        photoUrl={persona.photoUrl}
+                        className={persona.photoUrl ? "h-12 w-12" : "h-[22px] w-[22px]"}
+                      />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[15px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">

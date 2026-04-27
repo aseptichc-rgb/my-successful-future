@@ -6,6 +6,7 @@ import PersonaRefDocsModal from "./PersonaRefDocsModal";
 import PersonaScheduleModal from "./PersonaScheduleModal";
 import { useAuth } from "@/lib/auth-context";
 import { onPersonaScheduleSnapshot } from "@/lib/firebase";
+import { compressPersonaPhoto } from "@/lib/persona-photo";
 
 interface CustomPersonaBuilderProps {
   initial?: CustomPersona;
@@ -17,32 +18,7 @@ interface CustomPersonaBuilderProps {
   onDelete?: () => Promise<void>;
 }
 
-const PHOTO_MAX_PX = 256;
-const PHOTO_QUALITY = 0.85;
-const PHOTO_INPUT_LIMIT_BYTES = 8 * 1024 * 1024; // 원본 8MB까지만 받기
-
-/**
- * 클라이언트에서 이미지를 정사각 256px JPEG로 줄여 dataURL로 변환.
- * Firestore 1MB 문서 제한 안에 안전하게 들어가도록 압축한다.
- */
-async function compressImageToDataUrl(file: File): Promise<string> {
-  if (file.size > PHOTO_INPUT_LIMIT_BYTES) {
-    throw new Error("이미지 용량이 너무 커요. 8MB 이하로 올려주세요.");
-  }
-  const bitmap = await createImageBitmap(file);
-  const size = Math.min(bitmap.width, bitmap.height);
-  const sx = (bitmap.width - size) / 2;
-  const sy = (bitmap.height - size) / 2;
-  const canvas = document.createElement("canvas");
-  canvas.width = PHOTO_MAX_PX;
-  canvas.height = PHOTO_MAX_PX;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("이미지 처리에 실패했어요.");
-  ctx.drawImage(bitmap, sx, sy, size, size, 0, 0, PHOTO_MAX_PX, PHOTO_MAX_PX);
-  return canvas.toDataURL("image/jpeg", PHOTO_QUALITY);
-}
-
-const ICON_CHOICES = ["✨", "💼", "🎨", "📚", "🧭", "🎯", "💡", "🌿", "🔮", "👨‍🏫", "👩‍⚕️", "🧙", "🦉", "🐉", "🪴", "⚔️", "🏛️", "🎭"];
+const DEFAULT_ICON = "✨";
 
 const TEMPLATE_PROMPTS = [
   {
@@ -65,7 +41,7 @@ const TEMPLATE_PROMPTS = [
 
 export default function CustomPersonaBuilder({ initial, onSave, onClose, onDelete }: CustomPersonaBuilderProps) {
   const [name, setName] = useState(initial?.name || "");
-  const [icon, setIcon] = useState(initial?.icon || "✨");
+  const icon = initial?.icon || DEFAULT_ICON;
   const [photoUrl, setPhotoUrl] = useState<string | undefined>(initial?.photoUrl);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [photoProcessing, setPhotoProcessing] = useState(false);
@@ -99,7 +75,6 @@ export default function CustomPersonaBuilder({ initial, onSave, onClose, onDelet
 
   const isDirty =
     name !== (initial?.name || "") ||
-    icon !== (initial?.icon || "✨") ||
     (photoUrl || "") !== (initial?.photoUrl || "") ||
     description !== (initial?.description || "") ||
     systemPromptAddition !== (initial?.systemPromptAddition || "");
@@ -111,7 +86,7 @@ export default function CustomPersonaBuilder({ initial, onSave, onClose, onDelet
     setPhotoError(null);
     setPhotoProcessing(true);
     try {
-      const dataUrl = await compressImageToDataUrl(file);
+      const dataUrl = await compressPersonaPhoto(file);
       setPhotoUrl(dataUrl);
     } catch (err) {
       console.error("프로필 사진 처리 실패:", err);
@@ -228,28 +203,6 @@ export default function CustomPersonaBuilder({ initial, onSave, onClose, onDelet
               maxLength={20}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
             />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              아이콘 <span className="text-[11px] font-normal text-gray-400">(사진이 없을 때 사용)</span>
-            </label>
-            <div className="flex flex-wrap gap-1.5">
-              {ICON_CHOICES.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setIcon(c)}
-                  className={`h-9 w-9 rounded-lg border text-xl transition-colors ${
-                    icon === c
-                      ? "border-violet-500 bg-violet-50"
-                      : "border-gray-200 hover:bg-gray-50"
-                  }`}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
           </div>
 
           <div>

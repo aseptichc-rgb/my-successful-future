@@ -48,13 +48,15 @@ export interface PersonaOverride {
   personaId: BuiltinPersonaId;
   name?: string;
   icon?: string;
+  /** 사용자가 업로드한 프로필 사진 (256px 정사각, JPEG dataURL). 있으면 빌트인 라인 아이콘 대신 노출. */
+  photoUrl?: string;
   description?: string;
   systemPromptAddition?: string;
   updatedAt: Timestamp;
 }
 export type PersonaOverrideInput = Pick<
   PersonaOverride,
-  "name" | "icon" | "description" | "systemPromptAddition"
+  "name" | "icon" | "photoUrl" | "description" | "systemPromptAddition"
 >;
 
 // ── 감정 상태 (mood-aware future-self) ────────────
