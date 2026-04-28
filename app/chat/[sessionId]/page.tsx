@@ -10,10 +10,9 @@ import { useDailyRitual } from "@/hooks/useDailyRitual";
 import { useCustomPersonas } from "@/hooks/useCustomPersonas";
 import { usePersonaOverrides } from "@/hooks/usePersonaOverrides";
 import ChatWindow from "@/components/chat/ChatWindow";
-import TopicSelector from "@/components/chat/TopicSelector";
 import PersonaSelector from "@/components/chat/PersonaSelector";
 import ParticipantsBadge from "@/components/chat/ParticipantsBadge";
-import InviteModal from "@/components/chat/InviteModal";
+import ShareInviteModal from "@/components/chat/ShareInviteModal";
 import InvitationBell from "@/components/chat/InvitationBell";
 import UserPersonaModal from "@/components/chat/UserPersonaModal";
 import FuturePersonaModal from "@/components/chat/FuturePersonaModal";
@@ -54,11 +53,11 @@ export default function ChatSessionPage() {
   const { map: overrideMap } = usePersonaOverrides(currentUid);
 
   const {
-    messages, isLoading, error, selectedTopic,
+    messages, isLoading, error,
     activePersonas, respondingPersona, respondingConversationPersona, session,
     sessionType, isDirectChat,
     mood,
-    sendMessage, sendCouncilQuestion, setSelectedTopic, togglePersona, dismissAI,
+    sendMessage, sendCouncilQuestion, togglePersona, dismissAI,
     activeCouncil, startNewsDebate, advanceCouncil, addUserToCouncil, endCouncil,
     personaMemories,
   } = useChat(
@@ -475,11 +474,6 @@ export default function ChatSessionPage() {
         </div>
       </header>
 
-      {/* 도메인 필터 (AI 세션만, future-self 제외) */}
-      {!isDirectChat && !isFutureSelfSession && (
-        <TopicSelector selected={selectedTopic} onChange={setSelectedTopic} />
-      )}
-
       {/* 채팅 영역 — 빈 대화방 안내는 세션 성격에 맞춰 커스터마이즈 */}
       {(() => {
         let emptyTitle: string | undefined;
@@ -584,14 +578,13 @@ export default function ChatSessionPage() {
         />
       </div>
 
-      {/* 초대 모달 */}
+      {/* 초대 모달 — 초대 링크 공유 */}
       {showInviteModal && currentUid && (
-        <InviteModal
+        <ShareInviteModal
           sessionId={sessionId}
           sessionTitle={session?.title || "대화"}
           fromUid={currentUid}
           fromName={currentName}
-          participants={session?.participants || []}
           onClose={() => setShowInviteModal(false)}
         />
       )}
