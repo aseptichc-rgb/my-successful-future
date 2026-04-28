@@ -594,6 +594,7 @@ export default function ChatSessionPage() {
           maxLength={MAX_INPUT_LENGTH}
           placeholder={inputPlaceholder}
           customPersonaMap={customPersonaMap}
+          overrideMap={overrideMap}
         />
       </div>
 

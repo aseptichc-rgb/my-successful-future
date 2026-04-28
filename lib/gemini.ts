@@ -348,7 +348,7 @@ async function fetchOgImage(url: string): Promise<string | undefined> {
 }
 
 /** 여러 URL에서 OG 이미지를 병렬로 추출 */
-async function fetchOgImages(
+export async function fetchOgImages(
   sources: NewsSource[]
 ): Promise<void> {
   const promises = sources.map(async (source) => {

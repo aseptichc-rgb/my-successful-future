@@ -2,7 +2,8 @@
 
 import { memo, useEffect, useMemo, useRef } from "react";
 import { PERSONA_LIST } from "@/lib/personas";
-import type { CustomPersona, Persona, PersonaId } from "@/types";
+import { mergePersona } from "@/lib/persona-resolver";
+import type { CustomPersona, Persona, PersonaId, PersonaOverride } from "@/types";
 
 interface MentionDropdownProps {
   query: string;
@@ -10,9 +11,16 @@ interface MentionDropdownProps {
   onClose: () => void;
   selectedIndex: number;
   customPersonas?: Record<string, CustomPersona>;
+  overrideMap?: Record<string, PersonaOverride>;
 }
 
-function buildPersonaList(customPersonas?: Record<string, CustomPersona>): Persona[] {
+function buildPersonaList(
+  customPersonas?: Record<string, CustomPersona>,
+  overrideMap?: Record<string, PersonaOverride>,
+): Persona[] {
+  const builtinAsPersonas: Persona[] = PERSONA_LIST.map((p) =>
+    mergePersona(p, overrideMap?.[p.id as string]),
+  );
   const customAsPersonas: Persona[] = Object.values(customPersonas || {}).map((c) => ({
     id: c.id,
     name: c.name,
@@ -20,7 +28,7 @@ function buildPersonaList(customPersonas?: Record<string, CustomPersona>): Perso
     description: c.description || "내가 만든 멘토",
     systemPromptAddition: c.systemPromptAddition,
   }));
-  return [...PERSONA_LIST, ...customAsPersonas];
+  return [...builtinAsPersonas, ...customAsPersonas];
 }
 
 function MentionDropdown({
@@ -29,12 +37,15 @@ function MentionDropdown({
   onClose,
   selectedIndex,
   customPersonas,
+  overrideMap,
 }: MentionDropdownProps) {
   void onClose;
   const listRef = useRef<HTMLUListElement>(null);
 
-  // 페르소나 목록은 customPersonas 참조가 유지되는 한 재생성하지 않는다
-  const allPersonas = useMemo(() => buildPersonaList(customPersonas), [customPersonas]);
+  const allPersonas = useMemo(
+    () => buildPersonaList(customPersonas, overrideMap),
+    [customPersonas, overrideMap],
+  );
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
     return allPersonas.filter((p) => p.name.toLowerCase().includes(q));
@@ -83,8 +94,9 @@ export default memo(MentionDropdown);
 export function getFilteredPersonas(
   query: string,
   customPersonas?: Record<string, CustomPersona>,
+  overrideMap?: Record<string, PersonaOverride>,
 ): Persona[] {
-  return buildPersonaList(customPersonas).filter((p) =>
+  return buildPersonaList(customPersonas, overrideMap).filter((p) =>
     p.name.toLowerCase().includes(query.toLowerCase())
   );
 }

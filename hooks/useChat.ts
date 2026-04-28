@@ -73,13 +73,21 @@ function escapeRegex(s: string): string {
 function parseMentions(
   content: string,
   customPersonas?: Record<string, CustomPersona>,
+  overrideMap?: Record<string, PersonaOverride>,
 ): PersonaId[] {
   const mentioned: PersonaId[] = [];
   const seen = new Set<string>();
-  const candidates: { id: PersonaId; name: string }[] = [
-    ...Object.values(PERSONAS).map((p) => ({ id: p.id, name: p.name })),
-    ...Object.values(customPersonas || {}).map((p) => ({ id: p.id as PersonaId, name: p.name })),
-  ];
+  const candidates: { id: PersonaId; name: string }[] = [];
+  for (const p of Object.values(PERSONAS)) {
+    const overrideName = overrideMap?.[p.id as string]?.name?.trim();
+    if (overrideName && overrideName !== p.name) {
+      candidates.push({ id: p.id, name: overrideName });
+    }
+    candidates.push({ id: p.id, name: p.name });
+  }
+  for (const p of Object.values(customPersonas || {})) {
+    candidates.push({ id: p.id as PersonaId, name: p.name });
+  }
   for (const c of candidates) {
     // @페르소나이름 패턴 매칭 (이름 뒤에 공백이나 문장 끝)
     const pattern = new RegExp(`@${escapeRegex(c.name)}(?:\\s|$)`, "g");
@@ -635,7 +643,7 @@ export function useChat(
       }
 
       // @멘션 파싱 (모든 세션 타입에서 공통, 커스텀 자문단도 인식)
-      const mentionedPersonas = parseMentions(content, customPersonaMapRef.current);
+      const mentionedPersonas = parseMentions(content, customPersonaMapRef.current, overrideMapRef.current);
       const currentSessionType: SessionType = session?.sessionType || "ai";
 
       // "1명만 있는 대화방" = 참여자(사람)가 본인 1명 이하 + 활성 페르소나 중 뉴스봇(default)이 아닌 게 있을 때

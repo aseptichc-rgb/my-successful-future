@@ -12,7 +12,7 @@ import {
   type ChangeEvent,
 } from "react";
 import MentionDropdown, { getFilteredPersonas } from "@/components/chat/MentionDropdown";
-import type { CustomPersona, PersonaId } from "@/types";
+import type { CustomPersona, PersonaId, PersonaOverride } from "@/types";
 
 export interface ChatInputHandle {
   appendText: (text: string) => void;
@@ -25,12 +25,13 @@ interface ChatInputProps {
   maxLength: number;
   placeholder: string;
   customPersonaMap?: Record<string, CustomPersona>;
+  overrideMap?: Record<string, PersonaOverride>;
 }
 
 const MENTION_QUERY_WAIT_MS = 200;
 
 const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
-  { onSubmit, disabled, maxLength, placeholder, customPersonaMap },
+  { onSubmit, disabled, maxLength, placeholder, customPersonaMap, overrideMap },
   ref,
 ) {
   const [input, setInput] = useState("");
@@ -74,7 +75,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput
           (charBeforeAt === " " || charBeforeAt === "\n" || lastAtIndex === 0) &&
           !query.includes(" ")
         ) {
-          const filtered = getFilteredPersonas(query, customPersonaMap);
+          const filtered = getFilteredPersonas(query, customPersonaMap, overrideMap);
           if (filtered.length > 0) {
             setShowMention(true);
             setMentionQuery(query);
@@ -86,7 +87,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput
       }
       if (showMention) setShowMention(false);
     },
-    [customPersonaMap, showMention],
+    [customPersonaMap, overrideMap, showMention],
   );
 
   const handleMentionSelect = useCallback(
@@ -110,7 +111,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput
     const needsSpace = pos > 0 && prevChar !== " " && prevChar !== "\n";
     const insertion = `${needsSpace ? " " : ""}@`;
     const next = `${input.slice(0, pos)}${insertion}${input.slice(pos)}`;
-    const filtered = getFilteredPersonas("", customPersonaMap);
+    const filtered = getFilteredPersonas("", customPersonaMap, overrideMap);
     setInput(next);
     setMentionStart(pos + insertion.length - 1);
     setMentionQuery("");
@@ -123,7 +124,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput
       const caret = pos + insertion.length;
       target.setSelectionRange(caret, caret);
     }, 0);
-  }, [input, customPersonaMap]);
+  }, [input, customPersonaMap, overrideMap]);
 
   const handleSubmit = useCallback(
     async (e: FormEvent) => {
@@ -143,7 +144,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput
   const handleKeyDown = useCallback(
     (e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
       if (showMention) {
-        const filtered = getFilteredPersonas(mentionQuery, customPersonaMap);
+        const filtered = getFilteredPersonas(mentionQuery, customPersonaMap, overrideMap);
         if (e.key === "ArrowDown") {
           e.preventDefault();
           setMentionIndex((prev) => (prev + 1) % filtered.length);
@@ -172,7 +173,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput
         handleSubmit(e as unknown as FormEvent);
       }
     },
-    [showMention, mentionQuery, mentionIndex, customPersonaMap, handleMentionSelect, handleSubmit],
+    [showMention, mentionQuery, mentionIndex, customPersonaMap, overrideMap, handleMentionSelect, handleSubmit],
   );
 
   return (
@@ -194,6 +195,7 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput
               onClose={() => setShowMention(false)}
               selectedIndex={mentionIndex}
               customPersonas={customPersonaMap}
+              overrideMap={overrideMap}
             />
           )}
           <textarea

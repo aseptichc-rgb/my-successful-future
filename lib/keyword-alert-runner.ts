@@ -5,7 +5,8 @@
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { withRetry } from "./gemini";
+import { withRetry, fetchOgImages } from "./gemini";
+import { fetchFromNewsAPI, fetchFromRSS } from "./newsSource";
 import { buildKeywordAlertPrompt } from "./prompts";
 import { formatDate } from "./locale";
 import type { NewsSource } from "@/types";
