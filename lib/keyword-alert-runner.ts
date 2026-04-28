@@ -154,6 +154,30 @@ export async function runKeywordAlert(
       // grounding 추출 실패 — 본문만 사용
     }
 
+    // grounding 출처가 비면 NewsAPI / RSS 로 폴백 — 뉴스 카드가 항상 보이도록.
+    if (sources.length === 0) {
+      try {
+        const fallbackQuery = matchedKeyword || selected.join(" ");
+        const newsApiResults = await fetchFromNewsAPI(fallbackQuery, "글로벌");
+        const fallback =
+          newsApiResults.length > 0
+            ? newsApiResults.slice(0, 5)
+            : (await fetchFromRSS(fallbackQuery)).slice(0, 5);
+        if (fallback.length > 0) sources.push(...fallback);
+      } catch (err) {
+        console.warn("[keyword-alert-runner] 뉴스 폴백 실패:", err);
+      }
+    }
+
+    // OG 이미지 보강 — 뉴스 카드 썸네일용. 실패해도 본문/링크는 유지.
+    if (sources.length > 0) {
+      try {
+        await fetchOgImages(sources);
+      } catch (err) {
+        console.warn("[keyword-alert-runner] OG 이미지 추출 실패:", err);
+      }
+    }
+
     return { hasNews: true, content: text, sources, matchedKeyword };
   } catch (error) {
     console.error("[keyword-alert-runner] 실패:", error);

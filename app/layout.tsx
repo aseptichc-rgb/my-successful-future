@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Fraunces, JetBrains_Mono, Noto_Sans_KR } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
 import PWARegister from "@/components/PWARegister";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import KakaoScript from "@/components/KakaoScript";
 import "./globals.css";
 
@@ -96,6 +97,7 @@ export default function RootLayout({
         <KakaoScript />
         <PWARegister />
         <AuthProvider>{children}</AuthProvider>
+        <PWAInstallPrompt />
       </body>
     </html>
   );

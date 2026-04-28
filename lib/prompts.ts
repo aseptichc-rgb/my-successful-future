@@ -576,6 +576,11 @@ export interface BuildSystemPromptExtras {
     description: string;
     systemPromptAddition: string;
   };
+  /**
+   * 다른 참여자(빌트인) 페르소나의 사용자 오버라이드 맵.
+   * 키: PersonaId, 값: 이름·아이콘 (다른 참여자 언급 시 사용자가 설정한 이름이 나오도록).
+   */
+  participantOverrides?: Record<string, { name?: string; icon?: string }>;
   /** 주식 질문 감지 시 NAVER 금융에서 조회한 실시간 시세 블록. 있으면 프롬프트 말미에 그대로 주입. */
   stockContext?: string;
   /**
@@ -751,7 +756,19 @@ ${customPersona.systemPromptAddition}
       .filter((id) => id !== personaId)
       .map((id) => {
         const p = getPersona(id);
-        return `${p.icon} ${p.name}(${p.id === "entrepreneur" ? "민준" : p.id === "healthcare-expert" ? "서연" : p.id === "fund-trader" ? "현우" : p.id === "tech-cto" ? "지훈" : p.id === "policy-analyst" ? "수현" : p.name})`;
+        const ov = extras?.participantOverrides?.[id as string];
+        const displayName = ov?.name?.trim() || p.name;
+        const displayIcon = ov?.icon?.trim() || p.icon;
+        // 사용자가 이름을 오버라이드했으면 한글 닉네임 대신 사용자가 설정한 이름을 사용.
+        const conversationalName = ov?.name?.trim()
+          ? ov.name.trim()
+          : p.id === "entrepreneur" ? "민준"
+          : p.id === "healthcare-expert" ? "서연"
+          : p.id === "fund-trader" ? "현우"
+          : p.id === "tech-cto" ? "지훈"
+          : p.id === "policy-analyst" ? "수현"
+          : p.name;
+        return `${displayIcon} ${displayName}(${conversationalName})`;
       })
       .join(", ");
 
@@ -840,7 +857,8 @@ ${personaMemory}
   if (councilContext && councilContext.length > 0) {
     const primaryName =
       extras?.primaryPersonaId && extras.primaryPersonaId !== personaId
-        ? getPersona(extras.primaryPersonaId).name
+        ? (extras.participantOverrides?.[extras.primaryPersonaId as string]?.name?.trim()
+            || getPersona(extras.primaryPersonaId).name)
         : undefined;
     const isPrimary = extras?.primaryPersonaId === personaId;
     prompt += buildCouncilContextSection(councilContext, false, isCouncilFinal, {

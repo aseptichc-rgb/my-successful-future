@@ -289,6 +289,39 @@ export async function POST(request: NextRequest) {
       };
     }
 
+    // 다른 참여자(빌트인) 페르소나의 사용자 오버라이드 로드 — 프롬프트 상의 다른 참여자 이름이 사용자 설정과 일치하도록.
+    let participantOverrides: Record<string, { name?: string; icon?: string }> | undefined;
+    if (authedUid && Array.isArray(participants) && participants.length > 1) {
+      const others = (participants as PersonaId[]).filter(
+        (id) => id !== persona && isBuiltinPersona(id as string) && id !== "future-self"
+      );
+      if (others.length > 0) {
+        const entries = await Promise.all(
+          others.map(async (id) => {
+            try {
+              const ov = await personaOverrideCache.getOrLoad(`${authedUid}|${id}`, async () => {
+                const snap = await getAdminDb()
+                  .collection("users").doc(authedUid)
+                  .collection("personaOverrides").doc(id as string)
+                  .get();
+                return snap.exists ? (snap.data() as PersonaOverride) : null;
+              });
+              return [id as string, ov] as const;
+            } catch {
+              return [id as string, null] as const;
+            }
+          })
+        );
+        const map: Record<string, { name?: string; icon?: string }> = {};
+        for (const [id, ov] of entries) {
+          if (ov && (ov.name || ov.icon)) {
+            map[id] = { name: ov.name, icon: ov.icon };
+          }
+        }
+        if (Object.keys(map).length > 0) participantOverrides = map;
+      }
+    }
+
     // fund-trader: 시세 컨텍스트 병합 — 사용자가 특정 종목을 물었으면(stockContext)
     // 해당 시세 + 시장 개황을 합산. 종목 질문 없으면 시장 개황만 주입.
     let mergedStockContext = stockContext || undefined;
@@ -324,6 +357,7 @@ export async function POST(request: NextRequest) {
         mood,
         attachedDocuments,
         builtinPersonaOverride,
+        participantOverrides,
         stockContext: mergedStockContext,
         includeStockRules,
       }
