@@ -89,20 +89,32 @@ function splitByPersonaSpeakers(
   const cleaned = cleanModelArtifacts(fullText);
   const allCandidates = [defaultSpeaker, ...others];
 
-  const markerRegex = /\[([^\]\n]{1,30})\]/g;
+  // 화자 마커는 "단락의 시작"에 있는 [이름] 만 인정한다.
+  // 본문 중간이나 첫머리에 끼어든 [이름] 은 모델이 자기 자신/타인을 잘못 라벨링하거나
+  // 인용한 경우가 많아 잘못된 귀속(예: 워렌 버핏 응답이 통째로 뉴스봇에게 넘어감) 을 유발했다.
+  // 따라서 (a) 응답 맨 앞의 [이름] 은 무조건 strip 하고 default 화자로 시작,
+  //         (b) 그 외에는 줄바꿈 직후의 [이름] 만 화자 전환으로 본다.
+  const markerRegex = /(^|\n[\s]*)\[([^\]\n]{1,30})\]\s?/g;
   const rawSegments: { text: string; speaker: SpeakerInfo }[] = [];
   let lastIndex = 0;
   let currentSpeaker = defaultSpeaker;
   let m: RegExpExecArray | null;
+  let isFirstMarker = true;
 
   while ((m = markerRegex.exec(cleaned)) !== null) {
     const before = cleaned.slice(lastIndex, m.index);
     if (before.trim().length > 0) {
       rawSegments.push({ text: before, speaker: currentSpeaker });
     }
-    const matched = findSpeakerByMarker(m[1], allCandidates);
-    currentSpeaker = matched || defaultSpeaker;
+    const matched = findSpeakerByMarker(m[2], allCandidates);
+    if (isFirstMarker && m.index === 0) {
+      // 응답 첫머리의 [이름] 은 화자 전환으로 인정하지 않고 strip 만 한다.
+      currentSpeaker = defaultSpeaker;
+    } else {
+      currentSpeaker = matched || defaultSpeaker;
+    }
     lastIndex = m.index + m[0].length;
+    isFirstMarker = false;
   }
   const tail = cleaned.slice(lastIndex);
   if (tail.trim().length > 0) {
