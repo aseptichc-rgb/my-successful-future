@@ -20,7 +20,12 @@ import {
   KST_OFFSET_MINUTES,
   CRON_TOLERANCE_MINUTES,
 } from "@/lib/constants/keyword-alert";
-import { resolvePersona, postBriefMessages, type ResolvedPersona } from "@/lib/persona-brief-poster";
+import {
+  resolvePersona,
+  postBriefMessages,
+  hasRecentUserActivity,
+  type ResolvedPersona,
+} from "@/lib/persona-brief-poster";
 import { withRetry } from "@/lib/gemini";
 import { buildMorningBriefPrompt, buildEveningReflectionPrompt } from "@/lib/prompts";
 import type {
@@ -74,6 +79,22 @@ function parseHhmmToMinute(hhmm: string): number | null {
   return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
 }
 
+function formatMinuteToHhmm(minute: number): string {
+  const h = Math.floor(minute / 60) % 24;
+  const m = minute % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+/**
+ * 정시 브리핑이 능동적인 대화에 끼어들지 않도록 하는 유예 시간(분).
+ * 사용자가 이 시간 안에 마지막 메시지를 보냈으면 발사를 다음 크론 틱으로 미룬다.
+ */
+const ACTIVE_USER_GRACE_MINUTES = 5;
+/**
+ * 슬롯 시각과 실제 발사 시각이 이 시간 이상 벌어지면 라벨에 "(예약 HH:mm)" 부기.
+ */
+const DELAY_TAG_THRESHOLD_MINUTES = 30;
+
 interface ScheduledFireResult {
   sessionId: string;
   slotTime: string;
@@ -117,6 +138,12 @@ async function processScheduledKeywordAlerts(): Promise<ScheduledFireResult[]> {
       if (slot.lastFiredYmd === ymd) continue;
 
       try {
+        // 사용자가 능동적으로 대화 중이면 끼어들지 않고 다음 크론 틱으로 연기
+        if (await hasRecentUserActivity(sessionId, ACTIVE_USER_GRACE_MINUTES)) {
+          out.push({ sessionId, slotTime: slot.time, status: "skipped" });
+          continue;
+        }
+
         const result = await runKeywordAlert(keywords);
         if (!result.hasNews || !result.content) {
           out.push({ sessionId, slotTime: slot.time, status: "no-news" });
@@ -125,7 +152,20 @@ async function processScheduledKeywordAlerts(): Promise<ScheduledFireResult[]> {
           continue;
         }
 
-        await postKeywordAlertMessages(sessionId, result.content, result.sources ?? [], result.matchedKeyword, slot.time);
+        const firedAtLabel = formatMinuteToHhmm(minuteOfDay);
+        const delayMin = minuteOfDay - slotMin;
+        const delayedFromSlot =
+          delayMin >= DELAY_TAG_THRESHOLD_MINUTES ? slot.time : undefined;
+
+        await postKeywordAlertMessages(
+          sessionId,
+          result.content,
+          result.sources ?? [],
+          result.matchedKeyword,
+          slot.time,
+          firedAtLabel,
+          delayedFromSlot,
+        );
         await markSlotFired(sessionId, slots, slot.time, ymd);
         out.push({ sessionId, slotTime: slot.time, status: "fired" });
       } catch (err) {
@@ -163,12 +203,16 @@ async function postKeywordAlertMessages(
   content: string,
   sources: NewsSource[],
   matchedKeyword: string | undefined,
-  slotTime: string
+  slotTime: string,
+  firedAtLabel: string,
+  delayedFromSlot: string | undefined,
 ): Promise<void> {
   const db = getAdminDb();
+  const baseLabel = `${firedAtLabel} 정시 알림`;
+  const label = delayedFromSlot ? `${baseLabel} (예약 ${delayedFromSlot})` : baseLabel;
   const headline = matchedKeyword
-    ? `🔔 [${matchedKeyword}] ${slotTime} 정시 알림`
-    : `🔔 ${slotTime} 정시 알림`;
+    ? `🔔 [${matchedKeyword}] ${label}`
+    : `🔔 ${label}`;
   const fullContent = `${headline}\n\n${content}`;
   const paragraphs = fullContent
     .split("\n\n")
@@ -332,12 +376,23 @@ async function processPersonaSchedules(): Promise<PersonaScheduleFireResult[]> {
           sessionId = await createSessionForPersona(uid, persona);
         }
 
+        // 사용자가 능동적으로 대화 중이면 끼어들지 않고 다음 크론 틱으로 연기
+        if (await hasRecentUserActivity(sessionId, ACTIVE_USER_GRACE_MINUTES)) {
+          out.push({ personaId, uid, slotTime: slot.time, status: "skipped", sessionId });
+          continue;
+        }
+
         const result = await runKeywordAlert(keywords);
         if (!result.hasNews || !result.content) {
           out.push({ personaId, uid, slotTime: slot.time, status: "no-news", sessionId });
           await markPersonaScheduleSlotFired(uid, personaId, slots, slot.time, ymd);
           continue;
         }
+
+        const firedAtLabel = formatMinuteToHhmm(minuteOfDay);
+        const delayMin = minuteOfDay - slotMin;
+        const delayedFromSlot =
+          delayMin >= DELAY_TAG_THRESHOLD_MINUTES ? slot.time : undefined;
 
         await postBriefMessages({
           sessionId,
@@ -346,7 +401,9 @@ async function processPersonaSchedules(): Promise<PersonaScheduleFireResult[]> {
           sources: result.sources ?? [],
           matchedKeyword: result.matchedKeyword,
           kind: "scheduled",
-          slotLabel: slot.time,
+          firedAtLabel,
+          delayedFromSlot,
+          scheduledSlot: slot.time,
         });
         await markPersonaScheduleSlotFired(uid, personaId, slots, slot.time, ymd);
         out.push({ personaId, uid, slotTime: slot.time, status: "fired", sessionId });

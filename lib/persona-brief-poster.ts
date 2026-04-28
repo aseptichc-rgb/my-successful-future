@@ -78,6 +78,39 @@ export async function resolvePersona(
   return null;
 }
 
+/**
+ * 사용자가 해당 세션에서 최근 N분 이내에 메시지를 보냈는지 확인한다.
+ * 능동적으로 대화 중인 세션에 정시 브리핑이 끼어들지 않도록 발사 직전 호출.
+ */
+export async function hasRecentUserActivity(
+  sessionId: string,
+  withinMinutes: number
+): Promise<boolean> {
+  try {
+    const db = getAdminDb();
+    // 기존 (sessionId, createdAt) 단일 복합 인덱스만 사용하기 위해
+    // role 필터는 클라이언트에서 적용. 최근 N건 안에 user 메시지가 없으면 비활성 간주.
+    const snap = await db
+      .collection("messages")
+      .where("sessionId", "==", sessionId)
+      .orderBy("createdAt", "desc")
+      .limit(20)
+      .get();
+    if (snap.empty) return false;
+    const cutoffMs = Date.now() - withinMinutes * MS_PER_MINUTE;
+    for (const doc of snap.docs) {
+      if (doc.get("role") !== "user") continue;
+      const ts = doc.get("createdAt") as { toMillis?: () => number } | undefined;
+      if (!ts || typeof ts.toMillis !== "function") continue;
+      return ts.toMillis() >= cutoffMs;
+    }
+    return false;
+  } catch (err) {
+    console.warn(`[persona-brief] 최근 사용자 활동 조회 실패 (${sessionId}):`, err);
+    return false;
+  }
+}
+
 export type BriefLabelKind = "scheduled" | "lazy";
 
 /**
@@ -91,15 +124,32 @@ export async function postBriefMessages(params: {
   sources: NewsSource[];
   matchedKeyword?: string;
   kind: BriefLabelKind;
-  /** scheduled 인 경우 "HH:mm" 슬롯 시간. lazy 인 경우 생략하거나 현재 시각 라벨. */
-  slotLabel?: string;
+  /**
+   * scheduled 인 경우 "HH:mm" 발사 시각. (예약 시각이 아니라 실제 게시되는 시각)
+   * lazy 인 경우 생략.
+   */
+  firedAtLabel?: string;
+  /**
+   * 예약 슬롯 시각과 실제 발사 시각이 크게 어긋난 경우의 원래 슬롯 "HH:mm".
+   * 지정되면 라벨에 "(예약 09:00)" 형태로 부기된다.
+   */
+  delayedFromSlot?: string;
+  /** firestore 에 저장할 슬롯 시각(원본). 검색/디버그용. */
+  scheduledSlot?: string;
 }): Promise<void> {
-  const { sessionId, persona, content, sources, matchedKeyword, kind, slotLabel } = params;
+  const {
+    sessionId, persona, content, sources, matchedKeyword, kind,
+    firedAtLabel, delayedFromSlot, scheduledSlot,
+  } = params;
   const db = getAdminDb();
 
-  const label = kind === "scheduled"
-    ? `${slotLabel ?? ""} 정시 뉴스 브리핑`.trim()
-    : "오늘의 키워드 뉴스 브리핑";
+  let label: string;
+  if (kind === "scheduled") {
+    const base = `${firedAtLabel ?? ""} 정시 뉴스 브리핑`.trim();
+    label = delayedFromSlot ? `${base} (예약 ${delayedFromSlot})` : base;
+  } else {
+    label = "오늘의 키워드 뉴스 브리핑";
+  }
   const headline = matchedKeyword
     ? `${persona.icon} [${matchedKeyword}] ${label}`
     : `${persona.icon} ${label}`;
@@ -122,7 +172,7 @@ export async function postBriefMessages(params: {
       createdAt: FieldValue.serverTimestamp(),
     };
     if (matchedKeyword) messageDoc.matchedKeyword = matchedKeyword;
-    if (kind === "scheduled" && slotLabel) messageDoc.scheduledSlot = slotLabel;
+    if (kind === "scheduled" && scheduledSlot) messageDoc.scheduledSlot = scheduledSlot;
     await db.collection("messages").add(messageDoc);
   }
 
