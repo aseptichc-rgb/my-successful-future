@@ -14,20 +14,113 @@ function stripPersonaPrefix(text: string): string {
 }
 
 /**
- * AI 응답에서 본문 중간에 끼어든 [이름] 마커를 단락 구분(\n\n)으로 변환.
- * AI가 단락 구분 없이 한 덩어리로 응답하면서 중간에 자기 이름을 반복해 붙이는 케이스 처리.
- * 또한 모델이 가끔 출력하는 단독 백슬래시(특히 줄 시작의 \\n 흔적)를 제거한다.
+ * 모델이 출력하는 백슬래시/이스케이프 아티팩트를 정리.
+ * (마커 자체는 보존 — 화자 분리 단계에서 사용)
+ */
+function cleanModelArtifacts(text: string): string {
+  return text
+    .replace(/^\s*\\+\s*$/gm, "")
+    .replace(/\\+n/g, "\n")
+    .replace(/\\+/g, "");
+}
+
+/**
+ * 스트리밍 UI 프리뷰용: 마커를 단락 구분으로 변환.
+ * 최종 저장은 splitByPersonaSpeakers로 화자별 귀속을 처리한다.
  */
 function normalizePersonaMarkers(text: string): string {
-  return text
-    // 1) 본문 중간 [이름] 마커 → 단락 구분
-    .replace(/(?!^)\s*\[[^\]\n]{1,30}\]\s*/g, "\n\n")
-    // 2) 줄 시작에 있는 백슬래시 시퀀스 제거 (모델이 \\n\\n을 그대로 따라 쓰는 케이스)
-    .replace(/^\s*\\+\s*$/gm, "")
-    // 3) 본문 안의 \n / \\n 같은 이스케이프 텍스트를 실제 줄바꿈으로 치환
-    .replace(/\\+n/g, "\n")
-    // 4) 남아 있는 단독 백슬래시 제거
-    .replace(/\\+/g, "");
+  return cleanModelArtifacts(
+    text.replace(/(?!^)\s*\[[^\]\n]{1,30}\]\s*/g, "\n\n"),
+  );
+}
+
+/** 빌트인 페르소나의 한글 conversational 닉네임 (prompts.ts와 동기화) */
+const BUILTIN_NICKNAMES: Record<string, string> = {
+  entrepreneur: "민준",
+  "healthcare-expert": "서연",
+  "fund-trader": "현우",
+  "tech-cto": "지훈",
+  "policy-analyst": "수현",
+};
+
+type SpeakerInfo = { id: PersonaId; name: string; icon: string; aliases: string[] };
+type SpeakerSegment = { text: string; speaker: SpeakerInfo };
+
+function buildAliases(id: PersonaId, name: string, overrideName?: string): string[] {
+  const aliases = new Set<string>();
+  if (name) aliases.add(name.trim());
+  if (overrideName) aliases.add(overrideName.trim());
+  const nick = BUILTIN_NICKNAMES[id as string];
+  if (nick) aliases.add(nick);
+  return Array.from(aliases).filter((s) => s.length > 0);
+}
+
+function findSpeakerByMarker(
+  markerName: string,
+  candidates: SpeakerInfo[],
+): SpeakerInfo | null {
+  const m = markerName.trim().toLowerCase();
+  if (!m) return null;
+  // 1) 정확 일치
+  for (const c of candidates) {
+    if (c.aliases.some((a) => a.toLowerCase() === m)) return c;
+  }
+  // 2) 부분 일치 (예: "[버핏]" → "위렌 버핏")
+  for (const c of candidates) {
+    if (c.aliases.some((a) => {
+      const al = a.toLowerCase();
+      return al.includes(m) || m.includes(al);
+    })) return c;
+  }
+  return null;
+}
+
+/**
+ * AI 응답을 화자별 세그먼트로 분리.
+ * 모델이 본문 중간에 [다른 참여자 이름] 마커를 끼워 다른 페르소나를 흉내낸 경우,
+ * 해당 세그먼트를 정확한 페르소나에게 귀속시킨다.
+ * 마커가 없거나 알 수 없는 이름이면 기본(요청한) 페르소나로 귀속.
+ */
+function splitByPersonaSpeakers(
+  fullText: string,
+  defaultSpeaker: SpeakerInfo,
+  others: SpeakerInfo[],
+): SpeakerSegment[] {
+  const cleaned = cleanModelArtifacts(fullText);
+  const allCandidates = [defaultSpeaker, ...others];
+
+  const markerRegex = /\[([^\]\n]{1,30})\]/g;
+  const rawSegments: { text: string; speaker: SpeakerInfo }[] = [];
+  let lastIndex = 0;
+  let currentSpeaker = defaultSpeaker;
+  let m: RegExpExecArray | null;
+
+  while ((m = markerRegex.exec(cleaned)) !== null) {
+    const before = cleaned.slice(lastIndex, m.index);
+    if (before.trim().length > 0) {
+      rawSegments.push({ text: before, speaker: currentSpeaker });
+    }
+    const matched = findSpeakerByMarker(m[1], allCandidates);
+    currentSpeaker = matched || defaultSpeaker;
+    lastIndex = m.index + m[0].length;
+  }
+  const tail = cleaned.slice(lastIndex);
+  if (tail.trim().length > 0) {
+    rawSegments.push({ text: tail, speaker: currentSpeaker });
+  }
+
+  // 같은 화자 내에서 \n\n 단락 분리, 빈 문단 제거
+  const out: SpeakerSegment[] = [];
+  for (const seg of rawSegments) {
+    const paragraphs = seg.text
+      .split(/\n\n+/)
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0);
+    for (const p of paragraphs) {
+      out.push({ text: p, speaker: seg.speaker });
+    }
+  }
+  return out;
 }
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -740,23 +833,55 @@ export function useChat(
             );
 
             if (fullText) {
-              // 문단별로 분리하여 Firestore에 개별 저장
-              const paragraphs = normalizePersonaMarkers(fullText)
-                .split("\n\n")
-                .map((p) => stripPersonaPrefix(p.trim()))
-                .filter((p) => p.length > 0);
+              // 화자별 세그먼트 분리 → 모델이 다른 참여자 이름으로 흉내낸 부분은
+              // 해당 페르소나에게 귀속시켜 저장 (잘못된 화자 라벨링 방지)
+              const overrideName =
+                overrideMapRef.current?.[personaId as string]?.name?.trim();
+              const defaultSpeaker: SpeakerInfo = {
+                id: personaId,
+                name: persona.name,
+                icon: persona.icon,
+                aliases: buildAliases(personaId, persona.name, overrideName),
+              };
+              const others: SpeakerInfo[] = activePersonas
+                .filter((id) => id !== personaId && id !== "default")
+                .map((id) => {
+                  const p = getPersona(
+                    id,
+                    customPersonaMapRef.current,
+                    overrideMapRef.current,
+                  );
+                  const ov = overrideMapRef.current?.[id as string]?.name?.trim();
+                  return {
+                    id,
+                    name: p.name,
+                    icon: p.icon,
+                    aliases: buildAliases(id, p.name, ov),
+                  };
+                });
+              const segments = splitByPersonaSpeakers(
+                fullText,
+                defaultSpeaker,
+                others,
+              );
+              // 마커가 한 글자도 없던 케이스라도 첫 단락에 [이름] 접두가 남을 수 있으니 정리
+              const cleanSegments = segments.map((s) => ({
+                ...s,
+                text: stripPersonaPrefix(s.text),
+              }));
 
-              for (let i = 0; i < paragraphs.length; i++) {
-                const isLast = i === paragraphs.length - 1;
+              for (let i = 0; i < cleanSegments.length; i++) {
+                const seg = cleanSegments[i];
+                const isLast = i === cleanSegments.length - 1;
                 addMessage(
                   sessionId,
                   "assistant",
-                  paragraphs[i],
+                  seg.text,
                   isLast ? sources : [],
                   {
-                    personaId,
-                    personaName: persona.name,
-                    personaIcon: persona.icon,
+                    personaId: seg.speaker.id,
+                    personaName: seg.speaker.name,
+                    personaIcon: seg.speaker.icon,
                   }
                 ).catch((err) =>
                   console.error("Failed to save assistant message:", err)
