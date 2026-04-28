@@ -294,6 +294,7 @@ export default function ChatSessionPage() {
               activePersonas={activePersonas}
               onToggle={togglePersona}
               customPersonas={customPersonaMap}
+              overrideMap={overrideMap}
             />
           )}
           {!isFutureSelfSession && session?.participantNames && currentUid && (

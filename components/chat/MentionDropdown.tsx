@@ -3,6 +3,7 @@
 import { memo, useEffect, useMemo, useRef } from "react";
 import { PERSONA_LIST } from "@/lib/personas";
 import { mergePersona } from "@/lib/persona-resolver";
+import PersonaIcon from "@/components/ui/PersonaIcon";
 import type { CustomPersona, Persona, PersonaId, PersonaOverride } from "@/types";
 
 interface MentionDropdownProps {
@@ -25,6 +26,7 @@ function buildPersonaList(
     id: c.id,
     name: c.name,
     icon: c.icon,
+    photoUrl: c.photoUrl,
     description: c.description || "내가 만든 멘토",
     systemPromptAddition: c.systemPromptAddition,
   }));
@@ -77,10 +79,17 @@ function MentionDropdown({
                 : "text-gray-700 hover:bg-gray-50"
             }`}
           >
-            <span className="text-lg">{persona.icon}</span>
-            <div>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#F0EDE6] text-lg text-[#1E1B4B]">
+              <PersonaIcon
+                personaId={persona.id}
+                fallbackEmoji={persona.icon}
+                photoUrl={persona.photoUrl}
+                className={persona.photoUrl ? "h-8 w-8" : "h-5 w-5"}
+              />
+            </span>
+            <div className="min-w-0">
               <div className="font-medium">{persona.name}</div>
-              <div className="text-xs text-gray-400">{persona.description}</div>
+              <div className="truncate text-xs text-gray-400">{persona.description}</div>
             </div>
           </li>
         ))}

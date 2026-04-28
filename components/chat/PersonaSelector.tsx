@@ -2,19 +2,24 @@
 
 import { useState } from "react";
 import { PERSONA_LIST } from "@/lib/personas";
-import type { CustomPersona, Persona, PersonaId } from "@/types";
+import { mergePersona } from "@/lib/persona-resolver";
+import type { CustomPersona, Persona, PersonaId, PersonaOverride } from "@/types";
 
 interface PersonaSelectorProps {
   activePersonas: PersonaId[];
   onToggle: (personaId: PersonaId) => void;
   customPersonas?: Record<string, CustomPersona>;
+  overrideMap?: Record<string, PersonaOverride>;
 }
 
-export default function PersonaSelector({ activePersonas, onToggle, customPersonas }: PersonaSelectorProps) {
+export default function PersonaSelector({ activePersonas, onToggle, customPersonas, overrideMap }: PersonaSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [selected, setSelected] = useState<PersonaId[]>([]);
 
-  // 빌트인 + 커스텀을 한 리스트로 합침 (커스텀은 Persona 형태로 어댑트)
+  // 빌트인은 사용자 오버라이드 적용, 커스텀은 그대로 어댑트
+  const builtinAsPersonas: Persona[] = PERSONA_LIST.map((p) =>
+    mergePersona(p, overrideMap?.[p.id as string]),
+  );
   const customAsPersonas: Persona[] = Object.values(customPersonas || {}).map((c) => ({
     id: c.id,
     name: c.name,
@@ -22,7 +27,7 @@ export default function PersonaSelector({ activePersonas, onToggle, customPerson
     description: c.description || "내가 만든 멘토",
     systemPromptAddition: c.systemPromptAddition,
   }));
-  const allPersonas: Persona[] = [...PERSONA_LIST, ...customAsPersonas];
+  const allPersonas: Persona[] = [...builtinAsPersonas, ...customAsPersonas];
 
   const activeList = allPersonas.filter((p) => activePersonas.includes(p.id));
   const inactiveList = allPersonas.filter((p) => !activePersonas.includes(p.id));
