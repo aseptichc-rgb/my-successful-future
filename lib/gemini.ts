@@ -62,6 +62,12 @@ interface MessageParam {
   content: string;
 }
 
+export interface GeminiUsage {
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+}
+
 export function streamChatResponse(
   messages: MessageParam[],
   systemPrompt: string,
@@ -70,6 +76,8 @@ export function streamChatResponse(
   /** true 이면 Gemini 2.5 계열의 reasoning 토큰을 할당해 더 깊은 분석을 유도한다.
    *  뉴스봇·자동 브리핑처럼 빠른 전달이 중요한 경로에서는 false 를 유지. */
   enableThinking: boolean = false,
+  /** 토큰 사용량 콜백 — 어드민 통계용. 실패해도 응답에는 영향 없음. */
+  onUsage?: (usage: GeminiUsage) => void,
 ): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
 
@@ -148,6 +156,26 @@ export function streamChatResponse(
         const sources: NewsSource[] = [];
         try {
           const response = await result.response;
+          // 토큰 사용량 콜백 — usageMetadata 미존재 시 스킵.
+          if (onUsage) {
+            try {
+              const usage = (response as unknown as {
+                usageMetadata?: {
+                  promptTokenCount?: number;
+                  candidatesTokenCount?: number;
+                };
+              }).usageMetadata;
+              if (usage) {
+                onUsage({
+                  model: MODEL,
+                  promptTokens: usage.promptTokenCount || 0,
+                  completionTokens: usage.candidatesTokenCount || 0,
+                });
+              }
+            } catch {
+              // 사용량 추출 실패는 무시
+            }
+          }
           const metadata = response.candidates?.[0]?.groundingMetadata as
             | GroundingMeta
             | undefined;

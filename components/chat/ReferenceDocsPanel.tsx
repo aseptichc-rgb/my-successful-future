@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { authedFetch } from "@/lib/authedFetch";
 import { useAuth } from "@/lib/auth-context";
 import { useCustomPersonas } from "@/hooks/useCustomPersonas";
-import { PERSONAS } from "@/lib/personas";
+import { usePersonaOverrides } from "@/hooks/usePersonaOverrides";
+import { getPersona } from "@/lib/personas";
 import type { BuiltinPersonaId, PersonaId } from "@/types";
 
 interface ReferenceDocItem {
@@ -40,6 +41,7 @@ const BUILTIN_ADVISOR_IDS: BuiltinPersonaId[] = [
 export default function ReferenceDocsPanel() {
   const { firebaseUser } = useAuth();
   const { list: customList } = useCustomPersonas(firebaseUser?.uid);
+  const { map: overrideMap } = usePersonaOverrides(firebaseUser?.uid);
 
   const [items, setItems] = useState<ReferenceDocItem[]>([]);
   const [open, setOpen] = useState(false);
@@ -51,18 +53,17 @@ export default function ReferenceDocsPanel() {
   const [scopeEditId, setScopeEditId] = useState<string | null>(null);
 
   const personaOptions = useMemo<PersonaOption[]>(() => {
-    const builtins: PersonaOption[] = BUILTIN_ADVISOR_IDS.map((id) => ({
-      id,
-      name: PERSONAS[id].name,
-      icon: PERSONAS[id].icon,
-    }));
+    const builtins: PersonaOption[] = BUILTIN_ADVISOR_IDS.map((id) => {
+      const p = getPersona(id, undefined, overrideMap);
+      return { id, name: p.name, icon: p.icon };
+    });
     const customs: PersonaOption[] = customList.map((cp) => ({
       id: cp.id,
       name: cp.name,
       icon: cp.icon,
     }));
     return [...builtins, ...customs];
-  }, [customList]);
+  }, [customList, overrideMap]);
 
   const personaLabel = useCallback(
     (id: string): string => {

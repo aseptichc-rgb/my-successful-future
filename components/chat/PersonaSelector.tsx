@@ -12,9 +12,12 @@ interface PersonaSelectorProps {
   overrideMap?: Record<string, PersonaOverride>;
 }
 
+const VISIBLE_CHIP_LIMIT = 2;
+
 export default function PersonaSelector({ activePersonas, onToggle, customPersonas, overrideMap }: PersonaSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [selected, setSelected] = useState<PersonaId[]>([]);
+  const [expanded, setExpanded] = useState(false);
 
   // 빌트인은 사용자 오버라이드 적용, 커스텀은 그대로 어댑트
   const builtinAsPersonas: Persona[] = PERSONA_LIST.map((p) =>
@@ -64,16 +67,19 @@ export default function PersonaSelector({ activePersonas, onToggle, customPerson
     setIsOpen(false);
   };
 
+  const overflowCount = Math.max(activeList.length - VISIBLE_CHIP_LIMIT, 0);
+  const visibleList = expanded || overflowCount === 0 ? activeList : activeList.slice(0, VISIBLE_CHIP_LIMIT);
+
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
-      {/* 활성 페르소나 칩들 */}
-      {activeList.map((persona) => (
+      {/* 활성 페르소나 칩들 (모바일·콤팩트: 최대 2명 + 외 N명) */}
+      {visibleList.map((persona) => (
         <span
           key={persona.id}
           className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700"
         >
           <span>{persona.icon}</span>
-          <span>{persona.name}</span>
+          <span className="max-w-[80px] truncate">{persona.name}</span>
           {activePersonas.length > 1 && (
             <button
               onClick={() => onToggle(persona.id)}
@@ -87,6 +93,17 @@ export default function PersonaSelector({ activePersonas, onToggle, customPerson
           )}
         </span>
       ))}
+
+      {overflowCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors"
+          title={expanded ? "접기" : "전체 보기"}
+        >
+          {expanded ? "접기" : `외 ${overflowCount}명`}
+        </button>
+      )}
 
       {/* 추가 버튼 */}
       <div className="relative">

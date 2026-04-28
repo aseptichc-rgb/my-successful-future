@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { streamChatResponse } from "@/lib/gemini";
+import { logTokenUsage } from "@/lib/tokenUsage";
 import { buildSystemPrompt } from "@/lib/prompts";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { loadReferenceDocumentsForUser } from "@/lib/googleDocs";
@@ -389,6 +390,17 @@ export async function POST(request: NextRequest) {
       useWebSearch,
       topic as NewsTopic,
       enableThinking,
+      (usage) => {
+        // 어드민 통계용 — 실패해도 응답에는 영향 없음.
+        logTokenUsage({
+          uid: authedUid,
+          provider: "google",
+          model: usage.model,
+          promptTokens: usage.promptTokens,
+          completionTokens: usage.completionTokens,
+          feature: "chat",
+        }).catch(() => {});
+      },
     );
 
     return new Response(stream, {

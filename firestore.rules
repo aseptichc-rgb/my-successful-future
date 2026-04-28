@@ -159,6 +159,12 @@ service cloud.firestore {
       allow read, write: if isOwner(uid);
     }
 
+    // ── tokenUsage ──
+    // LLM 호출당 토큰/비용 기록 (server-only). 어드민 통계는 Admin SDK 경유로만 조회.
+    match /tokenUsage/{docId} {
+      allow read, write: if false;
+    }
+
     // ── personaNews ──
     // 페르소나가 자동 수집한 기사들 (server-only write).
     // 모든 로그인 사용자는 토론 UI에서 페르소나의 수집 기사 헤드라인을 볼 수 있다.

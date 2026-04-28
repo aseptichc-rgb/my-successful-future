@@ -52,7 +52,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   }, [enableNotifications]);
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-dvh overflow-hidden">
       {/* 데스크톱 좌측 슬림 레일 (BottomNav가 lg에서 슬림 레일로 렌더) */}
       {firebaseUser && (
         <BottomNav uid={firebaseUser.uid} displayName={displayName} />
