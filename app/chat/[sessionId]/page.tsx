@@ -24,8 +24,6 @@ import ActiveDebateBanner from "@/components/chat/ActiveDebateBanner";
 import PeerAssistPanel from "@/components/chat/PeerAssistPanel";
 import NewChatModal from "@/components/chat/NewChatModal";
 import ChatInput, { type ChatInputHandle } from "@/components/chat/ChatInput";
-import AttachedDocsPanel from "@/components/chat/AttachedDocsPanel";
-import ReferenceDocsPanel from "@/components/chat/ReferenceDocsPanel";
 import PresenceIndicator from "@/components/chat/PresenceIndicator";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { updateUserPersona, updateFuturePersona, clearUnreadCount, updatePresence, deleteSession } from "@/lib/firebase";
@@ -543,17 +541,6 @@ export default function ChatSessionPage() {
         </div>
       )}
 
-      {/* 첨부 문서 패널 (Claude 결과물 등) */}
-      {currentUid && (
-        <>
-          <AttachedDocsPanel
-            sessionId={sessionId}
-            currentUid={currentUid}
-            currentName={currentName}
-          />
-          <ReferenceDocsPanel />
-        </>
-      )}
 
       {/* 입력 영역 — Apple 글라스 */}
       <div className={`nav-glass border-t border-black/[0.06] px-3 py-2.5 sm:px-4 sm:py-3 ${isDirectChat && respondingConversationPersona ? "border-t-0" : ""}`}>
