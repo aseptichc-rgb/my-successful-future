@@ -242,6 +242,32 @@ export interface PersonaSchedule {
   updatedAt: Timestamp;
 }
 
+// ── 페르소나 일일 격려 메시지 ────────────────────────
+// 페르소나가 매일 8~18시 KST 사이에 한 번씩 사용자에게 보내는 짧은 격려 메시지.
+// 저장 위치: users/{uid}/dailyEncouragements/{YYYY-MM-DD}
+// 일일 1회 발사 보장 + 크론 재시도 안전성을 위해 fired 플래그를 항목별로 관리한다.
+export interface DailyEncouragementItem {
+  /** 빌트인 PersonaId 또는 "custom:xxx" */
+  personaId: string;
+  /** KST 자정 기준 발사 분 (480~1080, 즉 08:00~18:00) */
+  dueMinute: number;
+  /** 이미 발사됐는지 */
+  fired: boolean;
+  /** 발사된 세션 (디버그/조회용) */
+  sessionId?: string;
+  /** 발사 시각 (디버그용) */
+  firedAt?: Timestamp;
+}
+
+export interface DailyEncouragementPlan {
+  uid: string;
+  /** YYYY-MM-DD (KST) */
+  ymd: string;
+  items: DailyEncouragementItem[];
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
 // ── 페르소나별 기억 샤드 ─────────────────────────────
 export interface PersonaMemory {
   personaId: string;
