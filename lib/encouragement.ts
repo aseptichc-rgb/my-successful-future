@@ -20,6 +20,7 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getAdminDb, getAdminMessaging } from "@/lib/firebase-admin";
 import { withRetry } from "@/lib/gemini";
 import { PERSONAS, BUILTIN_PERSONA_IDS } from "@/lib/personas";
+import { buildFutureSelfPrompt } from "@/lib/prompts";
 import { KST_OFFSET_MINUTES, CRON_TOLERANCE_MINUTES } from "@/lib/constants/keyword-alert";
 import type {
   BuiltinPersonaId,
@@ -27,6 +28,7 @@ import type {
   DailyEncouragementItem,
   DailyEncouragementPlan,
   PersonaOverride,
+  User,
 } from "@/types";
 
 // ── 상수 ─────────────────────────────────────────────
@@ -41,11 +43,12 @@ const ACTIVE_USER_GRACE_MINUTES = 5;
 const ENCOURAGEMENT_MAX_TOKENS = 200;
 /** 발사 라벨 prefix (메시지 본문 헤드라인용) */
 const ENCOURAGEMENT_LABEL = "💌 오늘의 격려";
-/** 빌트인 중 격려 대상에서 제외 (뉴스봇은 personality 없음, future-self는 별도 데일리 리추얼 보유) */
+/** 빌트인 중 격려 대상에서 제외 (뉴스봇은 personality 없음). */
 const EXCLUDED_BUILTIN_IDS: ReadonlySet<BuiltinPersonaId> = new Set([
   "default",
-  "future-self",
 ]);
+/** future-self 페르소나 ID (특수 처리 분기용). */
+const FUTURE_SELF_ID: BuiltinPersonaId = "future-self";
 
 // ── 타입 ────────────────────────────────────────────
 export interface PlanResult {
@@ -186,6 +189,41 @@ export async function planAllUsers(): Promise<PlanResult[]> {
 }
 
 // ── 페르소나 해석 (시스템 프롬프트 포함) ──────────────
+
+/**
+ * future-self 전용 해석. users/{uid} 문서에서 futurePersona/userPersona/userMemory 를
+ * 읽어 buildFutureSelfPrompt 로 시스템 프롬프트를 동적으로 만든다.
+ * futurePersona 가 없으면 null (격려 생성 자체가 의미 없으므로 skip).
+ */
+async function resolveFutureSelfPersona(
+  uid: string
+): Promise<ResolvedPersonaInfo | null> {
+  const db = getAdminDb();
+  const base = PERSONAS[FUTURE_SELF_ID];
+  try {
+    const userSnap = await db.collection("users").doc(uid).get();
+    if (!userSnap.exists) return null;
+    const userData = userSnap.data() as User | undefined;
+    const futurePersona = userData?.futurePersona?.trim() ?? "";
+    if (!futurePersona) return null;
+    const systemPromptAddition = buildFutureSelfPrompt(
+      userData?.userPersona,
+      futurePersona,
+      undefined,
+      userData?.userMemory
+    );
+    return {
+      id: FUTURE_SELF_ID,
+      name: base.name,
+      icon: base.icon,
+      systemPromptAddition,
+    };
+  } catch (err) {
+    console.error(`[encouragement] future-self 해석 실패 (${uid}):`, err);
+    return null;
+  }
+}
+
 async function resolvePersonaWithPrompt(
   uid: string,
   personaId: string
@@ -193,6 +231,11 @@ async function resolvePersonaWithPrompt(
   const db = getAdminDb();
   // 빌트인
   if ((BUILTIN_PERSONA_IDS as string[]).includes(personaId)) {
+    // future-self: systemPromptAddition 이 비어있고 buildFutureSelfPrompt 로 동적 생성.
+    // futurePersona 미설정이면 자기소개 텍스트 자체가 없으므로 skip.
+    if (personaId === FUTURE_SELF_ID) {
+      return resolveFutureSelfPersona(uid);
+    }
     const base = PERSONAS[personaId as BuiltinPersonaId];
     if (!base) return null;
     let name = base.name;
@@ -252,13 +295,49 @@ async function resolvePersonaWithPrompt(
 // ── 1:1 세션 확보 ─────────────────────────────────────
 
 /**
+ * future-self 는 sessionType "future-self" 단일 전용 세션을 사용한다.
+ * (existing daily-ritual 와 같은 세션) 없으면 생성.
+ */
+async function findOrCreateFutureSelfSession(uid: string): Promise<string | null> {
+  const db = getAdminDb();
+  try {
+    const existing = await db
+      .collection("sessions")
+      .where("uid", "==", uid)
+      .where("sessionType", "==", "future-self")
+      .limit(1)
+      .get();
+    if (!existing.empty) return existing.docs[0].id;
+
+    const ref = await db.collection("sessions").add({
+      uid,
+      title: "🌟 미래의 나와의 대화",
+      sessionType: "future-self",
+      participants: [uid],
+      participantNames: { [uid]: "나" },
+      pinnedBy: [uid],
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    return ref.id;
+  } catch (err) {
+    console.error(`[encouragement] future-self 세션 확보 실패 (${uid}):`, err);
+    return null;
+  }
+}
+
+/**
  * 페르소나의 가장 최근 1:1 AI 세션을 찾는다. 없으면 새로 만든다.
  * 1:1 판정: sessionType === "ai" 이고 advisorIds 미지정 또는 [personaId] 단일.
+ * future-self 는 별도 sessionType 을 쓰므로 분기.
  */
 async function findOrCreateOneOnOneSession(
   uid: string,
   persona: ResolvedPersonaInfo
 ): Promise<string | null> {
+  if (persona.id === FUTURE_SELF_ID) {
+    return findOrCreateFutureSelfSession(uid);
+  }
   const db = getAdminDb();
   try {
     // 페르소나가 발화한 가장 최근 메시지 → 그 세션을 1:1 후보로
