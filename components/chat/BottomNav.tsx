@@ -32,12 +32,6 @@ const IconChat = ({ className = "h-5 w-5" }: { className?: string }) => (
     <path d="M4 5h16v10H8l-4 4V5z" />
   </svg>
 );
-const IconSettings = ({ className = "h-5 w-5" }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <circle cx="12" cy="12" r="3" />
-    <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06A2 2 0 1 1 4.13 16.92l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.65 8.83a1.7 1.7 0 0 0-.34-1.87l-.06-.06A2 2 0 1 1 7.08 4.07l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1.04-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06A2 2 0 1 1 19.93 7.08l-.06.06a1.7 1.7 0 0 0-.34 1.87V9c.27.66.93 1.1 1.65 1.1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z" />
-  </svg>
-);
 const IconBot = ({ className = "h-5 w-5" }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
     <rect x="4" y="7" width="16" height="12" rx="2" />
@@ -60,7 +54,7 @@ interface BottomNavProps {
   displayName: string;
 }
 
-type Tab = "home" | "future" | "advisors" | "inbox" | "settings";
+type Tab = "home" | "future" | "advisors" | "inbox";
 
 export default function BottomNav({ uid, displayName }: BottomNavProps) {
   const router = useRouter();
@@ -174,7 +168,6 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
 
   // 현재 활성 탭 판정 (모바일 바텀 탭에서만 사용)
   const activeTab: Tab | null = (() => {
-    if (pathname === "/settings") return "settings";
     if (pathname === "/chat") return "home";
     if (pathname === "/chat/advisors") return "advisors";
     if (pathname === "/chat/inbox") return "inbox";
@@ -197,7 +190,6 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
   const goAdvisors = () => router.push("/chat/advisors");
   const goInbox = () => router.push("/chat/inbox");
   const goSession = (id: string) => router.push(`/chat/${id}`);
-  const goSettings = () => router.push("/settings");
 
   const mobileTabs: {
     id: Tab;
@@ -210,7 +202,6 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
     { id: "future", label: "미래의 나", Icon: IconStar, onClick: goFuture },
     { id: "advisors", label: "자문단", Icon: IconCompass, onClick: goAdvisors },
     { id: "inbox", label: "채팅", Icon: IconChat, onClick: goInbox, badge: inboxUnread },
-    { id: "settings", label: "설정", Icon: IconSettings, onClick: goSettings },
   ];
 
   const formatSessionDate = (timestamp: { toDate?: () => Date } | undefined) => {
@@ -433,18 +424,6 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
           >
             <IconCompass className="h-[16px] w-[16px]" />
             <span>자문단</span>
-          </button>
-          <button
-            onClick={goSettings}
-            title="설정"
-            aria-label="설정"
-            className={`flex shrink-0 items-center justify-center rounded-pill px-2.5 py-2 leading-none transition-colors ${
-              activeTab === "settings"
-                ? "bg-[#1E1B4B] text-white"
-                : "text-black/70 hover:bg-black/[0.04]"
-            }`}
-          >
-            <IconSettings className="h-[18px] w-[18px]" />
           </button>
         </div>
 

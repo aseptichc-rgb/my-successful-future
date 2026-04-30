@@ -210,7 +210,7 @@ export default function InboxPage() {
   return (
     <div className="flex h-full flex-col bg-[#F0EDE6]">
       <header className="border-b border-black/[0.06] bg-white px-5 py-5 sm:px-6 sm:py-7">
-        <div className="mx-auto flex max-w-3xl items-end justify-between gap-4">
+        <div className="mx-auto flex max-w-3xl items-end justify-between gap-4 pr-12 sm:pr-14">
           <div className="min-w-0 flex-1">
             <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.005em] text-[#1E1B4B] sm:text-[32px]">
               채팅
@@ -229,13 +229,15 @@ export default function InboxPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto pb-24 lg:pb-4">
-        {sortedSessions.length === 0 ? (
-          <div className="bg-white px-5 py-12 text-center text-[14px] tracking-[-0.022em] text-black/48">
-            아직 대화가 없습니다.
-          </div>
-        ) : (
-          <ul>{sortedSessions.map(renderSessionItem)}</ul>
-        )}
+        <div className="mx-auto max-w-3xl">
+          {sortedSessions.length === 0 ? (
+            <div className="bg-white px-5 py-12 text-center text-[14px] tracking-[-0.022em] text-black/48">
+              아직 대화가 없습니다.
+            </div>
+          ) : (
+            <ul>{sortedSessions.map(renderSessionItem)}</ul>
+          )}
+        </div>
       </div>
 
       {showModal && (
