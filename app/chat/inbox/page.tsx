@@ -45,19 +45,16 @@ export default function InboxPage() {
   }
 
   const uid = firebaseUser.uid;
-  const dms = sessions.filter((s) => s.sessionType === "dm");
-  const groups = sessions.filter((s) => s.sessionType === "group");
-  const ais = sessions.filter((s) => s.sessionType === "ai");
 
-  const sortByPinned = (a: ChatSession, b: ChatSession) => {
+  const getSessionTime = (s: ChatSession) =>
+    s.lastMessageAt?.toMillis?.() ?? s.updatedAt?.toMillis?.() ?? 0;
+
+  const sortedSessions = [...sessions].sort((a, b) => {
     const aPinned = a.pinnedBy?.includes(uid) ? 1 : 0;
     const bPinned = b.pinnedBy?.includes(uid) ? 1 : 0;
-    return bPinned - aPinned;
-  };
-
-  const sortedDms = [...dms].sort(sortByPinned);
-  const sortedGroups = [...groups].sort(sortByPinned);
-  const sortedAis = [...ais].sort(sortByPinned);
+    if (aPinned !== bPinned) return bPinned - aPinned;
+    return getSessionTime(b) - getSessionTime(a);
+  });
 
   const handleSelect = (sessionId: string) => {
     router.push(`/chat/${sessionId}`);
@@ -232,47 +229,13 @@ export default function InboxPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto pb-24 lg:pb-4">
-        {/* DM 섹션 */}
-        <section>
-          <h2 className="sticky top-0 z-10 border-b border-black/[0.06] bg-[#F0EDE6]/85 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-black/48 backdrop-blur-xl">
-            다이렉트 메시지 ({sortedDms.length})
-          </h2>
-          {sortedDms.length === 0 ? (
-            <div className="bg-white px-5 py-8 text-center text-[14px] tracking-[-0.022em] text-black/48">
-              아직 1:1 대화가 없습니다.
-            </div>
-          ) : (
-            <ul>{sortedDms.map(renderSessionItem)}</ul>
-          )}
-        </section>
-
-        {/* 그룹 섹션 */}
-        <section className="mt-2">
-          <h2 className="sticky top-0 z-10 border-b border-black/[0.06] bg-[#F0EDE6]/85 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-black/48 backdrop-blur-xl">
-            그룹 ({sortedGroups.length})
-          </h2>
-          {sortedGroups.length === 0 ? (
-            <div className="bg-white px-5 py-8 text-center text-[14px] tracking-[-0.022em] text-black/48">
-              아직 그룹 대화가 없습니다.
-            </div>
-          ) : (
-            <ul>{sortedGroups.map(renderSessionItem)}</ul>
-          )}
-        </section>
-
-        {/* AI 자문단 섹션 */}
-        <section className="mt-2">
-          <h2 className="sticky top-0 z-10 border-b border-black/[0.06] bg-[#F0EDE6]/85 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-black/48 backdrop-blur-xl">
-            AI 자문단 ({sortedAis.length})
-          </h2>
-          {sortedAis.length === 0 ? (
-            <div className="bg-white px-5 py-8 text-center text-[14px] tracking-[-0.022em] text-black/48">
-              아직 AI 자문단 대화가 없습니다.
-            </div>
-          ) : (
-            <ul>{sortedAis.map(renderSessionItem)}</ul>
-          )}
-        </section>
+        {sortedSessions.length === 0 ? (
+          <div className="bg-white px-5 py-12 text-center text-[14px] tracking-[-0.022em] text-black/48">
+            아직 대화가 없습니다.
+          </div>
+        ) : (
+          <ul>{sortedSessions.map(renderSessionItem)}</ul>
+        )}
       </div>
 
       {showModal && (
