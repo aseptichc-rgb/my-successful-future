@@ -11,6 +11,7 @@ import {
 } from "@/lib/firebase";
 import { PERSONAS } from "@/lib/personas";
 import { LABELS } from "@/lib/labels";
+import { authedFetch } from "@/lib/authedFetch";
 import type { NewsTopic, PersonaId } from "@/types";
 
 // Step 1: 관심 주제 (preferredTopics 기본값 추천에도 쓰임)
@@ -42,6 +43,48 @@ const FUTURE_PERSONA_EXAMPLES = [
   "7년 뒤 가족과 보내는 시간이 최우선인 삶을 살고 있다. 일은 하루 5시간만 하고, 주말은 무조건 비워둔다.",
 ];
 
+// Step 2: 10년 후의 나를 구체화하기 위한 가이드 질문 — Gemini 가 이 답변을 모아 한 단락 서술문으로 정리한다.
+const FUTURE_SELF_QUESTIONS: { id: string; question: string; placeholder: string; rows: number }[] = [
+  {
+    id: "work",
+    question: "10년 뒤, 무슨 일을 하며 하루를 보내고 있나요?",
+    placeholder: "예: 작은 헬스케어 스타트업의 대표로, 오전엔 팀과 제품 회의, 오후엔 환자 인터뷰를 한다.",
+    rows: 3,
+  },
+  {
+    id: "place",
+    question: "어디에서, 누구와 살고 있나요?",
+    placeholder: "예: 서울 외곽 단독주택. 아내·두 아이·고양이 한 마리와 함께 산다.",
+    rows: 2,
+  },
+  {
+    id: "money",
+    question: "경제적으로는 어떤 모습인가요?",
+    placeholder: "예: 월 평균 1,500만 원 수입. 빚이 없고 매달 일정 금액을 투자에 넣는다.",
+    rows: 2,
+  },
+  {
+    id: "body",
+    question: "몸과 건강은 어떤 상태인가요?",
+    placeholder: "예: 주 4회 달리기와 근력 운동. 12시 전에 자고 6시에 일어난다.",
+    rows: 2,
+  },
+  {
+    id: "proud",
+    question: "가장 자랑스러운 일, 또는 이뤄낸 한 가지는?",
+    placeholder: "예: 작년에 책을 한 권 냈고, 강연에서 사람들의 변화 이야기를 듣는다.",
+    rows: 2,
+  },
+  {
+    id: "morning",
+    question: "그 모습의 당신은 어떤 마음으로 아침을 시작하나요?",
+    placeholder: "예: 조급하지 않고, 오늘 하루도 내가 만든 리듬대로 살 수 있다는 안정감.",
+    rows: 2,
+  },
+];
+
+const ANSWER_MAX_LEN = 600;
+
 export default function OnboardingPage() {
   const router = useRouter();
   const { user, firebaseUser, loading: authLoading, refreshUser } = useAuth();
@@ -53,6 +96,64 @@ export default function OnboardingPage() {
   const [selectedAdvisors, setSelectedAdvisors] = useState<PersonaId[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Step 2 상태: AI 가이드 질문/답변 → 서술형 정리
+  const [futureAnswers, setFutureAnswers] = useState<Record<string, string>>({});
+  const [synthesizing, setSynthesizing] = useState(false);
+  const [synthError, setSynthError] = useState<string | null>(null);
+  const [showManual, setShowManual] = useState(false);
+
+  const meaningfulAnswerCount = useMemo(
+    () =>
+      FUTURE_SELF_QUESTIONS.reduce(
+        (n, q) => n + ((futureAnswers[q.id] || "").trim().length >= 2 ? 1 : 0),
+        0,
+      ),
+    [futureAnswers],
+  );
+
+  const handleAnswerChange = (id: string, value: string) => {
+    setFutureAnswers((prev) => ({ ...prev, [id]: value.slice(0, ANSWER_MAX_LEN) }));
+  };
+
+  const handleSynthesize = async () => {
+    if (synthesizing) return;
+    if (meaningfulAnswerCount === 0) {
+      setSynthError("최소 한 가지 질문에는 답해 주세요.");
+      return;
+    }
+    setSynthError(null);
+    setSynthesizing(true);
+    try {
+      const payload = {
+        answers: FUTURE_SELF_QUESTIONS.map((q) => ({
+          question: q.question,
+          answer: (futureAnswers[q.id] || "").trim(),
+        })),
+        userPersona: userPersona.trim() || undefined,
+      };
+      const res = await authedFetch("/api/future-self-synthesize", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || `서버 오류 (${res.status})`);
+      }
+      const data = (await res.json()) as { description?: string };
+      const desc = (data.description || "").trim();
+      if (!desc) {
+        throw new Error("AI 응답이 비어 있습니다. 다시 시도해 주세요.");
+      }
+      setFuturePersona(desc.slice(0, 500));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[onboarding] AI 정리 실패:", err);
+      setSynthError(msg);
+    } finally {
+      setSynthesizing(false);
+    }
+  };
 
   // 미로그인 차단 + 이미 온보딩 완료했으면 홈으로
   useEffect(() => {
@@ -309,36 +410,121 @@ export default function OnboardingPage() {
           {step === 2 && (
             <div>
               <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.003em] text-[#1E1B4B] sm:text-[32px]">
-                {LABELS.futureSelf}는 어떤 모습인가요?
+                10년 후의 {LABELS.futureSelf}를 그려볼까요?
               </h1>
               <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
-                5년·10년 뒤 되고 싶은 모습을 자유롭게 적어주세요. 이 글이 오늘의 당신에게 메시지를 보내는 <strong className="font-semibold">미래의 나</strong>가 됩니다.
+                아래 질문에 떠오르는 만큼만 답해 보세요. AI가 답변을 모아 한 편의 생생한 서술로 정리해 드려요.
               </p>
-              <textarea
-                value={futurePersona}
-                onChange={(e) => setFuturePersona(e.target.value)}
-                rows={6}
-                maxLength={500}
-                placeholder="예: 5년 뒤 월 1,000만 원을 벌며 원하는 시간에 원하는 일을 하고 있다. 매일 아침 운동과 독서로 하루를 시작한다."
-                className="mt-6 w-full resize-none rounded-[14px] border border-black/10 bg-white px-4 py-3 text-[14px] leading-[1.5] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
-              />
-              <div className="mt-2 text-right text-[11px] tracking-[-0.01em] text-black/40">
-                {futurePersona.length}/500
+
+              <ul className="mt-6 space-y-4">
+                {FUTURE_SELF_QUESTIONS.map((q, i) => {
+                  const value = futureAnswers[q.id] || "";
+                  return (
+                    <li key={q.id}>
+                      <label className="flex items-start gap-2">
+                        <span className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#1E1B4B]/10 text-[11px] font-semibold text-[#1E1B4B]">
+                          {i + 1}
+                        </span>
+                        <span className="text-[14px] font-semibold leading-[1.4] tracking-[-0.022em] text-[#1E1B4B]">
+                          {q.question}
+                        </span>
+                      </label>
+                      <textarea
+                        value={value}
+                        onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                        rows={q.rows}
+                        maxLength={ANSWER_MAX_LEN}
+                        placeholder={q.placeholder}
+                        className="mt-2 w-full resize-none rounded-[12px] border border-black/10 bg-white px-3 py-2.5 text-[14px] leading-[1.5] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
+                      />
+                    </li>
+                  );
+                })}
+              </ul>
+
+              <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-[12px] tracking-[-0.01em] text-black/48">
+                  답한 질문 {meaningfulAnswerCount}/{FUTURE_SELF_QUESTIONS.length}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleSynthesize}
+                  disabled={synthesizing || meaningfulAnswerCount === 0}
+                  className="rounded-pill bg-[#1E1B4B] px-5 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-white transition-colors hover:bg-[#2A2766] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {synthesizing ? "AI가 정리 중…" : futurePersona ? "✨ 다시 정리하기" : "✨ AI로 정리하기"}
+                </button>
               </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {FUTURE_PERSONA_EXAMPLES.map((ex, i) => (
+
+              {synthError && (
+                <p className="mt-3 text-[13px] tracking-[-0.01em] text-[#D85A30]">{synthError}</p>
+              )}
+
+              {/* 정리된 결과 미리보기 — 사용자가 직접 다듬을 수 있도록 편집 가능 */}
+              {futurePersona && (
+                <div className="mt-6 rounded-[14px] border border-[#1E1B4B]/20 bg-[#1E1B4B]/5 p-4">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <h2 className="text-[14px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
+                      ✨ 정리된 10년 후의 나
+                    </h2>
+                    <span className="text-[11px] tracking-[-0.01em] text-black/40">
+                      {futurePersona.length}/500
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[12px] tracking-[-0.01em] text-black/56">
+                    필요한 부분은 직접 다듬어 주세요. 이 글이 매일 홈 화면에 보입니다.
+                  </p>
+                  <textarea
+                    value={futurePersona}
+                    onChange={(e) => setFuturePersona(e.target.value.slice(0, 500))}
+                    rows={6}
+                    maxLength={500}
+                    className="mt-3 w-full resize-none rounded-[12px] border border-black/10 bg-white px-3 py-2.5 text-[14px] leading-[1.6] tracking-[-0.01em] text-[#1E1B4B] focus:border-[#1E1B4B] focus:outline-none"
+                  />
+                </div>
+              )}
+
+              {/* 직접 작성 모드 — AI 없이 그냥 자유 서술 */}
+              <div className="mt-5">
+                {!showManual ? (
                   <button
-                    key={i}
                     type="button"
-                    onClick={() => setFuturePersona(ex)}
-                    className="rounded-pill border border-black/10 bg-white px-3 py-1.5 text-[12px] tracking-[-0.01em] text-black/70 transition-colors hover:border-[#1E1B4B] hover:text-[#1E1B4B]"
+                    onClick={() => setShowManual(true)}
+                    className="text-[12px] font-medium tracking-[-0.01em] text-black/56 underline-offset-2 hover:text-[#1E1B4B] hover:underline"
                   >
-                    {ex.length > 32 ? ex.slice(0, 32) + "…" : ex}
+                    AI 없이 직접 작성할게요
                   </button>
-                ))}
+                ) : (
+                  <div className="rounded-[12px] border border-dashed border-black/15 bg-white p-3">
+                    <p className="text-[12px] tracking-[-0.01em] text-black/56">
+                      AI 정리 대신 직접 적고 싶다면 아래에 자유롭게 써 주세요.
+                    </p>
+                    <textarea
+                      value={futurePersona}
+                      onChange={(e) => setFuturePersona(e.target.value.slice(0, 500))}
+                      rows={5}
+                      maxLength={500}
+                      placeholder="예: 5년 뒤 월 1,000만 원을 벌며 원하는 시간에 원하는 일을 하고 있다."
+                      className="mt-2 w-full resize-none rounded-[10px] border border-black/10 bg-white px-3 py-2 text-[14px] leading-[1.5] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
+                    />
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {FUTURE_PERSONA_EXAMPLES.map((ex, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setFuturePersona(ex)}
+                          className="rounded-pill border border-black/10 bg-white px-3 py-1.5 text-[12px] tracking-[-0.01em] text-black/70 transition-colors hover:border-[#1E1B4B] hover:text-[#1E1B4B]"
+                        >
+                          {ex.length > 32 ? ex.slice(0, 32) + "…" : ex}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
+
               <p className="mt-4 text-[12px] leading-[1.5] tracking-[-0.01em] text-black/48">
-                비워둬도 괜찮아요. 나중에 <strong className="font-medium text-black/60">⚙️ 설정</strong>에서 언제든지 바꿀 수 있어요.
+                비워둬도 괜찮아요. 나중에 홈에서 언제든 다시 작성할 수 있어요.
               </p>
             </div>
           )}
