@@ -100,7 +100,25 @@ export interface User {
   userMemoryUpdatedAt?: Timestamp;     // 메모리 마지막 업데이트 시각
   userMemoryMessageCount?: number;     // 마지막 메모리 업데이트 시점의 메시지 수
   onboardedAt?: Timestamp;             // 3단계 온보딩 위저드 완료 시각. 없으면 위저드 재노출.
+  /** 사용자가 직접 적은 목표 (최대 10개). 홈 대시보드에서 편집. */
+  goals?: string[];
+  goalsUpdatedAt?: Timestamp;
   createdAt: Timestamp;
+}
+
+// ── 홈 대시보드: 일일 체크리스트/회고 ───────────────
+// Firestore 경로: users/{uid}/dailyEntries/{YYYY-MM-DD} (KST 기준)
+export interface DailyTodo {
+  id: string;                          // 클라이언트에서 부여한 안정 ID (crypto.randomUUID)
+  text: string;
+  done: boolean;
+}
+
+export interface DailyEntry {
+  ymd: string;                         // YYYY-MM-DD (KST)
+  todos: DailyTodo[];
+  wins: string[];                      // 오늘 스스로 잘한 일 (최대 3개)
+  updatedAt: Timestamp;
 }
 
 // ── 세션 타입 ─────────────────────────────────────────

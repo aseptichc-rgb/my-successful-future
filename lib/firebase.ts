@@ -38,7 +38,7 @@ import {
   type Firestore,
   type Unsubscribe,
 } from "firebase/firestore";
-import type { User, ChatSession, ChatMessage, Invitation, InviteLink, NewsSource, NewsTopic, SessionType, UserPresence, AutoNewsConfig, KeywordAlertConfig, PersonaId, DailyRitualConfig, PersonaMemory, CustomPersona, PersonaOverride, PersonaOverrideInput, BuiltinPersonaId, PersonaSchedule, ScheduledNewsSlot } from "@/types";
+import type { User, ChatSession, ChatMessage, Invitation, InviteLink, NewsSource, NewsTopic, SessionType, UserPresence, AutoNewsConfig, KeywordAlertConfig, PersonaId, DailyRitualConfig, PersonaMemory, CustomPersona, PersonaOverride, PersonaOverrideInput, BuiltinPersonaId, PersonaSchedule, ScheduledNewsSlot, DailyEntry, DailyTodo } from "@/types";
 
 // ── Firebase 지연 초기화 ─────────────────────────────
 const firebaseConfig = {
@@ -1166,5 +1166,87 @@ export function onPersonaMemoriesSnapshot(
     (error) => {
       console.warn("페르소나 메모리 리스너 에러:", error.message);
     }
+  );
+}
+
+// ── 홈 대시보드: 목표 (최대 10개) ────────────────────
+export const MAX_USER_GOALS = 10;
+
+/**
+ * 사용자의 목표 리스트를 갱신한다. 빈 문자열은 제거하고 앞에서부터 MAX_USER_GOALS 개로 자른다.
+ * setDoc + merge 로 사용자 문서가 없는 케이스도 안전 처리.
+ */
+export async function updateUserGoals(uid: string, goals: string[]) {
+  const db = getDbInstance();
+  const cleaned = goals
+    .map((g) => g.trim())
+    .filter((g) => g.length > 0)
+    .slice(0, MAX_USER_GOALS);
+  await setDoc(
+    doc(db, "users", uid),
+    {
+      goals: cleaned,
+      goalsUpdatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+}
+
+// ── 홈 대시보드: 일일 체크리스트 / 회고 ──────────────
+export const MAX_DAILY_WINS = 3;
+
+/** KST 기준 YYYY-MM-DD 문자열 */
+export function getKstYmd(date: Date = new Date()): string {
+  return date.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+}
+
+export function onDailyEntrySnapshot(
+  uid: string,
+  ymd: string,
+  callback: (entry: DailyEntry | null) => void
+): Unsubscribe {
+  const db = getDbInstance();
+  return onSnapshot(
+    doc(db, "users", uid, "dailyEntries", ymd),
+    (snap) => {
+      if (!snap.exists()) {
+        callback(null);
+        return;
+      }
+      callback(snap.data() as DailyEntry);
+    },
+    (error) => {
+      console.warn("일일 엔트리 리스너 에러:", error.message);
+    }
+  );
+}
+
+export async function saveDailyTodos(uid: string, ymd: string, todos: DailyTodo[]) {
+  const db = getDbInstance();
+  await setDoc(
+    doc(db, "users", uid, "dailyEntries", ymd),
+    {
+      ymd,
+      todos,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+}
+
+export async function saveDailyWins(uid: string, ymd: string, wins: string[]) {
+  const db = getDbInstance();
+  const cleaned = wins
+    .map((w) => w.trim())
+    .filter((w) => w.length > 0)
+    .slice(0, MAX_DAILY_WINS);
+  await setDoc(
+    doc(db, "users", uid, "dailyEntries", ymd),
+    {
+      ymd,
+      wins: cleaned,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
   );
 }
