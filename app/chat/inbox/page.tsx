@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
   onSessionsSnapshot,
-  deleteSession,
   pinSession,
   unpinSession,
   muteSession,
@@ -14,7 +13,6 @@ import {
 import { formatRelativeDate } from "@/lib/locale";
 import { getSessionParticipantCounts } from "@/lib/sessionMeta";
 import NewChatModal from "@/components/chat/NewChatModal";
-import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ChatSession } from "@/types";
 
 export default function InboxPage() {
@@ -22,9 +20,7 @@ export default function InboxPage() {
   const { user, firebaseUser, loading } = useAuth();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [contextMenuId, setContextMenuId] = useState<string | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<ChatSession | null>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -60,37 +56,13 @@ export default function InboxPage() {
     router.push(`/chat/${sessionId}`);
   };
 
-  const handleDelete = (e: React.MouseEvent, session: ChatSession) => {
-    e.stopPropagation();
-    if (deletingId) return;
-    setPendingDelete(session);
-  };
-
-  const confirmDelete = async () => {
-    if (!pendingDelete) return;
-    const session = pendingDelete;
-    setDeletingId(session.id);
-    try {
-      await deleteSession(session.id, uid);
-      setPendingDelete(null);
-    } catch (err) {
-      console.error("세션 삭제 실패:", err);
-      window.alert("삭제에 실패했습니다. 잠시 후 다시 시도해주세요.");
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  const pendingIsLeaveOnly = (pendingDelete?.participants?.length || 1) > 1;
-
   const formatSessionDate = (timestamp: { toDate?: () => Date } | undefined) => {
     if (!timestamp?.toDate) return "";
     return formatRelativeDate(timestamp.toDate());
   };
 
   const renderSessionItem = (session: ChatSession) => {
-    const { total: participantCount, humans: humanCount } =
-      getSessionParticipantCounts(session);
+    const { total: participantCount } = getSessionParticipantCounts(session);
     const sessionType = session.sessionType;
     const unreadCount = session.unreadCounts?.[uid] || 0;
     const isPinned = session.pinnedBy?.includes(uid) || false;
@@ -154,25 +126,10 @@ export default function InboxPage() {
               )}
             </div>
           </div>
-          {unreadCount > 0 ? (
+          {unreadCount > 0 && (
             <span className="mt-1 flex h-[20px] min-w-[20px] shrink-0 items-center justify-center rounded-full bg-[#1E1B4B] px-1.5 text-[11px] font-semibold text-white">
               {unreadCount > 99 ? "99+" : unreadCount}
             </span>
-          ) : (
-            <button
-              onClick={(e) => handleDelete(e, session)}
-              className="mt-0.5 shrink-0 rounded-full p-1.5 text-black/30 opacity-0 transition-all hover:bg-[#D85A30]/10 hover:text-[#D85A30] group-hover:opacity-100"
-              title={humanCount > 1 ? "대화방 나가기" : "대화 삭제"}
-              disabled={deletingId === session.id}
-            >
-              {deletingId === session.id ? (
-                <div className="h-3.5 w-3.5 animate-spin rounded-full border border-black/10 border-t-[#D85A30]" />
-              ) : (
-                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              )}
-            </button>
           )}
         </div>
         {contextMenuId === session.id && (
@@ -247,24 +204,6 @@ export default function InboxPage() {
           onClose={() => setShowModal(false)}
         />
       )}
-
-      <ConfirmDialog
-        open={!!pendingDelete}
-        title={pendingIsLeaveOnly ? "대화방에서 나갈까요?" : "대화를 삭제할까요?"}
-        description={
-          pendingIsLeaveOnly
-            ? `"${pendingDelete?.title || "이 대화"}"에서 나가면 더 이상 새 메시지를 받을 수 없습니다.`
-            : `"${pendingDelete?.title || "이 대화"}"의 모든 메시지가 함께 삭제되며 되돌릴 수 없습니다.`
-        }
-        confirmLabel={pendingIsLeaveOnly ? "나가기" : "삭제"}
-        cancelLabel="취소"
-        destructive
-        loading={!!deletingId}
-        onConfirm={confirmDelete}
-        onCancel={() => {
-          if (!deletingId) setPendingDelete(null);
-        }}
-      />
     </div>
   );
 }

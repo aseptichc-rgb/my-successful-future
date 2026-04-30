@@ -2,11 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { useRouter, usePathname, useParams } from "next/navigation";
-import { onSessionsSnapshot, ensureFutureSelfSession, updateSessionTitle, deleteSession } from "@/lib/firebase";
+import { onSessionsSnapshot, ensureFutureSelfSession, updateSessionTitle } from "@/lib/firebase";
 import { formatRelativeDate } from "@/lib/locale";
 import { getSessionParticipantCounts } from "@/lib/sessionMeta";
 import NewChatModal from "@/components/chat/NewChatModal";
-import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Logo from "@/components/ui/Logo";
 import type { ChatSession } from "@/types";
 
@@ -67,8 +66,6 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const renameCancelledRef = useRef(false);
-  const [pendingDelete, setPendingDelete] = useState<ChatSession | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const beginRename = (e: React.MouseEvent, session: ChatSession) => {
     e.stopPropagation();
@@ -93,33 +90,6 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
       window.alert("이름 변경에 실패했습니다. 잠시 후 다시 시도해주세요.");
     }
   };
-
-  const beginDelete = (e: React.MouseEvent, session: ChatSession) => {
-    e.stopPropagation();
-    if (deletingId) return;
-    setPendingDelete(session);
-  };
-
-  const confirmDelete = async () => {
-    if (!pendingDelete) return;
-    const session = pendingDelete;
-    setDeletingId(session.id);
-    try {
-      await deleteSession(session.id, uid);
-      setPendingDelete(null);
-      // 현재 보고 있던 방을 떠난 경우 홈으로
-      if (activeSessionId === session.id) {
-        router.push("/chat");
-      }
-    } catch (err) {
-      console.error("세션 나가기/삭제 실패:", err);
-      window.alert("처리에 실패했습니다. 잠시 후 다시 시도해주세요.");
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  const pendingIsLeaveOnly = (pendingDelete?.participants?.length || 1) > 1;
 
   const getParticipantInfo = (session: ChatSession): { total: number; preview: string } => {
     const { total } = getSessionParticipantCounts(session);
@@ -315,26 +285,6 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
               </button>
-              <button
-                type="button"
-                onClick={(e) => beginDelete(e, session)}
-                disabled={deletingId === session.id}
-                className="rounded-[8px] p-1 text-black/30 transition-colors hover:bg-[#D85A30]/10 hover:text-[#D85A30] disabled:opacity-50"
-                title={(session.participants?.length || 1) > 1 ? "대화방 나가기" : "대화 삭제"}
-                aria-label={(session.participants?.length || 1) > 1 ? "대화방 나가기" : "대화 삭제"}
-              >
-                {deletingId === session.id ? (
-                  <span className="block h-3.5 w-3.5 animate-spin rounded-full border border-black/10 border-t-[#D85A30]" />
-                ) : (session.participants?.length || 1) > 1 ? (
-                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                ) : (
-                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                )}
-              </button>
             </div>
           )}
           {unreadCount > 0 && !isEditing && (
@@ -461,24 +411,6 @@ export default function BottomNav({ uid, displayName }: BottomNavProps) {
           onClose={() => setShowNewChat(false)}
         />
       )}
-
-      <ConfirmDialog
-        open={!!pendingDelete}
-        title={pendingIsLeaveOnly ? "대화방에서 나갈까요?" : "대화를 삭제할까요?"}
-        description={
-          pendingIsLeaveOnly
-            ? `"${pendingDelete?.title || "이 대화"}"에서 나가면 더 이상 새 메시지를 받을 수 없습니다.`
-            : `"${pendingDelete?.title || "이 대화"}"의 모든 메시지가 함께 삭제되며 되돌릴 수 없습니다.`
-        }
-        confirmLabel={pendingIsLeaveOnly ? "나가기" : "삭제"}
-        cancelLabel="취소"
-        destructive
-        loading={!!deletingId}
-        onConfirm={confirmDelete}
-        onCancel={() => {
-          if (!deletingId) setPendingDelete(null);
-        }}
-      />
     </>
   );
 }
