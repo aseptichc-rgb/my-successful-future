@@ -17,7 +17,8 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
-import { getAdminDb, getAdminMessaging } from "@/lib/firebase-admin";
+import { getAdminDb } from "@/lib/firebase-admin";
+import { sendChatPush } from "@/lib/serverPush";
 import { withRetry } from "@/lib/gemini";
 import { PERSONAS, BUILTIN_PERSONA_IDS } from "@/lib/personas";
 import { buildFutureSelfPrompt } from "@/lib/prompts";
@@ -504,62 +505,17 @@ async function postEncouragementMessage(params: {
 
   // FCM 푸시 — 토큰 없으면 조용히 skip. 실패해도 메시지 자체는 이미 저장됨.
   try {
-    await sendEncouragementPush({
+    await sendChatPush({
       uid,
       sessionId,
-      personaName: persona.name,
-      preview,
+      title: persona.name,
+      body: preview,
     });
   } catch (err) {
     console.warn(
       `[encouragement] 푸시 전송 실패 (${uid}/${persona.id}):`,
       err
     );
-  }
-}
-
-async function sendEncouragementPush(params: {
-  uid: string;
-  sessionId: string;
-  personaName: string;
-  preview: string;
-}): Promise<void> {
-  const { uid, sessionId, personaName, preview } = params;
-  const db = getAdminDb();
-  const tokenSnap = await db
-    .collection("fcmTokens")
-    .where("uid", "==", uid)
-    .get();
-  const tokens = tokenSnap.docs
-    .map((d) => d.get("token") as string | undefined)
-    .filter((t): t is string => typeof t === "string" && t.length > 0);
-  if (tokens.length === 0) return;
-
-  const messaging = getAdminMessaging();
-  const result = await messaging.sendEachForMulticast({
-    tokens,
-    data: {
-      title: personaName,
-      body: preview,
-      sessionId,
-    },
-  });
-
-  // 만료 토큰 정리
-  const expired: string[] = [];
-  result.responses.forEach((resp, idx) => {
-    if (
-      !resp.success &&
-      resp.error?.code === "messaging/registration-token-not-registered"
-    ) {
-      expired.push(tokens[idx]);
-    }
-  });
-  if (expired.length > 0) {
-    for (const token of expired) {
-      const dead = await db.collection("fcmTokens").where("token", "==", token).get();
-      dead.docs.forEach((d) => d.ref.delete());
-    }
   }
 }
 

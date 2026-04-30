@@ -14,14 +14,19 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
+  // notification 필드가 같이 왔으면 FCM SDK 가 자동으로 알림을 표시하므로
+  // 여기서 또 showNotification 을 부르면 알림이 중복으로 뜬다. data 만 있는
+  // 경우에 한해 우리가 직접 표시한다.
+  if (payload.notification) return;
+
   const data = payload.data || {};
   const title = data.title || "새 메시지";
   const body = data.body || "";
 
   self.registration.showNotification(title, {
     body,
-    icon: "/next.svg",
-    badge: "/next.svg",
+    icon: "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
     data: { url: data.sessionId ? `/chat/${data.sessionId}` : "/chat" },
     tag: data.sessionId || "default",
   });

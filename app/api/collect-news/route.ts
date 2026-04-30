@@ -27,6 +27,7 @@ import {
   type ResolvedPersona,
 } from "@/lib/persona-brief-poster";
 import { withRetry } from "@/lib/gemini";
+import { sendChatPush } from "@/lib/serverPush";
 import { buildMorningBriefPrompt, buildEveningReflectionPrompt } from "@/lib/prompts";
 import type {
   BuiltinPersonaId,
@@ -462,6 +463,7 @@ async function findOrCreateFutureSelfSession(uid: string, displayName: string): 
 }
 
 async function postDailyRitualMessages(
+  uid: string,
   sessionId: string,
   kind: "morning" | "evening",
   content: string,
@@ -489,15 +491,29 @@ async function postDailyRitualMessages(
   }
 
   const lastPreview = paragraphs[paragraphs.length - 1];
+  const previewTrimmed =
+    lastPreview.length > 100 ? lastPreview.slice(0, 100) + "..." : lastPreview;
   await db.collection("sessions").doc(sessionId).set(
     {
       updatedAt: FieldValue.serverTimestamp(),
-      lastMessage: lastPreview.length > 100 ? lastPreview.slice(0, 100) + "..." : lastPreview,
+      lastMessage: previewTrimmed,
       lastMessageAt: FieldValue.serverTimestamp(),
       lastMessageSenderName: "미래의 나",
     },
     { merge: true }
   );
+
+  // 스마트폰 푸시 — 토큰 없으면 sendChatPush 가 조용히 skip.
+  try {
+    await sendChatPush({
+      uid,
+      sessionId,
+      title: `🌟 미래의 나 — ${kindLabel}`,
+      body: previewTrimmed,
+    });
+  } catch (err) {
+    console.warn(`[collect-news] daily ritual 푸시 실패 (${uid}/${kind}):`, err);
+  }
 }
 
 async function fireDailyRitual(
@@ -549,7 +565,7 @@ async function fireDailyRitual(
   const text = result.response.text();
   if (!text || !text.trim()) return { uid, kind, status: "error", sessionId };
 
-  await postDailyRitualMessages(sessionId, kind, text);
+  await postDailyRitualMessages(uid, sessionId, kind, text);
 
   // lastMorningDate/lastEveningDate 업데이트 → 일일 1회 보장
   const update: Partial<DailyRitualConfig> =
