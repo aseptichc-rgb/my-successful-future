@@ -10,6 +10,7 @@ import {
   onDailyEntrySnapshot,
   saveDailyTodos,
   saveDailyWins,
+  saveDailyAchievedGoals,
   getKstYmd,
   MAX_USER_GOALS,
   MAX_DAILY_WINS,
@@ -49,6 +50,7 @@ export default function HomeDashboardPage() {
   const [todos, setTodos] = useState<DailyTodo[]>([]);
   const [todoDraft, setTodoDraft] = useState("");
   const [wins, setWins] = useState<string[]>(["", "", ""]);
+  const [achievedGoals, setAchievedGoals] = useState<string[]>([]);
   const dailyHydratedRef = useRef(false);
   const winsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -88,6 +90,7 @@ export default function HomeDashboardPage() {
         if (!dailyHydratedRef.current) {
           setTodos([]);
           setWins(["", "", ""]);
+          setAchievedGoals([]);
           dailyHydratedRef.current = true;
         }
         return;
@@ -95,6 +98,7 @@ export default function HomeDashboardPage() {
       setTodos(Array.isArray(entry.todos) ? entry.todos : []);
       const w = Array.isArray(entry.wins) ? entry.wins : [];
       setWins([0, 1, 2].map((i) => w[i] || ""));
+      setAchievedGoals(Array.isArray(entry.achievedGoals) ? entry.achievedGoals : []);
       dailyHydratedRef.current = true;
     });
     return unsub;
@@ -141,6 +145,38 @@ export default function HomeDashboardPage() {
     }
   };
 
+  // 오늘 달성 토글: 목표 텍스트 자체를 키로 저장 (텍스트가 바뀌면 자연스럽게 무효화)
+  const handleToggleGoalAchieved = async (goalText: string) => {
+    const trimmed = goalText.trim();
+    if (!trimmed) return;
+    const isAchieved = achievedGoals.includes(trimmed);
+    const next = isAchieved
+      ? achievedGoals.filter((g) => g !== trimmed)
+      : [...achievedGoals, trimmed];
+    setAchievedGoals(next);
+    try {
+      await saveDailyAchievedGoals(uid, ymd, next);
+    } catch (err) {
+      console.error("목표 달성 저장 실패:", err);
+      // 실패 시 롤백 — 다음 스냅샷이 정정해 줄 수 있지만 즉각 반영을 위해 명시적으로 되돌린다.
+      setAchievedGoals(achievedGoals);
+      window.alert("저장에 실패했습니다.");
+    }
+  };
+
+  // 목표 삭제·수정 후 더 이상 존재하지 않는 목표에 걸린 체크를 정리한다.
+  const pruneAchievedGoals = async (currentGoals: string[]) => {
+    const valid = new Set(currentGoals.map((g) => g.trim()).filter((g) => g.length > 0));
+    const pruned = achievedGoals.filter((g) => valid.has(g));
+    if (pruned.length === achievedGoals.length) return;
+    setAchievedGoals(pruned);
+    try {
+      await saveDailyAchievedGoals(uid, ymd, pruned);
+    } catch (err) {
+      console.error("달성 목표 정리 실패:", err);
+    }
+  };
+
   const handleAddGoal = async () => {
     const text = goalDraft.trim().slice(0, GOAL_MAX);
     if (!text) return;
@@ -165,17 +201,20 @@ export default function HomeDashboardPage() {
       const next = goals.filter((_, i) => i !== idx);
       setGoals(next);
       await persistGoals(next);
+      await pruneAchievedGoals(next);
       return;
     }
     const next = goals.map((g, i) => (i === idx ? trimmed : g));
     setGoals(next);
     await persistGoals(next);
+    await pruneAchievedGoals(next);
   };
 
   const handleRemoveGoal = async (idx: number) => {
     const next = goals.filter((_, i) => i !== idx);
     setGoals(next);
     await persistGoals(next);
+    await pruneAchievedGoals(next);
   };
 
   // ── 오늘의 할 일 ─────────────────────────────────
@@ -254,8 +293,11 @@ export default function HomeDashboardPage() {
         <section className="rounded-[16px] border border-black/[0.06] bg-white p-5 shadow-apple">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
-                🌟 10년 후의 나의 모습
+              <h2 className="flex items-center gap-2 text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
+                <svg className="h-[18px] w-[18px] text-[#1E1B4B]/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 3l2.6 5.4 5.9.9-4.3 4.1 1 5.9L12 16.6 6.8 19.3l1-5.9L3.5 9.3l5.9-.9L12 3z" />
+                </svg>
+                10년 후의 나의 모습
               </h2>
               <p className="mt-1 text-[12px] tracking-[-0.01em] text-black/56">
                 되고 싶은 모습을 자유롭게 적어두면, 매일 이 모습을 향해 걸을 수 있어요.
@@ -322,24 +364,57 @@ export default function HomeDashboardPage() {
         {/* ── 나의 목표 (최대 10) ───────────────── */}
         <section className="rounded-[16px] border border-black/[0.06] bg-white p-5 shadow-apple">
           <div className="flex items-baseline justify-between gap-2">
-            <h2 className="text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
-              🎯 나의 목표
+            <h2 className="flex items-center gap-2 text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
+              <svg className="h-[18px] w-[18px] text-[#1E1B4B]/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" />
+                <circle cx="12" cy="12" r="5" />
+                <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+              </svg>
+              나의 목표
             </h2>
             <span className="text-[12px] tracking-[-0.01em] text-black/48">
               {goals.length}/{MAX_USER_GOALS}
             </span>
           </div>
-          <p className="mt-1 text-[12px] tracking-[-0.01em] text-black/56">
-            구체적이고 측정 가능한 형태로 적어두면 더 잘 이뤄져요.
-          </p>
+          <div className="mt-1 flex items-baseline justify-between gap-2">
+            <p className="text-[12px] tracking-[-0.01em] text-black/56">
+              구체적이고 측정 가능한 형태로 적어두면 더 잘 이뤄져요. 달성한 목표는 왼쪽 동그라미를 눌러 표시하세요.
+            </p>
+            {goals.length > 0 && (
+              <span className="shrink-0 text-[12px] font-medium tracking-[-0.01em] text-[#1E1B4B]/70">
+                오늘 {achievedGoals.filter((g) => goals.includes(g)).length}/{goals.length}
+              </span>
+            )}
+          </div>
 
           {goals.length > 0 && (
             <ul className="mt-4 space-y-2">
-              {goals.map((goal, idx) => (
+              {goals.map((goal, idx) => {
+                const trimmed = goal.trim();
+                const achieved = trimmed.length > 0 && achievedGoals.includes(trimmed);
+                return (
                 <li key={idx} className="flex items-center gap-2">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#F0EDE6] text-[12px] font-semibold text-[#1E1B4B]">
-                    {idx + 1}
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleGoalAchieved(goal)}
+                    aria-label={achieved ? "달성 취소" : "오늘 달성으로 표시"}
+                    aria-pressed={achieved}
+                    title={achieved ? "오늘 달성함 — 취소하려면 클릭" : "오늘 달성으로 표시"}
+                    disabled={trimmed.length === 0}
+                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-[11px] font-semibold transition-colors ${
+                      achieved
+                        ? "border-[#1E1B4B] bg-[#1E1B4B] text-white"
+                        : "border-black/15 bg-[#F0EDE6] text-[#1E1B4B] hover:border-[#1E1B4B]"
+                    } disabled:cursor-not-allowed disabled:opacity-40`}
+                  >
+                    {achieved ? (
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 12l5 5L20 7" />
+                      </svg>
+                    ) : (
+                      idx + 1
+                    )}
+                  </button>
                   <input
                     value={goal}
                     maxLength={GOAL_MAX}
@@ -351,7 +426,9 @@ export default function HomeDashboardPage() {
                         (e.currentTarget as HTMLInputElement).blur();
                       }
                     }}
-                    className="min-w-0 flex-1 rounded-[10px] border border-transparent bg-[#F7F4ED] px-3 py-2 text-[14px] tracking-[-0.01em] text-[#1E1B4B] focus:border-[#1E1B4B] focus:bg-white focus:outline-none"
+                    className={`min-w-0 flex-1 rounded-[10px] border border-transparent bg-[#F7F4ED] px-3 py-2 text-[14px] tracking-[-0.01em] focus:border-[#1E1B4B] focus:bg-white focus:outline-none ${
+                      achieved ? "text-black/40 line-through" : "text-[#1E1B4B]"
+                    }`}
                   />
                   <button
                     type="button"
@@ -364,7 +441,8 @@ export default function HomeDashboardPage() {
                     </svg>
                   </button>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
 
@@ -398,8 +476,12 @@ export default function HomeDashboardPage() {
         {/* ── 오늘의 할 일 체크리스트 ─────────────── */}
         <section className="rounded-[16px] border border-black/[0.06] bg-white p-5 shadow-apple">
           <div className="flex items-baseline justify-between gap-2">
-            <h2 className="text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
-              ✅ 오늘의 할 일
+            <h2 className="flex items-center gap-2 text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
+              <svg className="h-[18px] w-[18px] text-[#1E1B4B]/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 11l3 3L22 4" />
+                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+              </svg>
+              오늘의 할 일
             </h2>
             <span className="text-[12px] tracking-[-0.01em] text-black/48">
               {completedCount}/{todos.length} 완료
@@ -484,8 +566,11 @@ export default function HomeDashboardPage() {
 
         {/* ── 오늘 스스로 잘한 일 3가지 ─────────────── */}
         <section className="rounded-[16px] border border-black/[0.06] bg-white p-5 shadow-apple">
-          <h2 className="text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
-            🌱 오늘 스스로 잘한 일 {MAX_DAILY_WINS}가지
+          <h2 className="flex items-center gap-2 text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
+            <svg className="h-[18px] w-[18px] text-[#1E1B4B]/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 21s-7-4.5-7-11a4 4 0 017-2.6A4 4 0 0119 10c0 6.5-7 11-7 11z" />
+            </svg>
+            오늘 스스로 잘한 일 {MAX_DAILY_WINS}가지
           </h2>
           <p className="mt-1 text-[12px] tracking-[-0.01em] text-black/56">
             아주 작은 일이어도 좋아요. 스스로를 칭찬하는 한 줄을 적어두세요.

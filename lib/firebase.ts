@@ -1250,3 +1250,21 @@ export async function saveDailyWins(uid: string, ymd: string, wins: string[]) {
     { merge: true },
   );
 }
+
+/**
+ * 오늘 달성한 목표 텍스트 목록을 저장한다 (목표 텍스트 자체를 키로 사용).
+ * 목표 텍스트를 사용자가 수정하면 자연스럽게 체크가 풀리는 동작을 의도.
+ */
+export async function saveDailyAchievedGoals(uid: string, ymd: string, achieved: string[]) {
+  const db = getDbInstance();
+  const cleaned = Array.from(new Set(achieved.map((g) => g.trim()).filter((g) => g.length > 0)));
+  await setDoc(
+    doc(db, "users", uid, "dailyEntries", ymd),
+    {
+      ymd,
+      achievedGoals: cleaned,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+}

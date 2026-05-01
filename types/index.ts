@@ -118,6 +118,8 @@ export interface DailyEntry {
   ymd: string;                         // YYYY-MM-DD (KST)
   todos: DailyTodo[];
   wins: string[];                      // 오늘 스스로 잘한 일 (최대 3개)
+  /** 오늘 달성한 "나의 목표" 텍스트 목록. 목표 텍스트가 바뀌면 자연스럽게 무효화된다. */
+  achievedGoals?: string[];
   updatedAt: Timestamp;
 }
 
