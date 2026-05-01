@@ -760,22 +760,10 @@ export function useChat(
       const isMultiAdvisorAiRoom =
         currentSessionType === "ai" && nonDefaultActive.length >= 2;
 
-      // DM/그룹 채팅: @멘션도 없고 진행 중인 AI 대화도 없으면 메시지만 저장
+      // DM/그룹 채팅: @멘션도 없고 진행 중인 AI 대화도 없으면 메시지만 저장.
+      // (푸시 알림은 addMessage 내부에서 자동으로 트리거되므로 여기선 별도 호출 없음.)
       // 단, 1인 방이고 뉴스봇 외 활성 페르소나가 있으면 아래 루트로 떨어져 자동 응답한다.
       if ((currentSessionType === "dm" || currentSessionType === "group") && mentionedPersonas.length === 0 && !conversationPersonaRef.current && !soloAutoRespond) {
-        // 푸시 알림 트리거
-        if (currentUid) {
-          fetch("/api/notify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              sessionId,
-              senderUid: currentUid,
-              senderName: currentName,
-              messagePreview: content.slice(0, 100),
-            }),
-          }).catch(() => {});
-        }
         setIsLoading(false);
         return;
       }

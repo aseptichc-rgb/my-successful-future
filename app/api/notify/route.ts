@@ -77,13 +77,31 @@ export async function POST(request: Request) {
     }
 
     // 5. 푸시 알림 전송
+    // notification + data + webpush + android 필드를 모두 포함해 Android/iOS Web Push
+    // 양쪽에서 알림 배너가 자동 표시되게 한다. data-only 페이로드는 iOS Safari Web Push
+    // 에서 자동 표시되지 않는 이슈가 있어 lib/serverPush.ts 와 동일한 모양을 유지.
     const messaging = getAdminMessaging();
+    const notifTitle = senderName;
+    const notifBody = messagePreview || "새 메시지가 도착했습니다";
+    const link = `/chat/${sessionId}`;
     const message = {
       tokens,
+      notification: { title: notifTitle, body: notifBody },
       data: {
-        title: senderName,
-        body: messagePreview || "새 메시지가 도착했습니다",
+        title: notifTitle,
+        body: notifBody,
         sessionId,
+      },
+      webpush: {
+        fcmOptions: { link },
+        notification: {
+          icon: "/icons/icon-192.png",
+          badge: "/icons/icon-192.png",
+          tag: sessionId,
+        },
+      },
+      android: {
+        notification: { tag: sessionId },
       },
     };
 

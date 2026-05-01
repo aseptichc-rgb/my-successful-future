@@ -360,6 +360,29 @@ export async function addMessage(
     lastMessageAt: serverTimestamp(),
     lastMessageSenderName: displayName,
   });
+
+  // 푸시 알림 트리거 — 사람/페르소나 구분 없이 모든 메시지에서 발송.
+  // 발신자(senderUid)가 본인이면 본인 단말로는 안 가고, 현재 이 세션을 보고 있는 사람도
+  // /api/notify 의 presence 필터에서 제외된다. 페르소나 메시지는 senderUid 가 비어 있어
+  // 어떤 참가자 uid 와도 매칭되지 않으므로 모든 참가자가 대상이 된다.
+  // 푸시 실패가 메시지 저장 흐름을 막지 않도록 fire-and-forget.
+  try {
+    const notifySenderUid = senderUid ?? `__persona:${personaInfo?.personaId ?? "ai"}`;
+    const notifySenderName = displayName || "새 메시지";
+    void fetch("/api/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId,
+        senderUid: notifySenderUid,
+        senderName: notifySenderName,
+        messagePreview: content.length > 100 ? content.slice(0, 100) + "..." : content,
+      }),
+    }).catch(() => {});
+  } catch {
+    // 푸시 트리거 자체가 실패해도 메시지는 이미 저장됐으므로 무시.
+  }
+
   return ref.id;
 }
 
