@@ -730,6 +730,7 @@ export default function ChatSessionPage() {
           onClose={() => setShowAutoNewsPanel(false)}
           futureSelfMode={isFutureSelfSession}
           futurePersonaSet={!!futurePersona}
+          overrideMap={overrideMap}
         />
       )}
 
@@ -754,6 +755,8 @@ export default function ChatSessionPage() {
           }}
           onClose={() => setShowCouncilLauncher(false)}
           disabled={isLoading}
+          customPersonaMap={customPersonaMap}
+          overrideMap={overrideMap}
         />
       )}
 

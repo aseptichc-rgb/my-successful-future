@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { PERSONA_LIST, PERSONA_SPECIALTIES } from "@/lib/personas";
-import type { AutoNewsConfig, BuiltinPersonaId, PersonaId } from "@/types";
+import { mergePersona } from "@/lib/persona-resolver";
+import type { AutoNewsConfig, BuiltinPersonaId, PersonaId, PersonaOverride } from "@/types";
 
 interface AutoNewsPanelProps {
   config: AutoNewsConfig | null;
@@ -17,6 +18,8 @@ interface AutoNewsPanelProps {
   // future-self 세션 모드: 페르소나 선택 UI 숨김 + 미래의 나만 활성
   futureSelfMode?: boolean;
   futurePersonaSet?: boolean;
+  // 빌트인 페르소나 사용자 오버라이드 (이름·아이콘 동기화용)
+  overrideMap?: Record<string, PersonaOverride>;
 }
 
 const INTERVAL_OPTIONS = [
@@ -40,6 +43,7 @@ export default function AutoNewsPanel({
   onClose,
   futureSelfMode = false,
   futurePersonaSet = false,
+  overrideMap,
 }: AutoNewsPanelProps) {
   const [topicInput, setTopicInput] = useState("");
   const enabled = config?.enabled ?? false;
@@ -62,7 +66,14 @@ export default function AutoNewsPanel({
   );
 
   // default 페르소나 제외 (자동 뉴스는 전문 페르소나만)
-  const personas = PERSONA_LIST.filter((p) => p.id !== "default");
+  // 사용자 오버라이드(이름·아이콘)를 적용해서 자문단 카드와 이름 동기화
+  const personas = useMemo(
+    () =>
+      PERSONA_LIST
+        .filter((p) => p.id !== "default")
+        .map((p) => mergePersona(p, overrideMap?.[p.id as string])),
+    [overrideMap],
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
