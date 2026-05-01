@@ -35,6 +35,7 @@ function kstTodayStartMs(): number {
 
 function ChatWindow({ messages, isLoading, respondingPersona, customPersonaMap, overrideMap, emptyTitle, emptySubtitle, emptyPersona }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const didInitialScrollRef = useRef(false);
   const [showOld, setShowOld] = useState(false);
 
   const { oldMessages, todayMessages } = useMemo(() => {
@@ -56,7 +57,12 @@ function ChatWindow({ messages, isLoading, respondingPersona, customPersonaMap, 
   const visibleMessages = effectiveShowOld ? messages : todayMessages;
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    // 첫 렌더(채팅방 진입)에는 애니메이션 없이 즉시 맨 아래로 점프해서
+    // 위에서부터 스크롤이 흘러내리는 어색함을 없앤다. 이후 새 메시지/응답에는 부드럽게.
+    if (visibleMessages.length === 0 && !isLoading) return;
+    const behavior: ScrollBehavior = didInitialScrollRef.current ? "smooth" : "auto";
+    bottomRef.current?.scrollIntoView({ behavior, block: "end" });
+    didInitialScrollRef.current = true;
   }, [visibleMessages.length, isLoading]);
 
   const hasOld = oldMessages.length > 0;
