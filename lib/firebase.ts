@@ -38,7 +38,7 @@ import {
   type Firestore,
   type Unsubscribe,
 } from "firebase/firestore";
-import type { User, ChatSession, ChatMessage, Invitation, InviteLink, NewsSource, NewsTopic, SessionType, UserPresence, AutoNewsConfig, KeywordAlertConfig, PersonaId, DailyRitualConfig, PersonaMemory, CustomPersona, PersonaOverride, PersonaOverrideInput, BuiltinPersonaId, PersonaSchedule, ScheduledNewsSlot, DailyEntry, DailyTodo } from "@/types";
+import type { User, ChatSession, ChatMessage, Invitation, InviteLink, NewsSource, NewsTopic, SessionType, UserPresence, AutoNewsConfig, KeywordAlertConfig, PersonaId, DailyRitualConfig, PersonaMemory, CustomPersona, PersonaOverride, PersonaOverrideInput, BuiltinPersonaId, PersonaSchedule, ScheduledNewsSlot, DailyEntry, DailyTodo, PublicPersona } from "@/types";
 
 // ── Firebase 지연 초기화 ─────────────────────────────
 const firebaseConfig = {
@@ -934,47 +934,156 @@ export function onDailyRitualConfigSnapshot(
 // ── 커스텀 페르소나 CRUD ────────────────────────────
 // 저장 위치: users/{uid}/customPersonas/{personaId}
 // 문서 ID는 "custom:xxxxx" 형식의 랜덤 token
+const CUSTOM_PERSONA_ID_LEN = 10;
+const CUSTOM_PERSONA_ID_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
+const PUBLIC_PERSONAS_COL = "publicPersonas";
+
 function generateCustomPersonaId(): string {
-  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
   let token = "";
-  for (let i = 0; i < 10; i++) token += chars.charAt(Math.floor(Math.random() * chars.length));
+  for (let i = 0; i < CUSTOM_PERSONA_ID_LEN; i++) {
+    token += CUSTOM_PERSONA_ID_CHARS.charAt(
+      Math.floor(Math.random() * CUSTOM_PERSONA_ID_CHARS.length),
+    );
+  }
   return `custom:${token}`;
+}
+
+/** publicPersonas 미러 문서 페이로드 — 작성자 식별 + 노출 필드만 비정규화 */
+function buildPublicPersonaPayload(args: {
+  id: string;
+  creatorUid: string;
+  creatorName: string;
+  name: string;
+  icon: string;
+  photoUrl?: string;
+  description: string;
+  systemPromptAddition: string;
+  publishedAt: unknown;        // serverTimestamp() 또는 기존 Timestamp 유지
+}): Record<string, unknown> {
+  const payload: Record<string, unknown> = {
+    id: args.id,
+    creatorUid: args.creatorUid,
+    creatorName: args.creatorName,
+    name: args.name,
+    icon: args.icon,
+    description: args.description,
+    systemPromptAddition: args.systemPromptAddition,
+    publishedAt: args.publishedAt,
+    updatedAt: serverTimestamp(),
+  };
+  if (args.photoUrl) payload.photoUrl = args.photoUrl;
+  return payload;
 }
 
 export async function createCustomPersona(
   uid: string,
   data: Pick<CustomPersona, "name" | "icon" | "description" | "systemPromptAddition"> &
-    Partial<Pick<CustomPersona, "photoUrl">>
+    Partial<Pick<CustomPersona, "photoUrl" | "isPublic">>,
+  /** isPublic=true 일 때 publicPersonas 미러에 저장될 작성자 표시명. 없으면 공개 불가. */
+  creatorName?: string,
 ): Promise<string> {
   const db = getDbInstance();
   const id = generateCustomPersonaId();
-  const payload: Record<string, unknown> = {
+  const wantsPublic = !!data.isPublic && !!creatorName;
+  const personaPayload: Record<string, unknown> = {
     id,
     name: data.name,
     icon: data.icon || "✨",
     description: data.description || "",
     systemPromptAddition: data.systemPromptAddition,
+    isPublic: wantsPublic,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
-  if (data.photoUrl) payload.photoUrl = data.photoUrl;
-  await setDoc(doc(db, "users", uid, "customPersonas", id), payload);
+  if (data.photoUrl) personaPayload.photoUrl = data.photoUrl;
+
+  const batch = writeBatch(db);
+  batch.set(doc(db, "users", uid, "customPersonas", id), personaPayload);
+  if (wantsPublic) {
+    batch.set(
+      doc(db, PUBLIC_PERSONAS_COL, id),
+      buildPublicPersonaPayload({
+        id,
+        creatorUid: uid,
+        creatorName: creatorName!,
+        name: data.name,
+        icon: data.icon || "✨",
+        photoUrl: data.photoUrl,
+        description: data.description || "",
+        systemPromptAddition: data.systemPromptAddition,
+        publishedAt: serverTimestamp(),
+      }),
+    );
+  }
+  await batch.commit();
   return id;
 }
 
 export async function updateCustomPersona(
   uid: string,
   id: string,
-  updates: Partial<Pick<CustomPersona, "name" | "icon" | "description" | "systemPromptAddition" | "photoUrl">>
+  updates: Partial<Pick<CustomPersona, "name" | "icon" | "description" | "systemPromptAddition" | "photoUrl" | "isPublic">>,
+  /** isPublic 토글에 따라 미러를 동기화하기 위한 작성자 표시명. */
+  creatorName?: string,
 ) {
   const db = getDbInstance();
   // photoUrl: 빈 문자열은 "삭제 요청"으로 해석해 deleteField 처리
   const { deleteField } = await import("firebase/firestore");
-  const payload: Record<string, unknown> = { ...updates, updatedAt: serverTimestamp() };
-  if ("photoUrl" in updates && !updates.photoUrl) {
-    payload.photoUrl = deleteField();
+
+  // 미러 동기화 결정에 필요한 현재 isPublic 상태(요청에 isPublic이 없으면 기존 값 유지)
+  const personaRef = doc(db, "users", uid, "customPersonas", id);
+  const currentSnap = await getDoc(personaRef);
+  if (!currentSnap.exists()) {
+    throw new Error("페르소나를 찾을 수 없어요.");
   }
-  await updateDoc(doc(db, "users", uid, "customPersonas", id), payload);
+  const current = currentSnap.data() as CustomPersona;
+
+  const personaPayload: Record<string, unknown> = { ...updates, updatedAt: serverTimestamp() };
+  if ("photoUrl" in updates && !updates.photoUrl) {
+    personaPayload.photoUrl = deleteField();
+  }
+
+  const nextIsPublic = "isPublic" in updates ? !!updates.isPublic : !!current.isPublic;
+  const wasPublic = !!current.isPublic;
+  const merged = {
+    name: updates.name ?? current.name,
+    icon: updates.icon ?? current.icon,
+    description: updates.description ?? current.description ?? "",
+    systemPromptAddition: updates.systemPromptAddition ?? current.systemPromptAddition,
+    photoUrl:
+      "photoUrl" in updates ? (updates.photoUrl || undefined) : current.photoUrl,
+  };
+
+  const batch = writeBatch(db);
+  batch.update(personaRef, personaPayload);
+
+  if (nextIsPublic) {
+    if (!creatorName) {
+      // 작성자 이름 없이 공개 미러를 만들 수 없다 — 의도치 않은 익명 공개 방지
+      throw new Error("공개하려면 사용자 이름이 필요해요. 설정에서 이름을 먼저 설정해주세요.");
+    }
+    // 새로 공개되는 경우 publishedAt 을 새로 찍고, 이미 공개 상태였다면 updatedAt 만 갱신.
+    batch.set(
+      doc(db, PUBLIC_PERSONAS_COL, id),
+      buildPublicPersonaPayload({
+        id,
+        creatorUid: uid,
+        creatorName,
+        name: merged.name,
+        icon: merged.icon,
+        photoUrl: merged.photoUrl,
+        description: merged.description,
+        systemPromptAddition: merged.systemPromptAddition,
+        publishedAt: wasPublic ? (current as unknown as { publishedAt?: unknown }).publishedAt ?? serverTimestamp() : serverTimestamp(),
+      }),
+      { merge: true },
+    );
+  } else if (wasPublic) {
+    // 공개 → 비공개: 미러 삭제
+    batch.delete(doc(db, PUBLIC_PERSONAS_COL, id));
+  }
+
+  await batch.commit();
 }
 
 export async function deleteCustomPersona(uid: string, id: string) {
@@ -984,6 +1093,12 @@ export async function deleteCustomPersona(uid: string, id: string) {
     await deleteDoc(doc(db, "users", uid, "personaSchedules", id));
   } catch (err) {
     console.warn("[deleteCustomPersona] schedule 캐스케이드 실패:", err);
+  }
+  // 공개 미러도 함께 제거 (없으면 조용히 무시)
+  try {
+    await deleteDoc(doc(db, PUBLIC_PERSONAS_COL, id));
+  } catch (err) {
+    console.warn("[deleteCustomPersona] public 미러 캐스케이드 실패:", err);
   }
   await deleteDoc(doc(db, "users", uid, "customPersonas", id));
 }
@@ -1007,6 +1122,63 @@ export function onCustomPersonasSnapshot(
       console.warn("커스텀 페르소나 리스너 에러:", error.message);
     }
   );
+}
+
+// ── 공개 페르소나 (다른 사용자가 둘러보고 복제할 수 있는 멘토) ──────────────
+
+/** 모든 공개 페르소나를 publishedAt 내림차순 비슷하게 받음. */
+export function onPublicPersonasSnapshot(
+  callback: (list: PublicPersona[]) => void,
+): Unsubscribe {
+  const db = getDbInstance();
+  const q = query(collection(db, PUBLIC_PERSONAS_COL), orderBy("publishedAt", "desc"));
+  return onSnapshot(
+    q,
+    (snap) => {
+      const list: PublicPersona[] = [];
+      snap.docs.forEach((d) => {
+        const data = d.data() as PublicPersona;
+        list.push({ ...data, id: d.id });
+      });
+      callback(list);
+    },
+    (error) => {
+      console.warn("공개 페르소나 리스너 에러:", error.message);
+    },
+  );
+}
+
+/**
+ * 공개 페르소나를 본인 customPersonas 로 복제한다.
+ * - 새 ID 발급 (원본 personaSchedules/메모리와 충돌 방지)
+ * - isPublic 은 false 로 시작 (자동 재공개 금지)
+ * 반환값: 새로 만들어진 customPersona id
+ */
+export async function clonePublicPersona(
+  uid: string,
+  publicPersonaId: string,
+): Promise<string> {
+  const db = getDbInstance();
+  const snap = await getDoc(doc(db, PUBLIC_PERSONAS_COL, publicPersonaId));
+  if (!snap.exists()) {
+    throw new Error("이 공개 멘토는 더 이상 존재하지 않아요.");
+  }
+  const src = snap.data() as PublicPersona;
+
+  const newId = generateCustomPersonaId();
+  const payload: Record<string, unknown> = {
+    id: newId,
+    name: src.name,
+    icon: src.icon || "✨",
+    description: src.description || "",
+    systemPromptAddition: src.systemPromptAddition,
+    isPublic: false,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+  if (src.photoUrl) payload.photoUrl = src.photoUrl;
+  await setDoc(doc(db, "users", uid, "customPersonas", newId), payload);
+  return newId;
 }
 
 // ── 페르소나(빌트인+커스텀) 정시 뉴스 스케줄 CRUD ───────────────

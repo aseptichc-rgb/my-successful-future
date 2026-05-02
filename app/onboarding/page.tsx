@@ -10,6 +10,7 @@ import {
   markOnboarded,
 } from "@/lib/firebase";
 import { PERSONAS } from "@/lib/personas";
+import PersonaIcon from "@/components/ui/PersonaIcon";
 import { LABELS } from "@/lib/labels";
 import { authedFetch } from "@/lib/authedFetch";
 import type { NewsTopic, PersonaId } from "@/types";
@@ -554,7 +555,12 @@ export default function OnboardingPage() {
                           : "border-black/10 bg-white hover:border-black/20"
                       }`}
                     >
-                      <span className="text-[28px] leading-none">{p.icon}</span>
+                      <PersonaIcon
+                        personaId={id as string}
+                        fallbackEmoji={p.icon}
+                        photoUrl={p.photoUrl}
+                        className="h-7 w-7 shrink-0 text-[#1E1B4B]"
+                      />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
                           <p className="truncate text-[15px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">

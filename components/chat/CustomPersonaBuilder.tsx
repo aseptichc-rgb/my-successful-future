@@ -12,7 +12,7 @@ interface CustomPersonaBuilderProps {
   initial?: CustomPersona;
   onSave: (
     data: Pick<CustomPersona, "name" | "icon" | "description" | "systemPromptAddition"> &
-      Partial<Pick<CustomPersona, "photoUrl">>
+      Partial<Pick<CustomPersona, "photoUrl" | "isPublic">>
   ) => Promise<void>;
   onClose: () => void;
   onDelete?: () => Promise<void>;
@@ -47,6 +47,8 @@ export default function CustomPersonaBuilder({ initial, onSave, onClose, onDelet
   const [photoProcessing, setPhotoProcessing] = useState(false);
   const [description, setDescription] = useState(initial?.description || "");
   const [systemPromptAddition, setSystemPromptAddition] = useState(initial?.systemPromptAddition || "");
+  const [isPublic, setIsPublic] = useState<boolean>(!!initial?.isPublic);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [refDocsOpen, setRefDocsOpen] = useState(false);
@@ -77,7 +79,8 @@ export default function CustomPersonaBuilder({ initial, onSave, onClose, onDelet
     name !== (initial?.name || "") ||
     (photoUrl || "") !== (initial?.photoUrl || "") ||
     description !== (initial?.description || "") ||
-    systemPromptAddition !== (initial?.systemPromptAddition || "");
+    systemPromptAddition !== (initial?.systemPromptAddition || "") ||
+    isPublic !== !!initial?.isPublic;
 
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -109,6 +112,7 @@ export default function CustomPersonaBuilder({ initial, onSave, onClose, onDelet
   const handleSave = async () => {
     if (!canSave) return;
     setSaving(true);
+    setSaveError(null);
     try {
       await onSave({
         name: name.trim(),
@@ -116,8 +120,12 @@ export default function CustomPersonaBuilder({ initial, onSave, onClose, onDelet
         photoUrl: photoUrl || "",
         description: description.trim(),
         systemPromptAddition: systemPromptAddition.trim(),
+        isPublic,
       });
       onClose();
+    } catch (err) {
+      console.error("페르소나 저장 실패:", err);
+      setSaveError(err instanceof Error ? err.message : "저장에 실패했어요. 다시 시도해주세요.");
     } finally {
       setSaving(false);
     }
@@ -274,6 +282,32 @@ export default function CustomPersonaBuilder({ initial, onSave, onClose, onDelet
             </div>
           </div>
 
+          <div className="rounded-lg border border-emerald-100 bg-emerald-50/40 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-800">🌐 다른 사람에게 공개</p>
+                <p className="mt-0.5 text-[11px] text-gray-500">
+                  공개하면 다른 사용자가 둘러보고 자신의 멘토로 추가할 수 있어요. 이름·사진·설명·지침 전체가 공유돼요.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isPublic}
+                onClick={() => setIsPublic((v) => !v)}
+                className={`shrink-0 inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  isPublic ? "bg-emerald-500" : "bg-gray-300"
+                }`}
+              >
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                    isPublic ? "translate-x-5" : "translate-x-0.5"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
           <div className="rounded-lg border border-violet-100 bg-violet-50/40 p-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -297,6 +331,10 @@ export default function CustomPersonaBuilder({ initial, onSave, onClose, onDelet
             </div>
           </div>
         </div>
+
+        {saveError && (
+          <p className="mt-3 text-xs text-red-600">{saveError}</p>
+        )}
 
         {confirmDelete && onDelete && (
           <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3">

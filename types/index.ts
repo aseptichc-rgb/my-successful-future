@@ -37,7 +37,28 @@ export interface CustomPersona {
   photoUrl?: string;
   description: string;              // 간략 설명
   systemPromptAddition: string;     // 톤/말투/전문성 자유 서술
+  /** true 면 publicPersonas 컬렉션에 미러링되어 다른 사용자가 둘러보고 복제할 수 있다. */
+  isPublic?: boolean;
   createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+// ── 공개 페르소나 (다른 사용자가 둘러보고 복제할 수 있는 멘토) ──
+// 저장 위치: publicPersonas/{personaId}  (top-level)
+// 문서 ID = 원본 CustomPersona.id ("custom:xxxxx")
+// 작성자가 isPublic 을 켜는 순간 미러로 생성·갱신되고, 끄거나 삭제 시 함께 사라진다.
+export interface PublicPersona {
+  id: string;                       // 원본 CustomPersona.id
+  name: string;
+  icon: string;
+  photoUrl?: string;
+  description: string;
+  systemPromptAddition: string;
+  /** 작성자 uid — 권한 체크 + 본인 항목 필터링 용도 */
+  creatorUid: string;
+  /** 작성자 displayName 비정규화 (목록에서 "by ○○" 표기) */
+  creatorName: string;
+  publishedAt: Timestamp;
   updatedAt: Timestamp;
 }
 

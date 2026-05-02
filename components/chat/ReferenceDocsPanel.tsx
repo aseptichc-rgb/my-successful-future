@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useCustomPersonas } from "@/hooks/useCustomPersonas";
 import { usePersonaOverrides } from "@/hooks/usePersonaOverrides";
 import { getPersona } from "@/lib/personas";
+import PersonaIcon from "@/components/ui/PersonaIcon";
 import type { BuiltinPersonaId, PersonaId } from "@/types";
 
 interface ReferenceDocItem {
@@ -21,6 +22,7 @@ interface PersonaOption {
   id: PersonaId;
   name: string;
   icon: string;
+  photoUrl?: string;
 }
 
 // 자문단 UI 에 노출되는 빌트인 페르소나 (future-self 는 별도 홈이라 제외)
@@ -55,12 +57,13 @@ export default function ReferenceDocsPanel() {
   const personaOptions = useMemo<PersonaOption[]>(() => {
     const builtins: PersonaOption[] = BUILTIN_ADVISOR_IDS.map((id) => {
       const p = getPersona(id, undefined, overrideMap);
-      return { id, name: p.name, icon: p.icon };
+      return { id, name: p.name, icon: p.icon, photoUrl: p.photoUrl };
     });
     const customs: PersonaOption[] = customList.map((cp) => ({
       id: cp.id,
       name: cp.name,
       icon: cp.icon,
+      photoUrl: cp.photoUrl,
     }));
     return [...builtins, ...customs];
   }, [customList, overrideMap]);
@@ -223,13 +226,19 @@ export default function ReferenceDocsPanel() {
                     key={p.id}
                     type="button"
                     onClick={() => setNewPersonaIds((prev) => togglePersonaIn(prev, p.id as string))}
-                    className={`rounded-full border px-2 py-0.5 text-[10px] transition-colors ${
+                    className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] transition-colors ${
                       on
                         ? "border-blue-500 bg-blue-100 text-blue-800"
                         : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
                     }`}
                   >
-                    {p.icon} {p.name}
+                    <PersonaIcon
+                      personaId={p.id as string}
+                      fallbackEmoji={p.icon}
+                      photoUrl={p.photoUrl}
+                      className="h-3 w-3"
+                    />
+                    <span>{p.name}</span>
                   </button>
                 );
               })}
@@ -300,14 +309,29 @@ export default function ReferenceDocsPanel() {
                   <div className="mt-1 flex flex-wrap items-center gap-1">
                     {!editing ? (
                       scoped ? (
-                        item.personaIds.map((pid) => (
-                          <span
-                            key={pid}
-                            className="rounded-full border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[10px] text-blue-700"
-                          >
-                            {personaLabel(pid)}
-                          </span>
-                        ))
+                        item.personaIds.map((pid) => {
+                          const match = personaOptions.find((p) => p.id === pid);
+                          return (
+                            <span
+                              key={pid}
+                              className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[10px] text-blue-700"
+                            >
+                              {match ? (
+                                <>
+                                  <PersonaIcon
+                                    personaId={match.id as string}
+                                    fallbackEmoji={match.icon}
+                                    photoUrl={match.photoUrl}
+                                    className="h-3 w-3"
+                                  />
+                                  <span>{match.name}</span>
+                                </>
+                              ) : (
+                                <span>{personaLabel(pid)}</span>
+                              )}
+                            </span>
+                          );
+                        })
                       ) : (
                         <span className="text-[10px] text-gray-400">전체 자문단 적용</span>
                       )
@@ -321,13 +345,19 @@ export default function ReferenceDocsPanel() {
                             onClick={() =>
                               updatePersonaScope(item, togglePersonaIn(item.personaIds, p.id as string))
                             }
-                            className={`rounded-full border px-2 py-0.5 text-[10px] transition-colors ${
+                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] transition-colors ${
                               on
                                 ? "border-blue-500 bg-blue-100 text-blue-800"
                                 : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
                             }`}
                           >
-                            {p.icon} {p.name}
+                            <PersonaIcon
+                              personaId={p.id as string}
+                              fallbackEmoji={p.icon}
+                              photoUrl={p.photoUrl}
+                              className="h-3 w-3"
+                            />
+                            <span>{p.name}</span>
                           </button>
                         );
                       })

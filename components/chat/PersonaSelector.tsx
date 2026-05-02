@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { PERSONA_LIST } from "@/lib/personas";
 import { mergePersona } from "@/lib/persona-resolver";
+import PersonaIcon from "@/components/ui/PersonaIcon";
 import type { CustomPersona, Persona, PersonaId, PersonaOverride } from "@/types";
 
 interface PersonaSelectorProps {
@@ -27,6 +28,7 @@ export default function PersonaSelector({ activePersonas, onToggle, customPerson
     id: c.id,
     name: c.name,
     icon: c.icon,
+    photoUrl: c.photoUrl,
     description: c.description || "내가 만든 멘토",
     systemPromptAddition: c.systemPromptAddition,
   }));
@@ -78,7 +80,12 @@ export default function PersonaSelector({ activePersonas, onToggle, customPerson
           key={persona.id}
           className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700"
         >
-          <span>{persona.icon}</span>
+          <PersonaIcon
+            personaId={persona.id as string}
+            fallbackEmoji={persona.icon}
+            photoUrl={persona.photoUrl}
+            className="h-4 w-4"
+          />
           <span className="max-w-[80px] truncate">{persona.name}</span>
           {activePersonas.length > 1 && (
             <button
@@ -168,7 +175,12 @@ export default function PersonaSelector({ activePersonas, onToggle, customPerson
                             )}
                           </div>
 
-                          <span className="text-lg">{persona.icon}</span>
+                          <PersonaIcon
+                            personaId={persona.id as string}
+                            fallbackEmoji={persona.icon}
+                            photoUrl={persona.photoUrl}
+                            className="h-6 w-6 shrink-0 text-gray-700"
+                          />
                           <div className="min-w-0 flex-1">
                             <div className="text-sm font-medium text-gray-900">
                               {persona.name}

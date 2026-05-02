@@ -7,6 +7,7 @@ import { onSessionsSnapshot, createSession } from "@/lib/firebase";
 import { PERSONAS, getPersona } from "@/lib/personas";
 import { formatRelativeDate } from "@/lib/locale";
 import { useCustomPersonas } from "@/hooks/useCustomPersonas";
+import { usePublicPersonas } from "@/hooks/usePublicPersonas";
 import { usePersonaOverrides } from "@/hooks/usePersonaOverrides";
 import CustomPersonaBuilder from "@/components/chat/CustomPersonaBuilder";
 import PersonaEditorModal from "@/components/chat/PersonaEditorModal";
@@ -32,6 +33,7 @@ export default function AdvisorsPage() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [creating, setCreating] = useState<PersonaId | null>(null);
   const { map: customMap, list: customList, create: createCustom, edit: editCustom, remove: removeCustom } = useCustomPersonas(firebaseUser?.uid);
+  const { list: publicList, clone: clonePublic } = usePublicPersonas();
   const { map: overrideMap, upsert: upsertOverride, reset: resetOverride } = usePersonaOverrides(firebaseUser?.uid);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editingCustom, setEditingCustom] = useState<CustomPersona | null>(null);
@@ -42,6 +44,10 @@ export default function AdvisorsPage() {
   const [multiSelectOpen, setMultiSelectOpen] = useState(false);
   const [selectedAdvisorIds, setSelectedAdvisorIds] = useState<PersonaId[]>([]);
   const [multiCreating, setMultiCreating] = useState(false);
+  // 공개 멘토 — 인라인 피드에서 복제 진행 중인 항목
+  const [cloningId, setCloningId] = useState<string | null>(null);
+
+  const creatorName = user?.displayName || firebaseUser?.displayName || "";
 
   useEffect(() => {
     if (loading) return;
@@ -137,6 +143,23 @@ export default function AdvisorsPage() {
     setSelectedAdvisorIds([]);
     setMultiSelectOpen(true);
   };
+
+  // 공개 멘토 복제 (다른 사람의 멘토를 내 멘토로 추가)
+  const handleClonePublic = async (publicId: string) => {
+    if (!firebaseUser || cloningId) return;
+    setCloningId(publicId);
+    try {
+      await clonePublic(firebaseUser.uid, publicId);
+    } catch (err) {
+      console.error("공개 멘토 복제 실패:", err);
+      alert(err instanceof Error ? err.message : "추가에 실패했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setCloningId(null);
+    }
+  };
+
+  // 본인 작성분과 이미 복제한 같은 이름은 둘러보기 결과에서 숨긴다 (중복 추가 혼란 방지)
+  const browsableList = publicList.filter((p) => p.creatorUid !== firebaseUser?.uid);
 
   if (loading || !firebaseUser) {
     return (
@@ -389,6 +412,79 @@ export default function AdvisorsPage() {
               </div>
             )}
           </div>
+
+          {/* 다른 사람들의 멘토 — 인스타그램식 인라인 피드 */}
+          <div className="mt-12">
+            <div className="mb-4">
+              <h2 className="text-[22px] font-semibold leading-[1.18] tracking-[-0.005em] text-[#1E1B4B]">
+                다른 사람들의 멘토
+              </h2>
+              <p className="mt-1 text-[13px] tracking-[-0.01em] text-black/56">
+                다른 사용자가 공개한 멘토예요. 마음에 들면 내 멘토로 추가해 바로 대화해보세요.
+              </p>
+            </div>
+
+            {browsableList.length === 0 ? (
+              <div className="rounded-[18px] bg-white p-10 text-center text-[14px] tracking-[-0.022em] text-black/48">
+                아직 공개된 멘토가 없어요.<br />
+                내가 만든 멘토를 공개로 설정하면 여기에 함께 보여요.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {browsableList.map((p) => {
+                  const isCloning = cloningId === p.id;
+                  return (
+                    <article
+                      key={p.id}
+                      className="rounded-[18px] bg-white p-5 transition-shadow hover:shadow-apple"
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#F0EDE6] text-[#1E1B4B] text-[28px]">
+                          {p.photoUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={p.photoUrl} alt="" className="h-14 w-14 object-cover" />
+                          ) : (
+                            <span aria-hidden>{p.icon || "✨"}</span>
+                          )}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
+                            {p.name}
+                          </p>
+                          <p className="mt-0.5 text-[12px] tracking-[-0.01em] text-black/48">
+                            by {p.creatorName || "익명"}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleClonePublic(p.id)}
+                          disabled={!!cloningId}
+                          className="shrink-0 rounded-pill bg-[#1E1B4B] px-4 py-2 text-[12px] font-medium text-white transition-colors hover:bg-[#2A2766] disabled:bg-black/15 disabled:text-black/40"
+                        >
+                          {isCloning ? "추가 중…" : "+ 내 멘토로"}
+                        </button>
+                      </div>
+
+                      {p.description && (
+                        <p className="mt-3 text-[14px] leading-[1.5] tracking-[-0.01em] text-black/72">
+                          {p.description}
+                        </p>
+                      )}
+
+                      <div className="mt-3 rounded-[12px] bg-[#F0EDE6]/60 p-3 text-[13px] leading-[1.5] tracking-[-0.01em] text-black/64">
+                        <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.08em] text-black/40">
+                          페르소나 지침
+                        </p>
+                        <p className="whitespace-pre-wrap line-clamp-6">
+                          {p.systemPromptAddition}
+                        </p>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -425,9 +521,9 @@ export default function AdvisorsPage() {
           initial={editingCustom || undefined}
           onSave={async (data) => {
             if (editingCustom) {
-              await editCustom(editingCustom.id, data);
+              await editCustom(editingCustom.id, data, creatorName);
             } else {
-              await createCustom(data);
+              await createCustom(data, creatorName);
             }
           }}
           onDelete={editingCustom ? async () => {

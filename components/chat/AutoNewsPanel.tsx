@@ -3,6 +3,7 @@
 import { useMemo, useState, useCallback } from "react";
 import { PERSONA_LIST, PERSONA_SPECIALTIES } from "@/lib/personas";
 import { mergePersona } from "@/lib/persona-resolver";
+import PersonaIcon from "@/components/ui/PersonaIcon";
 import type { AutoNewsConfig, BuiltinPersonaId, PersonaId, PersonaOverride } from "@/types";
 
 interface AutoNewsPanelProps {
@@ -179,7 +180,12 @@ export default function AutoNewsPanel({
                             : "border-gray-200 hover:bg-gray-50"
                         }`}
                       >
-                        <span className="text-xl">{persona.icon}</span>
+                        <PersonaIcon
+                          personaId={persona.id as string}
+                          fallbackEmoji={persona.icon}
+                          photoUrl={persona.photoUrl}
+                          className="h-7 w-7 shrink-0 text-gray-700"
+                        />
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-gray-900">{persona.name}</span>
