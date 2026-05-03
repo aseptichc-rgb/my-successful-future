@@ -1,5 +1,5 @@
 import type { NewsTopic, PersonaId, MoodKind, AssistMessageInput } from "@/types";
-import { getPersona, isCustomPersonaId } from "@/lib/personas";
+import { getPersona, isCustomPersonaId, isBuiltinPersona, PERSONA_SCAFFOLDINGS } from "@/lib/personas";
 
 // 뉴스봇 전용: 객관적·정보 전달 중심 프롬프트
 const NEWSBOT_SYSTEM_PROMPT = `당신은 국내외 최신 뉴스를 전달하는 뉴스 어시스턴트입니다. 정확하고 객관적인 정보 전달에 집중하세요.
@@ -742,6 +742,14 @@ export function buildSystemPrompt(
         }
       : baseBuiltin;
 
+  // 빌트인 페르소나에 대해서는 도메인별 5-lens scaffolding을 항상 주입한다.
+  // 사용자가 PersonaOverride로 정체성·말투를 자기 멘토(피터 틸·워렌 버핏 등)로
+  // 바꿔도, 도메인별 추론 품질은 시스템이 책임지고 보장한다.
+  const builtinScaffolding =
+    isBuiltinPersona(personaId as string)
+      ? PERSONA_SCAFFOLDINGS[personaId as keyof typeof PERSONA_SCAFFOLDINGS]
+      : undefined;
+
   // 페르소나별 추가 프롬프트 적용
   if (customPersona && isCustomPersonaId(personaId as string)) {
     prompt += `
@@ -764,6 +772,12 @@ ${customPersona.systemPromptAddition}
 다만 1인칭 정체성 규칙, 마크다운 금지·URL 금지·의료 진단·정치 편향·종목 추천 금지 규칙은 반드시 지켜야 합니다.`;
   } else if (persona.systemPromptAddition) {
     prompt += persona.systemPromptAddition;
+  }
+
+  // 빌트인 페르소나면 정체성 직후에 도메인 5-lens scaffolding을 추가 주입.
+  // (사용자가 systemPromptAddition을 통째로 오버라이드해도 항상 적용된다.)
+  if (builtinScaffolding && !(customPersona && isCustomPersonaId(personaId as string))) {
+    prompt += builtinScaffolding;
   }
 
   // 다중 참여자 대화 컨텍스트
