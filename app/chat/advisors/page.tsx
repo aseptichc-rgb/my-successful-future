@@ -84,11 +84,16 @@ export default function AdvisorsPage() {
     setCreating(personaId);
     try {
       const persona = getPersona(personaId, customMap, overrideMap);
+      // advisorIds=[personaId] 로 저장해야 인박스에서 ?persona= 없이 재진입해도
+      // 해당 페르소나로 1대1 유지. 없으면 기본 라우팅으로 다른 페르소나가 답함.
       const sessionId = await createSession(
         firebaseUser.uid,
         `${persona.name}님과의 대화`,
         displayName,
         "ai",
+        undefined,
+        undefined,
+        [personaId],
       );
       router.push(`/chat/${sessionId}?persona=${personaId}`);
     } catch (err) {

@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Timestamp } from "firebase/firestore";
-import { getMessages, addMessage, updateSessionTitle, onMessagesSnapshot, getSessionById, incrementUnreadCounts, updateUserMemory, onPersonaMemoriesSnapshot, updatePersonaMemory, getAuth_ } from "@/lib/firebase";
+import { getMessages, addMessage, updateSessionTitle, onMessagesSnapshot, getSessionById, incrementUnreadCounts, updateUserMemory, onPersonaMemoriesSnapshot, updatePersonaMemory, getAuth_, backfillSessionAdvisorIds } from "@/lib/firebase";
 import { getPersona, PERSONAS, isCustomPersonaId } from "@/lib/personas";
 import { routeToPersonas, pickBestFromActive, pickPrimaryPersona } from "@/lib/persona-router";
 import { detectBotCommand } from "@/lib/externalBots";
@@ -278,6 +278,41 @@ export function useChat(
     });
     return unsub;
   }, [currentUid]);
+
+  // 레거시 1대1 세션 추론 — initialPersona 도 advisorIds 도 없는 옛 ai 세션은
+  // activePersonas 가 ["default"] 로 떨어져, 사용자가 보낸 메시지에 키워드 라우팅이 걸려
+  // 의도하지 않은 다른 페르소나가 답해버리는 버그가 있었다.
+  // 메시지 히스토리에서 (default 제외) 가장 많이 등장한 페르소나를 1대1 상대로 복원한다.
+  const advisorBackfilledRef = useRef(false);
+  useEffect(() => {
+    if (advisorBackfilledRef.current) return;
+    if (!sessionId) return;
+    if (!session) return;
+    if (session.sessionType !== "ai") return;
+    if (initialPersona) return;
+    if (session.advisorIds && session.advisorIds.length > 0) return;
+    if (messages.length === 0) return;
+
+    const counts = new Map<string, number>();
+    for (const msg of messages) {
+      if (msg.role !== "assistant") continue;
+      const pid = msg.personaId;
+      if (!pid || pid === "default") continue;
+      counts.set(pid, (counts.get(pid) || 0) + 1);
+    }
+    if (counts.size === 0) return;
+
+    const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+    // 1대1 방의 명백한 단일 페르소나 신호일 때만 복원 — 2종 이상 섞여 있으면 옛 카운슬/멀티방일 수 있어 손대지 않는다.
+    if (sorted.length !== 1) return;
+
+    const inferred = sorted[0][0] as PersonaId;
+    advisorBackfilledRef.current = true;
+    setActivePersonas([inferred]);
+    backfillSessionAdvisorIds(sessionId, [inferred]).catch((err) =>
+      console.warn("[useChat] advisorIds 백필 실패:", err),
+    );
+  }, [sessionId, session, messages, initialPersona]);
 
   // 실시간 메시지 리스너 (다른 참여자의 메시지를 즉시 수신)
   useEffect(() => {

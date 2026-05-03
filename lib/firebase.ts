@@ -320,6 +320,20 @@ export async function updateSessionTitle(sessionId: string, title: string) {
   });
 }
 
+/**
+ * 레거시 1대1 세션 백필 — advisorIds 가 비어 있던 옛 세션을 인박스에서 다시 들어왔을 때
+ * 메시지 히스토리에서 추론한 페르소나 ID 로 채워준다. updatedAt 은 손대지 않아
+ * 인박스 정렬이 흔들리지 않도록 한다.
+ */
+export async function backfillSessionAdvisorIds(
+  sessionId: string,
+  advisorIds: PersonaId[],
+) {
+  if (!advisorIds.length) return;
+  const db = getDbInstance();
+  await updateDoc(doc(db, "sessions", sessionId), { advisorIds });
+}
+
 // ── 메시지 CRUD ───────────────────────────────────────
 interface AddMessageExtras {
   councilGroupId?: string;
