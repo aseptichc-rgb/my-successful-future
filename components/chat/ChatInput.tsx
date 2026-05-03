@@ -232,6 +232,8 @@ const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput
         </div>
         <button
           type="button"
+          // textarea의 포커스를 빼앗지 않아야 blur로 인한 드롭다운 닫힘이 발생하지 않음
+          onMouseDown={(e) => e.preventDefault()}
           onClick={insertAtMention}
           disabled={disabled}
           className="shrink-0 rounded-full bg-[#F0EDE6] w-10 h-10 text-[17px] font-semibold text-[#1E1B4B] transition-colors hover:bg-black/[0.06] disabled:opacity-50 sm:w-11 sm:h-11"

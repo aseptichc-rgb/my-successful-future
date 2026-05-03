@@ -72,7 +72,12 @@ function MentionDropdown({
         {filtered.map((persona, i) => (
           <li
             key={persona.id}
-            onClick={() => onSelect(persona.id, persona.name)}
+            onMouseDown={(e) => {
+              // textarea가 blur되어 드롭다운이 닫히기 전에 선택을 확정
+              e.preventDefault();
+              onSelect(persona.id, persona.name);
+            }}
+            onClick={(e) => e.preventDefault()}
             className={`flex cursor-pointer items-center gap-3 px-3 py-2 text-sm transition-colors ${
               i === selectedIndex
                 ? "bg-blue-50 text-blue-700"
