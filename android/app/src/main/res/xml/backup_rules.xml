@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- DataStore 캐시 / 인증 토큰은 백업 제외 -->
+    <exclude domain="file" path="datastore/" />
+</full-backup-content>

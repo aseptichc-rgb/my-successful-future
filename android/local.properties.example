@@ -1,0 +1,16 @@
+# local.properties — 이 파일을 `local.properties` 로 복사하고 본인 환경값으로 채워주세요.
+# (local.properties 는 .gitignore 에 의해 커밋되지 않습니다.)
+
+# Android SDK 경로 (Android Studio 가 자동 설정)
+sdk.dir=C\:\\Users\\YOUR_NAME\\AppData\\Local\\Android\\Sdk
+
+# Anima Next.js 백엔드 베이스 URL.
+# - 로컬 에뮬레이터에서 호스트 PC 의 dev 서버를 호출하려면: http://10.0.2.2:3000
+# - 실기기 (USB 디버깅) 에서 같은 Wi-Fi 의 dev 서버: http://<PC-LAN-IP>:3000
+# - 배포된 Vercel 인스턴스: https://<your-anima>.vercel.app
+ANIMA_API_BASE_URL=http://10.0.2.2:3000
+
+# Firebase Console → 프로젝트 설정 → Authentication → Sign-in method → Google
+# → "웹 SDK 구성" 의 "웹 클라이언트 ID" 값.
+# Android 의 Credential Manager + Firebase Auth signInWithCredential(GoogleAuthProvider) 에 사용.
+ANIMA_GOOGLE_WEB_CLIENT_ID=000000000000-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.apps.googleusercontent.com

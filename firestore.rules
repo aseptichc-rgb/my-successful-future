@@ -192,6 +192,14 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ── famousQuotes ──
+    // 안드로이드 위젯/메인 앱에 노출할 큐레이션 명언 풀.
+    // 모든 로그인 사용자 read 가능 (위젯이 본인 인증 토큰으로 호출). 쓰기는 Admin SDK 전용.
+    match /famousQuotes/{quoteId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
     // ── publicPersonas ──
     // 사용자가 자신의 customPersona 를 "공개"로 토글하면 이 컬렉션에 미러링된다.
     // 모든 로그인 사용자가 둘러보고 자신의 customPersonas 로 복제할 수 있다.

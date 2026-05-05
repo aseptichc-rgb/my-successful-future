@@ -1,0 +1,31 @@
+# Gradle
+.gradle/
+build/
+**/build/
+local.properties
+gradle.properties.local
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+
+# Android Studio captures
+captures/
+
+# Sign keys (절대 커밋 금지)
+*.jks
+*.keystore
+keystore.properties
+
+# Firebase 설정 (각자 환경에서 다운로드)
+app/google-services.json
+
+# Generated
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Kotlin
+.kotlin/

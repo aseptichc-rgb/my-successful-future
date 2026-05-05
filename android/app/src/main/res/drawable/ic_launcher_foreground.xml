@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 안전영역 중앙에 "A" — Anima 의 첫 글자. 아주 단순한 자리표시용 아이콘. -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,30 L42,80 L48,80 L51,68 L57,68 L60,80 L66,80 L54,30 Z M52.5,62 L55.5,62 L54,52 Z" />
+</vector>

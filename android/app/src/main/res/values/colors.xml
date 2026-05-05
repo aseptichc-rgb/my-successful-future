@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="anima_indigo">#1E1B4B</color>
+    <color name="anima_violet">#7C3AED</color>
+    <color name="anima_cream">#F0EDE6</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
+    <color name="widget_loading_bg">#1E1B4B</color>
+</resources>

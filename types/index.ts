@@ -337,6 +337,69 @@ export interface DailyMotivation {
   createdAt: Timestamp;
 }
 
+// ── 안드로이드 위젯: 큐레이션 명언 ──────────────────
+// Firestore 경로: famousQuotes/{quoteId}
+// 어드민이 큐레이션해서 입력한 위인·기업가·한시·철학자 명언 풀.
+// 위젯/메인앱이 dailyMotivation(개인화 한 마디)과 "함께" 회전 노출.
+// 보안 규칙: read = isAuthenticated, write = false (Admin SDK 만 쓰기).
+export type FamousQuoteCategory =
+  | "philosophy" // 철학자/사상가
+  | "entrepreneur" // 기업가/투자자
+  | "classic" // 한시/고전/시인
+  | "leader" // 정치가/리더
+  | "scientist" // 과학자/탐구자
+  | "literature" // 문학가/작가
+  | "personal"; // 본인 작성
+
+export type FamousQuoteLang = "ko" | "en";
+
+export interface FamousQuote {
+  id: string;
+  text: string;
+  /** 출처 인물. 없으면 미상. */
+  author?: string;
+  category: FamousQuoteCategory;
+  language: FamousQuoteLang;
+  /** false 면 노출에서 제외. 기본 true. */
+  active: boolean;
+  /** 검색/필터용. 선택. */
+  tags?: string[];
+  createdAt: unknown; // Firestore Timestamp
+  updatedAt: unknown;
+}
+
+// 위젯이 한 번 호출로 받아가는 응답.
+// Android 위젯은 3시간마다 WorkManager 로 갱신, slots 안에서 currentSlotIndex 기준으로 1건 노출.
+// "오늘의 한 마디"(dailyMotivation) 는 0번 슬롯 고정, 1~N 은 famousQuotes.
+export interface WidgetSlotMotivation {
+  kind: "motivation";
+  text: string;
+  author: string;          // 보통 "10년 후의 나"
+  goalsSnapshot: string[];
+  gradient: MotivationGradient;
+}
+export interface WidgetSlotFamous {
+  kind: "famous";
+  text: string;
+  author?: string;
+  category: FamousQuoteCategory;
+  gradient: MotivationGradient;
+}
+export type WidgetSlot = WidgetSlotMotivation | WidgetSlotFamous;
+
+export interface WidgetTodayResponse {
+  /** ISO timestamp, 응답 생성 시각 */
+  generatedAt: string;
+  /** YYYY-MM-DD (KST) */
+  ymd: string;
+  /** KST 자정 기준 0~7 슬롯 (3시간 단위), 서버가 계산해 알려준 "지금" 인덱스 */
+  currentSlotIndex: number;
+  /** 슬롯 길이 = slots.length, currentSlotIndex < slots.length 보장 */
+  slots: WidgetSlot[];
+  /** 다음 갱신 권장 시각 ISO. WorkManager 다음 작업 스케줄에 사용 가능. */
+  nextRefreshAt: string;
+}
+
 // ── 페르소나별 기억 샤드 ─────────────────────────────
 export interface PersonaMemory {
   personaId: string;

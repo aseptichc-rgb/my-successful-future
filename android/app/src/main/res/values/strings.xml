@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Anima</string>
+    <string name="widget_label">Anima 오늘의 한 마디</string>
+    <string name="widget_description">매일 바뀌는 동기부여 카드와 명언을 잠금화면·홈화면에 띄웁니다.</string>
+    <string name="loading">불러오는 중…</string>
+    <string name="sign_in_with_google">Google 로 시작하기</string>
+    <string name="sign_out">로그아웃</string>
+    <string name="open_anima">Anima 열기</string>
+    <string name="refresh_now">지금 갱신</string>
+    <string name="auth_required">로그인이 필요합니다</string>
+    <string name="add_widget_hint">홈 화면을 길게 눌러 위젯에서 Anima 를 추가하세요.</string>
+</resources>
