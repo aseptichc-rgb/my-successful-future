@@ -7,11 +7,13 @@
  */
 package com.michaelkim.anima.widget
 
+import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceModifier
+import androidx.glance.LocalContext
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.background
@@ -25,11 +27,13 @@ import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import androidx.glance.unit.ColorProvider
 import com.michaelkim.anima.MainActivity
 import com.michaelkim.anima.data.WidgetSlot
 
 @Composable
 fun WidgetContent(slot: WidgetSlot?) {
+    val context = LocalContext.current
     val bgColor = when (slot?.gradient?.tone) {
         "light" -> Color(parseHex(slot.gradient.from))
         "dark" -> Color(parseHex(slot.gradient.from))
@@ -42,20 +46,24 @@ fun WidgetContent(slot: WidgetSlot?) {
             .fillMaxSize()
             .background(bgColor)
             .padding(16.dp)
-            .clickable(actionStartActivity<MainActivity>()),
+            .clickable(
+                actionStartActivity(
+                    Intent(context, MainActivity::class.java),
+                ),
+            ),
         contentAlignment = Alignment.CenterStart,
     ) {
         if (slot == null) {
             Column {
                 Text(
                     text = "오늘의 한 마디를 불러오는 중…",
-                    style = TextStyle(color = textColor, fontSize = 14.sp),
+                    style = TextStyle(color = ColorProvider(textColor), fontSize = 14.sp),
                     maxLines = 2,
                 )
                 Spacer(GlanceModifier.height(6.dp))
                 Text(
                     text = "Anima 앱에서 로그인 후 표시됩니다.",
-                    style = TextStyle(color = textColor.copy(alpha = 0.7f), fontSize = 11.sp),
+                    style = TextStyle(color = ColorProvider(textColor.copy(alpha = 0.7f)), fontSize = 11.sp),
                     maxLines = 2,
                 )
             }
@@ -66,7 +74,7 @@ fun WidgetContent(slot: WidgetSlot?) {
             Text(
                 text = slot.text,
                 style = TextStyle(
-                    color = textColor,
+                    color = ColorProvider(textColor),
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Medium,
                 ),
@@ -80,7 +88,7 @@ fun WidgetContent(slot: WidgetSlot?) {
                 Spacer(GlanceModifier.height(6.dp))
                 Text(
                     text = "— $author",
-                    style = TextStyle(color = textColor.copy(alpha = 0.75f), fontSize = 11.sp),
+                    style = TextStyle(color = ColorProvider(textColor.copy(alpha = 0.75f)), fontSize = 11.sp),
                     maxLines = 1,
                 )
             }

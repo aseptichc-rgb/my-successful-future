@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -11,7 +13,7 @@ plugins {
 //   ANIMA_API_BASE_URL=https://your-deployed-anima.vercel.app
 //   ANIMA_GOOGLE_WEB_CLIENT_ID=xxxxx.apps.googleusercontent.com
 // 형태로 설정. 누락되면 로컬 개발용 기본값 사용.
-val localProps = java.util.Properties().apply {
+val localProps = Properties().apply {
     val f = rootProject.file("local.properties")
     if (f.exists()) f.inputStream().use { load(it) }
 }
