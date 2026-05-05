@@ -309,6 +309,34 @@ export interface DailyEncouragementPlan {
   updatedAt: Timestamp;
 }
 
+// ── 매일 바뀌는 동기부여 카드 (배경화면용) ─────────
+// 10년 후의 나가 보내는 한 마디 + 사용자 목표를 합친 "오늘의 한 장".
+// 저장 위치: users/{uid}/dailyMotivations/{YYYY-MM-DD}  (KST)
+export interface MotivationGradient {
+  /** CSS 색상값 (#RRGGBB) */
+  from: string;
+  to: string;
+  /** 그라데이션 각도 (deg) */
+  angle: number;
+  /** 텍스트 대비를 위해 다크/라이트 톤 표기 */
+  tone: "dark" | "light";
+}
+
+export interface DailyMotivation {
+  ymd: string;                     // YYYY-MM-DD (KST)
+  /** 1~2 문장의 오늘의 격려 메시지 */
+  quote: string;
+  /** 인용 출처 — 보통 "10년 후의 나" */
+  author: string;
+  /** 카드에 표시할 사용자 목표 스냅샷 (최대 3개) */
+  goalsSnapshot: string[];
+  /** 인용을 만들 때 사용한 future persona 스냅샷 (요약) */
+  futurePersonaSnapshot?: string;
+  /** 결정론적으로 선택된 배경 그라데이션 */
+  gradient: MotivationGradient;
+  createdAt: Timestamp;
+}
+
 // ── 페르소나별 기억 샤드 ─────────────────────────────
 export interface PersonaMemory {
   personaId: string;

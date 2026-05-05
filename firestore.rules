@@ -53,6 +53,13 @@ service cloud.firestore {
       match /dailyEntries/{ymd} {
         allow read, write: if isOwner(uid);
       }
+
+      // ── 본인 매일 동기부여 카드 (배경화면용, 문서 ID = YYYY-MM-DD KST) ──
+      // 생성·갱신은 서버(Admin SDK, /api/daily-motivation) 에서 수행하지만
+      // 클라이언트가 onSnapshot 으로 즉시 구독할 수 있도록 본인 read/write 를 허용.
+      match /dailyMotivations/{ymd} {
+        allow read, write: if isOwner(uid);
+      }
     }
 
     // ── sessions ──

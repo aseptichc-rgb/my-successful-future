@@ -38,7 +38,7 @@ import {
   type Firestore,
   type Unsubscribe,
 } from "firebase/firestore";
-import type { User, ChatSession, ChatMessage, Invitation, InviteLink, NewsSource, NewsTopic, SessionType, UserPresence, AutoNewsConfig, KeywordAlertConfig, PersonaId, DailyRitualConfig, PersonaMemory, CustomPersona, PersonaOverride, PersonaOverrideInput, BuiltinPersonaId, PersonaSchedule, ScheduledNewsSlot, DailyEntry, DailyTodo, PublicPersona } from "@/types";
+import type { User, ChatSession, ChatMessage, Invitation, InviteLink, NewsSource, NewsTopic, SessionType, UserPresence, AutoNewsConfig, KeywordAlertConfig, PersonaId, DailyRitualConfig, PersonaMemory, CustomPersona, PersonaOverride, PersonaOverrideInput, BuiltinPersonaId, PersonaSchedule, ScheduledNewsSlot, DailyEntry, DailyTodo, PublicPersona, DailyMotivation } from "@/types";
 
 // ── Firebase 지연 초기화 ─────────────────────────────
 const firebaseConfig = {
@@ -1457,6 +1457,33 @@ export async function saveDailyWins(uid: string, ymd: string, wins: string[]) {
       updatedAt: serverTimestamp(),
     },
     { merge: true },
+  );
+}
+
+// ── 매일 동기부여 카드 (배경화면용) ──────────────────
+/**
+ * 오늘의 동기부여 카드 1건을 실시간 구독한다. 카드 자체는 서버 API
+ * (/api/daily-motivation) 가 생성·갱신하지만, 본인 권한이 있으므로 클라이언트가
+ * 직접 onSnapshot 으로 즉시 받아본다.
+ */
+export function onDailyMotivationSnapshot(
+  uid: string,
+  ymd: string,
+  callback: (motivation: DailyMotivation | null) => void
+): Unsubscribe {
+  const db = getDbInstance();
+  return onSnapshot(
+    doc(db, "users", uid, "dailyMotivations", ymd),
+    (snap) => {
+      if (!snap.exists()) {
+        callback(null);
+        return;
+      }
+      callback(snap.data() as DailyMotivation);
+    },
+    (error) => {
+      console.warn("동기부여 카드 리스너 에러:", error.message);
+    }
   );
 }
 

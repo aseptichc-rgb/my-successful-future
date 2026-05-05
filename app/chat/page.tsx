@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -8,6 +8,7 @@ import {
   updateFuturePersona,
   updateUserGoals,
   onDailyEntrySnapshot,
+  onDailyMotivationSnapshot,
   saveDailyTodos,
   saveDailyWins,
   saveDailyAchievedGoals,
@@ -15,7 +16,9 @@ import {
   MAX_USER_GOALS,
   MAX_DAILY_WINS,
 } from "@/lib/firebase";
-import type { DailyEntry, DailyTodo } from "@/types";
+import { authedFetch } from "@/lib/authedFetch";
+import MotivationCard from "@/components/home/MotivationCard";
+import type { DailyEntry, DailyMotivation, DailyTodo } from "@/types";
 
 const FUTURE_PERSONA_MAX = 500;
 const GOAL_MAX = 80;
@@ -54,6 +57,16 @@ export default function HomeDashboardPage() {
   const dailyHydratedRef = useRef(false);
   const winsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [futureSessionId, setFutureSessionId] = useState<string | null>(null);
+
+  // ── 오늘의 동기부여 카드 ────────────────────────────
+  const [motivation, setMotivation] = useState<DailyMotivation | null>(null);
+  const [motivationLoading, setMotivationLoading] = useState(true);
+  const [motivationError, setMotivationError] = useState<string | null>(null);
+  const [showMoreToday, setShowMoreToday] = useState(false);
+  // 현재 진행 중인 카드 생성 요청 (같은 일자에 중복 요청을 막기 위함)
+  const ensureRequestedRef = useRef(false);
+
   // 온보딩 미완료 사용자는 위저드로
   useEffect(() => {
     if (loading) return;
@@ -65,11 +78,13 @@ export default function HomeDashboardPage() {
       router.replace("/onboarding");
       return;
     }
-    // future-self 세션은 백그라운드로만 준비
+    // future-self 세션 준비
     const displayName = user?.displayName || firebaseUser.displayName || "사용자";
-    ensureFutureSelfSession(firebaseUser.uid, displayName).catch((err) => {
-      console.warn("미래의 나 세션 준비 실패:", err);
-    });
+    ensureFutureSelfSession(firebaseUser.uid, displayName)
+      .then((id) => setFutureSessionId(id))
+      .catch((err) => {
+        console.warn("미래의 나 세션 준비 실패:", err);
+      });
   }, [firebaseUser, loading, router, user]);
 
   // 사용자 프로필에서 future persona / goals 동기화
@@ -104,6 +119,75 @@ export default function HomeDashboardPage() {
     return unsub;
   }, [firebaseUser, ymd]);
 
+  // 오늘의 동기부여 카드 구독 + 없으면 자동 생성 1회 요청
+  useEffect(() => {
+    if (!firebaseUser) return;
+    setMotivationLoading(true);
+    let cancelled = false;
+    const unsub = onDailyMotivationSnapshot(firebaseUser.uid, ymd, (m) => {
+      if (cancelled) return;
+      setMotivation(m);
+      setMotivationLoading(false);
+      if (!m && !ensureRequestedRef.current) {
+        ensureRequestedRef.current = true;
+        // 비동기 생성 트리거 — 결과는 onSnapshot 으로 자동 도착
+        authedFetch("/api/daily-motivation", {
+          method: "POST",
+          body: JSON.stringify({ ymd }),
+        })
+          .then(async (res) => {
+            if (!res.ok) {
+              const data = await res.json().catch(() => ({}));
+              throw new Error((data as { error?: string }).error || "동기부여 카드를 만들지 못했어요.");
+            }
+          })
+          .catch((err) => {
+            if (cancelled) return;
+            setMotivationError(err instanceof Error ? err.message : String(err));
+          });
+      }
+    });
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, [firebaseUser, ymd]);
+
+  const handleRegenerateMotivation = useCallback(async () => {
+    setMotivationError(null);
+    try {
+      const res = await authedFetch("/api/daily-motivation", {
+        method: "POST",
+        body: JSON.stringify({ ymd, force: true }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error || "다시 받기에 실패했어요.");
+      }
+    } catch (err) {
+      setMotivationError(err instanceof Error ? err.message : String(err));
+    }
+  }, [ymd]);
+
+  const handleChatWithFuture = useCallback(() => {
+    if (!firebaseUser) return;
+    if (futureSessionId) {
+      router.push(`/chat/${futureSessionId}`);
+      return;
+    }
+    // 세션이 아직 준비되지 않았으면 즉석 보장 후 이동
+    const displayName = user?.displayName || firebaseUser.displayName || "사용자";
+    ensureFutureSelfSession(firebaseUser.uid, displayName)
+      .then((id) => {
+        setFutureSessionId(id);
+        router.push(`/chat/${id}`);
+      })
+      .catch((err) => {
+        console.error("미래의 나 세션 준비 실패:", err);
+        window.alert("대화방을 여는 데 실패했어요. 잠시 후 다시 시도해주세요.");
+      });
+  }, [firebaseUser, futureSessionId, router, user]);
+
   if (loading || !firebaseUser) {
     return (
       <div className="flex h-full items-center justify-center bg-[#F0EDE6]">
@@ -122,6 +206,8 @@ export default function HomeDashboardPage() {
     try {
       await updateFuturePersona(uid, next);
       setFutureEditing(false);
+      // 미래 모습이 바뀌면 오늘의 카드도 새로 받아보길 원할 가능성이 높다 — 자동 갱신
+      void handleRegenerateMotivation();
     } catch (err) {
       console.error("미래의 나 저장 실패:", err);
       window.alert("저장에 실패했습니다. 잠시 후 다시 시도해주세요.");
@@ -145,7 +231,6 @@ export default function HomeDashboardPage() {
     }
   };
 
-  // 오늘 달성 토글: 목표 텍스트 자체를 키로 저장 (텍스트가 바뀌면 자연스럽게 무효화)
   const handleToggleGoalAchieved = async (goalText: string) => {
     const trimmed = goalText.trim();
     if (!trimmed) return;
@@ -158,13 +243,11 @@ export default function HomeDashboardPage() {
       await saveDailyAchievedGoals(uid, ymd, next);
     } catch (err) {
       console.error("목표 달성 저장 실패:", err);
-      // 실패 시 롤백 — 다음 스냅샷이 정정해 줄 수 있지만 즉각 반영을 위해 명시적으로 되돌린다.
       setAchievedGoals(achievedGoals);
       window.alert("저장에 실패했습니다.");
     }
   };
 
-  // 목표 삭제·수정 후 더 이상 존재하지 않는 목표에 걸린 체크를 정리한다.
   const pruneAchievedGoals = async (currentGoals: string[]) => {
     const valid = new Set(currentGoals.map((g) => g.trim()).filter((g) => g.length > 0));
     const pruned = achievedGoals.filter((g) => valid.has(g));
@@ -280,16 +363,32 @@ export default function HomeDashboardPage() {
       <header className="border-b border-black/[0.06] bg-white px-5 py-5 sm:px-6 sm:py-7">
         <div className="mx-auto max-w-3xl pr-12 sm:pr-14">
           <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.005em] text-[#1E1B4B] sm:text-[32px]">
-            오늘의 나
+            오늘의 동기부여
           </h1>
           <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
-            {formatKstHeader(ymd)} · 미래의 나에게 한 걸음 더 가까워지는 하루를 만들어 보세요.
+            {formatKstHeader(ymd)} · 매일 새로 도착하는 한 마디로 하루를 시작하세요.
           </p>
         </div>
       </header>
 
       <main className="mx-auto w-full max-w-3xl space-y-4 px-4 py-5 sm:px-6">
-        {/* ── 10년 후의 나의 모습 ─────────────────── */}
+        {/* ── 오늘의 동기부여 카드 (메인) ─────────── */}
+        <MotivationCard
+          motivation={motivation}
+          loading={motivationLoading}
+          errorMessage={motivationError}
+          onRegenerate={handleRegenerateMotivation}
+          onChatWithFuture={handleChatWithFuture}
+          ymd={ymd}
+        />
+
+        {motivationError && motivation && (
+          <p className="rounded-[12px] bg-rose-50 px-4 py-2 text-[12px] tracking-[-0.01em] text-rose-700">
+            {motivationError}
+          </p>
+        )}
+
+        {/* ── 10년 후의 나의 모습 (간결) ─────────── */}
         <section className="rounded-[16px] border border-black/[0.06] bg-white p-5 shadow-apple">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -300,7 +399,7 @@ export default function HomeDashboardPage() {
                 10년 후의 나의 모습
               </h2>
               <p className="mt-1 text-[12px] tracking-[-0.01em] text-black/56">
-                되고 싶은 모습을 자유롭게 적어두면, 매일 이 모습을 향해 걸을 수 있어요.
+                되고 싶은 모습이 구체적일수록, 매일 도착하는 한 마디도 더 명확해져요.
               </p>
             </div>
             {!futureEditing && (
@@ -341,7 +440,7 @@ export default function HomeDashboardPage() {
                     disabled={futureSaving}
                     className="rounded-pill bg-[#1E1B4B] px-3 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-[#2A2766] disabled:opacity-50"
                   >
-                    {futureSaving ? "저장 중…" : "저장"}
+                    {futureSaving ? "저장 중…" : "저장하고 카드 다시 받기"}
                   </button>
                 </div>
               </div>
@@ -378,7 +477,7 @@ export default function HomeDashboardPage() {
           </div>
           <div className="mt-1 flex items-baseline justify-between gap-2">
             <p className="text-[12px] tracking-[-0.01em] text-black/56">
-              구체적이고 측정 가능한 형태로 적어두면 더 잘 이뤄져요. 달성한 목표는 왼쪽 동그라미를 눌러 표시하세요.
+              앞 3개 목표가 카드와 잠금화면에 함께 표시돼요. 우선순위 순서로 정리하세요.
             </p>
             {goals.length > 0 && (
               <span className="shrink-0 text-[12px] font-medium tracking-[-0.01em] text-[#1E1B4B]/70">
@@ -473,133 +572,142 @@ export default function HomeDashboardPage() {
           )}
         </section>
 
-        {/* ── 오늘의 할 일 체크리스트 ─────────────── */}
-        <section className="rounded-[16px] border border-black/[0.06] bg-white p-5 shadow-apple">
-          <div className="flex items-baseline justify-between gap-2">
-            <h2 className="flex items-center gap-2 text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
-              <svg className="h-[18px] w-[18px] text-[#1E1B4B]/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+        {/* ── 오늘의 할 일 / 잘한 일 (보조 — 접고 펼치기) ── */}
+        <section className="rounded-[16px] border border-black/[0.06] bg-white shadow-apple">
+          <button
+            type="button"
+            onClick={() => setShowMoreToday((v) => !v)}
+            className="flex w-full items-center justify-between px-5 py-4 text-left"
+            aria-expanded={showMoreToday}
+          >
+            <span className="flex items-center gap-2 text-[15px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
+              <svg className="h-[16px] w-[16px] text-[#1E1B4B]/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 11l3 3L22 4" />
                 <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
               </svg>
-              오늘의 할 일
-            </h2>
-            <span className="text-[12px] tracking-[-0.01em] text-black/48">
-              {completedCount}/{todos.length} 완료
+              오늘의 할 일 · 잘한 일 기록
+              <span className="ml-1 text-[12px] font-medium text-black/48">
+                ({completedCount}/{todos.length} 완료)
+              </span>
             </span>
-          </div>
-
-          {todos.length > 0 && (
-            <ul className="mt-4 space-y-1">
-              {todos.map((todo) => (
-                <li
-                  key={todo.id}
-                  className="group flex items-center gap-3 rounded-[10px] px-2 py-2 transition-colors hover:bg-black/[0.02]"
-                >
-                  <button
-                    type="button"
-                    onClick={() => handleToggleTodo(todo.id)}
-                    aria-label={todo.done ? "완료 취소" : "완료"}
-                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
-                      todo.done
-                        ? "border-[#1E1B4B] bg-[#1E1B4B] text-white"
-                        : "border-black/25 bg-white hover:border-[#1E1B4B]"
-                    }`}
-                  >
-                    {todo.done && (
-                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M5 12l5 5L20 7" />
-                      </svg>
-                    )}
-                  </button>
-                  <span
-                    className={`min-w-0 flex-1 break-words text-[14px] tracking-[-0.01em] ${
-                      todo.done ? "text-black/40 line-through" : "text-[#1E1B4B]"
-                    }`}
-                  >
-                    {todo.text}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveTodo(todo.id)}
-                    aria-label="할 일 삭제"
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-black/30 opacity-0 transition-opacity hover:bg-black/[0.04] hover:text-black/70 group-hover:opacity-100 focus:opacity-100"
-                  >
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M18 6L6 18M6 6l12 12" />
-                    </svg>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <div className="mt-3 flex items-center gap-2">
-            <input
-              value={todoDraft}
-              maxLength={TODO_MAX}
-              onChange={(e) => setTodoDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleAddTodo();
-                }
-              }}
-              placeholder="오늘 꼭 해야 할 일을 적어보세요"
-              className="min-w-0 flex-1 rounded-[10px] border border-black/10 bg-white px-3 py-2 text-[14px] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
-            />
-            <button
-              type="button"
-              onClick={handleAddTodo}
-              disabled={!todoDraft.trim()}
-              className="shrink-0 rounded-pill bg-[#1E1B4B] px-4 py-2 text-[12px] font-medium text-white transition-colors hover:bg-[#2A2766] disabled:cursor-not-allowed disabled:opacity-40"
+            <svg
+              className={`h-4 w-4 text-black/40 transition-transform ${showMoreToday ? "rotate-180" : ""}`}
+              viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"
             >
-              추가
-            </button>
-          </div>
-
-          {todos.length === 0 && (
-            <p className="mt-3 text-center text-[12px] tracking-[-0.01em] text-black/40">
-              오늘의 할 일을 추가해 보세요.
-            </p>
-          )}
-        </section>
-
-        {/* ── 오늘 스스로 잘한 일 3가지 ─────────────── */}
-        <section className="rounded-[16px] border border-black/[0.06] bg-white p-5 shadow-apple">
-          <h2 className="flex items-center gap-2 text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
-            <svg className="h-[18px] w-[18px] text-[#1E1B4B]/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 21s-7-4.5-7-11a4 4 0 017-2.6A4 4 0 0119 10c0 6.5-7 11-7 11z" />
+              <path d="M6 9l6 6 6-6" />
             </svg>
-            오늘 스스로 잘한 일 {MAX_DAILY_WINS}가지
-          </h2>
-          <p className="mt-1 text-[12px] tracking-[-0.01em] text-black/56">
-            아주 작은 일이어도 좋아요. 스스로를 칭찬하는 한 줄을 적어두세요.
-          </p>
+          </button>
 
-          <ul className="mt-4 space-y-2">
-            {[0, 1, 2].map((idx) => (
-              <li key={idx} className="flex items-start gap-2">
-                <span className="mt-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F0EDE6] text-[11px] font-semibold text-[#1E1B4B]">
-                  {idx + 1}
-                </span>
-                <textarea
-                  value={wins[idx] || ""}
-                  rows={1}
-                  maxLength={WIN_MAX}
-                  onChange={(e) => handleChangeWin(idx, e.target.value)}
-                  onBlur={handleCommitWins}
-                  placeholder={
-                    idx === 0
-                      ? "예: 미루던 메일에 답장했다."
-                      : idx === 1
-                        ? "예: 아침에 10분 산책했다."
-                        : "예: 가족에게 따뜻한 말 한마디를 했다."
-                  }
-                  className="min-h-[40px] min-w-0 flex-1 resize-none rounded-[10px] border border-black/10 bg-white px-3 py-2 text-[14px] leading-[1.45] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
-                />
-              </li>
-            ))}
-          </ul>
+          {showMoreToday && (
+            <div className="space-y-5 border-t border-black/[0.06] px-5 pb-5 pt-4">
+              {/* 오늘의 할 일 */}
+              <div>
+                <h3 className="text-[13px] font-semibold tracking-[-0.01em] text-[#1E1B4B]">오늘의 할 일</h3>
+                {todos.length > 0 && (
+                  <ul className="mt-2 space-y-1">
+                    {todos.map((todo) => (
+                      <li
+                        key={todo.id}
+                        className="group flex items-center gap-3 rounded-[10px] px-2 py-2 transition-colors hover:bg-black/[0.02]"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleToggleTodo(todo.id)}
+                          aria-label={todo.done ? "완료 취소" : "완료"}
+                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
+                            todo.done
+                              ? "border-[#1E1B4B] bg-[#1E1B4B] text-white"
+                              : "border-black/25 bg-white hover:border-[#1E1B4B]"
+                          }`}
+                        >
+                          {todo.done && (
+                            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M5 12l5 5L20 7" />
+                            </svg>
+                          )}
+                        </button>
+                        <span
+                          className={`min-w-0 flex-1 break-words text-[14px] tracking-[-0.01em] ${
+                            todo.done ? "text-black/40 line-through" : "text-[#1E1B4B]"
+                          }`}
+                        >
+                          {todo.text}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTodo(todo.id)}
+                          aria-label="할 일 삭제"
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-black/30 opacity-0 transition-opacity hover:bg-black/[0.04] hover:text-black/70 group-hover:opacity-100 focus:opacity-100"
+                        >
+                          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M18 6L6 18M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    value={todoDraft}
+                    maxLength={TODO_MAX}
+                    onChange={(e) => setTodoDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddTodo();
+                      }
+                    }}
+                    placeholder="오늘 꼭 해야 할 일을 적어보세요"
+                    className="min-w-0 flex-1 rounded-[10px] border border-black/10 bg-white px-3 py-2 text-[14px] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddTodo}
+                    disabled={!todoDraft.trim()}
+                    className="shrink-0 rounded-pill bg-[#1E1B4B] px-4 py-2 text-[12px] font-medium text-white transition-colors hover:bg-[#2A2766] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    추가
+                  </button>
+                </div>
+              </div>
+
+              {/* 오늘 잘한 일 3가지 */}
+              <div>
+                <h3 className="text-[13px] font-semibold tracking-[-0.01em] text-[#1E1B4B]">
+                  오늘 스스로 잘한 일 {MAX_DAILY_WINS}가지
+                </h3>
+                <p className="mt-1 text-[12px] tracking-[-0.01em] text-black/56">
+                  아주 작은 일이어도 좋아요. 스스로를 칭찬하는 한 줄을 적어두세요.
+                </p>
+                <ul className="mt-3 space-y-2">
+                  {[0, 1, 2].map((idx) => (
+                    <li key={idx} className="flex items-start gap-2">
+                      <span className="mt-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F0EDE6] text-[11px] font-semibold text-[#1E1B4B]">
+                        {idx + 1}
+                      </span>
+                      <textarea
+                        value={wins[idx] || ""}
+                        rows={1}
+                        maxLength={WIN_MAX}
+                        onChange={(e) => handleChangeWin(idx, e.target.value)}
+                        onBlur={handleCommitWins}
+                        placeholder={
+                          idx === 0
+                            ? "예: 미루던 메일에 답장했다."
+                            : idx === 1
+                              ? "예: 아침에 10분 산책했다."
+                              : "예: 가족에게 따뜻한 말 한마디를 했다."
+                        }
+                        className="min-h-[40px] min-w-0 flex-1 resize-none rounded-[10px] border border-black/10 bg-white px-3 py-2 text-[14px] leading-[1.45] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
         </section>
       </main>
     </div>
