@@ -16,6 +16,8 @@ googleServices = "4.4.2"
 credentials = "1.3.0"
 googleId = "1.1.1"
 lifecycle = "2.8.7"
+billing = "7.1.1"
+playIntegrity = "1.4.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -55,6 +57,12 @@ firebase-analytics-ktx = { module = "com.google.firebase:firebase-analytics-ktx"
 androidx-credentials = { module = "androidx.credentials:credentials", version.ref = "credentials" }
 androidx-credentials-play-services = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "credentials" }
 google-id = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleId" }
+
+# Play Billing (1회 결제 영수증 검증)
+billing-ktx = { module = "com.android.billingclient:billing-ktx", version.ref = "billing" }
+
+# Play Integrity (호출자 정품 검증)
+play-integrity = { module = "com.google.android.play:integrity", version.ref = "playIntegrity" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

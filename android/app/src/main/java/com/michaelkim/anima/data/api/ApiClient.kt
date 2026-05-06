@@ -26,6 +26,7 @@ object ApiClient {
     }
 
     val widgetApi: WidgetApi by lazy { buildRetrofit().create(WidgetApi::class.java) }
+    val entitlementApi: EntitlementApi by lazy { buildRetrofit().create(EntitlementApi::class.java) }
 
     private fun buildRetrofit(): Retrofit {
         val baseUrl = BuildConfig.ANIMA_API_BASE_URL.let {

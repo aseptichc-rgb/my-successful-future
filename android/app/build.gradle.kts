@@ -23,6 +23,10 @@ val animaApiBaseUrl: String = localProps.getProperty("ANIMA_API_BASE_URL")
 val googleWebClientId: String = localProps.getProperty("ANIMA_GOOGLE_WEB_CLIENT_ID")
     ?: System.getenv("ANIMA_GOOGLE_WEB_CLIENT_ID")
     ?: ""
+// Play Console > 인앱 상품에서 만든 결제 상품 ID. 서버의 ANDROID_LIFETIME_PRODUCT_ID 와 일치해야 함.
+val animaLifetimeProductId: String = localProps.getProperty("ANIMA_LIFETIME_PRODUCT_ID")
+    ?: System.getenv("ANIMA_LIFETIME_PRODUCT_ID")
+    ?: "anima_lifetime"
 
 android {
     namespace = "com.michaelkim.anima"
@@ -37,6 +41,7 @@ android {
 
         buildConfigField("String", "ANIMA_API_BASE_URL", "\"$animaApiBaseUrl\"")
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
+        buildConfigField("String", "LIFETIME_PRODUCT_ID", "\"$animaLifetimeProductId\"")
     }
 
     buildTypes {
@@ -110,4 +115,10 @@ dependencies {
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services)
     implementation(libs.google.id)
+
+    // Play Billing (1회 결제 영수증)
+    implementation(libs.billing.ktx)
+
+    // Play Integrity (호출자 정품 검증 → 서버에서 영수증 위조 차단)
+    implementation(libs.play.integrity)
 }

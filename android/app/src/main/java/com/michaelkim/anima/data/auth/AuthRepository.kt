@@ -32,7 +32,7 @@ object AuthRepository {
 
     /**
      * 현재 사용자의 Firebase ID 토큰을 반환. 사용자 없으면 null.
-     * forceRefresh=true 면 항상 새 토큰 발급 (만료 임박 시).
+     * forceRefresh=true 면 항상 새 토큰 발급 (만료 임박 시 / 결제 직후 새 claim 반영 시).
      */
     suspend fun currentIdToken(forceRefresh: Boolean = false): String? {
         val user = currentUser ?: return null
@@ -40,6 +40,20 @@ object AuthRepository {
             user.getIdToken(forceRefresh).await().token
         } catch (e: Exception) {
             null
+        }
+    }
+
+    /**
+     * 현재 ID 토큰의 claim 에 paid=true 가 박혀 있는지.
+     * /api/entitlement/verify 가 setCustomUserClaims 로 설정하면 다음 토큰부터 true 가 됨.
+     */
+    suspend fun isPaid(forceRefresh: Boolean = false): Boolean {
+        val user = currentUser ?: return false
+        return try {
+            val result = user.getIdToken(forceRefresh).await()
+            result.claims["paid"] == true
+        } catch (e: Exception) {
+            false
         }
     }
 
