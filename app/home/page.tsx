@@ -8,6 +8,7 @@ import {
   updateUserGoals,
   onDailyEntrySnapshot,
   onDailyMotivationSnapshot,
+  onIdentityProgressSnapshot,
   saveDailyTodos,
   saveDailyWins,
   saveDailyAchievedGoals,
@@ -17,7 +18,13 @@ import {
 } from "@/lib/firebase";
 import { authedFetch } from "@/lib/authedFetch";
 import MotivationCard from "@/components/home/MotivationCard";
-import type { DailyEntry, DailyMotivation, DailyTodo } from "@/types";
+import IdentityProgressView from "@/components/identity/IdentityProgress";
+import type {
+  DailyEntry,
+  DailyMotivation,
+  DailyTodo,
+  IdentityProgress as IdentityProgressType,
+} from "@/types";
 
 const FUTURE_PERSONA_MAX = 500;
 const GOAL_MAX = 80;
@@ -68,6 +75,8 @@ export default function HomeDashboardPage() {
   const [motivationError, setMotivationError] = useState<string | null>(null);
   const [showMoreToday, setShowMoreToday] = useState(false);
   const ensureRequestedRef = useRef(false);
+
+  const [identityEntries, setIdentityEntries] = useState<IdentityProgressType[]>([]);
 
   useEffect(() => {
     if (loading) return;
@@ -157,6 +166,37 @@ export default function HomeDashboardPage() {
       setMotivationError(err instanceof Error ? err.message : String(err));
     }
   }, [ymd]);
+
+  const handleSubmitMissionResponse = useCallback(
+    async (text: string) => {
+      const res = await authedFetch("/api/mission-response", {
+        method: "POST",
+        body: JSON.stringify({ ymd, text }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        isFirst?: boolean;
+        identityTag?: string;
+        error?: string;
+      };
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "응답을 저장하지 못했어요.");
+      }
+      return {
+        isFirst: Boolean(data.isFirst),
+        identityTag: data.identityTag || "",
+      };
+    },
+    [ymd],
+  );
+
+  useEffect(() => {
+    if (!firebaseUser) return;
+    const unsub = onIdentityProgressSnapshot(firebaseUser.uid, (entries) => {
+      setIdentityEntries(entries);
+    });
+    return unsub;
+  }, [firebaseUser]);
 
   if (loading || !firebaseUser) {
     return (
@@ -351,6 +391,7 @@ export default function HomeDashboardPage() {
           loading={motivationLoading}
           errorMessage={motivationError}
           onRegenerate={handleRegenerateMotivation}
+          onSubmitResponse={handleSubmitMissionResponse}
           ymd={ymd}
         />
 
@@ -359,6 +400,8 @@ export default function HomeDashboardPage() {
             {motivationError}
           </p>
         )}
+
+        <IdentityProgressView identities={user?.identities} entries={identityEntries} />
 
         {/* 10년 후의 나의 모습 — 동기부여 카드 컨텍스트 */}
         <section className="rounded-[16px] border border-black/[0.06] bg-white p-5 shadow-apple">

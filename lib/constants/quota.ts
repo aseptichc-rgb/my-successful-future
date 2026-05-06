@@ -15,6 +15,11 @@ export const DAILY_QUOTA = {
   widgetRefresh: 48,
   /** 명언 작가 자유 발화 추천 (LLM 호출 1건 = 1카운트). */
   authorRecommend: 5,
+  /**
+   * 카드 미션에 적은 한 줄 응답 저장. 1카드당 최초 1회만 정체성 카운터 +1,
+   * 그 이후엔 같은 카드 텍스트 수정도 이 한도를 차지해 도배를 막는다.
+   */
+  missionResponse: 5,
 } as const;
 
 export type QuotaKey = keyof typeof DAILY_QUOTA;

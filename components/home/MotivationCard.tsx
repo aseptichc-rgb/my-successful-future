@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DailyMotivation } from "@/types";
 
 interface MotivationCardProps {
@@ -9,9 +9,16 @@ interface MotivationCardProps {
   errorMessage?: string | null;
   /** 사용자가 "↻ 다시 받기" 를 눌렀을 때 호출. POST { force: true } 로 재생성. */
   onRegenerate: () => void | Promise<void>;
+  /**
+   * 미션 응답 저장 핸들러. 정의되어 있으면 미션 영역이 표시된다.
+   * resolves: 성공 시 isFirst (첫 응답이면 true).
+   */
+  onSubmitResponse?: (text: string) => Promise<{ isFirst: boolean; identityTag: string }>;
   /** 화면 헤더 표기용 KST YYYY-MM-DD (모르면 비워둠) */
   ymd: string;
 }
+
+const RESPONSE_MAX = 60;
 
 const WALLPAPER_W = 1170;
 const WALLPAPER_H = 2532; // iPhone-ish portrait — 폭은 가로 1170px 기준
@@ -179,11 +186,32 @@ export default function MotivationCard({
   loading,
   errorMessage,
   onRegenerate,
+  onSubmitResponse,
   ymd,
 }: MotivationCardProps) {
   const [downloading, setDownloading] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  // 미션 입력 상태
+  const [responseDraft, setResponseDraft] = useState("");
+  const [responseEditing, setResponseEditing] = useState(false);
+  const [responseSaving, setResponseSaving] = useState(false);
+  const [responseError, setResponseError] = useState<string | null>(null);
+  const [submitFlash, setSubmitFlash] = useState<string | null>(null);
+
+  // 카드가 바뀔 때마다(다시 받기·날짜 변경) 입력 상태를 그 카드의 응답으로 초기화한다.
+  useEffect(() => {
+    setResponseDraft(motivation?.response?.text || "");
+    setResponseEditing(false);
+    setResponseError(null);
+  }, [motivation?.ymd, motivation?.quote, motivation?.response?.text]);
+
+  useEffect(() => {
+    if (!submitFlash) return;
+    const t = setTimeout(() => setSubmitFlash(null), 2400);
+    return () => clearTimeout(t);
+  }, [submitFlash]);
 
   const cardStyle = useMemo(() => {
     if (!motivation) {
@@ -227,6 +255,26 @@ export default function MotivationCard({
       setRegenerating(false);
     }
   }, [onRegenerate, regenerating, loading]);
+
+  const handleSubmitResponse = useCallback(async () => {
+    if (!onSubmitResponse || !motivation?.mission) return;
+    const text = responseDraft.trim().slice(0, RESPONSE_MAX);
+    if (!text) {
+      setResponseError("한 줄 적어 주세요.");
+      return;
+    }
+    setResponseSaving(true);
+    setResponseError(null);
+    try {
+      const { isFirst, identityTag } = await onSubmitResponse(text);
+      setResponseEditing(false);
+      setSubmitFlash(isFirst ? `+1 — 당신은 [${identityTag}]입니다` : "응답을 수정했어요");
+    } catch (err) {
+      setResponseError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setResponseSaving(false);
+    }
+  }, [onSubmitResponse, motivation, responseDraft]);
 
   return (
     <section
@@ -302,6 +350,133 @@ export default function MotivationCard({
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {/* 미션 영역 — 능동 인출. mission 이 없으면(레거시 카드) 통째로 숨긴다. */}
+        {motivation && motivation.mission && onSubmitResponse && (
+          <div
+            className={`mt-6 rounded-[14px] px-4 py-3.5 ${
+              tone === "dark" ? "bg-white/10" : "bg-black/[0.04]"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <p className={`text-[11px] font-semibold uppercase tracking-[0.08em] ${goalLabelColor}`}>
+                오늘의 한 줄 미션
+              </p>
+              <span
+                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-[-0.005em] ${
+                  tone === "dark" ? "bg-white/15 text-white/85" : "bg-[#1E1B4B]/8 text-[#1E1B4B]/80"
+                }`}
+              >
+                나는 {motivation.mission.identityTag}
+              </span>
+            </div>
+            <p
+              className={`mt-2 text-[15px] font-semibold leading-[1.45] tracking-[-0.015em] ${quoteColor}`}
+            >
+              {motivation.mission.prompt}
+            </p>
+
+            {motivation.response && !responseEditing ? (
+              <div
+                className={`mt-3 rounded-[10px] px-3 py-2.5 ${
+                  tone === "dark" ? "bg-white/10" : "bg-white/70"
+                }`}
+              >
+                <p
+                  className={`whitespace-pre-wrap text-[14px] leading-[1.5] tracking-[-0.01em] ${
+                    tone === "dark" ? "text-white" : "text-[#1E1B4B]"
+                  }`}
+                >
+                  {motivation.response.text}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResponseDraft(motivation.response?.text || "");
+                    setResponseEditing(true);
+                  }}
+                  className={`mt-1.5 text-[11px] font-medium tracking-[-0.005em] underline-offset-2 hover:underline ${
+                    tone === "dark" ? "text-white/65" : "text-black/55"
+                  }`}
+                >
+                  수정
+                </button>
+              </div>
+            ) : (
+              <div className="mt-2.5">
+                <textarea
+                  value={responseDraft}
+                  onChange={(e) =>
+                    setResponseDraft(e.target.value.slice(0, RESPONSE_MAX))
+                  }
+                  rows={2}
+                  maxLength={RESPONSE_MAX}
+                  placeholder="한 줄로 적어보세요 (60자)"
+                  className={`w-full resize-none rounded-[10px] border px-3 py-2 text-[14px] leading-[1.45] tracking-[-0.01em] focus:outline-none ${
+                    tone === "dark"
+                      ? "border-white/20 bg-white/15 text-white placeholder:text-white/40 focus:border-white/55"
+                      : "border-black/10 bg-white text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B]"
+                  }`}
+                />
+                <div className="mt-1.5 flex items-center justify-between gap-2">
+                  <span className={`text-[11px] tabular-nums ${authorColor}`}>
+                    {responseDraft.length}/{RESPONSE_MAX}
+                  </span>
+                  <div className="flex gap-1.5">
+                    {motivation.response && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setResponseEditing(false);
+                          setResponseDraft(motivation.response?.text || "");
+                          setResponseError(null);
+                        }}
+                        disabled={responseSaving}
+                        className={`rounded-pill px-3 py-1.5 text-[11px] font-medium tracking-[-0.005em] transition-colors disabled:opacity-50 ${
+                          tone === "dark" ? "text-white/75 hover:bg-white/10" : "text-black/60 hover:bg-black/[0.04]"
+                        }`}
+                      >
+                        취소
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleSubmitResponse}
+                      disabled={responseSaving || !responseDraft.trim()}
+                      className={`rounded-pill px-3.5 py-1.5 text-[11px] font-semibold tracking-[-0.005em] transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                        tone === "dark"
+                          ? "bg-white text-[#1E1B4B] hover:bg-white/90"
+                          : "bg-[#1E1B4B] text-white hover:bg-[#2A2766]"
+                      }`}
+                    >
+                      {responseSaving ? "기록 중…" : "기록하기"}
+                    </button>
+                  </div>
+                </div>
+                {responseError && (
+                  <p
+                    className={`mt-1.5 text-[11px] tracking-[-0.005em] ${
+                      tone === "dark" ? "text-rose-100/95" : "text-rose-700"
+                    }`}
+                  >
+                    {responseError}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {submitFlash && (
+              <p
+                role="status"
+                className={`mt-2 text-[12px] font-semibold tracking-[-0.005em] ${
+                  tone === "dark" ? "text-white" : "text-[#1E1B4B]"
+                }`}
+              >
+                {submitFlash}
+              </p>
+            )}
           </div>
         )}
       </div>

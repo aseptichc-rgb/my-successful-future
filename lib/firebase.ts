@@ -17,6 +17,7 @@ import {
 } from "firebase/auth";
 import {
   getFirestore,
+  collection,
   doc,
   getDoc,
   setDoc,
@@ -25,7 +26,14 @@ import {
   type Firestore,
   type Unsubscribe,
 } from "firebase/firestore";
-import type { User, DailyEntry, DailyTodo, DailyMotivation, QuotePreference } from "@/types";
+import type {
+  User,
+  DailyEntry,
+  DailyTodo,
+  DailyMotivation,
+  IdentityProgress,
+  QuotePreference,
+} from "@/types";
 
 // ── Firebase 지연 초기화 ─────────────────────────────
 const firebaseConfig = {
@@ -230,5 +238,21 @@ export function onDailyMotivationSnapshot(
       return;
     }
     callback(snap.data() as DailyMotivation);
+  });
+}
+
+// ── 정체성 진행도 구독 ──────────────────────────────
+/**
+ * 사용자의 모든 정체성 라벨별 진행도를 실시간으로 받는다.
+ * 라벨이 새로 생기거나 카운터가 올라갈 때마다 콜백이 호출된다.
+ */
+export function onIdentityProgressSnapshot(
+  uid: string,
+  callback: (entries: IdentityProgress[]) => void,
+): Unsubscribe {
+  const db = getDbInstance();
+  return onSnapshot(collection(db, "users", uid, "identityProgress"), (snap) => {
+    const list: IdentityProgress[] = snap.docs.map((d) => d.data() as IdentityProgress);
+    callback(list);
   });
 }

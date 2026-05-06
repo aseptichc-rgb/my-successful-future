@@ -387,6 +387,47 @@ export default function OnboardingPage() {
                     — {preview.author}
                     {preview.source ? ` · ${preview.source}` : ""}
                   </p>
+
+                  {preview.mission && (
+                    <div
+                      className={`mt-5 rounded-[14px] px-4 py-3 ${
+                        preview.gradient.tone === "dark" ? "bg-white/12" : "bg-black/[0.06]"
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p
+                          className={`text-[10px] font-semibold uppercase tracking-[0.12em] ${
+                            preview.gradient.tone === "dark" ? "text-white/65" : "text-black/55"
+                          }`}
+                        >
+                          오늘의 한 줄 미션
+                        </p>
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            preview.gradient.tone === "dark"
+                              ? "bg-white/15 text-white/85"
+                              : "bg-[#1E1B4B]/10 text-[#1E1B4B]/80"
+                          }`}
+                        >
+                          나는 {preview.mission.identityTag}
+                        </span>
+                      </div>
+                      <p
+                        className={`mt-2 text-[14px] font-semibold leading-[1.45] tracking-[-0.015em] ${
+                          preview.gradient.tone === "dark" ? "text-white" : "text-[#1E1B4B]"
+                        }`}
+                      >
+                        {preview.mission.prompt}
+                      </p>
+                      <p
+                        className={`mt-2 text-[11px] tracking-[-0.005em] ${
+                          preview.gradient.tone === "dark" ? "text-white/65" : "text-black/55"
+                        }`}
+                      >
+                        시작 후 홈에서 이 한 줄에 답하면 정체성 카드가 채워져요.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 

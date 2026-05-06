@@ -17,12 +17,24 @@ import { Timestamp } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { generateText } from "@/lib/gemini";
 import { FAMOUS_QUOTES_SEED, type FamousQuoteSeed } from "@/lib/famousQuotesSeed";
-import type { DailyMotivation, MotivationGradient, QuotePreference } from "@/types";
+import { ensureIdentities } from "@/lib/identities";
+import type {
+  DailyMotivation,
+  MotivationGradient,
+  MotivationMission,
+  QuotePreference,
+} from "@/types";
 
 export const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 const FUTURE_PERSONA_TRUNC = 280;
 const MAX_GOALS_ON_CARD = 3;
-const QUOTE_MODEL_TOKENS = 80;
+/**
+ * mission + identityTag 까지 같은 호출에서 출력하므로 토큰 한도를 키운다.
+ * (기존 80은 id 한 줄 JSON 기준이었음.)
+ */
+const QUOTE_MODEL_TOKENS = 240;
+const MISSION_PROMPT_MAX_LEN = 80;
+const MISSION_PROMPT_MIN_LEN = 18;
 /** 한 주에 노출되는 인물 풀의 목표 인원수 — 너무 좁으면 단조롭고, 너무 넓으면 회전 효과가 사라진다. */
 const WEEKLY_AUTHOR_POOL_SIZE = 8;
 const MIN_PINNED_DAYS = 0;
@@ -167,10 +179,11 @@ function buildPrompt(opts: {
   ctx: UserContext;
   ymd: string;
   candidates: ReadonlyArray<FamousQuoteSeed>;
+  identityLabels: ReadonlyArray<string>;
   /** 매번 새 호출에서 다른 결과를 유도하는 가변 시드 (다시 받기 시 변경됨). */
   varietySalt: string;
 }): string {
-  const { ctx, ymd, candidates, varietySalt } = opts;
+  const { ctx, ymd, candidates, identityLabels, varietySalt } = opts;
   const goalsBlock =
     ctx.goals.length > 0
       ? ctx.goals.map((g, i) => `${i + 1}. ${g}`).join("\n")
@@ -180,9 +193,11 @@ function buildPrompt(opts: {
     .map((q) => `- ${q.id} | ${q.author ?? "미상"} | "${q.text}"`)
     .join("\n");
 
-  return `당신은 한 사람의 목표와 꿈에 정확히 어울리는 실존 인물(철학자·기업가·과학자·문학가·리더 등)의 명언 한 줄을 골라주는 큐레이터입니다.
+  const identitiesBlock = identityLabels.map((l) => `- ${l}`).join("\n");
 
-오늘은 ${ymd} (KST). 아래 사용자에게, 오늘 잠금화면에 띄워줄 명언 1건을 후보 목록에서 정확히 골라야 합니다.
+  return `당신은 한 사람의 목표와 꿈에 정확히 어울리는 실존 인물(철학자·기업가·과학자·문학가·리더 등)의 명언 한 줄을 골라주는 큐레이터이자, 그 명언을 **오늘의 능동 인출 미션 한 줄**로 바꿔주는 코치입니다.
+
+오늘은 ${ymd} (KST). 아래 사용자에게 (1) 명언 1건을 후보 목록에서 골라주고, (2) 그 명언을 사용자의 오늘 행동으로 바꿔내는 한 줄 미션을, (3) 그 미션이 강화하는 정체성 라벨 하나와 함께 출력하세요.
 
 ## 사용자
 - 이름: ${ctx.displayName}
@@ -190,16 +205,25 @@ function buildPrompt(opts: {
 - 지금 바라보는 목표:
 ${goalsBlock}
 
-## 후보 (이 목록 밖의 인용은 절대 만들어내지 마세요)
+## 후보 명언 (이 목록 밖의 인용은 절대 만들어내지 마세요)
 ${candidatesBlock}
 
-## 선정 기준
-1. 사용자의 목표·미래상과 의미적으로 가장 잘 통하는 한 줄.
-2. 진부한 자기계발 클리셰보다, 사용자가 가는 길을 실제로 비춰주는 인용.
-3. 다양성 시드: ${varietySalt} — 이 값이 바뀌었다면 직전 회와 다른 후보를 적극적으로 골라라.
+## 정체성 라벨 풀 (이 안에서 정확히 1개를 그대로 골라야 합니다)
+${identitiesBlock}
+
+## 선정·작성 기준
+1. 명언: 사용자의 목표·미래상과 의미적으로 가장 잘 통하는 한 줄. 진부한 클리셰보다 실제로 비춰주는 인용.
+2. 미션:
+   - 사용자가 60자 이내 한 줄로 답할 수 있는 **구체적 질문 또는 행동 지시**.
+   - 길이 ${MISSION_PROMPT_MIN_LEN}~${MISSION_PROMPT_MAX_LEN}자 한국어 한 줄.
+   - 가능하면 위 목표 중 하나에 직접 연결할 것 (linkedGoal 에 그 목표 텍스트 그대로).
+   - "오늘 ~을 막을 가장 큰 방해물 1개를 적어보세요" / "오늘 ~을 위해 처음 뗄 한 발은 무엇인가요?" 같은 형식.
+   - 추상적 격려 금지("힘내세요"). 능동 인출이 일어나는 질문이어야 함.
+3. identityTag: 위 라벨 풀에서 그대로 1개. 새로 만들지 말 것.
+4. 다양성 시드: ${varietySalt} — 이 값이 바뀌었다면 직전 회와 다른 명언/미션을 적극적으로 골라라.
 
 ## 출력 (반드시 이 JSON 한 줄만, 다른 말 금지)
-{"id":"<후보 id 그대로>"}`;
+{"id":"<후보 id 그대로>","mission":"<한 줄 미션>","linkedGoal":"<연결된 목표 또는 빈 문자열>","identityTag":"<라벨 풀 중 1개 그대로>"}`;
 }
 
 function sanitizePreference(raw: unknown): QuotePreference {
@@ -235,25 +259,85 @@ async function fetchUserContext(uid: string): Promise<UserContext> {
   return { displayName, futurePersona, goals, preference };
 }
 
-/** Gemini 응답에서 첫 번째 JSON 객체를 끄집어내 id 만 꺼낸다. */
-function parsePickedId(raw: string): string | null {
+interface PickedExtension {
+  id: string;
+  mission?: string;
+  linkedGoal?: string;
+  identityTag?: string;
+}
+
+/** Gemini 응답에서 첫 번째 JSON 객체를 끄집어내 id + (mission + identityTag) 를 꺼낸다. */
+function parsePickedExtension(raw: string): PickedExtension | null {
   const trimmed = raw.trim();
   const match = trimmed.match(/\{[\s\S]*?\}/);
   if (!match) return null;
   try {
-    const parsed: unknown = JSON.parse(match[0]);
-    if (
-      parsed &&
-      typeof parsed === "object" &&
-      "id" in parsed &&
-      typeof (parsed as { id: unknown }).id === "string"
-    ) {
-      return (parsed as { id: string }).id.trim();
-    }
+    const parsed = JSON.parse(match[0]) as Record<string, unknown>;
+    const id = typeof parsed.id === "string" ? parsed.id.trim() : "";
+    if (!id) return null;
+    const mission =
+      typeof parsed.mission === "string" && parsed.mission.trim().length > 0
+        ? parsed.mission.trim().slice(0, MISSION_PROMPT_MAX_LEN)
+        : undefined;
+    const linkedGoal =
+      typeof parsed.linkedGoal === "string" && parsed.linkedGoal.trim().length > 0
+        ? parsed.linkedGoal.trim()
+        : undefined;
+    const identityTag =
+      typeof parsed.identityTag === "string" && parsed.identityTag.trim().length > 0
+        ? parsed.identityTag.trim()
+        : undefined;
+    return { id, mission, linkedGoal, identityTag };
   } catch {
     return null;
   }
-  return null;
+}
+
+/**
+ * Gemini 가 던진 mission/identityTag 가 비었거나 라벨 풀 밖이면 폴백 미션을 만든다.
+ * 카드는 어떤 경로에서도 mission 을 가져야 — 능동 인출 UI 가 끊기지 않도록.
+ */
+function buildFallbackMission(
+  identityLabels: ReadonlyArray<string>,
+  goals: ReadonlyArray<string>,
+  seed: string,
+): MotivationMission {
+  const tag =
+    identityLabels.length > 0
+      ? identityLabels[hash32(seed) % identityLabels.length]
+      : "성장하는 사람";
+  const linkedGoal = goals.length > 0 ? goals[hash32(`${seed}:goal`) % goals.length] : undefined;
+  const prompt = linkedGoal
+    ? `오늘 "${linkedGoal.slice(0, 24)}"을(를) 위해 처음 뗄 한 발은 무엇인가요?`
+    : "오늘의 명언이 떠올리게 한 한 가지 행동을 적어보세요.";
+  return {
+    prompt: prompt.slice(0, MISSION_PROMPT_MAX_LEN),
+    ...(linkedGoal ? { linkedGoal } : {}),
+    identityTag: tag,
+  };
+}
+
+/** Gemini 출력의 mission/identityTag 가 유효한지 검증해 사용. 아니면 폴백. */
+function resolveMission(
+  picked: PickedExtension | null,
+  identityLabels: ReadonlyArray<string>,
+  goals: ReadonlyArray<string>,
+  seed: string,
+): MotivationMission {
+  const tagOk =
+    picked?.identityTag && identityLabels.includes(picked.identityTag) ? picked.identityTag : null;
+  const promptOk =
+    picked?.mission && picked.mission.length >= MISSION_PROMPT_MIN_LEN ? picked.mission : null;
+  if (tagOk && promptOk) {
+    const linkedGoal =
+      picked?.linkedGoal && goals.includes(picked.linkedGoal) ? picked.linkedGoal : undefined;
+    return {
+      prompt: promptOk,
+      identityTag: tagOk,
+      ...(linkedGoal ? { linkedGoal } : {}),
+    };
+  }
+  return buildFallbackMission(identityLabels, goals, seed);
 }
 
 /** 주어진 후보 풀에서 (uid+ymd) 시드로 결정론적 폴백 1건. */
@@ -339,22 +423,24 @@ function resolveTodaysPool(
   return { pool: QUOTE_CANDIDATES, reason: "all" };
 }
 
-/** 시드에 없는 free-text 인물명 → Gemini 로 그 사람의 실제 명언 1건을 가져온다. */
+/** 시드에 없는 free-text 인물명 → Gemini 로 그 사람의 실제 명언 1건과 미션/정체성 라벨을 같이 가져온다. */
 function buildFreeAuthorPrompt(opts: {
   ctx: UserContext;
   ymd: string;
   author: string;
+  identityLabels: ReadonlyArray<string>;
   varietySalt: string;
   avoidQuote?: string;
 }): string {
-  const { ctx, ymd, author, varietySalt, avoidQuote } = opts;
+  const { ctx, ymd, author, identityLabels, varietySalt, avoidQuote } = opts;
   const goalsBlock =
     ctx.goals.length > 0
       ? ctx.goals.map((g, i) => `${i + 1}. ${g}`).join("\n")
       : "(아직 목표가 적혀 있지 않음)";
-  return `당신은 인물 인용을 정확히 기억하는 큐레이터입니다.
+  const identitiesBlock = identityLabels.map((l) => `- ${l}`).join("\n");
+  return `당신은 인물 인용을 정확히 기억하는 큐레이터이자, 그 인용을 사용자의 오늘 한 줄 미션으로 바꿔주는 코치입니다.
 
-요청: "${author}" 라는 실존 인물(또는 널리 알려진 역사적 인물)의 **실제로 한 발언/저술 중 출처가 분명하고 널리 인용되는 한 줄**을 한국어로 가져오세요.
+요청: "${author}" 라는 실존 인물(또는 널리 알려진 역사적 인물)의 **실제로 한 발언/저술 중 출처가 분명하고 널리 인용되는 한 줄**을 한국어로 가져오세요. 그리고 그 인용을 오늘 행동으로 바꿔주는 미션을 함께 출력하세요.
 
 ## 사용자 (이 사람의 목표·미래에 가장 와닿는 한 줄을 골라줘)
 - 10년 후 모습: ${ctx.futurePersona || "(미작성)"}
@@ -365,16 +451,21 @@ ${goalsBlock}
     avoidQuote ? `\n- 방금 보여준 인용: "${avoidQuote}" — 이것과 같은 발언은 절대 다시 고르지 마세요.` : ""
   }
 
+## 정체성 라벨 풀 (이 안에서 정확히 1개를 그대로 골라야 합니다)
+${identitiesBlock}
+
 ## 출력 규칙
 - 한국어 한 줄로 자연스럽게 옮긴 인용. 30~120자.
 - 절대 만들어내지 마세요. 본인이 한 게 맞는지 확신 없으면 가장 잘 알려진 다른 진짜 발언으로 대체하세요.
-- source 필드에는 출처(저작/연설/인터뷰 등)를 한국어 또는 원어로. 모르면 빈 문자열.
-- 인물이 한국인이 아니면 originalText 에 그 사람이 실제 사용한 언어의 원문을 그대로 넣고, originalLang 에 ISO 코드(en, de, fr, ru, zh, ja, la, grc 등)를 넣으세요. 한국인이거나 원문 확신이 없으면 둘 다 빈 문자열.
-- 한국 인물이면 originalText, originalLang 둘 다 빈 문자열로 두세요.
-- "${author}" 가 실존 인물이 아닐 가능성이 있으면 verified=false 로 표시.
+- source 필드에는 출처(저작/연설/인터뷰 등). 모르면 빈 문자열.
+- 인물이 한국인이 아니면 originalText 에 원문, originalLang 에 ISO 코드. 한국인이거나 원문 확신이 없으면 둘 다 빈 문자열.
+- "${author}" 가 실존 인물이 아닐 가능성이 있으면 verified=false.
+- mission: 60자 이내로 답할 수 있는 구체적 한 줄 질문/지시(${MISSION_PROMPT_MIN_LEN}~${MISSION_PROMPT_MAX_LEN}자). 가능하면 위 목표 1개에 직접 연결.
+- linkedGoal: 위 목표 텍스트 그대로 또는 빈 문자열.
+- identityTag: 라벨 풀에서 그대로 1개. 새로 만들지 말 것.
 
 ## 출력 (이 JSON 한 줄만)
-{"quote":"<한국어 한 줄>","source":"<출처 또는 빈 문자열>","originalText":"<원어 원문 또는 빈 문자열>","originalLang":"<ISO 코드 또는 빈 문자열>","verified":true|false}`;
+{"quote":"<한 줄>","source":"<출처 or 빈>","originalText":"<원문 or 빈>","originalLang":"<ISO or 빈>","verified":true|false,"mission":"<미션 한 줄>","linkedGoal":"<목표 or 빈>","identityTag":"<라벨>"}`;
 }
 
 interface FreeQuoteResult {
@@ -383,6 +474,9 @@ interface FreeQuoteResult {
   originalText?: string;
   originalLang?: string;
   verified: boolean;
+  mission?: string;
+  linkedGoal?: string;
+  identityTag?: string;
 }
 
 function parseFreeQuote(raw: string): FreeQuoteResult | null {
@@ -404,6 +498,18 @@ function parseFreeQuote(raw: string): FreeQuoteResult | null {
         ? parsed.originalLang.trim().slice(0, 8).toLowerCase()
         : undefined;
     const verified = parsed.verified === true;
+    const mission =
+      typeof parsed.mission === "string" && parsed.mission.trim().length > 0
+        ? parsed.mission.trim().slice(0, MISSION_PROMPT_MAX_LEN)
+        : undefined;
+    const linkedGoal =
+      typeof parsed.linkedGoal === "string" && parsed.linkedGoal.trim().length > 0
+        ? parsed.linkedGoal.trim()
+        : undefined;
+    const identityTag =
+      typeof parsed.identityTag === "string" && parsed.identityTag.trim().length > 0
+        ? parsed.identityTag.trim()
+        : undefined;
     if (!quote) return null;
     return {
       quote,
@@ -412,6 +518,9 @@ function parseFreeQuote(raw: string): FreeQuoteResult | null {
       originalText: originalText && originalLang ? originalText : undefined,
       originalLang: originalText && originalLang ? originalLang : undefined,
       verified,
+      mission,
+      linkedGoal,
+      identityTag,
     };
   } catch {
     return null;
@@ -440,6 +549,14 @@ export async function ensureMotivation(opts: {
   }
 
   const ctx = await fetchUserContext(uid);
+  // 정체성 라벨 풀 보장 — 카드의 mission.identityTag 가 항상 이 풀 안의 값이도록.
+  // futurePersona/goals 가 바뀐 후 처음 카드를 만들 때 1회 Gemini 호출이 더 발생할 수 있다.
+  const identityLabels = await ensureIdentities({
+    uid,
+    futurePersona: ctx.futurePersona,
+    goals: ctx.goals,
+  });
+
   const gradient = pickGradient(`${uid}:${ymd}`);
   const trimmedOverride = overrideAuthor?.trim() || undefined;
   const { pool: rawPool, freeAuthor } = resolveTodaysPool(uid, ymd, ctx.preference, trimmedOverride);
@@ -458,15 +575,17 @@ export async function ensureMotivation(opts: {
     : `${ymd}`;
 
   let picked: PickedQuote;
+  let mission: MotivationMission;
 
   if (pool.length === 0 && freeAuthor) {
-    // 시드에 없는 free-text 인물 → Gemini 가 실제 발언을 가져옴.
+    // 시드에 없는 free-text 인물 → Gemini 가 실제 발언 + mission/identityTag 를 같이 가져옴.
     try {
       const raw = await generateText(
         buildFreeAuthorPrompt({
           ctx,
           ymd,
           author: freeAuthor,
+          identityLabels,
           varietySalt,
           avoidQuote: force && existing ? existing.quote : undefined,
         }),
@@ -481,9 +600,21 @@ export async function ensureMotivation(opts: {
           originalText: parsed.originalText,
           originalLang: parsed.originalLang,
         };
+        mission = resolveMission(
+          {
+            id: "free",
+            mission: parsed.mission,
+            linkedGoal: parsed.linkedGoal,
+            identityTag: parsed.identityTag,
+          },
+          identityLabels,
+          ctx.goals,
+          `${uid}:${ymd}:${varietySalt}`,
+        );
       } else {
         // 파싱 실패 → 전체 시드 풀에서 폴백
         picked = toPickedQuote(deterministicFallback(uid, ymd, QUOTE_CANDIDATES));
+        mission = buildFallbackMission(identityLabels, ctx.goals, `${uid}:${ymd}:${varietySalt}`);
       }
     } catch (err) {
       console.warn(
@@ -491,26 +622,29 @@ export async function ensureMotivation(opts: {
         err instanceof Error ? err.message : err,
       );
       picked = toPickedQuote(deterministicFallback(uid, ymd, QUOTE_CANDIDATES));
+      mission = buildFallbackMission(identityLabels, ctx.goals, `${uid}:${ymd}:${varietySalt}`);
     }
   } else {
     try {
       const raw = await generateText(
-        buildPrompt({ ctx, ymd, candidates: pool, varietySalt }),
+        buildPrompt({ ctx, ymd, candidates: pool, identityLabels, varietySalt }),
         QUOTE_MODEL_TOKENS,
       );
-      const id = parsePickedId(raw);
-      const seed = id ? CANDIDATE_BY_ID.get(id) : undefined;
+      const ext = parsePickedExtension(raw);
+      const seed = ext ? CANDIDATE_BY_ID.get(ext.id) : undefined;
       // Gemini 가 풀 밖의 id 를 들고와도 풀 안에서만 받아들임. 아니면 폴백.
       const inPool = seed && pool.some((q) => q.id === seed.id) ? seed : undefined;
       picked = toPickedQuote(
         inPool ?? deterministicFallback(uid, force ? `${ymd}:${varietySalt}` : ymd, pool),
       );
+      mission = resolveMission(ext, identityLabels, ctx.goals, `${uid}:${ymd}:${varietySalt}`);
     } catch (err) {
       console.warn(
         "[dailyMotivation] Gemini 실패, 결정론적 폴백 사용:",
         err instanceof Error ? err.message : err,
       );
       picked = toPickedQuote(deterministicFallback(uid, ymd, pool));
+      mission = buildFallbackMission(identityLabels, ctx.goals, `${uid}:${ymd}:${varietySalt}`);
     }
   }
 
@@ -525,6 +659,7 @@ export async function ensureMotivation(opts: {
     goalsSnapshot: ctx.goals,
     futurePersonaSnapshot: ctx.futurePersona || undefined,
     gradient,
+    mission,
     createdAt: Timestamp.now() as unknown as DailyMotivation["createdAt"],
   };
 
