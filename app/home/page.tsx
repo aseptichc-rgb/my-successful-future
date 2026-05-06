@@ -9,7 +9,6 @@ import {
   onDailyEntrySnapshot,
   onDailyMotivationSnapshot,
   onIdentityProgressSnapshot,
-  saveDailyTodos,
   saveDailyWins,
   saveDailyAchievedGoals,
   getKstYmd,
@@ -22,25 +21,18 @@ import IdentityProgressView from "@/components/identity/IdentityProgress";
 import type {
   DailyEntry,
   DailyMotivation,
-  DailyTodo,
   IdentityProgress as IdentityProgressType,
 } from "@/types";
 
 const FUTURE_PERSONA_MAX = 500;
 const GOAL_MAX = 80;
-const TODO_MAX = 120;
 const WIN_MAX = 140;
-const SAVE_DEBOUNCE_MS = 600;
+const WINS_SAVED_TOAST_MS = 2000;
 
 function formatKstHeader(ymd: string): string {
   const [y, m, d] = ymd.split("-").map((s) => parseInt(s, 10));
   if (!y || !m || !d) return ymd;
   return `${y}년 ${m}월 ${d}일`;
-}
-
-function newTodoId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
-  return `t_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
 const IconSettings = ({ className = "h-5 w-5" }: { className?: string }) => (
@@ -63,12 +55,20 @@ export default function HomeDashboardPage() {
   const goalsHydratedRef = useRef(false);
 
   const ymd = useMemo(() => getKstYmd(), []);
-  const [todos, setTodos] = useState<DailyTodo[]>([]);
-  const [todoDraft, setTodoDraft] = useState("");
   const [wins, setWins] = useState<string[]>(["", "", ""]);
+  const [savedWins, setSavedWins] = useState<string[]>(["", "", ""]);
+  const [winsSaving, setWinsSaving] = useState(false);
+  const [winsJustSaved, setWinsJustSaved] = useState(false);
+  const [winsError, setWinsError] = useState<string | null>(null);
   const [achievedGoals, setAchievedGoals] = useState<string[]>([]);
   const dailyHydratedRef = useRef(false);
-  const winsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const winsSavedToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (winsSavedToastTimerRef.current) clearTimeout(winsSavedToastTimerRef.current);
+    };
+  }, []);
 
   const [motivation, setMotivation] = useState<DailyMotivation | null>(null);
   const [motivationLoading, setMotivationLoading] = useState(true);
@@ -103,16 +103,19 @@ export default function HomeDashboardPage() {
     const unsub = onDailyEntrySnapshot(firebaseUser.uid, ymd, (entry: DailyEntry | null) => {
       if (!entry) {
         if (!dailyHydratedRef.current) {
-          setTodos([]);
           setWins(["", "", ""]);
+          setSavedWins(["", "", ""]);
           setAchievedGoals([]);
           dailyHydratedRef.current = true;
         }
         return;
       }
-      setTodos(Array.isArray(entry.todos) ? entry.todos : []);
       const w = Array.isArray(entry.wins) ? entry.wins : [];
-      setWins([0, 1, 2].map((i) => w[i] || ""));
+      const normalized = [0, 1, 2].map((i) => w[i] || "");
+      if (!dailyHydratedRef.current) {
+        setWins(normalized);
+      }
+      setSavedWins(normalized);
       setAchievedGoals(Array.isArray(entry.achievedGoals) ? entry.achievedGoals : []);
       dailyHydratedRef.current = true;
     });
@@ -305,61 +308,33 @@ export default function HomeDashboardPage() {
     await pruneAchievedGoals(next);
   };
 
-  const persistTodos = async (next: DailyTodo[]) => {
-    try {
-      await saveDailyTodos(uid, ymd, next);
-    } catch (err) {
-      console.error("할 일 저장 실패:", err);
-      window.alert("할 일 저장에 실패했습니다.");
-    }
-  };
-
-  const handleAddTodo = async () => {
-    const text = todoDraft.trim().slice(0, TODO_MAX);
-    if (!text) return;
-    const next: DailyTodo[] = [...todos, { id: newTodoId(), text, done: false }];
-    setTodos(next);
-    setTodoDraft("");
-    await persistTodos(next);
-  };
-
-  const handleToggleTodo = async (id: string) => {
-    const next = todos.map((t) => (t.id === id ? { ...t, done: !t.done } : t));
-    setTodos(next);
-    await persistTodos(next);
-  };
-
-  const handleRemoveTodo = async (id: string) => {
-    const next = todos.filter((t) => t.id !== id);
-    setTodos(next);
-    await persistTodos(next);
-  };
-
   const handleChangeWin = (idx: number, value: string) => {
     const next = wins.map((w, i) => (i === idx ? value.slice(0, WIN_MAX) : w));
     setWins(next);
-    if (winsTimerRef.current) clearTimeout(winsTimerRef.current);
-    winsTimerRef.current = setTimeout(() => {
-      saveDailyWins(uid, ymd, next).catch((err) => {
-        console.error("잘한 일 저장 실패:", err);
-      });
-    }, SAVE_DEBOUNCE_MS);
+    if (winsJustSaved) setWinsJustSaved(false);
+    if (winsError) setWinsError(null);
   };
 
-  const handleCommitWins = async () => {
-    if (winsTimerRef.current) {
-      clearTimeout(winsTimerRef.current);
-      winsTimerRef.current = null;
-    }
+  const handleSaveWins = async () => {
+    setWinsSaving(true);
+    setWinsError(null);
     try {
       await saveDailyWins(uid, ymd, wins);
+      setSavedWins(wins);
+      setWinsJustSaved(true);
+      if (winsSavedToastTimerRef.current) clearTimeout(winsSavedToastTimerRef.current);
+      winsSavedToastTimerRef.current = setTimeout(() => setWinsJustSaved(false), WINS_SAVED_TOAST_MS);
     } catch (err) {
       console.error("잘한 일 저장 실패:", err);
+      setWinsError("저장에 실패했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setWinsSaving(false);
     }
   };
 
-  const completedCount = todos.filter((t) => t.done).length;
   const futureText = user?.futurePersona || "";
+  const winsDirty = wins.some((w, i) => (w || "") !== (savedWins[i] || ""));
+  const winsHasContent = wins.some((w) => (w || "").trim().length > 0);
 
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-[#F0EDE6] pb-8">
@@ -587,7 +562,7 @@ export default function HomeDashboardPage() {
           )}
         </section>
 
-        {/* 오늘의 할 일 / 잘한 일 */}
+        {/* 오늘 잘한 일 */}
         <section className="rounded-[16px] border border-black/[0.06] bg-white shadow-apple">
           <button
             type="button"
@@ -600,10 +575,7 @@ export default function HomeDashboardPage() {
                 <path d="M9 11l3 3L22 4" />
                 <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
               </svg>
-              오늘의 할 일 · 잘한 일 기록
-              <span className="ml-1 text-[12px] font-medium text-black/48">
-                ({completedCount}/{todos.length} 완료)
-              </span>
+              오늘 스스로 잘한 일 {MAX_DAILY_WINS}가지
             </span>
             <svg
               className={`h-4 w-4 text-black/40 transition-transform ${showMoreToday ? "rotate-180" : ""}`}
@@ -614,85 +586,19 @@ export default function HomeDashboardPage() {
           </button>
 
           {showMoreToday && (
-            <div className="space-y-5 border-t border-black/[0.06] px-5 pb-5 pt-4">
+            <div className="border-t border-black/[0.06] px-5 pb-5 pt-4">
               <div>
-                <h3 className="text-[13px] font-semibold tracking-[-0.01em] text-[#1E1B4B]">오늘의 할 일</h3>
-                {todos.length > 0 && (
-                  <ul className="mt-2 space-y-1">
-                    {todos.map((todo) => (
-                      <li
-                        key={todo.id}
-                        className="group flex items-center gap-3 rounded-[10px] px-2 py-2 transition-colors hover:bg-black/[0.02]"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => handleToggleTodo(todo.id)}
-                          aria-label={todo.done ? "완료 취소" : "완료"}
-                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
-                            todo.done
-                              ? "border-[#1E1B4B] bg-[#1E1B4B] text-white"
-                              : "border-black/25 bg-white hover:border-[#1E1B4B]"
-                          }`}
-                        >
-                          {todo.done && (
-                            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M5 12l5 5L20 7" />
-                            </svg>
-                          )}
-                        </button>
-                        <span
-                          className={`min-w-0 flex-1 break-words text-[14px] tracking-[-0.01em] ${
-                            todo.done ? "text-black/40 line-through" : "text-[#1E1B4B]"
-                          }`}
-                        >
-                          {todo.text}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveTodo(todo.id)}
-                          aria-label="할 일 삭제"
-                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-black/30 opacity-0 transition-opacity hover:bg-black/[0.04] hover:text-black/70 group-hover:opacity-100 focus:opacity-100"
-                        >
-                          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M18 6L6 18M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                <div className="mt-2 flex items-center gap-2">
-                  <input
-                    value={todoDraft}
-                    maxLength={TODO_MAX}
-                    onChange={(e) => setTodoDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleAddTodo();
-                      }
-                    }}
-                    placeholder="오늘 꼭 해야 할 일을 적어보세요"
-                    className="min-w-0 flex-1 rounded-[10px] border border-black/10 bg-white px-3 py-2 text-[14px] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
-                  />
+                <div className="flex items-baseline justify-end gap-2">
                   <button
                     type="button"
-                    onClick={handleAddTodo}
-                    disabled={!todoDraft.trim()}
-                    className="shrink-0 rounded-pill bg-[#1E1B4B] px-4 py-2 text-[12px] font-medium text-white transition-colors hover:bg-[#2A2766] disabled:cursor-not-allowed disabled:opacity-40"
+                    onClick={() => router.push("/wins-history")}
+                    className="shrink-0 text-[12px] font-medium tracking-[-0.01em] text-[#1E1B4B]/70 underline-offset-2 hover:underline hover:text-[#1E1B4B]"
                   >
-                    추가
+                    지난 기록 보기
                   </button>
                 </div>
-              </div>
-
-              <div>
-                <h3 className="text-[13px] font-semibold tracking-[-0.01em] text-[#1E1B4B]">
-                  오늘 스스로 잘한 일 {MAX_DAILY_WINS}가지
-                </h3>
                 <p className="mt-1 text-[12px] tracking-[-0.01em] text-black/56">
-                  아주 작은 일이어도 좋아요. 스스로를 칭찬하는 한 줄을 적어두세요.
+                  아주 작은 일이어도 좋아요. 적은 뒤 저장하면 날짜별로 다시 볼 수 있어요.
                 </p>
                 <ul className="mt-3 space-y-2">
                   {[0, 1, 2].map((idx) => (
@@ -705,7 +611,6 @@ export default function HomeDashboardPage() {
                         rows={1}
                         maxLength={WIN_MAX}
                         onChange={(e) => handleChangeWin(idx, e.target.value)}
-                        onBlur={handleCommitWins}
                         placeholder={
                           idx === 0
                             ? "예: 미루던 메일에 답장했다."
@@ -718,6 +623,34 @@ export default function HomeDashboardPage() {
                     </li>
                   ))}
                 </ul>
+                <div className="mt-3 flex items-center justify-end gap-3">
+                  {winsError ? (
+                    <span className="text-[12px] tracking-[-0.01em] text-rose-600">{winsError}</span>
+                  ) : winsJustSaved ? (
+                    <span className="flex items-center gap-1 text-[12px] tracking-[-0.01em] text-emerald-600">
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 12l5 5L20 7" />
+                      </svg>
+                      저장됐어요
+                    </span>
+                  ) : winsDirty ? (
+                    <span className="text-[12px] tracking-[-0.01em] text-amber-600">
+                      저장되지 않은 변경이 있어요
+                    </span>
+                  ) : winsHasContent ? (
+                    <span className="text-[12px] tracking-[-0.01em] text-black/48">
+                      저장된 상태예요
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={handleSaveWins}
+                    disabled={winsSaving || !winsHasContent}
+                    className="shrink-0 rounded-pill bg-[#1E1B4B] px-4 py-2 text-[12px] font-medium text-white transition-colors hover:bg-[#2A2766] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {winsSaving ? "저장 중…" : "저장"}
+                  </button>
+                </div>
               </div>
             </div>
           )}

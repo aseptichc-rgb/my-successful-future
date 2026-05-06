@@ -20,9 +20,13 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   setDoc,
   serverTimestamp,
   onSnapshot,
+  orderBy,
+  limit as fsLimit,
+  query,
   type Firestore,
   type Unsubscribe,
 } from "firebase/firestore";
@@ -214,6 +218,33 @@ export async function saveDailyWins(uid: string, ymd: string, wins: string[]) {
     { ymd, wins: cleaned, updatedAt: serverTimestamp() },
     { merge: true },
   );
+}
+
+/**
+ * 잘한 일(wins) 기록 히스토리 조회.
+ * `ymd` 필드(YYYY-MM-DD KST) 내림차순으로 최신 날짜부터 가져온다.
+ * 빈 문자열만 있는 날짜는 제외해서 "기록한 날"만 보여준다.
+ */
+export const WINS_HISTORY_DEFAULT_LIMIT = 60;
+
+export async function getDailyWinsHistory(
+  uid: string,
+  limitCount: number = WINS_HISTORY_DEFAULT_LIMIT,
+): Promise<{ ymd: string; wins: string[] }[]> {
+  const db = getDbInstance();
+  const colRef = collection(db, "users", uid, "dailyEntries");
+  const q = query(colRef, orderBy("ymd", "desc"), fsLimit(limitCount));
+  const snap = await getDocs(q);
+  const result: { ymd: string; wins: string[] }[] = [];
+  snap.forEach((d) => {
+    const data = d.data() as Partial<DailyEntry>;
+    const wins = Array.isArray(data.wins)
+      ? data.wins.map((w) => (typeof w === "string" ? w.trim() : "")).filter((w) => w.length > 0)
+      : [];
+    if (wins.length === 0) return;
+    result.push({ ymd: d.id, wins });
+  });
+  return result;
 }
 
 export async function saveDailyAchievedGoals(uid: string, ymd: string, achieved: string[]) {
