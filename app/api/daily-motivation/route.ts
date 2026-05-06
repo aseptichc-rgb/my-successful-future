@@ -16,9 +16,13 @@ import { ensureMotivation, isValidYmd, todayKst } from "@/lib/dailyMotivation";
 
 export const maxDuration = 30;
 
+const OVERRIDE_AUTHOR_MAX_LEN = 60;
+
 interface PostBody {
   ymd?: string;
   force?: boolean;
+  /** 주간 회전·핀 일정과 무관하게 이 인물 명언을 즉시 받아본다. */
+  overrideAuthor?: string;
 }
 
 export async function GET(request: NextRequest) {
@@ -55,8 +59,18 @@ export async function POST(request: NextRequest) {
     }
     const ymd = body.ymd && isValidYmd(body.ymd) ? body.ymd : todayKst();
     const force = body.force === true;
+    const overrideAuthor =
+      typeof body.overrideAuthor === "string" && body.overrideAuthor.trim().length > 0
+        ? body.overrideAuthor.trim().slice(0, OVERRIDE_AUTHOR_MAX_LEN)
+        : undefined;
 
-    const result = await ensureMotivation({ uid: me.uid, ymd, force });
+    const result = await ensureMotivation({
+      uid: me.uid,
+      ymd,
+      // overrideAuthor 는 항상 새 카드를 만들어야 의미 있음
+      force: force || Boolean(overrideAuthor),
+      overrideAuthor,
+    });
     return NextResponse.json({ motivation: result.motivation, cached: result.cached });
   } catch (err) {
     if (err instanceof AuthError) {

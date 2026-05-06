@@ -117,10 +117,28 @@ async function downloadAsWallpaper(motivation: DailyMotivation): Promise<void> {
     y += lineHeight;
   }
 
+  // ── 원어 원문 (외국인 명언일 때만) ──
+  if (motivation.originalText) {
+    ctx.fillStyle = subColor;
+    const origSize = 38;
+    ctx.font = `400 italic ${origSize}px ${FONT_STACK}`;
+    const origLines = wrapLines(ctx, motivation.originalText, WALLPAPER_W - 220);
+    y += 20;
+    const origLh = origSize * 1.4;
+    for (const line of origLines) {
+      ctx.fillText(line, 110, y);
+      y += origLh;
+    }
+  }
+
   // ── 인용 출처 ──
   ctx.fillStyle = subColor;
   ctx.font = `500 42px ${FONT_STACK}`;
   ctx.fillText(`— ${motivation.author}`, 110, y + 30);
+  if (motivation.source) {
+    ctx.font = `400 32px ${FONT_STACK}`;
+    ctx.fillText(`《${motivation.source}》`, 110, y + 30 + 56);
+  }
 
   // ── 목표 블록 (하단) ──
   if (motivation.goalsSnapshot.length > 0) {
@@ -234,20 +252,37 @@ export default function MotivationCard({
               <div className={`h-7 w-2/5 animate-pulse rounded-full ${tone === "dark" ? "bg-white/15" : "bg-black/10"}`} />
             </div>
           ) : motivation ? (
-            <p
-              className={`whitespace-pre-wrap text-[24px] font-bold leading-[1.4] tracking-[-0.025em] sm:text-[28px] ${quoteColor}`}
-            >
-              {motivation.quote}
-            </p>
+            <>
+              <p
+                className={`whitespace-pre-wrap text-[24px] font-bold leading-[1.4] tracking-[-0.025em] sm:text-[28px] ${quoteColor}`}
+              >
+                {motivation.quote}
+              </p>
+              {motivation.originalText && (
+                <p
+                  className={`mt-3 whitespace-pre-wrap text-[14px] italic leading-[1.5] tracking-[-0.01em] ${authorColor}`}
+                  lang={motivation.originalLang}
+                >
+                  {motivation.originalText}
+                </p>
+              )}
+            </>
           ) : (
             <p className={`text-[16px] leading-[1.5] ${authorColor}`}>
               {errorMessage || "동기부여 카드를 준비 중이에요. 잠시만요…"}
             </p>
           )}
           {motivation && (
-            <p className={`mt-4 text-[14px] font-medium tracking-[-0.01em] ${authorColor}`}>
-              — {motivation.author}
-            </p>
+            <div className={`mt-4 ${authorColor}`}>
+              <p className="text-[14px] font-medium tracking-[-0.01em]">
+                — {motivation.author}
+              </p>
+              {motivation.source && (
+                <p className="mt-0.5 text-[12px] tracking-[-0.01em] opacity-85">
+                  《{motivation.source}》
+                </p>
+              )}
+            </div>
           )}
         </div>
 

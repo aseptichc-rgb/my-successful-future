@@ -38,7 +38,7 @@ import {
   type Firestore,
   type Unsubscribe,
 } from "firebase/firestore";
-import type { User, ChatSession, ChatMessage, Invitation, InviteLink, NewsSource, NewsTopic, SessionType, UserPresence, AutoNewsConfig, KeywordAlertConfig, PersonaId, DailyRitualConfig, PersonaMemory, CustomPersona, PersonaOverride, PersonaOverrideInput, BuiltinPersonaId, PersonaSchedule, ScheduledNewsSlot, DailyEntry, DailyTodo, PublicPersona, DailyMotivation } from "@/types";
+import type { User, ChatSession, ChatMessage, Invitation, InviteLink, NewsSource, NewsTopic, SessionType, UserPresence, AutoNewsConfig, KeywordAlertConfig, PersonaId, DailyRitualConfig, PersonaMemory, CustomPersona, PersonaOverride, PersonaOverrideInput, BuiltinPersonaId, PersonaSchedule, ScheduledNewsSlot, DailyEntry, DailyTodo, PublicPersona, DailyMotivation, QuotePreference } from "@/types";
 
 // ── Firebase 지연 초기화 ─────────────────────────────
 const firebaseConfig = {
@@ -1396,6 +1396,39 @@ export async function updateUserGoals(uid: string, goals: string[]) {
     {
       goals: cleaned,
       goalsUpdatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+}
+
+/** 오늘의 명언 핀 설정 검증 한도 — 서버(dailyMotivation.ts)와 동일하게 0~7. */
+export const QUOTE_PINNED_DAYS_MIN = 0;
+export const QUOTE_PINNED_DAYS_MAX = 7;
+
+/**
+ * 오늘의 명언 큐레이션 설정을 갱신.
+ * - pref.pinnedAuthor 가 빈 문자열이면 핀 해제로 해석.
+ * - pref.pinnedDaysPerWeek 는 0..7 범위로 클램프.
+ */
+export async function updateQuotePreference(uid: string, pref: QuotePreference) {
+  const db = getDbInstance();
+  const author =
+    typeof pref.pinnedAuthor === "string" && pref.pinnedAuthor.trim().length > 0
+      ? pref.pinnedAuthor.trim()
+      : null;
+  const days =
+    typeof pref.pinnedDaysPerWeek === "number" && Number.isFinite(pref.pinnedDaysPerWeek)
+      ? Math.max(QUOTE_PINNED_DAYS_MIN, Math.min(QUOTE_PINNED_DAYS_MAX, Math.floor(pref.pinnedDaysPerWeek)))
+      : 0;
+  const { deleteField } = await import("firebase/firestore");
+  await setDoc(
+    doc(db, "users", uid),
+    {
+      quotePreference: {
+        pinnedAuthor: author ?? deleteField(),
+        pinnedDaysPerWeek: days,
+      },
+      quotePreferenceUpdatedAt: serverTimestamp(),
     },
     { merge: true },
   );

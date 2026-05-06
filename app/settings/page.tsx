@@ -12,9 +12,10 @@ import { useDailyRitual } from "@/hooks/useDailyRitual";
 import UserPersonaModal from "@/components/chat/UserPersonaModal";
 import FuturePersonaModal from "@/components/chat/FuturePersonaModal";
 import DailyRitualSettings from "@/components/chat/DailyRitualSettings";
+import QuotePreferenceModal from "@/components/chat/QuotePreferenceModal";
 import { LABELS } from "@/lib/labels";
 
-type PanelKey = "userPersona" | "futurePersona" | "dailyRitual" | null;
+type PanelKey = "userPersona" | "futurePersona" | "dailyRitual" | "quotePreference" | null;
 
 /**
  * 통합 설정 페이지.
@@ -133,6 +134,34 @@ export default function SettingsPage() {
             </span>
           </button>
 
+          {/* 오늘의 명언 큐레이션 */}
+          <button
+            type="button"
+            onClick={() => setPanel("quotePreference")}
+            className="flex w-full items-start gap-4 rounded-[18px] bg-white p-5 text-left transition-all hover:shadow-apple"
+          >
+            <span className="text-[26px] leading-none">📜</span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[16px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
+                오늘의 명언 큐레이션
+              </p>
+              <p className="mt-0.5 text-[13px] leading-[1.4] tracking-[-0.01em] text-black/56">
+                {user?.quotePreference?.pinnedAuthor
+                  ? `${user.quotePreference.pinnedAuthor} · ${
+                      user.quotePreference.pinnedDaysPerWeek === 7
+                        ? "매일"
+                        : user.quotePreference.pinnedDaysPerWeek
+                          ? `주 ${user.quotePreference.pinnedDaysPerWeek}일`
+                          : "꺼짐"
+                    }`
+                  : "주간 자동 회전 — 인물·빈도 직접 설정 가능"}
+              </p>
+            </div>
+            <span className="mt-1 shrink-0 text-[14px] font-medium text-[#1E1B4B]">
+              {LABELS.edit} ›
+            </span>
+          </button>
+
           {/* 데일리 리추얼 */}
           <button
             type="button"
@@ -237,6 +266,16 @@ export default function SettingsPage() {
         <DailyRitualSettings
           config={dailyRitualConfig}
           onUpdate={updateDailyRitualConfig}
+          onClose={() => setPanel(null)}
+        />
+      )}
+      {panel === "quotePreference" && (
+        <QuotePreferenceModal
+          uid={firebaseUser.uid}
+          preference={user?.quotePreference}
+          onSaved={async () => {
+            await refreshUser().catch(() => {});
+          }}
           onClose={() => setPanel(null)}
         />
       )}

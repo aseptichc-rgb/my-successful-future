@@ -124,7 +124,22 @@ export interface User {
   /** 사용자가 직접 적은 목표 (최대 10개). 홈 대시보드에서 편집. */
   goals?: string[];
   goalsUpdatedAt?: Timestamp;
+  /** 오늘의 명언 큐레이션 설정. 미설정이면 매주 자동으로 인물 풀이 회전된다. */
+  quotePreference?: QuotePreference;
+  quotePreferenceUpdatedAt?: Timestamp;
   createdAt: Timestamp;
+}
+
+/**
+ * 오늘의 명언 큐레이션 사용자 설정.
+ * - pinnedAuthor 미설정 또는 pinnedDaysPerWeek<=0 이면 "주간 자동 회전" 만 작동.
+ * - 1<=pinnedDaysPerWeek<=7: 한 주(월~일, KST) 안에서 결정론적으로 그 일수만큼 핀 인물의 명언이 노출되고, 나머지 날엔 주간 회전 풀에서 뽑힌다.
+ */
+export interface QuotePreference {
+  /** FAMOUS_QUOTES_SEED 의 author 와 정확히 일치하는 한국어 인물명. */
+  pinnedAuthor?: string;
+  /** 주당 핀 인물 노출 일수. 0 또는 undefined 면 핀 비활성. */
+  pinnedDaysPerWeek?: number;
 }
 
 // ── 홈 대시보드: 일일 체크리스트/회고 ───────────────
@@ -324,10 +339,16 @@ export interface MotivationGradient {
 
 export interface DailyMotivation {
   ymd: string;                     // YYYY-MM-DD (KST)
-  /** 1~2 문장의 오늘의 격려 메시지 */
+  /** 1~2 문장의 오늘의 격려 메시지 (실존 철학자/유명인의 명언) */
   quote: string;
-  /** 인용 출처 — 보통 "10년 후의 나" */
+  /** 인용 출처 인물명 — 예: "프리드리히 니체", "스티브 잡스" */
   author: string;
+  /** 출처 저작·연설·맥락 (있을 때만). 예: "차라투스트라는 이렇게 말했다", "스탠퍼드 졸업 연설 2005" */
+  source?: string;
+  /** 외국인 명언일 때 원어 원문 (있을 때만). 한국 인물이면 비어 있음. */
+  originalText?: string;
+  /** ISO 코드 — "en","de","fr","ru","zh","la","grc","ja" 등. originalText 가 있을 때만 의미. */
+  originalLang?: string;
   /** 카드에 표시할 사용자 목표 스냅샷 (최대 3개) */
   goalsSnapshot: string[];
   /** 인용을 만들 때 사용한 future persona 스냅샷 (요약) */
@@ -374,7 +395,13 @@ export interface FamousQuote {
 export interface WidgetSlotMotivation {
   kind: "motivation";
   text: string;
-  author: string;          // 보통 "10년 후의 나"
+  author: string;          // 실존 인물명 (예: "프리드리히 니체")
+  /** 출처 저작·연설 (있을 때만) */
+  source?: string;
+  /** 외국인 명언일 때 원어 원문 (있을 때만) */
+  originalText?: string;
+  /** ISO 코드 (originalText 가 있을 때만) */
+  originalLang?: string;
   goalsSnapshot: string[];
   gradient: MotivationGradient;
 }

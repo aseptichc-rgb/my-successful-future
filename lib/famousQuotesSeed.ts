@@ -15,6 +15,10 @@ export interface FamousQuoteSeed {
   category: FamousQuoteCategory;
   language: FamousQuoteLang;
   tags?: string[];
+  /** 외국인 명언일 때 원어(원문). 한국 인물이면 비워둔다. */
+  originalText?: string;
+  /** ISO 코드 — "en","de","fr","ru","zh","la","grc","ja" 등. originalText 가 있을 때만 의미. */
+  originalLang?: string;
 }
 
 export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
@@ -25,6 +29,8 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "세네카",
     category: "philosophy",
     language: "ko",
+    originalText: "Non qui parum habet, sed qui plus cupit, pauper est.",
+    originalLang: "la",
   },
   {
     id: "ph_aurelius_obstacle",
@@ -32,6 +38,8 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "마르쿠스 아우렐리우스",
     category: "philosophy",
     language: "ko",
+    originalText: "The impediment to action advances action. What stands in the way becomes the way.",
+    originalLang: "en",
   },
   {
     id: "ph_aurelius_today",
@@ -46,6 +54,8 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "소크라테스",
     category: "philosophy",
     language: "ko",
+    originalText: "ὁ ἀνεξέταστος βίος οὐ βιωτὸς ἀνθρώπῳ.",
+    originalLang: "grc",
   },
   {
     id: "ph_kant_ought",
@@ -53,6 +63,8 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "임마누엘 칸트",
     category: "philosophy",
     language: "ko",
+    originalText: "Du kannst, denn du sollst.",
+    originalLang: "de",
   },
   {
     id: "ph_nietzsche_become",
@@ -60,6 +72,8 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "프리드리히 니체",
     category: "philosophy",
     language: "ko",
+    originalText: "Werde, der du bist.",
+    originalLang: "de",
   },
   {
     id: "ph_nietzsche_why",
@@ -67,6 +81,9 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "프리드리히 니체",
     category: "philosophy",
     language: "ko",
+    originalText:
+      "Hat man sein Warum? des Lebens, so verträgt man sich fast mit jedem Wie?",
+    originalLang: "de",
   },
   {
     id: "ph_confucius_stop",
@@ -81,6 +98,8 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "노자",
     category: "philosophy",
     language: "ko",
+    originalText: "千里之行,始於足下.",
+    originalLang: "zh",
   },
   {
     id: "ph_zhuangzi_useful",
@@ -88,6 +107,8 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "장자",
     category: "philosophy",
     language: "ko",
+    originalText: "人皆知有用之用,而莫知無用之用也.",
+    originalLang: "zh",
   },
 
   // ── entrepreneur ────────────────────────────────────
@@ -97,6 +118,9 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "스티브 잡스",
     category: "entrepreneur",
     language: "ko",
+    originalText:
+      "You can't connect the dots looking forward; you can only connect them looking backwards. So you have to trust that the dots will somehow connect in your future.",
+    originalLang: "en",
   },
   {
     id: "en_jobs_time",
@@ -104,6 +128,8 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "스티브 잡스",
     category: "entrepreneur",
     language: "ko",
+    originalText: "Your time is limited, so don't waste it living someone else's life.",
+    originalLang: "en",
   },
   {
     id: "en_bezos_regret",
@@ -111,6 +137,9 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "제프 베조스",
     category: "entrepreneur",
     language: "ko",
+    originalText:
+      "I wanted to project myself forward to age 80 and minimize the number of regrets I have.",
+    originalLang: "en",
   },
   {
     id: "en_musk_persist",
@@ -118,6 +147,9 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "일론 머스크",
     category: "entrepreneur",
     language: "ko",
+    originalText:
+      "Persistence is very important. You should not give up unless you are forced to give up.",
+    originalLang: "en",
   },
   {
     id: "en_buffett_compound",
@@ -125,6 +157,9 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "워런 버핏",
     category: "entrepreneur",
     language: "ko",
+    originalText:
+      "Life is like a snowball. The important thing is finding wet snow and a really long hill.",
+    originalLang: "en",
   },
   {
     id: "en_buffett_reputation",
@@ -132,6 +167,9 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "워런 버핏",
     category: "entrepreneur",
     language: "ko",
+    originalText:
+      "It takes 20 years to build a reputation and five minutes to ruin it. If you think about that, you'll do things differently.",
+    originalLang: "en",
   },
   {
     id: "en_munger_invert",
@@ -139,6 +177,8 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "찰리 멍거",
     category: "entrepreneur",
     language: "ko",
+    originalText: "Invert, always invert.",
+    originalLang: "en",
   },
   {
     id: "en_thiel_secret",
@@ -146,6 +186,9 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "피터 틸",
     category: "entrepreneur",
     language: "ko",
+    originalText:
+      "What important truth do very few people agree with you on?",
+    originalLang: "en",
   },
   {
     id: "en_ford_think",
@@ -153,6 +196,8 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "헨리 포드",
     category: "entrepreneur",
     language: "ko",
+    originalText: "Whether you think you can, or you think you can't—you're right.",
+    originalLang: "en",
   },
   {
     id: "en_jung_lee_byungchul",
@@ -233,6 +278,8 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     category: "classic",
     language: "ko",
     tags: ["논어"],
+    originalText: "歲寒,然後知松柏之後彫也.",
+    originalLang: "zh",
   },
   {
     id: "cl_li_bai_climb",
@@ -255,6 +302,9 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "윈스턴 처칠",
     category: "leader",
     language: "ko",
+    originalText:
+      "Success is not final, failure is not fatal: it is the courage to continue that counts.",
+    originalLang: "en",
   },
   {
     id: "ld_lincoln_prepare",
@@ -269,6 +319,8 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "넬슨 만델라",
     category: "leader",
     language: "ko",
+    originalText: "It always seems impossible until it's done.",
+    originalLang: "en",
   },
   {
     id: "ld_gandhi_change",
@@ -276,6 +328,8 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "마하트마 간디",
     category: "leader",
     language: "ko",
+    originalText: "Be the change that you wish to see in the world.",
+    originalLang: "en",
   },
   {
     id: "ld_roosevelt_arena",
@@ -283,6 +337,9 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "시어도어 루스벨트",
     category: "leader",
     language: "ko",
+    originalText:
+      "It is not the critic who counts… The credit belongs to the man who is actually in the arena.",
+    originalLang: "en",
   },
 
   // ── scientist ───────────────────────────────────────
@@ -292,6 +349,8 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "알베르트 아인슈타인",
     category: "scientist",
     language: "ko",
+    originalText: "I have no special talent. I am only passionately curious.",
+    originalLang: "en",
   },
   {
     id: "sc_einstein_simple",
@@ -299,6 +358,9 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "알베르트 아인슈타인",
     category: "scientist",
     language: "ko",
+    originalText:
+      "Everything should be made as simple as possible, but no simpler.",
+    originalLang: "en",
   },
   {
     id: "sc_curie_understand",
@@ -306,6 +368,9 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "마리 퀴리",
     category: "scientist",
     language: "ko",
+    originalText:
+      "Nothing in life is to be feared, it is only to be understood. Now is the time to understand more, so that we may fear less.",
+    originalLang: "en",
   },
   {
     id: "sc_feynman_fool",
@@ -313,6 +378,9 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "리처드 파인만",
     category: "scientist",
     language: "ko",
+    originalText:
+      "The first principle is that you must not fool yourself—and you are the easiest person to fool.",
+    originalLang: "en",
   },
   {
     id: "sc_darwin_adapt",
@@ -336,6 +404,9 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "어니스트 헤밍웨이",
     category: "literature",
     language: "ko",
+    originalText:
+      "The world breaks every one and afterward many are strong at the broken places.",
+    originalLang: "en",
   },
   {
     id: "li_dostoevsky_small",
@@ -350,6 +421,9 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "레프 톨스토이",
     category: "literature",
     language: "ko",
+    originalText:
+      "Все думают о том, как изменить мир, но никто не думает о том, как изменить себя.",
+    originalLang: "ru",
   },
   {
     id: "li_yoon_dongju_sky",

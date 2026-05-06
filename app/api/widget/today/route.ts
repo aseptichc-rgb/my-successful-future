@@ -134,6 +134,13 @@ export async function GET(request: NextRequest) {
       kind: "motivation",
       text: motivation.quote,
       author: motivation.author,
+      ...(motivation.source ? { source: motivation.source } : {}),
+      ...(motivation.originalText && motivation.originalLang
+        ? {
+            originalText: motivation.originalText,
+            originalLang: motivation.originalLang,
+          }
+        : {}),
       goalsSnapshot: motivation.goalsSnapshot,
       gradient: motivation.gradient,
     };
