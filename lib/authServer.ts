@@ -1,13 +1,25 @@
 /**
  * 서버 측 Firebase ID 토큰 검증 및 세션 권한 확인 헬퍼.
  * 클라이언트가 보낸 Authorization 헤더를 검증해 위변조된 uid 사용을 차단한다.
+ *
+ * paid claim:
+ *   /api/entitlement/verify 가 Play Billing 영수증을 확인한 뒤
+ *   Firebase custom claim 으로 paid=true 를 박아 두면 verifyIdToken 결과로 그대로 들어온다.
+ *   결제 게이팅이 필요한 라우트는 requirePaidUser() 를 사용해 차단할 수 있다.
  */
 import type { NextRequest } from "next/server";
 import { getAdminAuth, getAdminDb } from "./firebase-admin";
+import { ENTITLEMENT_REQUIRED } from "./constants/quota";
 
 export interface AuthedUser {
   uid: string;
   email?: string;
+  /** Play Billing 영수증 검증을 통과한 사용자에게만 true. */
+  paid: boolean;
+  /** 결제된 제품 ID (예: "anima_lifetime"). 미결제 또는 dev 모드에서는 null. */
+  productId: string | null;
+  /** 결제 시점 (ms). claim 에 박아둔 값. */
+  purchaseTimeMs: number | null;
 }
 
 const SESSION_COOKIE_NAME = "__session";
@@ -21,6 +33,22 @@ const SESSION_COOKIE_NAME = "__session";
  * Firebase SDK 복원이 끝나기 전에 API를 호출하는 경우, 또는
  * 쿠키 기반 자동 복구 직전에 첫 요청이 새는 케이스를 막기 위함.
  */
+function decodedToAuthedUser(
+  decoded: import("firebase-admin/auth").DecodedIdToken,
+): AuthedUser {
+  const paid = decoded.paid === true;
+  const productId = typeof decoded.productId === "string" ? decoded.productId : null;
+  const purchaseTimeMs =
+    typeof decoded.purchaseTime === "number" ? (decoded.purchaseTime as number) : null;
+  return {
+    uid: decoded.uid,
+    email: decoded.email,
+    paid,
+    productId,
+    purchaseTimeMs,
+  };
+}
+
 export async function verifyRequestUser(request: NextRequest): Promise<AuthedUser> {
   const header = request.headers.get("authorization") || request.headers.get("Authorization");
   if (header && header.startsWith("Bearer ")) {
@@ -28,7 +56,7 @@ export async function verifyRequestUser(request: NextRequest): Promise<AuthedUse
     if (token) {
       try {
         const decoded = await getAdminAuth().verifyIdToken(token);
-        return { uid: decoded.uid, email: decoded.email };
+        return decodedToAuthedUser(decoded);
       } catch {
         // 헤더 검증 실패 시 쿠키 폴백 시도
       }
@@ -39,13 +67,31 @@ export async function verifyRequestUser(request: NextRequest): Promise<AuthedUse
   if (cookie) {
     try {
       const decoded = await getAdminAuth().verifySessionCookie(cookie, true);
-      return { uid: decoded.uid, email: decoded.email };
+      return decodedToAuthedUser(decoded);
     } catch {
       throw new AuthError(401, "세션이 만료되었습니다. 다시 로그인해주세요.");
     }
   }
 
   throw new AuthError(401, "인증 정보가 필요합니다.");
+}
+
+/**
+ * 결제 검증을 통과한 사용자만 통과시킨다.
+ *
+ * - ENTITLEMENT_REQUIRED=true 인 운영 환경: 미결제 사용자는 402 PaymentRequired 로 차단.
+ * - ENTITLEMENT_REQUIRED 미설정 (개발/베타): 미결제 사용자도 통과시키되 user.paid=false 로 표시.
+ *   라우트가 이 값을 보고 비결제 사용자에게 다운그레이드된 응답을 줄 수도 있다.
+ *
+ * 결제 흐름이 완성되기 전에 운영 빌드에 ENTITLEMENT_REQUIRED 를 켜면
+ * 모든 보호 라우트가 즉시 닫히므로, 안드로이드 BillingClient 통합·검증 흐름 점검 후 켤 것.
+ */
+export async function requirePaidUser(request: NextRequest): Promise<AuthedUser> {
+  const user = await verifyRequestUser(request);
+  if (!user.paid && ENTITLEMENT_REQUIRED) {
+    throw new AuthError(402, "유료 사용자만 호출할 수 있습니다. 앱에서 결제를 완료해 주세요.");
+  }
+  return user;
 }
 
 /**

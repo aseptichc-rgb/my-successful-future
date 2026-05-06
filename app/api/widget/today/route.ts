@@ -17,7 +17,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
-import { verifyRequestUser, AuthError } from "@/lib/authServer";
+import { requirePaidUser, AuthError } from "@/lib/authServer";
+import { enforceQuota, QuotaExceededError } from "@/lib/quota";
 import {
   KST_OFFSET_MS,
   ensureMotivation,
@@ -115,7 +116,12 @@ function gcd(a: number, b: number): number {
 
 export async function GET(request: NextRequest) {
   try {
-    const me = await verifyRequestUser(request);
+    // 결제 게이팅: ENTITLEMENT_REQUIRED=true 운영에서 미결제 사용자 차단.
+    // 개발/베타에서는 통과시키되 user.paid 로 다운그레이드 응답을 줄 수 있다(현재는 동일 응답).
+    const me = await requirePaidUser(request);
+
+    // 일별 호출 한도 (KST 자정 기준 widgetRefresh 카운트). 초과 시 429.
+    await enforceQuota(me.uid, "widgetRefresh");
 
     const url = new URL(request.url);
     const ymdParam = url.searchParams.get("ymd");
@@ -177,6 +183,12 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     if (err instanceof AuthError) {
       return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    if (err instanceof QuotaExceededError) {
+      return NextResponse.json(
+        { error: err.message, code: "quota_exceeded", limit: err.limit },
+        { status: 429 },
+      );
     }
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[widget/today] 실패:", msg);
