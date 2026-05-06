@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
-  ensureFutureSelfSession,
   updateFuturePersona,
   updateUserGoals,
   onDailyEntrySnapshot,
@@ -37,6 +36,13 @@ function newTodoId(): string {
   return `t_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+const IconSettings = ({ className = "h-5 w-5" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06A2 2 0 1 1 4.13 16.92l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.65 8.83a1.7 1.7 0 0 0-.34-1.87l-.06-.06A2 2 0 1 1 7.08 4.07l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1.04-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06A2 2 0 1 1 19.93 7.08l-.06.06a1.7 1.7 0 0 0-.34 1.87V9c.27.66.93 1.1 1.65 1.1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z" />
+  </svg>
+);
+
 export default function HomeDashboardPage() {
   const router = useRouter();
   const { user, firebaseUser, loading } = useAuth();
@@ -57,17 +63,12 @@ export default function HomeDashboardPage() {
   const dailyHydratedRef = useRef(false);
   const winsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [futureSessionId, setFutureSessionId] = useState<string | null>(null);
-
-  // ── 오늘의 동기부여 카드 ────────────────────────────
   const [motivation, setMotivation] = useState<DailyMotivation | null>(null);
   const [motivationLoading, setMotivationLoading] = useState(true);
   const [motivationError, setMotivationError] = useState<string | null>(null);
   const [showMoreToday, setShowMoreToday] = useState(false);
-  // 현재 진행 중인 카드 생성 요청 (같은 일자에 중복 요청을 막기 위함)
   const ensureRequestedRef = useRef(false);
 
-  // 온보딩 미완료 사용자는 위저드로
   useEffect(() => {
     if (loading) return;
     if (!firebaseUser) {
@@ -76,18 +77,9 @@ export default function HomeDashboardPage() {
     }
     if (user && !user.onboardedAt) {
       router.replace("/onboarding");
-      return;
     }
-    // future-self 세션 준비
-    const displayName = user?.displayName || firebaseUser.displayName || "사용자";
-    ensureFutureSelfSession(firebaseUser.uid, displayName)
-      .then((id) => setFutureSessionId(id))
-      .catch((err) => {
-        console.warn("미래의 나 세션 준비 실패:", err);
-      });
   }, [firebaseUser, loading, router, user]);
 
-  // 사용자 프로필에서 future persona / goals 동기화
   useEffect(() => {
     if (!user) return;
     setFutureDraft(user.futurePersona || "");
@@ -97,7 +89,6 @@ export default function HomeDashboardPage() {
     }
   }, [user]);
 
-  // 오늘 일일 엔트리 구독
   useEffect(() => {
     if (!firebaseUser) return;
     const unsub = onDailyEntrySnapshot(firebaseUser.uid, ymd, (entry: DailyEntry | null) => {
@@ -119,7 +110,6 @@ export default function HomeDashboardPage() {
     return unsub;
   }, [firebaseUser, ymd]);
 
-  // 오늘의 동기부여 카드 구독 + 없으면 자동 생성 1회 요청
   useEffect(() => {
     if (!firebaseUser) return;
     setMotivationLoading(true);
@@ -130,7 +120,6 @@ export default function HomeDashboardPage() {
       setMotivationLoading(false);
       if (!m && !ensureRequestedRef.current) {
         ensureRequestedRef.current = true;
-        // 비동기 생성 트리거 — 결과는 onSnapshot 으로 자동 도착
         authedFetch("/api/daily-motivation", {
           method: "POST",
           body: JSON.stringify({ ymd }),
@@ -169,25 +158,6 @@ export default function HomeDashboardPage() {
     }
   }, [ymd]);
 
-  const handleChatWithFuture = useCallback(() => {
-    if (!firebaseUser) return;
-    if (futureSessionId) {
-      router.push(`/chat/${futureSessionId}`);
-      return;
-    }
-    // 세션이 아직 준비되지 않았으면 즉석 보장 후 이동
-    const displayName = user?.displayName || firebaseUser.displayName || "사용자";
-    ensureFutureSelfSession(firebaseUser.uid, displayName)
-      .then((id) => {
-        setFutureSessionId(id);
-        router.push(`/chat/${id}`);
-      })
-      .catch((err) => {
-        console.error("미래의 나 세션 준비 실패:", err);
-        window.alert("대화방을 여는 데 실패했어요. 잠시 후 다시 시도해주세요.");
-      });
-  }, [firebaseUser, futureSessionId, router, user]);
-
   if (loading || !firebaseUser) {
     return (
       <div className="flex h-full items-center justify-center bg-[#F0EDE6]">
@@ -198,15 +168,12 @@ export default function HomeDashboardPage() {
 
   const uid = firebaseUser.uid;
 
-  // ── 미래의 나 ────────────────────────────────────
   const handleFutureSave = async () => {
-    if (!firebaseUser) return;
     const next = futureDraft.trim().slice(0, FUTURE_PERSONA_MAX);
     setFutureSaving(true);
     try {
       await updateFuturePersona(uid, next);
       setFutureEditing(false);
-      // 미래 모습이 바뀌면 오늘의 카드도 새로 받아보길 원할 가능성이 높다 — 자동 갱신
       void handleRegenerateMotivation();
     } catch (err) {
       console.error("미래의 나 저장 실패:", err);
@@ -221,7 +188,6 @@ export default function HomeDashboardPage() {
     setFutureEditing(false);
   };
 
-  // ── 목표 ─────────────────────────────────────────
   const persistGoals = async (next: string[]) => {
     try {
       await updateUserGoals(uid, next);
@@ -273,9 +239,8 @@ export default function HomeDashboardPage() {
     await persistGoals(next);
   };
 
-  const handleUpdateGoal = async (idx: number, value: string) => {
-    const next = goals.map((g, i) => (i === idx ? value.slice(0, GOAL_MAX) : g));
-    setGoals(next);
+  const handleUpdateGoal = (idx: number, value: string) => {
+    setGoals(goals.map((g, i) => (i === idx ? value.slice(0, GOAL_MAX) : g)));
   };
 
   const handleCommitGoal = async (idx: number) => {
@@ -300,7 +265,6 @@ export default function HomeDashboardPage() {
     await pruneAchievedGoals(next);
   };
 
-  // ── 오늘의 할 일 ─────────────────────────────────
   const persistTodos = async (next: DailyTodo[]) => {
     try {
       await saveDailyTodos(uid, ymd, next);
@@ -331,7 +295,6 @@ export default function HomeDashboardPage() {
     await persistTodos(next);
   };
 
-  // ── 오늘 잘한 일 3가지 (디바운스 저장) ──────────
   const handleChangeWin = (idx: number, value: string) => {
     const next = wins.map((w, i) => (i === idx ? value.slice(0, WIN_MAX) : w));
     setWins(next);
@@ -359,26 +322,35 @@ export default function HomeDashboardPage() {
   const futureText = user?.futurePersona || "";
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto bg-[#F0EDE6] pb-24 lg:pb-4">
+    <div className="flex h-full flex-col overflow-y-auto bg-[#F0EDE6] pb-8">
       <header className="border-b border-black/[0.06] bg-white px-5 py-5 sm:px-6 sm:py-7">
-        <div className="mx-auto max-w-3xl pr-12 sm:pr-14">
-          <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.005em] text-[#1E1B4B] sm:text-[32px]">
-            오늘의 동기부여
-          </h1>
-          <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
-            {formatKstHeader(ymd)} · 매일 새로 도착하는 한 마디로 하루를 시작하세요.
-          </p>
+        <div className="mx-auto flex max-w-3xl items-start justify-between gap-4">
+          <div>
+            <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.005em] text-[#1E1B4B] sm:text-[32px]">
+              오늘의 동기부여
+            </h1>
+            <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
+              {formatKstHeader(ymd)} · 매일 새로 도착하는 한 마디로 하루를 시작하세요.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => router.push("/settings")}
+            aria-label="설정"
+            title="설정"
+            className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-black/[0.06] bg-white text-[#1E1B4B] shadow-apple transition-colors hover:bg-[#F7F4ED]"
+          >
+            <IconSettings className="h-[18px] w-[18px]" />
+          </button>
         </div>
       </header>
 
       <main className="mx-auto w-full max-w-3xl space-y-4 px-4 py-5 sm:px-6">
-        {/* ── 오늘의 동기부여 카드 (메인) ─────────── */}
         <MotivationCard
           motivation={motivation}
           loading={motivationLoading}
           errorMessage={motivationError}
           onRegenerate={handleRegenerateMotivation}
-          onChatWithFuture={handleChatWithFuture}
           ymd={ymd}
         />
 
@@ -388,7 +360,7 @@ export default function HomeDashboardPage() {
           </p>
         )}
 
-        {/* ── 10년 후의 나의 모습 (간결) ─────────── */}
+        {/* 10년 후의 나의 모습 — 동기부여 카드 컨텍스트 */}
         <section className="rounded-[16px] border border-black/[0.06] bg-white p-5 shadow-apple">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -460,7 +432,7 @@ export default function HomeDashboardPage() {
           )}
         </section>
 
-        {/* ── 나의 목표 (최대 10) ───────────────── */}
+        {/* 나의 목표 */}
         <section className="rounded-[16px] border border-black/[0.06] bg-white p-5 shadow-apple">
           <div className="flex items-baseline justify-between gap-2">
             <h2 className="flex items-center gap-2 text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
@@ -492,54 +464,54 @@ export default function HomeDashboardPage() {
                 const trimmed = goal.trim();
                 const achieved = trimmed.length > 0 && achievedGoals.includes(trimmed);
                 return (
-                <li key={idx} className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleToggleGoalAchieved(goal)}
-                    aria-label={achieved ? "달성 취소" : "오늘 달성으로 표시"}
-                    aria-pressed={achieved}
-                    title={achieved ? "오늘 달성함 — 취소하려면 클릭" : "오늘 달성으로 표시"}
-                    disabled={trimmed.length === 0}
-                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-[11px] font-semibold transition-colors ${
-                      achieved
-                        ? "border-[#1E1B4B] bg-[#1E1B4B] text-white"
-                        : "border-black/15 bg-[#F0EDE6] text-[#1E1B4B] hover:border-[#1E1B4B]"
-                    } disabled:cursor-not-allowed disabled:opacity-40`}
-                  >
-                    {achieved ? (
-                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M5 12l5 5L20 7" />
+                  <li key={idx} className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleGoalAchieved(goal)}
+                      aria-label={achieved ? "달성 취소" : "오늘 달성으로 표시"}
+                      aria-pressed={achieved}
+                      title={achieved ? "오늘 달성함 — 취소하려면 클릭" : "오늘 달성으로 표시"}
+                      disabled={trimmed.length === 0}
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-[11px] font-semibold transition-colors ${
+                        achieved
+                          ? "border-[#1E1B4B] bg-[#1E1B4B] text-white"
+                          : "border-black/15 bg-[#F0EDE6] text-[#1E1B4B] hover:border-[#1E1B4B]"
+                      } disabled:cursor-not-allowed disabled:opacity-40`}
+                    >
+                      {achieved ? (
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 12l5 5L20 7" />
+                        </svg>
+                      ) : (
+                        idx + 1
+                      )}
+                    </button>
+                    <input
+                      value={goal}
+                      maxLength={GOAL_MAX}
+                      onChange={(e) => handleUpdateGoal(idx, e.target.value)}
+                      onBlur={() => handleCommitGoal(idx)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          (e.currentTarget as HTMLInputElement).blur();
+                        }
+                      }}
+                      className={`min-w-0 flex-1 rounded-[10px] border border-transparent bg-[#F7F4ED] px-3 py-2 text-[14px] tracking-[-0.01em] focus:border-[#1E1B4B] focus:bg-white focus:outline-none ${
+                        achieved ? "text-black/40 line-through" : "text-[#1E1B4B]"
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveGoal(idx)}
+                      aria-label="목표 삭제"
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-black/40 transition-colors hover:bg-black/[0.04] hover:text-black/80"
+                    >
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 6L6 18M6 6l12 12" />
                       </svg>
-                    ) : (
-                      idx + 1
-                    )}
-                  </button>
-                  <input
-                    value={goal}
-                    maxLength={GOAL_MAX}
-                    onChange={(e) => handleUpdateGoal(idx, e.target.value)}
-                    onBlur={() => handleCommitGoal(idx)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        (e.currentTarget as HTMLInputElement).blur();
-                      }
-                    }}
-                    className={`min-w-0 flex-1 rounded-[10px] border border-transparent bg-[#F7F4ED] px-3 py-2 text-[14px] tracking-[-0.01em] focus:border-[#1E1B4B] focus:bg-white focus:outline-none ${
-                      achieved ? "text-black/40 line-through" : "text-[#1E1B4B]"
-                    }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveGoal(idx)}
-                    aria-label="목표 삭제"
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-black/40 transition-colors hover:bg-black/[0.04] hover:text-black/80"
-                  >
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M18 6L6 18M6 6l12 12" />
-                    </svg>
-                  </button>
-                </li>
+                    </button>
+                  </li>
                 );
               })}
             </ul>
@@ -572,7 +544,7 @@ export default function HomeDashboardPage() {
           )}
         </section>
 
-        {/* ── 오늘의 할 일 / 잘한 일 (보조 — 접고 펼치기) ── */}
+        {/* 오늘의 할 일 / 잘한 일 */}
         <section className="rounded-[16px] border border-black/[0.06] bg-white shadow-apple">
           <button
             type="button"
@@ -600,7 +572,6 @@ export default function HomeDashboardPage() {
 
           {showMoreToday && (
             <div className="space-y-5 border-t border-black/[0.06] px-5 pb-5 pt-4">
-              {/* 오늘의 할 일 */}
               <div>
                 <h3 className="text-[13px] font-semibold tracking-[-0.01em] text-[#1E1B4B]">오늘의 할 일</h3>
                 {todos.length > 0 && (
@@ -673,7 +644,6 @@ export default function HomeDashboardPage() {
                 </div>
               </div>
 
-              {/* 오늘 잘한 일 3가지 */}
               <div>
                 <h3 className="text-[13px] font-semibold tracking-[-0.01em] text-[#1E1B4B]">
                   오늘 스스로 잘한 일 {MAX_DAILY_WINS}가지

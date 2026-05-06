@@ -4,7 +4,8 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
-import { LABELS } from "@/lib/labels";
+
+const APP_TAGLINE = "10년 후의 나에게서 매일 한 마디.";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -52,7 +53,7 @@ export default function SignupPage() {
       <div className="w-full max-w-md space-y-8 rounded-2xl bg-white p-8 shadow-lg">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900">회원가입</h1>
-          <p className="mt-2 text-gray-500">{LABELS.appTagline}</p>
+          <p className="mt-2 text-gray-500">{APP_TAGLINE}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">

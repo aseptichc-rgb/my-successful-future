@@ -40,8 +40,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Anima — listening within",
-  description: "내 안의 목소리들과 대화하는 AI. 미래의 나, 분야별 자문단 페르소나.",
+  title: "Anima — daily motivation",
+  description: "10년 후의 나에게서 매일 도착하는 한 마디. 목표를 적어두면 매일 새 카드로 받아봅니다.",
   applicationName: "Anima",
   appleWebApp: {
     capable: true,

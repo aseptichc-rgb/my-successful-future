@@ -4,8 +4,9 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
-import { LABELS } from "@/lib/labels";
 import Logo from "@/components/ui/Logo";
+
+const APP_TAGLINE = "10년 후의 나에게서 매일 한 마디.";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,7 +14,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!authLoading && firebaseUser) {
-      router.replace("/chat");
+      router.replace("/home");
     }
   }, [authLoading, firebaseUser, router]);
   const [email, setEmail] = useState("");
@@ -21,16 +22,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const getRedirectPath = () => {
-    const pendingToken = typeof window !== "undefined"
-      ? sessionStorage.getItem("pendingInviteToken")
-      : null;
-    if (pendingToken) {
-      sessionStorage.removeItem("pendingInviteToken");
-      return `/invite/${pendingToken}`;
-    }
-    return "/chat";
-  };
+  const getRedirectPath = () => "/home";
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -65,7 +57,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-8 rounded-2xl bg-white p-8 shadow-anima">
         <div className="flex flex-col items-center text-center">
           <Logo variant="lockup" tone="light" size={36} priority />
-          <p className="mt-3 text-anima-caption">{LABELS.appTagline}</p>
+          <p className="mt-3 text-anima-caption">{APP_TAGLINE}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">

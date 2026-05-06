@@ -2,10 +2,10 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Anima — listening within",
+    name: "Anima — daily motivation",
     short_name: "Anima",
     description:
-      "내 안의 목소리들과 대화하는 AI. 미래의 나, 분야별 자문단 페르소나.",
+      "10년 후의 나에게서 매일 도착하는 한 마디. 목표를 적어두면 매일 새 카드로 받아봅니다.",
     start_url: "/",
     scope: "/",
     display: "standalone",

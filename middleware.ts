@@ -8,11 +8,10 @@ export function middleware(request: NextRequest) {
   const authCookie = request.cookies.get("__session");
 
   const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/signup");
-  const isChatPage = pathname.startsWith("/chat");
 
-  // 인증된 사용자가 auth 페이지 접근 시 → /chat 리다이렉트
+  // 인증된 사용자가 auth 페이지 접근 시 → /home 리다이렉트
   if (isAuthPage && authCookie) {
-    return NextResponse.redirect(new URL("/chat", request.url));
+    return NextResponse.redirect(new URL("/home", request.url));
   }
 
   // 나머지는 클라이언트 사이드 AuthProvider에서 보호
@@ -20,5 +19,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/login", "/signup", "/chat/:path*"],
+  matcher: ["/login", "/signup", "/home/:path*"],
 };

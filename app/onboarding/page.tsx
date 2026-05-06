@@ -1,42 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import {
-  updateUserPersona,
-  updateFuturePersona,
-  updatePreferredTopics,
-  markOnboarded,
-} from "@/lib/firebase";
-import { PERSONAS } from "@/lib/personas";
-import PersonaIcon from "@/components/ui/PersonaIcon";
-import { LABELS } from "@/lib/labels";
-import { authedFetch } from "@/lib/authedFetch";
-import type { NewsTopic, PersonaId } from "@/types";
+import { updateFuturePersona, updateUserGoals, markOnboarded, MAX_USER_GOALS } from "@/lib/firebase";
 
-// Step 1: 관심 주제 (preferredTopics 기본값 추천에도 쓰임)
-const TOPICS: { id: NewsTopic; label: string; emoji: string; hint: string }[] = [
-  { id: "국내", label: "국내", emoji: "🇰🇷", hint: "정치·경제·사회" },
-  { id: "글로벌", label: "글로벌", emoji: "🌍", hint: "해외·국제" },
-  { id: "IT", label: "IT", emoji: "💻", hint: "테크·스타트업" },
-  { id: "헬스케어", label: "건강", emoji: "🏥", hint: "의료·바이오" },
-];
-
-// Step 3 자문단 추천 목록 (default·future-self 제외)
-const ADVISOR_CANDIDATES: PersonaId[] = [
-  "entrepreneur",
-  "fund-trader",
-  "tech-cto",
-  "policy-analyst",
-  "healthcare-expert",
-];
-
-const USER_PERSONA_EXAMPLES = [
-  "30대 초반 개발자. 스타트업에서 서버 개발을 하고 있고, 요즘은 AI·투자에 관심이 많아요.",
-  "20대 후반 대학원생. 디지털헬스케어 연구 중이에요. 창업도 고민 중.",
-  "40대 직장인, 두 아이 아빠. 은퇴 후 제2의 커리어를 준비하고 있어요.",
-];
+const FUTURE_PERSONA_MAX = 500;
+const GOAL_MAX = 80;
 
 const FUTURE_PERSONA_EXAMPLES = [
   "5년 뒤 월 1,000만 원을 벌며 원하는 시간에 원하는 일을 하고 있다. 매일 아침 운동과 독서로 하루를 시작한다.",
@@ -44,119 +14,16 @@ const FUTURE_PERSONA_EXAMPLES = [
   "7년 뒤 가족과 보내는 시간이 최우선인 삶을 살고 있다. 일은 하루 5시간만 하고, 주말은 무조건 비워둔다.",
 ];
 
-// Step 2: 10년 후의 나를 구체화하기 위한 가이드 질문 — Gemini 가 이 답변을 모아 한 단락 서술문으로 정리한다.
-const FUTURE_SELF_QUESTIONS: { id: string; question: string; placeholder: string; rows: number }[] = [
-  {
-    id: "work",
-    question: "10년 뒤, 무슨 일을 하며 하루를 보내고 있나요?",
-    placeholder: "예: 작은 헬스케어 스타트업의 대표로, 오전엔 팀과 제품 회의, 오후엔 환자 인터뷰를 한다.",
-    rows: 3,
-  },
-  {
-    id: "place",
-    question: "어디에서, 누구와 살고 있나요?",
-    placeholder: "예: 서울 외곽 단독주택. 아내·두 아이·고양이 한 마리와 함께 산다.",
-    rows: 2,
-  },
-  {
-    id: "money",
-    question: "경제적으로는 어떤 모습인가요?",
-    placeholder: "예: 월 평균 1,500만 원 수입. 빚이 없고 매달 일정 금액을 투자에 넣는다.",
-    rows: 2,
-  },
-  {
-    id: "body",
-    question: "몸과 건강은 어떤 상태인가요?",
-    placeholder: "예: 주 4회 달리기와 근력 운동. 12시 전에 자고 6시에 일어난다.",
-    rows: 2,
-  },
-  {
-    id: "proud",
-    question: "가장 자랑스러운 일, 또는 이뤄낸 한 가지는?",
-    placeholder: "예: 작년에 책을 한 권 냈고, 강연에서 사람들의 변화 이야기를 듣는다.",
-    rows: 2,
-  },
-  {
-    id: "morning",
-    question: "그 모습의 당신은 어떤 마음으로 아침을 시작하나요?",
-    placeholder: "예: 조급하지 않고, 오늘 하루도 내가 만든 리듬대로 살 수 있다는 안정감.",
-    rows: 2,
-  },
-];
-
-const ANSWER_MAX_LEN = 600;
-
 export default function OnboardingPage() {
   const router = useRouter();
   const { user, firebaseUser, loading: authLoading, refreshUser } = useAuth();
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [topics, setTopics] = useState<NewsTopic[]>([]);
-  const [userPersona, setUserPersona] = useState("");
+  const [step, setStep] = useState<1 | 2>(1);
   const [futurePersona, setFuturePersona] = useState("");
-  const [selectedAdvisors, setSelectedAdvisors] = useState<PersonaId[]>([]);
+  const [goals, setGoals] = useState<string[]>([""]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Step 2 상태: AI 가이드 질문/답변 → 서술형 정리
-  const [futureAnswers, setFutureAnswers] = useState<Record<string, string>>({});
-  const [synthesizing, setSynthesizing] = useState(false);
-  const [synthError, setSynthError] = useState<string | null>(null);
-  const [showManual, setShowManual] = useState(false);
-
-  const meaningfulAnswerCount = useMemo(
-    () =>
-      FUTURE_SELF_QUESTIONS.reduce(
-        (n, q) => n + ((futureAnswers[q.id] || "").trim().length >= 2 ? 1 : 0),
-        0,
-      ),
-    [futureAnswers],
-  );
-
-  const handleAnswerChange = (id: string, value: string) => {
-    setFutureAnswers((prev) => ({ ...prev, [id]: value.slice(0, ANSWER_MAX_LEN) }));
-  };
-
-  const handleSynthesize = async () => {
-    if (synthesizing) return;
-    if (meaningfulAnswerCount === 0) {
-      setSynthError("최소 한 가지 질문에는 답해 주세요.");
-      return;
-    }
-    setSynthError(null);
-    setSynthesizing(true);
-    try {
-      const payload = {
-        answers: FUTURE_SELF_QUESTIONS.map((q) => ({
-          question: q.question,
-          answer: (futureAnswers[q.id] || "").trim(),
-        })),
-        userPersona: userPersona.trim() || undefined,
-      };
-      const res = await authedFetch("/api/future-self-synthesize", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || `서버 오류 (${res.status})`);
-      }
-      const data = (await res.json()) as { description?: string };
-      const desc = (data.description || "").trim();
-      if (!desc) {
-        throw new Error("AI 응답이 비어 있습니다. 다시 시도해 주세요.");
-      }
-      setFuturePersona(desc.slice(0, 500));
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error("[onboarding] AI 정리 실패:", err);
-      setSynthError(msg);
-    } finally {
-      setSynthesizing(false);
-    }
-  };
-
-  // 미로그인 차단 + 이미 온보딩 완료했으면 홈으로
   useEffect(() => {
     if (authLoading) return;
     if (!firebaseUser) {
@@ -164,52 +31,30 @@ export default function OnboardingPage() {
       return;
     }
     if (user?.onboardedAt) {
-      router.replace("/chat");
+      router.replace("/home");
     }
   }, [authLoading, firebaseUser, user?.onboardedAt, router]);
 
-  // 관심사 기반 자문단 자동 추천 (Step 3 초기값)
-  const recommendedAdvisors = useMemo<PersonaId[]>(() => {
-    const set = new Set<PersonaId>();
-    if (topics.includes("IT")) set.add("tech-cto");
-    if (topics.includes("헬스케어")) set.add("healthcare-expert");
-    if (topics.includes("글로벌")) set.add("fund-trader");
-    if (topics.includes("국내")) set.add("policy-analyst");
-    // 기본 2명 보장
-    if (set.size < 2) set.add("entrepreneur");
-    if (set.size < 2) set.add("fund-trader");
-    return Array.from(set).slice(0, 3);
-  }, [topics]);
-
-  // Step 3 진입 시 추천 자동 체크
-  useEffect(() => {
-    if (step === 3 && selectedAdvisors.length === 0) {
-      setSelectedAdvisors(recommendedAdvisors);
-    }
-  }, [step, recommendedAdvisors, selectedAdvisors.length]);
-
-  const toggleTopic = (t: NewsTopic) => {
-    setTopics((prev) =>
-      prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t],
-    );
+  const handleGoalChange = (idx: number, value: string) => {
+    setGoals((prev) => prev.map((g, i) => (i === idx ? value.slice(0, GOAL_MAX) : g)));
   };
 
-  const toggleAdvisor = (id: PersonaId) => {
-    setSelectedAdvisors((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+  const handleAddGoalRow = () => {
+    setGoals((prev) => (prev.length >= MAX_USER_GOALS ? prev : [...prev, ""]));
   };
 
-  const goNext = () => setStep((s) => (s < 3 ? ((s + 1) as 1 | 2 | 3) : s));
-  const goBack = () => setStep((s) => (s > 1 ? ((s - 1) as 1 | 2 | 3) : s));
+  const handleRemoveGoalRow = (idx: number) => {
+    setGoals((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== idx)));
+  };
+
+  const goNext = () => setStep((s) => (s < 2 ? ((s + 1) as 1 | 2) : s));
+  const goBack = () => setStep((s) => (s > 1 ? ((s - 1) as 1 | 2) : s));
 
   const finish = async () => {
     if (!firebaseUser) return;
     setSaving(true);
     setError(null);
 
-    // 네트워크·SDK 문제로 await 가 영영 resolve 안 되는 경우를 방어하기 위한 타임아웃 헬퍼.
-    // 개별 Firestore 쓰기마다 10초 한도를 둔다.
     const withTimeout = async <T,>(p: Promise<T>, label: string, ms = 10000): Promise<T> => {
       let timer: ReturnType<typeof setTimeout> | undefined;
       try {
@@ -226,37 +71,16 @@ export default function OnboardingPage() {
 
     try {
       const uid = firebaseUser.uid;
-
-      console.debug("[onboarding] 저장 시작", { topicsLen: topics.length, hasUserPersona: !!userPersona.trim(), hasFuturePersona: !!futurePersona.trim() });
-
-      // Step 1: 관심사 (선택 안 했으면 "전체"로 기본)
-      await withTimeout(
-        updatePreferredTopics(uid, topics.length > 0 ? topics : ["전체"]),
-        "preferredTopics",
-      );
-      // Step 1 다음: 자기소개 (선택 사항)
-      if (userPersona.trim()) {
-        await withTimeout(updateUserPersona(uid, userPersona.trim()), "userPersona");
-      }
-      // Step 2: 미래의 나 (선택 사항)
       if (futurePersona.trim()) {
         await withTimeout(updateFuturePersona(uid, futurePersona.trim()), "futurePersona");
       }
-      // Step 3 자문단 선택은 현재 persistent 저장 스키마 없음 → 홈 미니카드 추천은 preferredTopics 기반.
+      const cleanedGoals = goals.map((g) => g.trim()).filter((g) => g.length > 0);
+      if (cleanedGoals.length > 0) {
+        await withTimeout(updateUserGoals(uid, cleanedGoals), "goals");
+      }
       await withTimeout(markOnboarded(uid), "markOnboarded");
-
-      console.debug("[onboarding] Firestore 저장 완료, refreshUser 진행");
-
-      // refreshUser 는 실패·지연해도 진행을 막지 않는다.
-      // 갓 저장한 onboardedAt 이 auth-context user 에 반영되지 않으면
-      // /chat 이 다시 /onboarding 으로 돌려보낼 수 있지만, 그래도 최소 한 번은 화면 전환이 일어난다.
-      await withTimeout(refreshUser(), "refreshUser", 5000).catch((e) => {
-        console.warn("[onboarding] refreshUser 실패 (진행 계속):", e);
-      });
-
-      console.debug("[onboarding] /chat 이동");
-      router.replace("/chat");
-      // 라우트 전환이 지연되는 드문 경우 대비 — 버튼 상태 풀어 사용자가 재시도 가능하게
+      await withTimeout(refreshUser(), "refreshUser", 5000).catch(() => {});
+      router.replace("/home");
       setSaving(false);
     } catch (err) {
       console.error("[onboarding] 저장 실패:", err);
@@ -267,13 +91,12 @@ export default function OnboardingPage() {
   };
 
   const handleSkip = async () => {
-    // 완전 스킵: 관심사·자기소개·미래의 나 모두 미기입. 온보딩만 마킹.
     if (!firebaseUser) return;
     setSaving(true);
     try {
       await markOnboarded(firebaseUser.uid);
       await refreshUser().catch(() => {});
-      router.replace("/chat");
+      router.replace("/home");
     } catch (err) {
       console.error("[onboarding] skip 실패:", err);
       setSaving(false);
@@ -290,11 +113,10 @@ export default function OnboardingPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F0EDE6]">
-      {/* 진행 바 */}
       <div className="sticky top-0 z-10 border-b border-black/[0.06] bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center justify-between px-5 py-3 sm:px-6">
           <div className="flex items-center gap-1.5">
-            {[1, 2, 3].map((n) => (
+            {[1, 2].map((n) => (
               <span
                 key={n}
                 className={`h-1.5 w-8 rounded-full transition-colors ${
@@ -303,7 +125,7 @@ export default function OnboardingPage() {
               />
             ))}
             <span className="ml-3 text-[12px] font-medium tracking-[-0.01em] text-black/60">
-              {step} / 3
+              {step} / 2
             </span>
           </div>
           <button
@@ -312,216 +134,45 @@ export default function OnboardingPage() {
             disabled={saving}
             className="text-[13px] font-medium tracking-[-0.01em] text-black/48 hover:text-black/70 disabled:opacity-50"
           >
-            {LABELS.skip}
+            건너뛰기
           </button>
         </div>
       </div>
 
-      {/* 본문 */}
       <div className="flex-1 overflow-y-auto px-5 py-8 sm:px-6 sm:py-12">
         <div className="mx-auto max-w-2xl">
           {step === 1 && (
             <div>
               <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.003em] text-[#1E1B4B] sm:text-[32px]">
-                {LABELS.currentSelf}는 어떤 사람인가요?
+                10년 후의 나의 모습은 어떤가요?
               </h1>
               <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
-                AI가 대화에 반영할 수 있도록 간단히 알려주세요. 관심사와 자기소개 중 하나만 채워도 괜찮아요.
+                되고 싶은 모습을 한 단락으로 적어보세요. 매일 도착하는 동기부여 한 마디가 이 글을 바탕으로 만들어져요.
               </p>
 
-              {/* 관심사 */}
-              <h2 className="mt-8 text-[15px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
-                요즘 관심 있는 주제
-              </h2>
-              <p className="mt-1 text-[13px] tracking-[-0.01em] text-black/56">
-                복수 선택 가능
-              </p>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                {TOPICS.map((t) => {
-                  const active = topics.includes(t.id);
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => toggleTopic(t.id)}
-                      className={`flex items-center gap-3 rounded-[14px] border px-4 py-3 text-left transition-colors ${
-                        active
-                          ? "border-[#1E1B4B] bg-[#1E1B4B]/5"
-                          : "border-black/10 bg-white hover:border-black/20"
-                      }`}
-                    >
-                      <span className="text-[22px]">{t.emoji}</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[14px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
-                          {t.label}
-                        </p>
-                        <p className="truncate text-[12px] tracking-[-0.01em] text-black/56">
-                          {t.hint}
-                        </p>
-                      </div>
-                      <span
-                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] border transition-colors ${
-                          active ? "border-[#1E1B4B] bg-[#1E1B4B]" : "border-black/15"
-                        }`}
-                      >
-                        {active && (
-                          <svg
-                            className="h-3 w-3 text-white"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth={3}
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </span>
-                    </button>
-                  );
-                })}
+              <textarea
+                value={futurePersona}
+                onChange={(e) => setFuturePersona(e.target.value.slice(0, FUTURE_PERSONA_MAX))}
+                rows={8}
+                maxLength={FUTURE_PERSONA_MAX}
+                placeholder="예: 10년 뒤 나는 매일 아침 운동과 독서로 하루를 시작하고, 가족과 충분한 시간을 보내며 좋아하는 일로 안정적인 수익을 만든다."
+                className="mt-6 w-full resize-none rounded-[14px] border border-black/10 bg-white px-4 py-3 text-[14px] leading-[1.6] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
+              />
+              <div className="mt-2 text-right text-[11px] tracking-[-0.01em] text-black/40">
+                {futurePersona.length}/{FUTURE_PERSONA_MAX}
               </div>
 
-              {/* 자기소개 */}
-              <h2 className="mt-8 text-[15px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
-                나를 한 줄로 소개한다면 <span className="font-normal text-black/48">(선택)</span>
-              </h2>
-              <textarea
-                value={userPersona}
-                onChange={(e) => setUserPersona(e.target.value)}
-                rows={4}
-                maxLength={500}
-                placeholder="예: 30대 초반 개발자. 스타트업에서 서버 개발을 하고 있고, 요즘은 AI·투자에 관심이 많아요."
-                className="mt-3 w-full resize-none rounded-[14px] border border-black/10 bg-white px-4 py-3 text-[14px] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
-              />
               <div className="mt-3 flex flex-wrap gap-2">
-                {USER_PERSONA_EXAMPLES.map((ex, i) => (
+                {FUTURE_PERSONA_EXAMPLES.map((ex, i) => (
                   <button
                     key={i}
                     type="button"
-                    onClick={() => setUserPersona(ex)}
+                    onClick={() => setFuturePersona(ex)}
                     className="rounded-pill border border-black/10 bg-white px-3 py-1.5 text-[12px] tracking-[-0.01em] text-black/70 transition-colors hover:border-[#1E1B4B] hover:text-[#1E1B4B]"
                   >
-                    {ex.length > 28 ? ex.slice(0, 28) + "…" : ex}
+                    {ex.length > 32 ? ex.slice(0, 32) + "…" : ex}
                   </button>
                 ))}
-              </div>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div>
-              <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.003em] text-[#1E1B4B] sm:text-[32px]">
-                10년 후의 {LABELS.futureSelf}를 그려볼까요?
-              </h1>
-              <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
-                아래 질문에 떠오르는 만큼만 답해 보세요. AI가 답변을 모아 한 편의 생생한 서술로 정리해 드려요.
-              </p>
-
-              <ul className="mt-6 space-y-4">
-                {FUTURE_SELF_QUESTIONS.map((q, i) => {
-                  const value = futureAnswers[q.id] || "";
-                  return (
-                    <li key={q.id}>
-                      <label className="flex items-start gap-2">
-                        <span className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#1E1B4B]/10 text-[11px] font-semibold text-[#1E1B4B]">
-                          {i + 1}
-                        </span>
-                        <span className="text-[14px] font-semibold leading-[1.4] tracking-[-0.022em] text-[#1E1B4B]">
-                          {q.question}
-                        </span>
-                      </label>
-                      <textarea
-                        value={value}
-                        onChange={(e) => handleAnswerChange(q.id, e.target.value)}
-                        rows={q.rows}
-                        maxLength={ANSWER_MAX_LEN}
-                        placeholder={q.placeholder}
-                        className="mt-2 w-full resize-none rounded-[12px] border border-black/10 bg-white px-3 py-2.5 text-[14px] leading-[1.5] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
-                      />
-                    </li>
-                  );
-                })}
-              </ul>
-
-              <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-[12px] tracking-[-0.01em] text-black/48">
-                  답한 질문 {meaningfulAnswerCount}/{FUTURE_SELF_QUESTIONS.length}
-                </p>
-                <button
-                  type="button"
-                  onClick={handleSynthesize}
-                  disabled={synthesizing || meaningfulAnswerCount === 0}
-                  className="rounded-pill bg-[#1E1B4B] px-5 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-white transition-colors hover:bg-[#2A2766] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {synthesizing ? "AI가 정리 중…" : futurePersona ? "✨ 다시 정리하기" : "✨ AI로 정리하기"}
-                </button>
-              </div>
-
-              {synthError && (
-                <p className="mt-3 text-[13px] tracking-[-0.01em] text-[#D85A30]">{synthError}</p>
-              )}
-
-              {/* 정리된 결과 미리보기 — 사용자가 직접 다듬을 수 있도록 편집 가능 */}
-              {futurePersona && (
-                <div className="mt-6 rounded-[14px] border border-[#1E1B4B]/20 bg-[#1E1B4B]/5 p-4">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <h2 className="text-[14px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
-                      ✨ 정리된 10년 후의 나
-                    </h2>
-                    <span className="text-[11px] tracking-[-0.01em] text-black/40">
-                      {futurePersona.length}/500
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[12px] tracking-[-0.01em] text-black/56">
-                    필요한 부분은 직접 다듬어 주세요. 이 글이 매일 홈 화면에 보입니다.
-                  </p>
-                  <textarea
-                    value={futurePersona}
-                    onChange={(e) => setFuturePersona(e.target.value.slice(0, 500))}
-                    rows={6}
-                    maxLength={500}
-                    className="mt-3 w-full resize-none rounded-[12px] border border-black/10 bg-white px-3 py-2.5 text-[14px] leading-[1.6] tracking-[-0.01em] text-[#1E1B4B] focus:border-[#1E1B4B] focus:outline-none"
-                  />
-                </div>
-              )}
-
-              {/* 직접 작성 모드 — AI 없이 그냥 자유 서술 */}
-              <div className="mt-5">
-                {!showManual ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowManual(true)}
-                    className="text-[12px] font-medium tracking-[-0.01em] text-black/56 underline-offset-2 hover:text-[#1E1B4B] hover:underline"
-                  >
-                    AI 없이 직접 작성할게요
-                  </button>
-                ) : (
-                  <div className="rounded-[12px] border border-dashed border-black/15 bg-white p-3">
-                    <p className="text-[12px] tracking-[-0.01em] text-black/56">
-                      AI 정리 대신 직접 적고 싶다면 아래에 자유롭게 써 주세요.
-                    </p>
-                    <textarea
-                      value={futurePersona}
-                      onChange={(e) => setFuturePersona(e.target.value.slice(0, 500))}
-                      rows={5}
-                      maxLength={500}
-                      placeholder="예: 5년 뒤 월 1,000만 원을 벌며 원하는 시간에 원하는 일을 하고 있다."
-                      className="mt-2 w-full resize-none rounded-[10px] border border-black/10 bg-white px-3 py-2 text-[14px] leading-[1.5] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
-                    />
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {FUTURE_PERSONA_EXAMPLES.map((ex, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => setFuturePersona(ex)}
-                          className="rounded-pill border border-black/10 bg-white px-3 py-1.5 text-[12px] tracking-[-0.01em] text-black/70 transition-colors hover:border-[#1E1B4B] hover:text-[#1E1B4B]"
-                        >
-                          {ex.length > 32 ? ex.slice(0, 32) + "…" : ex}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
 
               <p className="mt-4 text-[12px] leading-[1.5] tracking-[-0.01em] text-black/48">
@@ -530,75 +181,56 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {step === 3 && (
+          {step === 2 && (
             <div>
               <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.003em] text-[#1E1B4B] sm:text-[32px]">
-                나를 도와줄 {LABELS.advisors}을 골라볼까요?
+                지금 향하고 있는 목표를 적어주세요
               </h1>
               <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
-                2명 이상 선택하면 나중에 <strong className="font-semibold">여러 명에게 한 번에</strong> 의견을 물을 수 있어요. 고른 분들이 홈에서 먼저 보입니다.
+                앞 3개 목표가 매일 동기부여 카드와 잠금화면에 함께 표시돼요. 우선순위대로 적어주세요.
               </p>
 
-              <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {ADVISOR_CANDIDATES.map((id) => {
-                  const p = PERSONAS[id as keyof typeof PERSONAS];
-                  const active = selectedAdvisors.includes(id);
-                  const recommended = recommendedAdvisors.includes(id);
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => toggleAdvisor(id)}
-                      className={`flex items-start gap-3 rounded-[14px] border p-4 text-left transition-colors ${
-                        active
-                          ? "border-[#1E1B4B] bg-[#1E1B4B]/5"
-                          : "border-black/10 bg-white hover:border-black/20"
-                      }`}
-                    >
-                      <PersonaIcon
-                        personaId={id as string}
-                        fallbackEmoji={p.icon}
-                        photoUrl={p.photoUrl}
-                        className="h-7 w-7 shrink-0 text-[#1E1B4B]"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <p className="truncate text-[15px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
-                            {p.name}
-                          </p>
-                          {recommended && (
-                            <span className="shrink-0 rounded-pill bg-[#1E1B4B]/10 px-2 py-0.5 text-[10px] font-semibold tracking-[-0.01em] text-[#1E1B4B]">
-                              추천
-                            </span>
-                          )}
-                        </div>
-                        <p className="mt-1 line-clamp-2 text-[12px] leading-[1.4] tracking-[-0.01em] text-black/56">
-                          {p.description}
-                        </p>
-                      </div>
-                      <span
-                        className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] border transition-colors ${
-                          active ? "border-[#1E1B4B] bg-[#1E1B4B]" : "border-black/15"
-                        }`}
+              <ul className="mt-6 space-y-2">
+                {goals.map((goal, idx) => (
+                  <li key={idx} className="flex items-center gap-2">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#1E1B4B]/10 text-[12px] font-semibold text-[#1E1B4B]">
+                      {idx + 1}
+                    </span>
+                    <input
+                      value={goal}
+                      maxLength={GOAL_MAX}
+                      onChange={(e) => handleGoalChange(idx, e.target.value)}
+                      placeholder="예: 매일 30분 책 읽기"
+                      className="min-w-0 flex-1 rounded-[10px] border border-black/10 bg-white px-3 py-2 text-[14px] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
+                    />
+                    {goals.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveGoalRow(idx)}
+                        aria-label="목표 줄 제거"
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-black/40 transition-colors hover:bg-black/[0.04] hover:text-black/80"
                       >
-                        {active && (
-                          <svg
-                            className="h-3 w-3 text-white"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth={3}
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+
+              {goals.length < MAX_USER_GOALS && (
+                <button
+                  type="button"
+                  onClick={handleAddGoalRow}
+                  className="mt-3 rounded-pill border border-dashed border-black/15 bg-white px-4 py-2 text-[12px] font-medium tracking-[-0.01em] text-black/60 transition-colors hover:border-[#1E1B4B] hover:text-[#1E1B4B]"
+                >
+                  + 목표 추가
+                </button>
+              )}
+
               <p className="mt-4 text-[12px] leading-[1.5] tracking-[-0.01em] text-black/48">
-                홈에 모든 자문단이 보여요. 여기서 고른 분들이 상단에 먼저 떠요.
+                나중에 홈에서 언제든 추가하거나 정리할 수 있어요. (최대 {MAX_USER_GOALS}개)
               </p>
             </div>
           )}
@@ -611,7 +243,6 @@ export default function OnboardingPage() {
         </div>
       </div>
 
-      {/* 하단 네비 */}
       <div className="sticky bottom-0 border-t border-black/[0.06] bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-5 py-4 sm:px-6">
           <button
@@ -620,16 +251,16 @@ export default function OnboardingPage() {
             disabled={step === 1 || saving}
             className="rounded-pill px-4 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-black/70 transition-colors hover:bg-black/[0.04] disabled:opacity-30"
           >
-            {LABELS.back}
+            이전
           </button>
-          {step < 3 ? (
+          {step < 2 ? (
             <button
               type="button"
               onClick={goNext}
               disabled={saving}
               className="rounded-pill bg-[#1E1B4B] px-6 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-white transition-colors hover:bg-[#2A2766] disabled:opacity-50"
             >
-              {LABELS.next}
+              다음
             </button>
           ) : (
             <button
@@ -638,7 +269,7 @@ export default function OnboardingPage() {
               disabled={saving}
               className="rounded-pill bg-[#1E1B4B] px-6 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-white transition-colors hover:bg-[#2A2766] disabled:opacity-50"
             >
-              {saving ? "저장 중…" : `${LABELS.start} →`}
+              {saving ? "저장 중…" : "시작하기 →"}
             </button>
           )}
         </div>

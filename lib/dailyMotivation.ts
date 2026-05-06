@@ -167,8 +167,10 @@ function buildPrompt(opts: {
   ctx: UserContext;
   ymd: string;
   candidates: ReadonlyArray<FamousQuoteSeed>;
+  /** 매번 새 호출에서 다른 결과를 유도하는 가변 시드 (다시 받기 시 변경됨). */
+  varietySalt: string;
 }): string {
-  const { ctx, ymd, candidates } = opts;
+  const { ctx, ymd, candidates, varietySalt } = opts;
   const goalsBlock =
     ctx.goals.length > 0
       ? ctx.goals.map((g, i) => `${i + 1}. ${g}`).join("\n")
@@ -194,7 +196,7 @@ ${candidatesBlock}
 ## 선정 기준
 1. 사용자의 목표·미래상과 의미적으로 가장 잘 통하는 한 줄.
 2. 진부한 자기계발 클리셰보다, 사용자가 가는 길을 실제로 비춰주는 인용.
-3. 같은 사용자가 매일 다른 인용을 받을 수 있도록, 오늘 날짜(${ymd})를 시드로 다양성을 살릴 것.
+3. 다양성 시드: ${varietySalt} — 이 값이 바뀌었다면 직전 회와 다른 후보를 적극적으로 골라라.
 
 ## 출력 (반드시 이 JSON 한 줄만, 다른 말 금지)
 {"id":"<후보 id 그대로>"}`;
@@ -342,8 +344,10 @@ function buildFreeAuthorPrompt(opts: {
   ctx: UserContext;
   ymd: string;
   author: string;
+  varietySalt: string;
+  avoidQuote?: string;
 }): string {
-  const { ctx, ymd, author } = opts;
+  const { ctx, ymd, author, varietySalt, avoidQuote } = opts;
   const goalsBlock =
     ctx.goals.length > 0
       ? ctx.goals.map((g, i) => `${i + 1}. ${g}`).join("\n")
@@ -357,6 +361,9 @@ function buildFreeAuthorPrompt(opts: {
 - 목표:
 ${goalsBlock}
 - 오늘: ${ymd} (KST) — 같은 사람이라도 다른 날엔 다른 인용을 받을 수 있게 시드로 활용.
+- 다양성 시드: ${varietySalt} — 호출마다 바뀝니다. 직전 회와 다른 발언을 적극적으로 골라주세요.${
+    avoidQuote ? `\n- 방금 보여준 인용: "${avoidQuote}" — 이것과 같은 발언은 절대 다시 고르지 마세요.` : ""
+  }
 
 ## 출력 규칙
 - 한국어 한 줄로 자연스럽게 옮긴 인용. 30~120자.
@@ -425,17 +432,30 @@ export async function ensureMotivation(opts: {
 }): Promise<{ motivation: DailyMotivation; cached: boolean }> {
   const { uid, ymd, force = false, overrideAuthor } = opts;
   const ref = getAdminDb().doc(`users/${uid}/dailyMotivations/${ymd}`);
-  if (!force) {
-    const existing = await ref.get();
-    if (existing.exists) {
-      return { motivation: existing.data() as DailyMotivation, cached: true };
-    }
+  // force=true 일 때도 직전 결과는 알아야 풀에서 제외할 수 있다.
+  const existingSnap = await ref.get();
+  const existing = existingSnap.exists ? (existingSnap.data() as DailyMotivation) : null;
+  if (!force && existing) {
+    return { motivation: existing, cached: true };
   }
 
   const ctx = await fetchUserContext(uid);
   const gradient = pickGradient(`${uid}:${ymd}`);
   const trimmedOverride = overrideAuthor?.trim() || undefined;
-  const { pool, freeAuthor } = resolveTodaysPool(uid, ymd, ctx.preference, trimmedOverride);
+  const { pool: rawPool, freeAuthor } = resolveTodaysPool(uid, ymd, ctx.preference, trimmedOverride);
+
+  // 다시 받기: 직전 명언과 같은 텍스트는 풀에서 제외 (단, 그렇게 해도 1개 이상 남을 때만).
+  const pool: ReadonlyArray<FamousQuoteSeed> =
+    force && existing
+      ? rawPool.filter((q) => q.text !== existing.quote).length > 0
+        ? rawPool.filter((q) => q.text !== existing.quote)
+        : rawPool
+      : rawPool;
+
+  // Gemini 가 같은 입력에 같은 답을 주는 경향이 있어, 호출마다 변하는 시드를 프롬프트에 주입.
+  const varietySalt = force
+    ? `regen-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    : `${ymd}`;
 
   let picked: PickedQuote;
 
@@ -443,7 +463,13 @@ export async function ensureMotivation(opts: {
     // 시드에 없는 free-text 인물 → Gemini 가 실제 발언을 가져옴.
     try {
       const raw = await generateText(
-        buildFreeAuthorPrompt({ ctx, ymd, author: freeAuthor }),
+        buildFreeAuthorPrompt({
+          ctx,
+          ymd,
+          author: freeAuthor,
+          varietySalt,
+          avoidQuote: force && existing ? existing.quote : undefined,
+        }),
         QUOTE_MODEL_TOKENS,
       );
       const parsed = parseFreeQuote(raw);
@@ -469,14 +495,16 @@ export async function ensureMotivation(opts: {
   } else {
     try {
       const raw = await generateText(
-        buildPrompt({ ctx, ymd, candidates: pool }),
+        buildPrompt({ ctx, ymd, candidates: pool, varietySalt }),
         QUOTE_MODEL_TOKENS,
       );
       const id = parsePickedId(raw);
       const seed = id ? CANDIDATE_BY_ID.get(id) : undefined;
       // Gemini 가 풀 밖의 id 를 들고와도 풀 안에서만 받아들임. 아니면 폴백.
       const inPool = seed && pool.some((q) => q.id === seed.id) ? seed : undefined;
-      picked = toPickedQuote(inPool ?? deterministicFallback(uid, ymd, pool));
+      picked = toPickedQuote(
+        inPool ?? deterministicFallback(uid, force ? `${ymd}:${varietySalt}` : ymd, pool),
+      );
     } catch (err) {
       console.warn(
         "[dailyMotivation] Gemini 실패, 결정론적 폴백 사용:",

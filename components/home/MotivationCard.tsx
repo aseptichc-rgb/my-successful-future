@@ -9,8 +9,6 @@ interface MotivationCardProps {
   errorMessage?: string | null;
   /** 사용자가 "↻ 다시 받기" 를 눌렀을 때 호출. POST { force: true } 로 재생성. */
   onRegenerate: () => void | Promise<void>;
-  /** "10년 후의 나와 대화" 버튼. 부모가 future-self 세션으로 라우팅. */
-  onChatWithFuture: () => void;
   /** 화면 헤더 표기용 KST YYYY-MM-DD (모르면 비워둠) */
   ymd: string;
 }
@@ -181,7 +179,6 @@ export default function MotivationCard({
   loading,
   errorMessage,
   onRegenerate,
-  onChatWithFuture,
   ymd,
 }: MotivationCardProps) {
   const [downloading, setDownloading] = useState(false);
@@ -329,20 +326,6 @@ export default function MotivationCard({
               <path d="M5 21h14" />
             </svg>
             {downloading ? "저장 중…" : "배경화면으로 저장"}
-          </button>
-          <button
-            type="button"
-            onClick={onChatWithFuture}
-            className={`inline-flex items-center gap-1.5 rounded-pill px-3.5 py-2 text-[12px] font-semibold tracking-[-0.01em] transition-colors ${
-              tone === "dark"
-                ? "border border-white/30 text-white hover:bg-white/10"
-                : "border border-black/15 text-[#1E1B4B] hover:bg-black/[0.04]"
-            }`}
-          >
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 12a8 8 0 1 1-3.2-6.4L21 4v5h-5" />
-            </svg>
-            10년 후의 나와 대화
           </button>
         </div>
         <button
