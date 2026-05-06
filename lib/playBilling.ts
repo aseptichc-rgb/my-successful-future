@@ -7,25 +7,13 @@
  *   - 환불 후에도 결제자처럼 행세
  *   - 다른 앱의 영수증을 우리 앱에 제출
  *
- * 운영 구현 (3단계에서 교체):
- *   import { google } from "googleapis";
- *   const auth = new google.auth.GoogleAuth({
- *     credentials: JSON.parse(process.env.GOOGLE_PLAY_SA_KEY!),
- *     scopes: ["https://www.googleapis.com/auth/androidpublisher"],
- *   });
- *   const publisher = google.androidpublisher({ version: "v3", auth });
- *   const res = await publisher.purchases.products.get({
- *     packageName, productId, token: purchaseToken,
- *   });
- *   const ok = res.data.purchaseState === 0 // 0=Purchased, 1=Canceled, 2=Pending
- *           && res.data.acknowledgementState === 1; // 1=Acknowledged
- *
- * 현재는 스텁 — 환경변수로 dev 우회만 제공.
- * 실제 통합 시 다음 환경변수가 필요:
- *   GOOGLE_PLAY_SA_KEY            : 서비스 계정 JSON 전체 (Vercel 등은 단일 라인 인코딩)
- *   ANDROID_PACKAGE_NAME          : "com.michaelkim.anima"
- *   ANDROID_LIFETIME_PRODUCT_ID   : 결제 상품 ID (예: "anima_lifetime")
+ * 환경변수:
+ *   GOOGLE_PLAY_SA_KEY            : 서비스 계정 JSON 전체 문자열 (Vercel 등은 한 줄로)
+ *                                   안드로이드 출판사 권한이 부여된 SA 여야 함.
+ *   PLAY_BILLING_DEV_BYPASS=true  : 검증을 스킵하고 항상 ok 반환 (베타·로컬 테스트 용)
  */
+import { google } from "googleapis";
+
 export interface PurchaseVerifyResult {
   ok: boolean;
   /** Google 응답의 purchaseTimeMillis (ms) */
@@ -44,12 +32,34 @@ export interface VerifyPurchaseInput {
   purchaseToken: string;
 }
 
-/**
- * dev 우회 환경변수.
- * - true: 어떤 입력이든 ok 를 반환 (베타·로컬 테스트 용)
- * - 미설정: 실제 검증 시도. 운영 구현 미완료 시 throw.
- */
 const DEV_BYPASS = process.env.PLAY_BILLING_DEV_BYPASS === "true";
+
+let cachedPublisher: ReturnType<typeof google.androidpublisher> | null = null;
+
+function getPublisher() {
+  if (cachedPublisher) return cachedPublisher;
+  const raw = process.env.GOOGLE_PLAY_SA_KEY;
+  if (!raw) {
+    throw new Error(
+      "GOOGLE_PLAY_SA_KEY 미설정. 운영에서는 서비스 계정 JSON 을 설정하거나 PLAY_BILLING_DEV_BYPASS=true 로 우회해야 합니다.",
+    );
+  }
+  let credentials: Record<string, unknown>;
+  try {
+    credentials = JSON.parse(raw);
+  } catch (err) {
+    throw new Error(
+      "GOOGLE_PLAY_SA_KEY 가 유효한 JSON 이 아닙니다: " +
+        (err instanceof Error ? err.message : String(err)),
+    );
+  }
+  const auth = new google.auth.GoogleAuth({
+    credentials,
+    scopes: ["https://www.googleapis.com/auth/androidpublisher"],
+  });
+  cachedPublisher = google.androidpublisher({ version: "v3", auth });
+  return cachedPublisher;
+}
 
 export async function verifyAndroidPurchase(
   input: VerifyPurchaseInput,
@@ -64,11 +74,40 @@ export async function verifyAndroidPurchase(
     };
   }
 
-  // TODO(step3): googleapis 의 androidpublisher v3 통합으로 교체.
-  // 현재는 dev_bypass 가 꺼진 환경에서 호출되면 명시적으로 실패시켜
-  // "결제 검증이 운영 구현되기 전에는 paid claim 이 발급되지 않는다" 를 보증한다.
-  throw new Error(
-    "verifyAndroidPurchase: 운영 구현 미완료. " +
-      "PLAY_BILLING_DEV_BYPASS=true 로 임시 우회하거나 Google Play Developer API 통합을 마쳐주세요.",
-  );
+  try {
+    const publisher = getPublisher();
+    const res = await publisher.purchases.products.get({
+      packageName: input.packageName,
+      productId: input.productId,
+      token: input.purchaseToken,
+    });
+    const data = res.data;
+    const purchaseState = typeof data.purchaseState === "number" ? data.purchaseState : 1;
+    const acknowledgementState =
+      typeof data.acknowledgementState === "number" ? data.acknowledgementState : 0;
+    const purchaseTimeMs = data.purchaseTimeMillis
+      ? Number(data.purchaseTimeMillis)
+      : undefined;
+
+    // purchaseState: 0 = Purchased, 1 = Canceled, 2 = Pending
+    // 2 (Pending) 도 ok=false 로 본다 — 결제 확정 후에만 paid 부여.
+    const ok = purchaseState === 0;
+    return {
+      ok,
+      purchaseTimeMs,
+      purchaseState,
+      acknowledgementState,
+      reason: ok
+        ? undefined
+        : purchaseState === 1
+          ? "canceled"
+          : purchaseState === 2
+            ? "pending"
+            : `purchaseState=${purchaseState}`,
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    // Google API 의 invalid token / not found 는 위조·만료된 영수증 신호.
+    return { ok: false, reason: msg };
+  }
 }

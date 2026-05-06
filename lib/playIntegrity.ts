@@ -7,30 +7,18 @@
  *   - 영수증: 결제가 진짜인가
  *   - Integrity: 호출자가 진짜 우리 앱인가
  *
- * 운영 구현 (3단계에서 교체):
- *   import { google } from "googleapis";
- *   const auth = new google.auth.GoogleAuth({
- *     credentials: JSON.parse(process.env.GOOGLE_PLAY_SA_KEY!),
- *     scopes: ["https://www.googleapis.com/auth/playintegrity"],
- *   });
- *   const integrity = google.playintegrity({ version: "v1", auth });
- *   const res = await integrity.v1.decodeIntegrityToken({
- *     packageName,
- *     requestBody: { integrityToken },
- *   });
- *   const payload = res.data.tokenPayloadExternal;
- *   const ok = payload?.appIntegrity?.appRecognitionVerdict === "PLAY_RECOGNIZED"
- *           && payload?.deviceIntegrity?.deviceRecognitionVerdict?.includes("MEETS_DEVICE_INTEGRITY");
- *   const matchesNonce = payload?.requestDetails?.nonce === expectedNonce;
- *
- * 현재는 스텁.
+ * 환경변수:
+ *   GOOGLE_PLAY_SA_KEY              : 서비스 계정 JSON. Play Integrity 권한도 부여돼야 함.
+ *   PLAY_INTEGRITY_DEV_BYPASS=true  : 검증 스킵 (베타/로컬 테스트 용)
  */
+import { google } from "googleapis";
+
 export interface IntegrityVerifyResult {
   ok: boolean;
   /** "PLAY_RECOGNIZED" | "UNRECOGNIZED_VERSION" | "UNEVALUATED" 등 */
   appVerdict?: string;
   /** "MEETS_DEVICE_INTEGRITY" | "MEETS_BASIC_INTEGRITY" | "MEETS_STRONG_INTEGRITY" 등 */
-  deviceVerdict?: string;
+  deviceVerdict?: string[];
   /** nonce 가 클라이언트가 기대한 값과 일치하는지 */
   nonceMatched?: boolean;
   reason?: string;
@@ -45,6 +33,33 @@ export interface VerifyIntegrityInput {
 
 const DEV_BYPASS = process.env.PLAY_INTEGRITY_DEV_BYPASS === "true";
 
+let cachedIntegrity: ReturnType<typeof google.playintegrity> | null = null;
+
+function getIntegrity() {
+  if (cachedIntegrity) return cachedIntegrity;
+  const raw = process.env.GOOGLE_PLAY_SA_KEY;
+  if (!raw) {
+    throw new Error(
+      "GOOGLE_PLAY_SA_KEY 미설정. 운영에서는 서비스 계정 JSON 을 설정하거나 PLAY_INTEGRITY_DEV_BYPASS=true 로 우회해야 합니다.",
+    );
+  }
+  let credentials: Record<string, unknown>;
+  try {
+    credentials = JSON.parse(raw);
+  } catch (err) {
+    throw new Error(
+      "GOOGLE_PLAY_SA_KEY 가 유효한 JSON 이 아닙니다: " +
+        (err instanceof Error ? err.message : String(err)),
+    );
+  }
+  const auth = new google.auth.GoogleAuth({
+    credentials,
+    scopes: ["https://www.googleapis.com/auth/playintegrity"],
+  });
+  cachedIntegrity = google.playintegrity({ version: "v1", auth });
+  return cachedIntegrity;
+}
+
 export async function verifyPlayIntegrity(
   input: VerifyIntegrityInput,
 ): Promise<IntegrityVerifyResult> {
@@ -52,15 +67,54 @@ export async function verifyPlayIntegrity(
     return {
       ok: true,
       appVerdict: "PLAY_RECOGNIZED",
-      deviceVerdict: "MEETS_DEVICE_INTEGRITY",
+      deviceVerdict: ["MEETS_DEVICE_INTEGRITY"],
       nonceMatched: true,
       reason: "dev_bypass",
     };
   }
 
-  // TODO(step3): googleapis 의 playintegrity v1 통합으로 교체.
-  throw new Error(
-    "verifyPlayIntegrity: 운영 구현 미완료. " +
-      "PLAY_INTEGRITY_DEV_BYPASS=true 로 임시 우회하거나 Play Integrity API 통합을 마쳐주세요.",
-  );
+  try {
+    const integrity = getIntegrity();
+    const res = await integrity.v1.decodeIntegrityToken({
+      packageName: input.packageName,
+      requestBody: { integrityToken: input.integrityToken },
+    });
+    const payload = res.data.tokenPayloadExternal;
+    const appVerdict =
+      payload?.appIntegrity?.appRecognitionVerdict ?? undefined;
+    const deviceVerdict =
+      payload?.deviceIntegrity?.deviceRecognitionVerdict ?? undefined;
+    const nonceFromToken = payload?.requestDetails?.nonce;
+    const nonceMatched = input.expectedNonce
+      ? nonceFromToken === input.expectedNonce
+      : true;
+
+    const appOk = appVerdict === "PLAY_RECOGNIZED";
+    const deviceOk =
+      Array.isArray(deviceVerdict) &&
+      deviceVerdict.some(
+        (v) =>
+          v === "MEETS_DEVICE_INTEGRITY" ||
+          v === "MEETS_STRONG_INTEGRITY" ||
+          v === "MEETS_BASIC_INTEGRITY",
+      );
+
+    const ok = appOk && deviceOk && nonceMatched;
+    return {
+      ok,
+      appVerdict,
+      deviceVerdict: deviceVerdict ?? undefined,
+      nonceMatched,
+      reason: ok
+        ? undefined
+        : !appOk
+          ? `appVerdict=${appVerdict}`
+          : !deviceOk
+            ? `deviceVerdict=${(deviceVerdict ?? []).join(",")}`
+            : "nonce_mismatch",
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, reason: msg };
+  }
 }
