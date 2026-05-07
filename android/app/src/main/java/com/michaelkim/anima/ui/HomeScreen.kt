@@ -119,12 +119,23 @@ fun HomeScreen(onOpenAnima: () -> Unit) {
                     busy = true
                     scope.launch {
                         try {
+                            // 신규/구 사용자 모두 위젯 호출 직전에 trial claim 을 한 번 점검.
+                            // 이미 claim 이 있으면 멱등 no-op.
+                            AuthRepository.ensureTrialStarted()
                             QuoteRepository.refresh(context)
-                            Toast.makeText(context, "갱신 완료", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "오늘의 한 마디를 받아왔어요", Toast.LENGTH_SHORT).show()
                         } catch (e: Exception) {
+                            // HttpException 의 경우 코드/본문을 같이 보여 진짜 원인을 추적 가능하게.
+                            val detail = when (e) {
+                                is retrofit2.HttpException -> {
+                                    val body = runCatching { e.response()?.errorBody()?.string() }.getOrNull()
+                                    "HTTP ${e.code()} ${body ?: e.message() ?: ""}"
+                                }
+                                else -> e.message ?: "네트워크 확인"
+                            }
                             Toast.makeText(
                                 context,
-                                "갱신 실패: ${e.message ?: "네트워크 확인"}",
+                                "오늘의 한 마디 받기 실패: $detail",
                                 Toast.LENGTH_LONG,
                             ).show()
                         } finally {
@@ -136,7 +147,7 @@ fun HomeScreen(onOpenAnima: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E1B4B)),
             ) {
-                Text(if (busy) "갱신 중…" else "지금 갱신")
+                Text(if (busy) "받아오는 중…" else "오늘의 한 마디 받기")
             }
             Spacer(Modifier.height(8.dp))
             OutlinedButton(

@@ -22,6 +22,7 @@ import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import com.michaelkim.anima.BuildConfig
+import com.michaelkim.anima.data.api.ApiClient
 import kotlinx.coroutines.tasks.await
 
 object AuthRepository {
@@ -107,6 +108,11 @@ object AuthRepository {
             val user = authResult.user
                 ?: return Result.failure(IllegalStateException("Firebase 사용자 정보 없음"))
             Log.i(TAG, "Google sign-in success: uid=${user.uid}")
+            // 가입 직후 무료 체험 claim(trialEndsAt)을 박는다. 실패해도 로그인 자체는 성공으로 본다 —
+            // 사용자가 "지금 갱신" 등을 누르는 시점에 ensureTrialStarted 가 한 번 더 시도된다.
+            runCatching { ensureTrialStarted() }.onFailure {
+                Log.w(TAG, "ensureTrialStarted (post-signIn) 실패", it)
+            }
             Result.success(user)
         } catch (e: GetCredentialException) {
             // Credential Manager 가 토큰 발급 자체를 거부한 경우.
@@ -124,6 +130,51 @@ object AuthRepository {
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected sign-in error", e)
             Result.failure(e)
+        }
+    }
+
+    /**
+     * 현재 사용자에게 trialEndsAt / paid claim 이 없으면 /api/auth/start-trial 을 불러
+     * 14일 무료 체험 claim 을 박고 customToken 으로 즉시 재로그인한다.
+     *
+     * 멱등: 이미 claim 이 있는 사용자는 서버가 alreadyStarted=true 만 돌려주고 종료.
+     * 호출 시점:
+     *   - signInWithGoogle 직후 (신규 가입자 케이스)
+     *   - 기존 사용자가 위젯 갱신 등 보호 라우트를 처음 호출하기 직전 (구제용)
+     *
+     * @return true 면 새 customToken 으로 재로그인이 일어났음 — 호출자가 다음 동작을
+     *              forceRefresh=true 로 진행해야 새 claim 이 반영된다.
+     */
+    suspend fun ensureTrialStarted(): Boolean {
+        val user = currentUser ?: return false
+        val tokenResult = try {
+            user.getIdToken(false).await()
+        } catch (e: Exception) {
+            Log.w(TAG, "getIdToken 실패 — ensureTrialStarted skip", e)
+            return false
+        }
+        val claims = tokenResult.claims
+        if (claims["paid"] == true) return false
+        if (claims["trialEndsAt"] is Number) return false
+
+        val response = try {
+            ApiClient.trialApi.start()
+        } catch (e: Exception) {
+            Log.w(TAG, "/api/auth/start-trial 호출 실패", e)
+            return false
+        }
+        if (response.alreadyStarted) return false
+        val customToken = response.customToken ?: return false
+        return try {
+            FirebaseAuth.getInstance().signInWithCustomToken(customToken).await()
+            // 새 ID 토큰을 즉시 가져와 캐시를 새 claim 이 박힌 토큰으로 교체한다.
+            // 안 하면 다음 API 호출이 trialEndsAt 없는 stale 토큰을 보내 402 가 떨어질 수 있다.
+            currentUser?.getIdToken(true)?.await()
+            Log.i(TAG, "trial claim 적용 완료")
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "signInWithCustomToken 실패", e)
+            false
         }
     }
 
