@@ -13,7 +13,7 @@ import {
   MAX_SUCCESS_AFFIRMATIONS,
   QUOTE_PINNED_DAYS_MAX,
 } from "@/lib/firebase";
-import { getKnownAuthorsForLanguage } from "@/lib/famousQuoteCatalog";
+import { getAllKnownAuthorsGrouped } from "@/lib/famousQuoteCatalog";
 import AffirmationsEditor from "@/components/affirmations/AffirmationsEditor";
 import { useLanguage, LOCALE_META, SUPPORTED_LOCALES, type Locale } from "@/lib/i18n";
 
@@ -61,8 +61,9 @@ export default function SettingsPage() {
   }, [user]);
 
   const goalCount = useMemo(() => goals.filter((g) => g.trim().length > 0).length, [goals]);
-  // 사용자 언어가 바뀌면 핀할 수 있는 인물 명단도 자동으로 그 풀로 갈린다.
-  const knownAuthors = useMemo(() => getKnownAuthorsForLanguage(locale), [locale]);
+  // 4개 언어 풀의 인물을 모두 노출 — 현재 언어 그룹이 첫 번째로 온다.
+  // 시드에 없는 표기로 핀해도 dailyMotivation 의 free-author 경로가 처리.
+  const authorGroups = useMemo(() => getAllKnownAuthorsGrouped(locale), [locale]);
 
   if (authLoading || !firebaseUser) {
     return (
@@ -390,8 +391,12 @@ export default function SettingsPage() {
               className="mt-1.5 w-full rounded-[10px] border border-black/10 bg-white px-3 py-2 text-[14px] tracking-[-0.01em] text-[#1E1B4B] focus:border-[#1E1B4B] focus:outline-none"
             >
               <option value="">{t("settings.quote.noPin")}</option>
-              {knownAuthors.map((name) => (
-                <option key={name} value={name}>{name}</option>
+              {authorGroups.map((group) => (
+                <optgroup key={group.language} label={LOCALE_META[group.language].nativeLabel}>
+                  {group.authors.map((name) => (
+                    <option key={`${group.language}:${name}`} value={name}>{name}</option>
+                  ))}
+                </optgroup>
               ))}
             </select>
 

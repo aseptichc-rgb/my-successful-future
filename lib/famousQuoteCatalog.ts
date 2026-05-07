@@ -50,3 +50,25 @@ export function getKnownAuthorsForLanguage(language: UserLanguage | undefined): 
   const collator = new Intl.Collator(language === "ko" ? "ko" : language === "zh" ? "zh" : language === "es" ? "es" : "en");
   return Array.from(unique).sort((a, b) => collator.compare(a, b));
 }
+
+/**
+ * 모든 언어의 핀 가능 인물 명단을 그룹핑해서 반환.
+ * - 같은 인물이라도 언어별 표기가 달라(예: "마르쿠스 아우렐리우스" / "Marcus Aurelius") 그룹별로 노출.
+ * - 사용자가 다른 언어 표기로 핀해도 dailyMotivation 의 free-author 경로(Gemini)가 받아준다.
+ * - currentLanguage 가 첫 그룹으로 와서 가장 익숙한 풀이 위에 보인다.
+ */
+export const ALL_LANGUAGES: ReadonlyArray<UserLanguage> = ["ko", "en", "es", "zh"];
+
+export interface AuthorGroup {
+  language: UserLanguage;
+  authors: string[];
+}
+
+export function getAllKnownAuthorsGrouped(currentLanguage: UserLanguage | undefined): AuthorGroup[] {
+  const current: UserLanguage = currentLanguage && ALL_LANGUAGES.includes(currentLanguage) ? currentLanguage : "ko";
+  const ordered: UserLanguage[] = [current, ...ALL_LANGUAGES.filter((l) => l !== current)];
+  return ordered.map((language) => ({
+    language,
+    authors: getKnownAuthorsForLanguage(language),
+  }));
+}
