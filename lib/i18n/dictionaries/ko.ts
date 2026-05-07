@@ -130,7 +130,7 @@ const dict = {
   "home.goals.toggleUnachievedTitle": "오늘 달성함 — 취소하려면 클릭",
   "home.goals.saveFailed": "목표 저장에 실패했습니다.",
 
-  "home.wins.title": "오늘 스스로 잘한 일 {max}가지",
+  "home.wins.title": "오늘 잘한 일 {max}가지",
   "home.wins.subtitle": "아주 작은 일이어도 좋아요. 적은 뒤 저장하면 날짜별로 다시 볼 수 있어요.",
   "home.wins.history": "지난 기록 보기",
   "home.wins.placeholder1": "예: 미루던 메일에 답장했다.",

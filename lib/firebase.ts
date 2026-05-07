@@ -27,6 +27,7 @@ import {
   orderBy,
   limit as fsLimit,
   query,
+  deleteField,
   type Firestore,
   type Unsubscribe,
 } from "firebase/firestore";
@@ -221,9 +222,11 @@ export async function updateQuotePreference(uid: string, pref: QuotePreference) 
     typeof daysRaw === "number" && Number.isFinite(daysRaw)
       ? Math.max(QUOTE_PINNED_DAYS_MIN, Math.min(QUOTE_PINNED_DAYS_MAX, Math.floor(daysRaw)))
       : undefined;
-  const next: QuotePreference = {};
-  if (author) next.pinnedAuthor = author;
-  if (typeof days === "number") next.pinnedDaysPerWeek = days;
+  // setDoc({merge:true}) 는 중첩 객체를 deep merge 하므로, 핀 해제 의도(빈 author/0 days)는
+  // 키를 빠뜨리는 게 아니라 deleteField() 로 명시적으로 지워야 기존 값이 살아남지 않는다.
+  const next: Record<string, unknown> = {};
+  next.pinnedAuthor = author ? author : deleteField();
+  next.pinnedDaysPerWeek = typeof days === "number" ? days : deleteField();
   await setDoc(
     doc(db, "users", uid),
     { quotePreference: next, quotePreferenceUpdatedAt: serverTimestamp() },
