@@ -191,7 +191,11 @@ export async function GET(request: NextRequest) {
       );
     }
     const msg = err instanceof Error ? err.message : String(err);
-    console.error("[widget/today] 실패:", msg);
-    return NextResponse.json({ error: "오늘의 위젯 데이터를 불러오지 못했습니다." }, { status: 500 });
+    const stack = err instanceof Error ? err.stack : undefined;
+    console.error("[widget/today] 실패:", msg, stack);
+    return NextResponse.json(
+      { error: "오늘의 위젯 데이터를 불러오지 못했습니다.", detail: msg },
+      { status: 500 },
+    );
   }
 }
