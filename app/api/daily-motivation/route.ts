@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { verifyRequestUser, AuthError } from "@/lib/authServer";
 import { ensureMotivation, isValidYmd, todayKst } from "@/lib/dailyMotivation";
+import { enforceQuota, QuotaExceededError } from "@/lib/quota";
 
 export const maxDuration = 30;
 
@@ -64,6 +65,12 @@ export async function POST(request: NextRequest) {
         ? body.overrideAuthor.trim().slice(0, OVERRIDE_AUTHOR_MAX_LEN)
         : undefined;
 
+    // "오늘의 또 다른 한마디" 재생성 호출만 한도에 카운트한다.
+    // 첫 카드 생성 (force=false, 캐시 미스) 은 한도에 영향 없음.
+    if (force || overrideAuthor) {
+      await enforceQuota(me.uid, "motivationRegenerate");
+    }
+
     const result = await ensureMotivation({
       uid: me.uid,
       ymd,
@@ -75,6 +82,12 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     if (err instanceof AuthError) {
       return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    if (err instanceof QuotaExceededError) {
+      return NextResponse.json(
+        { error: "오늘의 또 다른 한마디는 하루 5번까지 받을 수 있어요. 내일 다시 만나요." },
+        { status: 429 },
+      );
     }
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[daily-motivation POST] 실패:", msg);

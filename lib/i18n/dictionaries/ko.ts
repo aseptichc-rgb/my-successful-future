@@ -153,7 +153,7 @@ const dict = {
   "motivation.preparingCard": "동기부여 카드를 준비 중이에요. 잠시만요…",
   "motivation.loading": "오늘의 한 마디를 만들고 있어요…",
   "motivation.error.title": "카드를 만들지 못했어요",
-  "motivation.regenerate": "다시 받기",
+  "motivation.regenerate": "오늘의 또 다른 한마디",
   "motivation.todayLabel": "오늘의 한 마디",
   "motivation.missionLabel": "오늘의 한 줄 미션",
   "motivation.missionPlaceholder": "한 줄로 답해보세요…",

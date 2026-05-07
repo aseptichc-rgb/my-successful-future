@@ -389,9 +389,10 @@ export default function HomeDashboardPage() {
             onClick={() => router.push("/settings")}
             aria-label={t("home.settingsAria")}
             title={t("home.settingsAria")}
-            className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-black/[0.06] bg-white text-[#1E1B4B] shadow-apple transition-colors hover:bg-[#F7F4ED]"
+            className="mt-1 flex h-10 shrink-0 items-center gap-1.5 rounded-full border border-black/[0.06] bg-white px-3.5 text-[14px] font-medium tracking-[-0.01em] text-[#1E1B4B] shadow-apple transition-colors hover:bg-[#F7F4ED]"
           >
             <IconSettings className="h-[18px] w-[18px]" />
+            <span>{t("home.settingsAria")}</span>
           </button>
         </div>
       </header>
