@@ -37,7 +37,10 @@ import type {
   DailyMotivation,
   IdentityProgress,
   QuotePreference,
+  UserLanguage,
 } from "@/types";
+
+const SUPPORTED_LANGUAGES: ReadonlyArray<UserLanguage> = ["ko", "en", "es", "zh"];
 
 // ── Firebase 지연 초기화 ─────────────────────────────
 const firebaseConfig = {
@@ -138,6 +141,56 @@ export async function updateFuturePersona(uid: string, futurePersona: string) {
 export async function markOnboarded(uid: string) {
   const db = getDbInstance();
   await setDoc(doc(db, "users", uid), { onboardedAt: serverTimestamp() }, { merge: true });
+}
+
+/**
+ * UI / 매일 카드 언어 저장. 알 수 없는 코드는 무시한다.
+ * 변경 즉시 다음 daily-motivation 호출부터 새 언어로 반영된다.
+ */
+export async function updateUserLanguage(uid: string, language: UserLanguage): Promise<void> {
+  if (!SUPPORTED_LANGUAGES.includes(language)) return;
+  const db = getDbInstance();
+  await setDoc(
+    doc(db, "users", uid),
+    { language, languageUpdatedAt: serverTimestamp() },
+    { merge: true },
+  );
+}
+
+// ── "성공한 나의 모습" 다짐 ────────────────────────
+export const MAX_SUCCESS_AFFIRMATIONS = 10;
+export const SUCCESS_AFFIRMATION_MAX_LEN = 60;
+
+/**
+ * 다짐 배열 정규화 — 공백 trim, 빈 항목 제거, 길이 제한, 중복 제거, 최대 N개로 컷.
+ * 클라/서버 양쪽에서 같은 결과를 내야 매일의 placeholder 와 입력 비교가 일관된다.
+ */
+export function normalizeAffirmations(raw: ReadonlyArray<unknown>): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== "string") continue;
+    const trimmed = item.trim().slice(0, SUCCESS_AFFIRMATION_MAX_LEN);
+    if (trimmed.length === 0) continue;
+    if (seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    out.push(trimmed);
+    if (out.length >= MAX_SUCCESS_AFFIRMATIONS) break;
+  }
+  return out;
+}
+
+export async function updateSuccessAffirmations(uid: string, affirmations: string[]) {
+  const cleaned = normalizeAffirmations(affirmations);
+  const db = getDbInstance();
+  await setDoc(
+    doc(db, "users", uid),
+    {
+      successAffirmations: cleaned,
+      successAffirmationsUpdatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
 }
 
 // ── 사용자 목표 ──────────────────────────────────────
@@ -269,6 +322,22 @@ export function onDailyMotivationSnapshot(
       return;
     }
     callback(snap.data() as DailyMotivation);
+  });
+}
+
+// ── 다짐 따라쓰기 오늘 체크인 여부 구독 ───────────
+/**
+ * users/{uid}/affirmationLogs/{ymd} 의 존재 여부를 콜백으로 흘려보낸다.
+ * 서버 트랜잭션이 doc 을 만들면 즉시 true 가 들어와 UI 가 잠긴다.
+ */
+export function onAffirmationCheckinSnapshot(
+  uid: string,
+  ymd: string,
+  callback: (checkedIn: boolean) => void,
+): Unsubscribe {
+  const db = getDbInstance();
+  return onSnapshot(doc(db, "users", uid, "affirmationLogs", ymd), (snap) => {
+    callback(snap.exists());
   });
 }
 

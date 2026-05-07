@@ -109,7 +109,12 @@ export async function POST(request: NextRequest) {
     const purchaseTime = purchase.purchaseTimeMs ?? Date.now();
 
     // 3) Firebase custom claim 부여 — 다음 ID 토큰부터 paid=true 가 박힌다.
+    //    setCustomUserClaims 는 전체 덮어쓰기이므로, /api/auth/start-trial 이 박아둔
+    //    trialEndsAt 등 다른 claim 을 보존하기 위해 기존 claim 을 읽어 머지한다.
+    const userRecord = await auth.getUser(me.uid);
+    const currentClaims: Record<string, unknown> = { ...(userRecord.customClaims ?? {}) };
     await auth.setCustomUserClaims(me.uid, {
+      ...currentClaims,
       paid: true,
       productId,
       purchaseTime,

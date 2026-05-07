@@ -6,6 +6,10 @@
  *   /api/entitlement/verify 가 Play Billing 영수증을 확인한 뒤
  *   Firebase custom claim 으로 paid=true 를 박아 두면 verifyIdToken 결과로 그대로 들어온다.
  *   결제 게이팅이 필요한 라우트는 requirePaidUser() 를 사용해 차단할 수 있다.
+ *
+ * trialEndsAt claim:
+ *   /api/auth/start-trial 이 가입 직후 14일 뒤 시각(ms) 을 박아둔다.
+ *   paid 가 아니더라도 trialEndsAt > now 이면 무료 체험 중으로 간주해 통과시킨다.
  */
 import type { NextRequest } from "next/server";
 import { getAdminAuth, getAdminDb } from "./firebase-admin";
@@ -20,6 +24,8 @@ export interface AuthedUser {
   productId: string | null;
   /** 결제 시점 (ms). claim 에 박아둔 값. */
   purchaseTimeMs: number | null;
+  /** 무료 체험 종료 시각(ms). 미시작이면 null. */
+  trialEndsAt: number | null;
 }
 
 const SESSION_COOKIE_NAME = "__session";
@@ -40,12 +46,15 @@ function decodedToAuthedUser(
   const productId = typeof decoded.productId === "string" ? decoded.productId : null;
   const purchaseTimeMs =
     typeof decoded.purchaseTime === "number" ? (decoded.purchaseTime as number) : null;
+  const trialEndsAt =
+    typeof decoded.trialEndsAt === "number" ? (decoded.trialEndsAt as number) : null;
   return {
     uid: decoded.uid,
     email: decoded.email,
     paid,
     productId,
     purchaseTimeMs,
+    trialEndsAt,
   };
 }
 
@@ -77,21 +86,32 @@ export async function verifyRequestUser(request: NextRequest): Promise<AuthedUse
 }
 
 /**
- * 결제 검증을 통과한 사용자만 통과시킨다.
+ * 결제 검증 또는 무료 체험을 통과한 사용자만 통과시킨다.
  *
- * - ENTITLEMENT_REQUIRED=true 인 운영 환경: 미결제 사용자는 402 PaymentRequired 로 차단.
- * - ENTITLEMENT_REQUIRED 미설정 (개발/베타): 미결제 사용자도 통과시키되 user.paid=false 로 표시.
- *   라우트가 이 값을 보고 비결제 사용자에게 다운그레이드된 응답을 줄 수도 있다.
+ * 통과 조건 (ENTITLEMENT_REQUIRED=true 일 때):
+ *   1) user.paid === true — Play Billing 영수증 검증 완료자
+ *   2) user.trialEndsAt > now — 가입 직후 14일 무료 체험 중
+ *   둘 다 아니면 402 PaymentRequired.
+ *
+ * - ENTITLEMENT_REQUIRED 미설정 (개발/베타): 모두 통과시키되 user.paid=false / trialEndsAt=null
+ *   값을 그대로 노출해서 라우트가 다운그레이드 응답을 결정할 수 있게 한다.
  *
  * 결제 흐름이 완성되기 전에 운영 빌드에 ENTITLEMENT_REQUIRED 를 켜면
  * 모든 보호 라우트가 즉시 닫히므로, 안드로이드 BillingClient 통합·검증 흐름 점검 후 켤 것.
  */
 export async function requirePaidUser(request: NextRequest): Promise<AuthedUser> {
   const user = await verifyRequestUser(request);
-  if (!user.paid && ENTITLEMENT_REQUIRED) {
-    throw new AuthError(402, "유료 사용자만 호출할 수 있습니다. 앱에서 결제를 완료해 주세요.");
-  }
-  return user;
+  if (!ENTITLEMENT_REQUIRED) return user;
+  if (user.paid) return user;
+  const now = Date.now();
+  if (user.trialEndsAt !== null && user.trialEndsAt > now) return user;
+  const reason = user.trialEndsAt === null ? "trial_not_started" : "trial_expired";
+  throw new AuthError(
+    402,
+    reason === "trial_expired"
+      ? "무료 체험 기간이 끝났습니다. 안드로이드 앱에서 결제를 완료해 주세요."
+      : "무료 체험이 시작되지 않았습니다. 다시 로그인해 주세요.",
+  );
 }
 
 /**

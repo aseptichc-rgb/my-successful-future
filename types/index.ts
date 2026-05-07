@@ -1,5 +1,11 @@
 import { Timestamp } from "firebase/firestore";
 
+/**
+ * 앱 UI 언어. 미설정 시 클라이언트는 "ko" 로 폴백한다.
+ * 서버(Gemini 프롬프트 / 명언 시드 풀) 도 같은 코드로 분기한다.
+ */
+export type UserLanguage = "ko" | "en" | "es" | "zh";
+
 // ── 사용자 ────────────────────────────────────────────
 export interface User {
   uid: string;
@@ -9,6 +15,12 @@ export interface User {
   futurePersona?: string;
   futurePersonaUpdatedAt?: Timestamp;
   onboardedAt?: Timestamp;
+  /**
+   * UI 와 매일 카드 출력 언어. 온보딩 1단계에서 선택, 설정에서 변경 가능.
+   * 미설정(레거시 사용자) 이면 클라/서버 모두 "ko" 로 처리.
+   */
+  language?: UserLanguage;
+  languageUpdatedAt?: Timestamp;
   /** 사용자가 직접 적은 목표 (최대 10개). 홈 대시보드에서 편집. */
   goals?: string[];
   goalsUpdatedAt?: Timestamp;
@@ -17,7 +29,30 @@ export interface User {
   quotePreferenceUpdatedAt?: Timestamp;
   /** 미션 응답이 강화하는 정체성 라벨 풀. futurePersona 변경 시 서버에서 재생성. */
   identities?: UserIdentities;
+  /**
+   * "성공한 나의 모습" 다짐 (최대 10개, 각 60자).
+   * 매일 카드 미션 영역에 placeholder 로 그대로 노출되고, 사용자가 글자 단위로 일치하게
+   * 다시 적으면 affirmationStreak 가 +1 된다.
+   */
+  successAffirmations?: string[];
+  successAffirmationsUpdatedAt?: Timestamp;
+  /** 다짐 따라쓰기 연속일 진행도. lastYmd 가 어제(KST)면 +1, 아니면 1로 리셋. */
+  affirmationStreak?: AffirmationStreak;
+  /**
+   * 무료 체험 종료 시점 (Firestore Timestamp 미러).
+   * 실제 게이트 판정은 Firebase custom claim 의 trialEndsAt(ms) 으로 수행하고,
+   * 이 필드는 UI 의 D-day 카운트다운/안내 문구에 사용한다.
+   */
+  trialEndsAt?: Timestamp;
   createdAt: Timestamp;
+}
+
+/** "성공한 나의 모습" 다짐 따라쓰기 연속일 카운터. 서버 트랜잭션으로만 갱신. */
+export interface AffirmationStreak {
+  count: number;
+  /** 마지막으로 정상 체크인이 일어난 날짜 (KST YYYY-MM-DD). */
+  lastYmd: string;
+  updatedAt?: Timestamp;
 }
 
 /** 정체성 라벨 풀 — 미션 응답 1건이 라벨 1개의 누적 증거가 된다. */

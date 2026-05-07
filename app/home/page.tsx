@@ -8,7 +8,7 @@ import {
   updateUserGoals,
   onDailyEntrySnapshot,
   onDailyMotivationSnapshot,
-  onIdentityProgressSnapshot,
+  onAffirmationCheckinSnapshot,
   saveDailyWins,
   saveDailyAchievedGoals,
   getKstYmd,
@@ -17,11 +17,10 @@ import {
 } from "@/lib/firebase";
 import { authedFetch } from "@/lib/authedFetch";
 import MotivationCard from "@/components/home/MotivationCard";
-import IdentityProgressView from "@/components/identity/IdentityProgress";
+import { useLanguage } from "@/lib/i18n";
 import type {
   DailyEntry,
   DailyMotivation,
-  IdentityProgress as IdentityProgressType,
 } from "@/types";
 
 const FUTURE_PERSONA_MAX = 500;
@@ -29,10 +28,18 @@ const GOAL_MAX = 80;
 const WIN_MAX = 140;
 const WINS_SAVED_TOAST_MS = 2000;
 
-function formatKstHeader(ymd: string): string {
+function formatKstHeader(ymd: string, locale: string): string {
   const [y, m, d] = ymd.split("-").map((s) => parseInt(s, 10));
   if (!y || !m || !d) return ymd;
-  return `${y}년 ${m}월 ${d}일`;
+  try {
+    const date = new Date(Date.UTC(y, m - 1, d));
+    return new Intl.DateTimeFormat(
+      locale === "ko" ? "ko-KR" : locale === "es" ? "es-ES" : locale === "zh" ? "zh-CN" : "en-US",
+      { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" },
+    ).format(date);
+  } catch {
+    return ymd;
+  }
 }
 
 const IconSettings = ({ className = "h-5 w-5" }: { className?: string }) => (
@@ -44,7 +51,8 @@ const IconSettings = ({ className = "h-5 w-5" }: { className?: string }) => (
 
 export default function HomeDashboardPage() {
   const router = useRouter();
-  const { user, firebaseUser, loading } = useAuth();
+  const { user, firebaseUser, loading, refreshUser } = useAuth();
+  const { t, locale } = useLanguage();
 
   const [futureDraft, setFutureDraft] = useState("");
   const [futureEditing, setFutureEditing] = useState(false);
@@ -73,10 +81,9 @@ export default function HomeDashboardPage() {
   const [motivation, setMotivation] = useState<DailyMotivation | null>(null);
   const [motivationLoading, setMotivationLoading] = useState(true);
   const [motivationError, setMotivationError] = useState<string | null>(null);
-  const [showMoreToday, setShowMoreToday] = useState(false);
   const ensureRequestedRef = useRef(false);
 
-  const [identityEntries, setIdentityEntries] = useState<IdentityProgressType[]>([]);
+  const [alreadyCheckedInToday, setAlreadyCheckedInToday] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -195,11 +202,40 @@ export default function HomeDashboardPage() {
 
   useEffect(() => {
     if (!firebaseUser) return;
-    const unsub = onIdentityProgressSnapshot(firebaseUser.uid, (entries) => {
-      setIdentityEntries(entries);
+    const unsub = onAffirmationCheckinSnapshot(firebaseUser.uid, ymd, (checked) => {
+      setAlreadyCheckedInToday(checked);
     });
     return unsub;
-  }, [firebaseUser]);
+  }, [firebaseUser, ymd]);
+
+  const handleAffirmationCheckin = useCallback(
+    async (texts: string[]) => {
+      const res = await authedFetch("/api/affirmation-checkin", {
+        method: "POST",
+        body: JSON.stringify({ ymd, texts }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        matched?: boolean;
+        streakCount?: number;
+        mismatchedIndices?: number[];
+        error?: string;
+      };
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "체크인을 저장하지 못했어요.");
+      }
+      // 새로 체크인됐으면 user 프로필을 다시 불러와 streak.count 를 갱신.
+      if (data.matched) {
+        await refreshUser().catch(() => {});
+      }
+      return {
+        matched: Boolean(data.matched),
+        streakCount: Number(data.streakCount ?? 0),
+        mismatchedIndices: data.mismatchedIndices,
+      };
+    },
+    [ymd, refreshUser],
+  );
 
   if (loading || !firebaseUser) {
     return (
@@ -219,8 +255,8 @@ export default function HomeDashboardPage() {
       setFutureEditing(false);
       void handleRegenerateMotivation();
     } catch (err) {
-      console.error("미래의 나 저장 실패:", err);
-      window.alert("저장에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      console.error("[home] 미래의 나 저장 실패:", err);
+      window.alert(`${t("common.saveFailed")} ${t("common.tryAgainLater")}`);
     } finally {
       setFutureSaving(false);
     }
@@ -235,8 +271,8 @@ export default function HomeDashboardPage() {
     try {
       await updateUserGoals(uid, next);
     } catch (err) {
-      console.error("목표 저장 실패:", err);
-      window.alert("목표 저장에 실패했습니다.");
+      console.error("[home] 목표 저장 실패:", err);
+      window.alert(t("home.goals.saveFailed"));
     }
   };
 
@@ -251,9 +287,9 @@ export default function HomeDashboardPage() {
     try {
       await saveDailyAchievedGoals(uid, ymd, next);
     } catch (err) {
-      console.error("목표 달성 저장 실패:", err);
+      console.error("[home] 목표 달성 저장 실패:", err);
       setAchievedGoals(achievedGoals);
-      window.alert("저장에 실패했습니다.");
+      window.alert(t("common.saveFailed"));
     }
   };
 
@@ -273,7 +309,7 @@ export default function HomeDashboardPage() {
     const text = goalDraft.trim().slice(0, GOAL_MAX);
     if (!text) return;
     if (goals.length >= MAX_USER_GOALS) {
-      window.alert(`목표는 최대 ${MAX_USER_GOALS}개까지 추가할 수 있어요.`);
+      window.alert(t("home.goals.maxAlert", { max: MAX_USER_GOALS }));
       return;
     }
     const next = [...goals, text];
@@ -325,8 +361,8 @@ export default function HomeDashboardPage() {
       if (winsSavedToastTimerRef.current) clearTimeout(winsSavedToastTimerRef.current);
       winsSavedToastTimerRef.current = setTimeout(() => setWinsJustSaved(false), WINS_SAVED_TOAST_MS);
     } catch (err) {
-      console.error("잘한 일 저장 실패:", err);
-      setWinsError("저장에 실패했어요. 잠시 후 다시 시도해주세요.");
+      console.error("[home] 잘한 일 저장 실패:", err);
+      setWinsError(t("home.wins.saveFailed"));
     } finally {
       setWinsSaving(false);
     }
@@ -342,17 +378,17 @@ export default function HomeDashboardPage() {
         <div className="mx-auto flex max-w-3xl items-start justify-between gap-4">
           <div>
             <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.005em] text-[#1E1B4B] sm:text-[32px]">
-              오늘의 동기부여
+              {t("home.title")}
             </h1>
             <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
-              {formatKstHeader(ymd)} · 매일 새로 도착하는 한 마디로 하루를 시작하세요.
+              {formatKstHeader(ymd, locale)} · {t("home.subtitle")}
             </p>
           </div>
           <button
             type="button"
             onClick={() => router.push("/settings")}
-            aria-label="설정"
-            title="설정"
+            aria-label={t("home.settingsAria")}
+            title={t("home.settingsAria")}
             className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-black/[0.06] bg-white text-[#1E1B4B] shadow-apple transition-colors hover:bg-[#F7F4ED]"
           >
             <IconSettings className="h-[18px] w-[18px]" />
@@ -367,6 +403,10 @@ export default function HomeDashboardPage() {
           errorMessage={motivationError}
           onRegenerate={handleRegenerateMotivation}
           onSubmitResponse={handleSubmitMissionResponse}
+          affirmations={user?.successAffirmations ?? []}
+          affirmationStreakCount={user?.affirmationStreak?.count ?? 0}
+          alreadyCheckedInToday={alreadyCheckedInToday}
+          onCheckinAffirmations={handleAffirmationCheckin}
           ymd={ymd}
         />
 
@@ -376,8 +416,6 @@ export default function HomeDashboardPage() {
           </p>
         )}
 
-        <IdentityProgressView identities={user?.identities} entries={identityEntries} />
-
         {/* 10년 후의 나의 모습 — 동기부여 카드 컨텍스트 */}
         <section className="rounded-[16px] border border-black/[0.06] bg-white p-5 shadow-apple">
           <div className="flex items-start justify-between gap-3">
@@ -386,10 +424,10 @@ export default function HomeDashboardPage() {
                 <svg className="h-[18px] w-[18px] text-[#1E1B4B]/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 3l2.6 5.4 5.9.9-4.3 4.1 1 5.9L12 16.6 6.8 19.3l1-5.9L3.5 9.3l5.9-.9L12 3z" />
                 </svg>
-                10년 후의 나의 모습
+                {t("home.future.title")}
               </h2>
               <p className="mt-1 text-[12px] tracking-[-0.01em] text-black/56">
-                되고 싶은 모습이 구체적일수록, 매일 도착하는 한 마디도 더 명확해져요.
+                {t("home.future.subtitle")}
               </p>
             </div>
             {!futureEditing && (
@@ -398,7 +436,7 @@ export default function HomeDashboardPage() {
                 onClick={() => setFutureEditing(true)}
                 className="shrink-0 rounded-pill border border-black/[0.08] bg-white px-3 py-1.5 text-[12px] font-medium tracking-[-0.01em] text-black/70 transition-colors hover:border-[#1E1B4B] hover:text-[#1E1B4B]"
               >
-                {futureText ? "수정" : "작성"}
+                {futureText ? t("common.edit") : t("common.write")}
               </button>
             )}
           </div>
@@ -410,7 +448,7 @@ export default function HomeDashboardPage() {
                 onChange={(e) => setFutureDraft(e.target.value)}
                 rows={5}
                 maxLength={FUTURE_PERSONA_MAX}
-                placeholder="예: 10년 뒤 나는 매일 아침 운동과 독서로 하루를 시작하고, 가족과 충분한 시간을 보내며 좋아하는 일로 안정적인 수익을 만든다."
+                placeholder={t("onboarding.step1.placeholder")}
                 className="w-full resize-none rounded-[14px] border border-black/10 bg-white px-4 py-3 text-[14px] leading-[1.5] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
               />
               <div className="mt-2 flex items-center justify-between text-[11px] tracking-[-0.01em] text-black/40">
@@ -422,7 +460,7 @@ export default function HomeDashboardPage() {
                     disabled={futureSaving}
                     className="rounded-pill border border-black/[0.08] bg-white px-3 py-1.5 text-[12px] font-medium text-black/70 transition-colors hover:border-black/20 disabled:opacity-50"
                   >
-                    취소
+                    {t("common.cancel")}
                   </button>
                   <button
                     type="button"
@@ -430,7 +468,7 @@ export default function HomeDashboardPage() {
                     disabled={futureSaving}
                     className="rounded-pill bg-[#1E1B4B] px-3 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-[#2A2766] disabled:opacity-50"
                   >
-                    {futureSaving ? "저장 중…" : "저장하고 카드 다시 받기"}
+                    {futureSaving ? t("common.saving") : t("home.future.saveAndRegen")}
                   </button>
                 </div>
               </div>
@@ -445,12 +483,12 @@ export default function HomeDashboardPage() {
               onClick={() => setFutureEditing(true)}
               className="mt-4 w-full rounded-[12px] border border-dashed border-black/15 bg-[#F7F4ED] px-4 py-5 text-[13px] tracking-[-0.01em] text-black/50 transition-colors hover:border-[#1E1B4B]/40 hover:text-[#1E1B4B]"
             >
-              아직 적어둔 모습이 없어요. 눌러서 작성해 보세요.
+              {t("home.future.empty")}
             </button>
           )}
         </section>
 
-        {/* 나의 목표 */}
+        {/* 목표를 이루기 위한 오늘의 행동 */}
         <section className="rounded-[16px] border border-black/[0.06] bg-white p-5 shadow-apple">
           <div className="flex items-baseline justify-between gap-2">
             <h2 className="flex items-center gap-2 text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
@@ -459,7 +497,7 @@ export default function HomeDashboardPage() {
                 <circle cx="12" cy="12" r="5" />
                 <circle cx="12" cy="12" r="1.5" fill="currentColor" />
               </svg>
-              나의 목표
+              {t("home.goals.title")}
             </h2>
             <span className="text-[12px] tracking-[-0.01em] text-black/48">
               {goals.length}/{MAX_USER_GOALS}
@@ -467,11 +505,14 @@ export default function HomeDashboardPage() {
           </div>
           <div className="mt-1 flex items-baseline justify-between gap-2">
             <p className="text-[12px] tracking-[-0.01em] text-black/56">
-              앞 3개 목표가 카드와 잠금화면에 함께 표시돼요. 우선순위 순서로 정리하세요.
+              {t("home.goals.subtitle")}
             </p>
             {goals.length > 0 && (
               <span className="shrink-0 text-[12px] font-medium tracking-[-0.01em] text-[#1E1B4B]/70">
-                오늘 {achievedGoals.filter((g) => goals.includes(g)).length}/{goals.length}
+                {t("home.goals.todayProgress", {
+                  done: achievedGoals.filter((g) => goals.includes(g)).length,
+                  total: goals.length,
+                })}
               </span>
             )}
           </div>
@@ -486,9 +527,9 @@ export default function HomeDashboardPage() {
                     <button
                       type="button"
                       onClick={() => handleToggleGoalAchieved(goal)}
-                      aria-label={achieved ? "달성 취소" : "오늘 달성으로 표시"}
+                      aria-label={achieved ? t("home.goals.toggleUnachievedAria") : t("home.goals.toggleAchievedAria")}
                       aria-pressed={achieved}
-                      title={achieved ? "오늘 달성함 — 취소하려면 클릭" : "오늘 달성으로 표시"}
+                      title={achieved ? t("home.goals.toggleUnachievedTitle") : t("home.goals.toggleAchievedTitle")}
                       disabled={trimmed.length === 0}
                       className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-[11px] font-semibold transition-colors ${
                         achieved
@@ -522,7 +563,7 @@ export default function HomeDashboardPage() {
                     <button
                       type="button"
                       onClick={() => handleRemoveGoal(idx)}
-                      aria-label="목표 삭제"
+                      aria-label={t("home.goals.deleteAria")}
                       className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-black/40 transition-colors hover:bg-black/[0.04] hover:text-black/80"
                     >
                       <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
@@ -547,7 +588,7 @@ export default function HomeDashboardPage() {
                     handleAddGoal();
                   }
                 }}
-                placeholder="예: 매일 30분 책 읽기"
+                placeholder={t("home.goals.placeholder")}
                 className="min-w-0 flex-1 rounded-[10px] border border-black/10 bg-white px-3 py-2 text-[14px] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
               />
               <button
@@ -556,104 +597,86 @@ export default function HomeDashboardPage() {
                 disabled={!goalDraft.trim()}
                 className="shrink-0 rounded-pill bg-[#1E1B4B] px-4 py-2 text-[12px] font-medium text-white transition-colors hover:bg-[#2A2766] disabled:cursor-not-allowed disabled:opacity-40"
               >
-                추가
+                {t("common.add")}
               </button>
             </div>
           )}
         </section>
 
-        {/* 오늘 잘한 일 */}
-        <section className="rounded-[16px] border border-black/[0.06] bg-white shadow-apple">
-          <button
-            type="button"
-            onClick={() => setShowMoreToday((v) => !v)}
-            className="flex w-full items-center justify-between px-5 py-4 text-left"
-            aria-expanded={showMoreToday}
-          >
-            <span className="flex items-center gap-2 text-[15px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
-              <svg className="h-[16px] w-[16px] text-[#1E1B4B]/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+        {/* 오늘 잘한 일 — 항상 펼쳐진 상태로 노출. */}
+        <section className="rounded-[16px] border border-black/[0.06] bg-white p-5 shadow-apple">
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
+              <svg className="h-[18px] w-[18px] text-[#1E1B4B]/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 11l3 3L22 4" />
                 <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
               </svg>
-              오늘 스스로 잘한 일 {MAX_DAILY_WINS}가지
-            </span>
-            <svg
-              className={`h-4 w-4 text-black/40 transition-transform ${showMoreToday ? "rotate-180" : ""}`}
-              viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"
+              {t("home.wins.title", { max: MAX_DAILY_WINS })}
+            </h2>
+            <button
+              type="button"
+              onClick={() => router.push("/wins-history")}
+              className="shrink-0 text-[12px] font-medium tracking-[-0.01em] text-[#1E1B4B]/70 underline-offset-2 hover:text-[#1E1B4B] hover:underline"
             >
-              <path d="M6 9l6 6 6-6" />
-            </svg>
-          </button>
+              {t("home.wins.history")}
+            </button>
+          </div>
+          <p className="mt-1 text-[12px] tracking-[-0.01em] text-black/56">
+            {t("home.wins.subtitle")}
+          </p>
 
-          {showMoreToday && (
-            <div className="border-t border-black/[0.06] px-5 pb-5 pt-4">
-              <div>
-                <div className="flex items-baseline justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => router.push("/wins-history")}
-                    className="shrink-0 text-[12px] font-medium tracking-[-0.01em] text-[#1E1B4B]/70 underline-offset-2 hover:underline hover:text-[#1E1B4B]"
-                  >
-                    지난 기록 보기
-                  </button>
-                </div>
-                <p className="mt-1 text-[12px] tracking-[-0.01em] text-black/56">
-                  아주 작은 일이어도 좋아요. 적은 뒤 저장하면 날짜별로 다시 볼 수 있어요.
-                </p>
-                <ul className="mt-3 space-y-2">
-                  {[0, 1, 2].map((idx) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      <span className="mt-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F0EDE6] text-[11px] font-semibold text-[#1E1B4B]">
-                        {idx + 1}
-                      </span>
-                      <textarea
-                        value={wins[idx] || ""}
-                        rows={1}
-                        maxLength={WIN_MAX}
-                        onChange={(e) => handleChangeWin(idx, e.target.value)}
-                        placeholder={
-                          idx === 0
-                            ? "예: 미루던 메일에 답장했다."
-                            : idx === 1
-                              ? "예: 아침에 10분 산책했다."
-                              : "예: 가족에게 따뜻한 말 한마디를 했다."
-                        }
-                        className="min-h-[40px] min-w-0 flex-1 resize-none rounded-[10px] border border-black/10 bg-white px-3 py-2 text-[14px] leading-[1.45] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
-                      />
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-3 flex items-center justify-end gap-3">
-                  {winsError ? (
-                    <span className="text-[12px] tracking-[-0.01em] text-rose-600">{winsError}</span>
-                  ) : winsJustSaved ? (
-                    <span className="flex items-center gap-1 text-[12px] tracking-[-0.01em] text-emerald-600">
-                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M5 12l5 5L20 7" />
-                      </svg>
-                      저장됐어요
-                    </span>
-                  ) : winsDirty ? (
-                    <span className="text-[12px] tracking-[-0.01em] text-amber-600">
-                      저장되지 않은 변경이 있어요
-                    </span>
-                  ) : winsHasContent ? (
-                    <span className="text-[12px] tracking-[-0.01em] text-black/48">
-                      저장된 상태예요
-                    </span>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={handleSaveWins}
-                    disabled={winsSaving || !winsHasContent}
-                    className="shrink-0 rounded-pill bg-[#1E1B4B] px-4 py-2 text-[12px] font-medium text-white transition-colors hover:bg-[#2A2766] disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {winsSaving ? "저장 중…" : "저장"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          <ul className="mt-3 space-y-2">
+            {[0, 1, 2].map((idx) => (
+              <li key={idx} className="flex items-start gap-2">
+                <span className="mt-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F0EDE6] text-[11px] font-semibold text-[#1E1B4B]">
+                  {idx + 1}
+                </span>
+                <textarea
+                  value={wins[idx] || ""}
+                  rows={1}
+                  maxLength={WIN_MAX}
+                  onChange={(e) => handleChangeWin(idx, e.target.value)}
+                  placeholder={
+                    idx === 0
+                      ? t("home.wins.placeholder1")
+                      : idx === 1
+                        ? t("home.wins.placeholder2")
+                        : t("home.wins.placeholder3")
+                  }
+                  className="min-h-[40px] min-w-0 flex-1 resize-none rounded-[10px] border border-black/10 bg-white px-3 py-2 text-[14px] leading-[1.45] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
+                />
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-3 flex items-center justify-end gap-3">
+            {winsError ? (
+              <span className="text-[12px] tracking-[-0.01em] text-rose-600">{winsError}</span>
+            ) : winsJustSaved ? (
+              <span className="flex items-center gap-1 text-[12px] tracking-[-0.01em] text-emerald-600">
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12l5 5L20 7" />
+                </svg>
+                {t("common.saved")}
+              </span>
+            ) : winsDirty ? (
+              <span className="text-[12px] tracking-[-0.01em] text-amber-600">
+                {t("common.unsavedChanges")}
+              </span>
+            ) : winsHasContent ? (
+              <span className="text-[12px] tracking-[-0.01em] text-black/48">
+                {t("common.savedState")}
+              </span>
+            ) : null}
+            <button
+              type="button"
+              onClick={handleSaveWins}
+              disabled={winsSaving || !winsHasContent}
+              className="shrink-0 rounded-pill bg-[#1E1B4B] px-4 py-2 text-[12px] font-medium text-white transition-colors hover:bg-[#2A2766] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {winsSaving ? t("common.saving") : t("common.save")}
+            </button>
+          </div>
         </section>
       </main>
     </div>

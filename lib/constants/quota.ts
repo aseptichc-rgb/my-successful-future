@@ -20,6 +20,11 @@ export const DAILY_QUOTA = {
    * 그 이후엔 같은 카드 텍스트 수정도 이 한도를 차지해 도배를 막는다.
    */
   missionResponse: 5,
+  /**
+   * "성공한 나의 모습" 다짐 따라쓰기 체크인. 1일 1체크인이지만 오타 후 재시도를
+   * 받아주기 위해 여유 있게 둔다 (같은 날 모두 일치 시도).
+   */
+  affirmationCheckin: 12,
 } as const;
 
 export type QuotaKey = keyof typeof DAILY_QUOTA;
@@ -29,3 +34,10 @@ export type QuotaKey = keyof typeof DAILY_QUOTA;
  * 개발/베타 단계에서는 false (기본값) — 결제 흐름이 완성되기 전 모든 라우트가 살아있도록.
  */
 export const ENTITLEMENT_REQUIRED = process.env.ENTITLEMENT_REQUIRED === "true";
+
+/**
+ * 무료 체험(trial) 기간 — 가입 시점부터 14일.
+ * /api/auth/start-trial 이 가입 직후 custom claim 으로 trialEndsAt = now + TRIAL_DURATION_MS 박는다.
+ * requirePaidUser 가 paid=true 가 아니더라도 trialEndsAt > now 이면 통과시킨다.
+ */
+export const TRIAL_DURATION_MS = 14 * 24 * 60 * 60 * 1000;

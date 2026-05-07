@@ -54,6 +54,13 @@ service cloud.firestore {
         allow read: if isOwner(uid);
         allow write: if false;
       }
+
+      // "성공한 나의 모습" 다짐 따라쓰기 일별 로그 (문서 ID = YYYY-MM-DD KST).
+      // 서버 트랜잭션에서만 기록. 클라는 read 로 오늘 체크인 여부만 즉시 확인.
+      match /affirmationLogs/{ymd} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
     }
 
     // ── entitlements ──

@@ -5,11 +5,13 @@
  * 응답은 단순 배열: { authors: string[] }
  *
  * 인증: Authorization: Bearer <Firebase ID Token>.
+ * 출력 언어는 사용자 프로필의 language 를 따른다 (ko/en/es/zh).
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { verifyRequestUser, AuthError } from "@/lib/authServer";
 import { generateText } from "@/lib/gemini";
+import type { UserLanguage } from "@/types";
 
 export const maxDuration = 20;
 
@@ -20,6 +22,21 @@ const MODEL_TOKENS = 200;
 interface UserCtx {
   futurePersona: string;
   goals: string[];
+  language: UserLanguage;
+}
+
+function normalizeLanguage(raw: unknown): UserLanguage {
+  return raw === "en" || raw === "es" || raw === "zh" || raw === "ko" ? raw : "ko";
+}
+
+function geminiLanguageName(lang: UserLanguage): string {
+  switch (lang) {
+    case "en": return "English";
+    case "es": return "Spanish";
+    case "zh": return "Simplified Chinese";
+    case "ko":
+    default: return "Korean";
+  }
 }
 
 async function fetchUserCtx(uid: string): Promise<UserCtx> {
@@ -34,27 +51,33 @@ async function fetchUserCtx(uid: string): Promise<UserCtx> {
     .filter((g: unknown): g is string => typeof g === "string" && g.trim().length > 0)
     .map((g: string) => g.trim())
     .slice(0, 5);
-  return { futurePersona, goals };
+  const language = normalizeLanguage(data.language);
+  return { futurePersona, goals, language };
 }
 
 function buildPrompt(ctx: UserCtx): string {
+  const langName = geminiLanguageName(ctx.language);
   const goalsBlock =
-    ctx.goals.length > 0 ? ctx.goals.map((g, i) => `${i + 1}. ${g}`).join("\n") : "(없음)";
-  return `당신은 한 사람의 목표와 꿈에 가장 도움이 될 만한 실존 인물(철학자·기업가·과학자·문학가·정치가 등) 5~7명을 추천하는 큐레이터입니다.
+    ctx.goals.length > 0 ? ctx.goals.map((g, i) => `${i + 1}. ${g}`).join("\n") : "(none)";
+  return `You are a curator who recommends 5-7 real people (philosophers, founders, scientists, writers, leaders) whose words would best help this user along their path.
 
-## 사용자
-- 10년 후 모습: ${ctx.futurePersona || "(미작성)"}
-- 목표:
+## User
+- Future self in 10 years: ${ctx.futurePersona || "(not written)"}
+- Goals:
 ${goalsBlock}
 
-## 추천 기준
-- 사용자가 가는 길과 직접적으로 통하는 발자취·발언이 있는 인물.
-- 동·서양 균형 있게. 오래된 인물(고전·역사)과 최근 인물 모두 포함.
-- 진부한 자기계발 강사/유튜버 말고, 실제로 검증가능한 발언을 남긴 사람.
-- 한국어 표기로 출력.
+## Selection rules
+- Pick people whose actual writings/speeches resonate with this user's direction.
+- Mix Eastern and Western voices, both ancient and modern.
+- Skip generic self-help personalities; favor figures with verifiable, well-documented quotes.
+- IMPORTANT: write each name in ${langName}.
+  - For ${langName}="Korean": "프리드리히 니체", "스티브 잡스".
+  - For ${langName}="English": "Friedrich Nietzsche", "Steve Jobs".
+  - For ${langName}="Spanish": "Friedrich Nietzsche", "Steve Jobs", "Gabriel García Márquez".
+  - For ${langName}="Simplified Chinese": "弗里德里希·尼采", "史蒂夫·乔布斯".
 
-## 출력 (이 JSON 한 줄만, 다른 말 금지)
-{"authors":["이름1","이름2", ... ]}`;
+## Output (a single JSON object on one line, NO other text)
+{"authors":["name1","name2", ... ]}`;
 }
 
 interface RecommendResponse {
@@ -77,6 +100,14 @@ function parseAuthors(raw: string): string[] {
   }
 }
 
+/** 언어별 6인 폴백 — Gemini 침묵 시에도 셀렉트 박스가 비지 않도록. */
+const FALLBACK_AUTHORS: Readonly<Record<UserLanguage, ReadonlyArray<string>>> = {
+  ko: ["프리드리히 니체", "스티브 잡스", "공자", "일론 머스크", "정주영", "마르쿠스 아우렐리우스"],
+  en: ["Friedrich Nietzsche", "Steve Jobs", "Confucius", "Marcus Aurelius", "Maya Angelou", "Marie Curie"],
+  es: ["Friedrich Nietzsche", "Steve Jobs", "Confucio", "Marco Aurelio", "Gabriel García Márquez", "Frida Kahlo"],
+  zh: ["弗里德里希·尼采", "史蒂夫·乔布斯", "孔子", "马可·奥勒留", "鲁迅", "苏轼"],
+};
+
 export async function POST(request: NextRequest) {
   try {
     const me = await verifyRequestUser(request);
@@ -90,9 +121,8 @@ export async function POST(request: NextRequest) {
       console.warn("[quote-authors/recommend] Gemini 실패:", err instanceof Error ? err.message : err);
     }
 
-    // 폴백: 보편적으로 통하는 6명
     if (authors.length === 0) {
-      authors = ["프리드리히 니체", "스티브 잡스", "공자", "일론 머스크", "정주영", "마르쿠스 아우렐리우스"];
+      authors = (FALLBACK_AUTHORS[ctx.language] ?? FALLBACK_AUTHORS.ko).slice();
     }
 
     const body: RecommendResponse = { authors };
@@ -105,6 +135,6 @@ export async function POST(request: NextRequest) {
     }
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[quote-authors/recommend] 실패:", msg);
-    return NextResponse.json({ error: "추천 인물을 불러오지 못했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "Failed to load recommendations." }, { status: 500 });
   }
 }

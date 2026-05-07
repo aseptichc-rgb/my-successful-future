@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DailyMotivation } from "@/types";
+import AffirmationCheckin from "@/components/affirmations/AffirmationCheckin";
+import { useLanguage } from "@/lib/i18n";
 
 interface MotivationCardProps {
   motivation: DailyMotivation | null;
@@ -10,10 +12,21 @@ interface MotivationCardProps {
   /** 사용자가 "↻ 다시 받기" 를 눌렀을 때 호출. POST { force: true } 로 재생성. */
   onRegenerate: () => void | Promise<void>;
   /**
-   * 미션 응답 저장 핸들러. 정의되어 있으면 미션 영역이 표시된다.
-   * resolves: 성공 시 isFirst (첫 응답이면 true).
+   * 미션 응답 저장 핸들러. 정의되어 있고 affirmations 가 비었을 때만 레거시 미션 영역 표시.
    */
   onSubmitResponse?: (text: string) => Promise<{ isFirst: boolean; identityTag: string }>;
+  /**
+   * "성공한 나의 모습" 다짐 배열. 1개 이상이면 미션 영역이 다짐 따라쓰기 UI 로 대체된다.
+   */
+  affirmations?: string[];
+  /** 다짐 따라쓰기 연속일. */
+  affirmationStreakCount?: number;
+  /** 오늘 이미 체크인했는지 — true 면 입력창 잠금. */
+  alreadyCheckedInToday?: boolean;
+  /** 다짐 N개를 서버로 제출. matched=true 면 스트릭이 갱신된다. */
+  onCheckinAffirmations?: (
+    texts: string[],
+  ) => Promise<{ matched: boolean; streakCount: number; mismatchedIndices?: number[] }>;
   /** 화면 헤더 표기용 KST YYYY-MM-DD (모르면 비워둠) */
   ymd: string;
 }
@@ -24,10 +37,25 @@ const WALLPAPER_W = 1170;
 const WALLPAPER_H = 2532; // iPhone-ish portrait — 폭은 가로 1170px 기준
 const QUOTE_LEN_THRESHOLD_LARGE = 80;
 
-function formatHeader(ymd: string): string {
+/**
+ * 카드 상단 날짜를 사용자 locale 에 맞게 포맷.
+ * - ko: "2026년 5월 7일"  · en: "May 7, 2026"  · es: "7 may 2026"  · zh: "2026年5月7日"
+ * - Intl.DateTimeFormat 가 brand-safe 한 표기를 골라준다.
+ */
+function formatHeader(ymd: string, locale: string): string {
   const [y, m, d] = ymd.split("-").map((s) => parseInt(s, 10));
   if (!y || !m || !d) return ymd;
-  return `${y}년 ${m}월 ${d}일`;
+  try {
+    const date = new Date(Date.UTC(y, m - 1, d));
+    return new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : locale === "es" ? "es-ES" : locale === "zh" ? "zh-CN" : "en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      timeZone: "UTC",
+    }).format(date);
+  } catch {
+    return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  }
 }
 
 /** Canvas 워드 랩 — 한글/영문 모두 처리. 너비 초과 시 어절 단위로 줄바꿈. */
@@ -70,7 +98,14 @@ function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number
  * 카드 내용을 잠금화면용 PNG (1170×2532) 로 합성해 다운로드한다.
  * 외부 이미지 의존이 없도록 그라데이션 + 텍스트만 그린다.
  */
-async function downloadAsWallpaper(motivation: DailyMotivation): Promise<void> {
+/**
+ * 잠금화면 PNG 합성 시 카드와 동일한 locale 로 날짜/라벨을 그려야 톤이 일관된다.
+ */
+async function downloadAsWallpaper(
+  motivation: DailyMotivation,
+  locale: string,
+  labels: { goalsLabel: string; watermark: string },
+): Promise<void> {
   if (typeof document === "undefined") return;
   const canvas = document.createElement("canvas");
   canvas.width = WALLPAPER_W;
@@ -107,7 +142,7 @@ async function downloadAsWallpaper(motivation: DailyMotivation): Promise<void> {
   ctx.font = `500 42px ${FONT_STACK}`;
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
-  ctx.fillText(formatHeader(motivation.ymd), 110, 280);
+  ctx.fillText(formatHeader(motivation.ymd, locale), 110, 280);
 
   // ── 큰 인용문 ──
   ctx.fillStyle = textColor;
@@ -150,7 +185,7 @@ async function downloadAsWallpaper(motivation: DailyMotivation): Promise<void> {
     ctx.fillStyle = subColor;
     ctx.font = `600 36px ${FONT_STACK}`;
     const baseY = WALLPAPER_H - 540 - motivation.goalsSnapshot.length * 88;
-    ctx.fillText("나의 목표", 110, baseY);
+    ctx.fillText(labels.goalsLabel, 110, baseY);
 
     ctx.fillStyle = goalColor;
     ctx.font = `600 56px ${FONT_STACK}`;
@@ -164,7 +199,7 @@ async function downloadAsWallpaper(motivation: DailyMotivation): Promise<void> {
   ctx.fillStyle = subColor;
   ctx.font = `500 32px ${FONT_STACK}`;
   ctx.textAlign = "right";
-  ctx.fillText("Anima · 미래의 나", WALLPAPER_W - 110, WALLPAPER_H - 130);
+  ctx.fillText(labels.watermark, WALLPAPER_W - 110, WALLPAPER_H - 130);
 
   // ── 다운로드 ──
   const blob: Blob | null = await new Promise((resolve) =>
@@ -187,8 +222,13 @@ export default function MotivationCard({
   errorMessage,
   onRegenerate,
   onSubmitResponse,
+  affirmations,
+  affirmationStreakCount = 0,
+  alreadyCheckedInToday = false,
+  onCheckinAffirmations,
   ymd,
 }: MotivationCardProps) {
+  const { t, locale } = useLanguage();
   const [downloading, setDownloading] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
@@ -237,14 +277,17 @@ export default function MotivationCard({
     setDownloadError(null);
     setDownloading(true);
     try {
-      await downloadAsWallpaper(motivation);
+      await downloadAsWallpaper(motivation, locale, {
+        goalsLabel: t("motivation.wallpaper.goalsLabel"),
+        watermark: t("motivation.wallpaper.watermark"),
+      });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "이미지 저장에 실패했습니다.";
+      const msg = err instanceof Error ? err.message : t("motivation.wallpaper.downloadFailed");
       setDownloadError(msg);
     } finally {
       setDownloading(false);
     }
-  }, [motivation, downloading]);
+  }, [motivation, downloading, locale, t]);
 
   const handleRegenerate = useCallback(async () => {
     if (regenerating || loading) return;
@@ -260,7 +303,7 @@ export default function MotivationCard({
     if (!onSubmitResponse || !motivation?.mission) return;
     const text = responseDraft.trim().slice(0, RESPONSE_MAX);
     if (!text) {
-      setResponseError("한 줄 적어 주세요.");
+      setResponseError(t("motivation.responseEmpty"));
       return;
     }
     setResponseSaving(true);
@@ -268,24 +311,28 @@ export default function MotivationCard({
     try {
       const { isFirst, identityTag } = await onSubmitResponse(text);
       setResponseEditing(false);
-      setSubmitFlash(isFirst ? `+1 — 당신은 [${identityTag}]입니다` : "응답을 수정했어요");
+      setSubmitFlash(
+        isFirst
+          ? t("motivation.responseToast", { tag: identityTag })
+          : t("motivation.responseEdited"),
+      );
     } catch (err) {
       setResponseError(err instanceof Error ? err.message : String(err));
     } finally {
       setResponseSaving(false);
     }
-  }, [onSubmitResponse, motivation, responseDraft]);
+  }, [onSubmitResponse, motivation, responseDraft, t]);
 
   return (
     <section
       className="relative overflow-hidden rounded-[22px] shadow-apple-lg"
       style={cardStyle}
-      aria-label="오늘의 동기부여 카드"
+      aria-label={t("motivation.headerTodayLabel")}
     >
       {/* 카드 본문 (16:20-ish 비율). 모바일에서도 본문이 충분히 보이도록 min-height 보장. */}
       <div className="relative flex min-h-[420px] flex-col px-6 py-7 sm:min-h-[480px] sm:px-8 sm:py-9">
         <div className={`text-[12px] font-medium tracking-[-0.01em] ${headerColor}`}>
-          {formatHeader(ymd)} · 오늘의 한 마디
+          {formatHeader(ymd, locale)} · {t("motivation.headerTodayLabel")}
         </div>
 
         {/* 인용 영역 */}
@@ -314,7 +361,7 @@ export default function MotivationCard({
             </>
           ) : (
             <p className={`text-[16px] leading-[1.5] ${authorColor}`}>
-              {errorMessage || "동기부여 카드를 준비 중이에요. 잠시만요…"}
+              {errorMessage || t("motivation.preparingCard")}
             </p>
           )}
           {motivation && (
@@ -331,30 +378,21 @@ export default function MotivationCard({
           )}
         </div>
 
-        {/* 목표 스냅샷 */}
-        {motivation && motivation.goalsSnapshot.length > 0 && (
-          <div className="mt-6">
-            <p className={`text-[11px] font-semibold uppercase tracking-[0.08em] ${goalLabelColor}`}>
-              나의 목표
-            </p>
-            <ul className="mt-2 space-y-1">
-              {motivation.goalsSnapshot.map((g, i) => (
-                <li
-                  key={i}
-                  className={`flex items-start gap-2 text-[14px] font-medium leading-[1.4] tracking-[-0.01em] ${goalColor}`}
-                >
-                  <span className={`mt-[2px] shrink-0 text-[12px] tabular-nums ${authorColor}`}>
-                    {i + 1}.
-                  </span>
-                  <span className="break-words">{g}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+        {/* 미션 영역 — 다짐이 1개 이상 설정돼 있으면 따라쓰기 UI, 아니면 레거시 Gemini 미션. */}
+        {motivation && affirmations && affirmations.length > 0 && onCheckinAffirmations && (
+          <AffirmationCheckin
+            affirmations={affirmations}
+            tone={tone}
+            streakCount={affirmationStreakCount}
+            alreadyCheckedIn={alreadyCheckedInToday}
+            onSubmit={onCheckinAffirmations}
+          />
         )}
 
-        {/* 미션 영역 — 능동 인출. mission 이 없으면(레거시 카드) 통째로 숨긴다. */}
-        {motivation && motivation.mission && onSubmitResponse && (
+        {motivation &&
+          (!affirmations || affirmations.length === 0) &&
+          motivation.mission &&
+          onSubmitResponse && (
           <div
             className={`mt-6 rounded-[14px] px-4 py-3.5 ${
               tone === "dark" ? "bg-white/10" : "bg-black/[0.04]"
@@ -362,14 +400,14 @@ export default function MotivationCard({
           >
             <div className="flex items-center gap-2">
               <p className={`text-[11px] font-semibold uppercase tracking-[0.08em] ${goalLabelColor}`}>
-                오늘의 한 줄 미션
+                {t("motivation.missionLabel")}
               </p>
               <span
                 className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-[-0.005em] ${
                   tone === "dark" ? "bg-white/15 text-white/85" : "bg-[#1E1B4B]/8 text-[#1E1B4B]/80"
                 }`}
               >
-                나는 {motivation.mission.identityTag}
+                {t("motivation.identityPrefix")} {motivation.mission.identityTag}
               </span>
             </div>
             <p
@@ -401,7 +439,7 @@ export default function MotivationCard({
                     tone === "dark" ? "text-white/65" : "text-black/55"
                   }`}
                 >
-                  수정
+                  {t("motivation.editResponse")}
                 </button>
               </div>
             ) : (
@@ -413,7 +451,7 @@ export default function MotivationCard({
                   }
                   rows={2}
                   maxLength={RESPONSE_MAX}
-                  placeholder="한 줄로 적어보세요 (60자)"
+                  placeholder={t("motivation.responsePlaceholder")}
                   className={`w-full resize-none rounded-[10px] border px-3 py-2 text-[14px] leading-[1.45] tracking-[-0.01em] focus:outline-none ${
                     tone === "dark"
                       ? "border-white/20 bg-white/15 text-white placeholder:text-white/40 focus:border-white/55"
@@ -438,7 +476,7 @@ export default function MotivationCard({
                           tone === "dark" ? "text-white/75 hover:bg-white/10" : "text-black/60 hover:bg-black/[0.04]"
                         }`}
                       >
-                        취소
+                        {t("common.cancel")}
                       </button>
                     )}
                     <button
@@ -451,7 +489,7 @@ export default function MotivationCard({
                           : "bg-[#1E1B4B] text-white hover:bg-[#2A2766]"
                       }`}
                     >
-                      {responseSaving ? "기록 중…" : "기록하기"}
+                      {responseSaving ? t("motivation.submitting") : t("motivation.submit")}
                     </button>
                   </div>
                 </div>
@@ -500,7 +538,7 @@ export default function MotivationCard({
               <path d="M12 3v12m0 0l-4-4m4 4l4-4" />
               <path d="M5 21h14" />
             </svg>
-            {downloading ? "저장 중…" : "배경화면으로 저장"}
+            {downloading ? t("motivation.wallpaper.downloading") : t("motivation.wallpaper.download")}
           </button>
         </div>
         <button
@@ -510,7 +548,7 @@ export default function MotivationCard({
           className={`inline-flex items-center gap-1 rounded-pill px-2.5 py-1.5 text-[11px] font-medium tracking-[-0.01em] transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
             tone === "dark" ? "text-white/80 hover:bg-white/10" : "text-black/60 hover:bg-black/[0.04]"
           }`}
-          title="새 메시지로 다시 받기"
+          title={t("motivation.regenerate")}
         >
           <svg className={`h-3.5 w-3.5 ${regenerating ? "animate-spin" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 12a9 9 0 0 1 15.5-6.4L21 8" />
@@ -518,7 +556,7 @@ export default function MotivationCard({
             <path d="M21 12a9 9 0 0 1-15.5 6.4L3 16" />
             <path d="M3 21v-5h5" />
           </svg>
-          {regenerating ? "다시 받는 중…" : "다시 받기"}
+          {regenerating ? t("motivation.regenerating") : t("motivation.regenerate")}
         </button>
       </div>
 

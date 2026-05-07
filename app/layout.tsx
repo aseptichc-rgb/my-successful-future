@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Fraunces, JetBrains_Mono, Noto_Sans_KR } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
+import LanguageBridge from "@/components/LanguageBridge";
 import PWARegister from "@/components/PWARegister";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import KakaoScript from "@/components/KakaoScript";
@@ -96,7 +97,9 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col font-sans bg-cream text-indigo">
         <KakaoScript />
         <PWARegister />
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <LanguageBridge>{children}</LanguageBridge>
+        </AuthProvider>
         <PWAInstallPrompt />
       </body>
     </html>

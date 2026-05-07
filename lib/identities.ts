@@ -12,51 +12,88 @@ import { Timestamp } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { generateText } from "@/lib/gemini";
 import { hash32 } from "@/lib/dailyMotivation";
-import type { UserIdentities } from "@/types";
+import type { UserIdentities, UserLanguage } from "@/types";
 
 const IDENTITY_MIN = 3;
 const IDENTITY_MAX = 5;
-const IDENTITY_LABEL_MAX_LEN = 16;
+const IDENTITY_LABEL_MAX_LEN = 24;
 const IDENTITY_GENERATION_TOKENS = 200;
 
-/**
- * 라벨 풀이 비어 있을 때 사용하는 폴백.
- * 어떤 사용자에게도 무리 없이 매핑되는 일반화된 정체성.
- */
-const FALLBACK_LABELS: ReadonlyArray<string> = [
-  "성장하는 사람",
-  "꾸준한 사람",
-  "용기 있는 사람",
-  "단단한 사람",
-];
+function geminiLanguageName(lang: UserLanguage | undefined): string {
+  switch (lang) {
+    case "en": return "English";
+    case "es": return "Spanish";
+    case "zh": return "Simplified Chinese";
+    case "ko":
+    default: return "Korean";
+  }
+}
 
-export function personaHash(futurePersona: string, goals: ReadonlyArray<string>): string {
-  // goals 도 해시에 포함 — 목표가 크게 바뀌면 라벨도 재고 가치가 있다.
-  const seed = `${futurePersona.trim()}\n${goals.map((g) => g.trim()).join("|")}`;
+function normalizeLanguage(raw: unknown): UserLanguage {
+  return raw === "en" || raw === "es" || raw === "zh" || raw === "ko" ? raw : "ko";
+}
+
+/**
+ * 언어별 폴백 라벨 풀 — Gemini 생성이 실패해도 카드의 identityTag 가
+ * 사용자 언어로 떨어지도록 한다.
+ */
+const FALLBACK_LABELS: Readonly<Record<UserLanguage, ReadonlyArray<string>>> = {
+  ko: ["성장하는 사람", "꾸준한 사람", "용기 있는 사람", "단단한 사람"],
+  en: [
+    "a person who keeps growing",
+    "a person who shows up consistently",
+    "a person with quiet courage",
+    "a person who stays steady",
+  ],
+  es: [
+    "una persona que sigue creciendo",
+    "una persona constante",
+    "una persona con coraje silencioso",
+    "una persona firme",
+  ],
+  zh: ["持续成长的人", "始终如一的人", "默默勇敢的人", "稳扎稳打的人"],
+};
+
+export function personaHash(
+  futurePersona: string,
+  goals: ReadonlyArray<string>,
+  language: UserLanguage = "ko",
+): string {
+  // language 도 해시에 포함 — 사용자가 언어를 바꾸면 라벨 풀도 새 언어로 재생성한다.
+  const seed = `${language}\n${futurePersona.trim()}\n${goals.map((g) => g.trim()).join("|")}`;
   return hash32(seed).toString(16);
 }
 
-function buildIdentityPrompt(futurePersona: string, goals: ReadonlyArray<string>): string {
+function buildIdentityPrompt(
+  futurePersona: string,
+  goals: ReadonlyArray<string>,
+  language: UserLanguage,
+): string {
+  const langName = geminiLanguageName(language);
   const goalsBlock =
     goals.length > 0
       ? goals.map((g, i) => `${i + 1}. ${g}`).join("\n")
-      : "(아직 목표가 적혀 있지 않음)";
-  return `당신은 한 사람의 미래상과 목표를 읽고, 그 사람이 매일 자기 행동으로 강화하고 싶어할 만한 **정체성 라벨**을 짧게 골라주는 코치입니다.
+      : "(no goals listed yet)";
+  return `You are a coach. Read this person's future self and goals, and pick short identity labels they would want to reinforce with daily action.
 
-## 입력
-- 10년 후 되고 싶은 모습:
-${futurePersona || "(미작성)"}
+## Input
+- The version of themselves they want to become in 10 years:
+${futurePersona || "(not written yet)"}
 
-- 지금 향하고 있는 목표:
+- Goals they are walking toward right now:
 ${goalsBlock}
 
-## 출력 규칙
-1. 한국어 라벨 ${IDENTITY_MIN}~${IDENTITY_MAX}개. 각 라벨은 "나는 [라벨]입니다" 문장이 자연스러워야 함.
-2. 형태: "○○한 사람" / "○○하는 사람" / "○○ 사람" 등 명사구. 각 ${IDENTITY_LABEL_MAX_LEN}자 이내.
-3. 진부한 클리셰("긍정적인 사람" 등) 보다, 위 입력에서 실제로 길어 올린 결의 라벨로.
-4. 서로 의미가 겹치지 않게.
+## Output rules
+1. Output ${IDENTITY_MIN}-${IDENTITY_MAX} labels in ${langName}. Each label should read naturally inside the sentence "I am [label]" (or its native equivalent).
+2. Form: a short noun phrase, max ${IDENTITY_LABEL_MAX_LEN} characters, e.g.
+   - English: "a person who writes every day"
+   - Korean: "매일 쓰는 사람"
+   - Spanish: "una persona que escribe cada día"
+   - Chinese: "每天写作的人"
+3. Avoid tired clichés ("a positive person"). Lift the resolve from the inputs above.
+4. Labels should not semantically overlap with each other.
 
-## 출력 (이 JSON 한 줄만, 다른 말 금지)
+## Output (a single JSON object on one line, NO other text)
 {"labels":["…","…","…"]}`;
 }
 
@@ -88,9 +125,12 @@ export async function ensureIdentities(opts: {
   uid: string;
   futurePersona: string;
   goals: ReadonlyArray<string>;
+  /** 사용자 UI 언어 — 라벨이 이 언어로 생성된다. 미설정 시 "ko". */
+  language?: UserLanguage;
 }): Promise<string[]> {
   const { uid, futurePersona, goals } = opts;
-  const hash = personaHash(futurePersona, goals);
+  const language = normalizeLanguage(opts.language ?? "ko");
+  const hash = personaHash(futurePersona, goals, language);
 
   const userRef = getAdminDb().doc(`users/${uid}`);
   const snap = await userRef.get();
@@ -109,7 +149,7 @@ export async function ensureIdentities(opts: {
   let labels: string[] | null = null;
   try {
     const raw = await generateText(
-      buildIdentityPrompt(futurePersona, goals),
+      buildIdentityPrompt(futurePersona, goals, language),
       IDENTITY_GENERATION_TOKENS,
     );
     labels = parseLabels(raw);
@@ -120,7 +160,8 @@ export async function ensureIdentities(opts: {
     );
   }
 
-  const finalLabels = labels && labels.length >= IDENTITY_MIN ? labels : FALLBACK_LABELS.slice();
+  const fallback = FALLBACK_LABELS[language] ?? FALLBACK_LABELS.ko;
+  const finalLabels = labels && labels.length >= IDENTITY_MIN ? labels : fallback.slice();
 
   const next: UserIdentities = {
     labels: finalLabels,

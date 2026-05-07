@@ -48,6 +48,36 @@ async function clearServerSession(): Promise<void> {
   }
 }
 
+/**
+ * 처음 로그인한 사용자에게 14일 무료 체험을 켠다.
+ * 이미 paid 또는 trialEndsAt 이 박힌 사용자는 서버가 멱등하게 no-op 응답을 준다.
+ * customToken 이 돌아오면 즉시 재로그인 → 다음 ID 토큰부터 trialEndsAt claim 이 반영된다.
+ */
+async function ensureTrialStarted(fbUser: FirebaseUser): Promise<boolean> {
+  try {
+    const tokenResult = await fbUser.getIdTokenResult();
+    const claims = tokenResult.claims as Record<string, unknown>;
+    if (claims.paid === true) return false;
+    if (typeof claims.trialEndsAt === "number") return false;
+
+    const idToken = await fbUser.getIdToken();
+    const res = await fetch("/api/auth/start-trial", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${idToken}` },
+      credentials: "same-origin",
+    });
+    if (!res.ok) return false;
+    const data = (await res.json()) as { customToken?: string; alreadyStarted?: boolean };
+    if (data.alreadyStarted) return false;
+    if (!data.customToken) return false;
+    await signInWithCustomTokenClient(data.customToken);
+    return true;
+  } catch {
+    // 일시 오류는 다음 토큰 갱신 사이클에 다시 시도된다.
+    return false;
+  }
+}
+
 async function tryRestoreFromServerCookie(): Promise<boolean> {
   try {
     const res = await fetch("/api/session/refresh", { method: "GET", credentials: "same-origin" });
@@ -66,6 +96,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const restoreAttemptedRef = useRef(false);
+  // uid 별로 트라이얼 시작 시도 여부 — customToken 재로그인이 onIdTokenChanged 를
+  // 다시 발동시키므로 무한 호출 방지용. 로그아웃 시 비운다.
+  const trialAttemptedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const unsubscribe = onIdTokenChanged(getAuth_(), async (fbUser) => {
@@ -73,6 +106,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setFirebaseUser(fbUser);
         const profile = await getUserProfile(fbUser.uid);
         setUser(profile);
+
+        if (!trialAttemptedRef.current.has(fbUser.uid)) {
+          trialAttemptedRef.current.add(fbUser.uid);
+          const restartedSession = await ensureTrialStarted(fbUser);
+          if (restartedSession) {
+            // signInWithCustomToken 이 onIdTokenChanged 를 다시 트리거 →
+            // 새 claim 이 박힌 토큰으로 syncServerSession 이 일어나도록 즉시 종료.
+            return;
+          }
+        }
+
         try {
           const idToken = await fbUser.getIdToken();
           if (idToken) await syncServerSession(idToken);
@@ -112,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await firebaseSignOut();
     await clearServerSession();
     restoreAttemptedRef.current = false;
+    trialAttemptedRef.current.clear();
   };
 
   const refreshUser = async () => {

@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import Logo from "@/components/ui/Logo";
-
-const APP_TAGLINE = "10년 후의 나에게서 매일 한 마디.";
+import { useT } from "@/lib/i18n";
 
 export default function LoginPage() {
   const router = useRouter();
+  const t = useT();
   const { signIn, signInGoogle, firebaseUser, loading: authLoading } = useAuth();
 
   useEffect(() => {
@@ -33,7 +33,7 @@ export default function LoginPage() {
       await signIn(email, password);
       router.push(getRedirectPath());
     } catch {
-      setError("이메일 또는 비밀번호가 올바르지 않습니다.");
+      setError(t("auth.error.generic"));
     } finally {
       setLoading(false);
     }
@@ -46,7 +46,7 @@ export default function LoginPage() {
       await signInGoogle();
       router.push(getRedirectPath());
     } catch {
-      setError("구글 로그인에 실패했습니다.");
+      setError(t("auth.error.generic"));
     } finally {
       setLoading(false);
     }
@@ -57,13 +57,13 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-8 rounded-2xl bg-white p-8 shadow-anima">
         <div className="flex flex-col items-center text-center">
           <Logo variant="lockup" tone="light" size={36} priority />
-          <p className="mt-3 text-anima-caption">{APP_TAGLINE}</p>
+          <p className="mt-3 text-anima-caption">{t("auth.signIn.subtitle")}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              이메일
+              {t("auth.email")}
             </label>
             <input
               id="email"
@@ -77,7 +77,7 @@ export default function LoginPage() {
           </div>
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-              비밀번호
+              {t("auth.password")}
             </label>
             <input
               id="password"
@@ -86,7 +86,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="비밀번호 입력"
+              placeholder={t("auth.password.placeholder")}
             />
           </div>
 
@@ -99,16 +99,13 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full rounded-lg bg-blue-600 py-3 text-white font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            {loading ? "로그인 중..." : "로그인"}
+            {loading ? t("auth.signingIn") : t("auth.signIn")}
           </button>
         </form>
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-gray-200" />
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="bg-white px-4 text-gray-400">또는</span>
           </div>
         </div>
 
@@ -135,13 +132,13 @@ export default function LoginPage() {
               fill="#EA4335"
             />
           </svg>
-          구글로 로그인
+          {t("auth.signInWithGoogle")}
         </button>
 
         <p className="text-center text-sm text-gray-500">
-          계정이 없으신가요?{" "}
+          {t("auth.signIn.noAccount")}{" "}
           <Link href="/signup" className="text-blue-600 font-medium hover:underline">
-            회원가입
+            {t("auth.signIn.toSignUp")}
           </Link>
         </p>
       </div>
