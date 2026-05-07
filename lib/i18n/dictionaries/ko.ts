@@ -190,7 +190,7 @@ const dict = {
   "settings.quote.subtitle":
     "비워두면 매주 자동 회전. 핀할 인물과 노출 빈도를 직접 설정할 수도 있어요.",
   "settings.quote.pinAuthor": "핀할 인물",
-  "settings.quote.noPin": "— 핀하지 않음 (주간 자동 회전) —",
+  "settings.quote.noPin": "— 지정 안 함 (주간 자동 회전) —",
   "settings.quote.daysLabel": "주당 핀 인물 노출 일수:",
   "settings.quote.daysOff": "꺼짐",
   "settings.quote.daysEveryday": "매일",
