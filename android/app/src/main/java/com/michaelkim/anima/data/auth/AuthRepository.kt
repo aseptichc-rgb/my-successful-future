@@ -12,17 +12,21 @@ import android.content.Context
 import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
+import android.util.Log
 import androidx.credentials.exceptions.GetCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import com.michaelkim.anima.BuildConfig
 import kotlinx.coroutines.tasks.await
 
 object AuthRepository {
+
+    private const val TAG = "AuthRepository"
 
     val currentUser: FirebaseUser?
         get() = FirebaseAuth.getInstance().currentUser
@@ -79,23 +83,46 @@ object AuthRepository {
             val response = credentialManager.getCredential(activityContext, request)
             val credential = response.credential
             if (credential.type != GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
-                return Result.failure(IllegalStateException("Google 자격증명이 아닙니다."))
+                Log.e(TAG, "Unexpected credential type: ${credential.type}")
+                return Result.failure(IllegalStateException("Google 자격증명이 아닙니다 (type=${credential.type})"))
             }
             val googleIdToken = try {
                 GoogleIdTokenCredential.createFrom(credential.data).idToken
             } catch (e: GoogleIdTokenParsingException) {
-                return Result.failure(e)
+                Log.e(TAG, "Google ID token parsing failed", e)
+                return Result.failure(IllegalStateException("Google ID 토큰 파싱 실패: ${e.message}", e))
             }
             val firebaseCredential = GoogleAuthProvider.getCredential(googleIdToken, null)
-            val authResult = FirebaseAuth.getInstance()
-                .signInWithCredential(firebaseCredential)
-                .await()
+            val authResult = try {
+                FirebaseAuth.getInstance().signInWithCredential(firebaseCredential).await()
+            } catch (e: FirebaseAuthException) {
+                Log.e(TAG, "Firebase signInWithCredential failed: code=${e.errorCode}", e)
+                return Result.failure(
+                    IllegalStateException(
+                        "Firebase 인증 실패 [${e.errorCode}] ${e.message ?: ""} — Firebase Console > Authentication > Sign-in method 에서 Google provider 가 활성화돼 있는지 확인하세요.",
+                        e,
+                    ),
+                )
+            }
             val user = authResult.user
                 ?: return Result.failure(IllegalStateException("Firebase 사용자 정보 없음"))
+            Log.i(TAG, "Google sign-in success: uid=${user.uid}")
             Result.success(user)
         } catch (e: GetCredentialException) {
-            Result.failure(e)
+            // Credential Manager 가 토큰 발급 자체를 거부한 경우.
+            // 가장 흔한 원인:
+            //  1) Google Cloud OAuth consent screen 이 Testing 상태인데 현재 계정이 test users 미등록
+            //  2) 기기 Play Services 구버전
+            //  3) 기기에 Google 계정이 없음 (NoCredentialException)
+            Log.e(TAG, "GetCredentialException: type=${e.type} message=${e.message}", e)
+            Result.failure(
+                IllegalStateException(
+                    "Google 자격증명 발급 실패 [${e.type}] ${e.message ?: ""}",
+                    e,
+                ),
+            )
         } catch (e: Exception) {
+            Log.e(TAG, "Unexpected sign-in error", e)
             Result.failure(e)
         }
     }
