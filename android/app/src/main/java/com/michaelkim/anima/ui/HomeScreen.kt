@@ -5,6 +5,10 @@
  */
 package com.michaelkim.anima.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -133,9 +137,16 @@ fun HomeScreen(onOpenAnima: () -> Unit) {
                                 }
                                 else -> e.message ?: "네트워크 확인"
                             }
+                            // 토스트가 잘려 진짜 원인이 안 보이는 문제 — 에러 전문을 클립보드에 복사하고
+                            // Logcat 에도 동일하게 남겨 진단 가능하도록.
+                            Log.e("Anima/Home", "오늘의 한 마디 받기 실패: $detail", e)
+                            runCatching {
+                                val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                                cm?.setPrimaryClip(ClipData.newPlainText("Anima error", detail))
+                            }
                             Toast.makeText(
                                 context,
-                                "오늘의 한 마디 받기 실패: $detail",
+                                "오늘의 한 마디 받기 실패 — 에러 전문을 클립보드에 복사했습니다.",
                                 Toast.LENGTH_LONG,
                             ).show()
                         } finally {

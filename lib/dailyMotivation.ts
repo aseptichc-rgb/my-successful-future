@@ -776,7 +776,9 @@ export async function ensureMotivation(opts: {
       ? { originalText: picked.originalText, originalLang: picked.originalLang }
       : {}),
     goalsSnapshot: ctx.goals,
-    futurePersonaSnapshot: ctx.futurePersona || undefined,
+    // futurePersona 가 비어있을 때 undefined 를 박으면 Firestore admin 이 거부한다.
+    // 같은 객체의 다른 optional 필드들과 동일하게 conditional spread 로 통일.
+    ...(ctx.futurePersona ? { futurePersonaSnapshot: ctx.futurePersona } : {}),
     gradient,
     mission,
     createdAt: Timestamp.now() as unknown as DailyMotivation["createdAt"],
