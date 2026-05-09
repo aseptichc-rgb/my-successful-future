@@ -100,6 +100,8 @@ const dict: Record<DictKey, string> = {
   "home.subtitle": "用一句新写给你的话开始一天。",
   "home.dateFormat": "{year} 年 {month} 月 {day} 日",
   "home.settingsAria": "设置",
+  "home.tab.today": "今日",
+  "home.tab.me": "我",
 
   "home.future.title": "10 年后的你",
   "home.future.subtitle":

@@ -85,6 +85,8 @@ export default function HomeDashboardPage() {
 
   const [alreadyCheckedInToday, setAlreadyCheckedInToday] = useState(false);
 
+  const [activeTab, setActiveTab] = useState<"today" | "me">("today");
+
   useEffect(() => {
     if (loading) return;
     if (!firebaseUser) {
@@ -398,25 +400,58 @@ export default function HomeDashboardPage() {
       </header>
 
       <main className="mx-auto w-full max-w-3xl space-y-4 px-4 py-5 sm:px-6">
-        <MotivationCard
-          motivation={motivation}
-          loading={motivationLoading}
-          errorMessage={motivationError}
-          onRegenerate={handleRegenerateMotivation}
-          onSubmitResponse={handleSubmitMissionResponse}
-          affirmations={user?.successAffirmations ?? []}
-          affirmationStreakCount={user?.affirmationStreak?.count ?? 0}
-          alreadyCheckedInToday={alreadyCheckedInToday}
-          onCheckinAffirmations={handleAffirmationCheckin}
-          ymd={ymd}
-        />
+        {/* 탭: 오늘 / 나 */}
+        <div
+          role="tablist"
+          aria-label={t("home.title")}
+          className="flex rounded-pill border border-black/[0.06] bg-white p-1 shadow-apple"
+        >
+          {(["today", "me"] as const).map((tab) => {
+            const selected = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => setActiveTab(tab)}
+                className={`flex-1 rounded-pill px-4 py-2 text-[14px] font-medium tracking-[-0.01em] transition-colors ${
+                  selected
+                    ? "bg-[#1E1B4B] text-white"
+                    : "text-black/60 hover:text-[#1E1B4B]"
+                }`}
+              >
+                {t(tab === "today" ? "home.tab.today" : "home.tab.me")}
+              </button>
+            );
+          })}
+        </div>
 
-        {motivationError && motivation && (
-          <p className="rounded-[12px] bg-rose-50 px-4 py-2 text-[12px] tracking-[-0.01em] text-rose-700">
-            {motivationError}
-          </p>
+        {activeTab === "today" && (
+          <>
+            <MotivationCard
+              motivation={motivation}
+              loading={motivationLoading}
+              errorMessage={motivationError}
+              onRegenerate={handleRegenerateMotivation}
+              onSubmitResponse={handleSubmitMissionResponse}
+              affirmations={user?.successAffirmations ?? []}
+              affirmationStreakCount={user?.affirmationStreak?.count ?? 0}
+              alreadyCheckedInToday={alreadyCheckedInToday}
+              onCheckinAffirmations={handleAffirmationCheckin}
+              ymd={ymd}
+            />
+
+            {motivationError && motivation && (
+              <p className="rounded-[12px] bg-rose-50 px-4 py-2 text-[12px] tracking-[-0.01em] text-rose-700">
+                {motivationError}
+              </p>
+            )}
+          </>
         )}
 
+        {activeTab === "me" && (
+          <>
         {/* 10년 후의 나의 모습 — 동기부여 카드 컨텍스트 */}
         <section className="rounded-[16px] border border-black/[0.06] bg-white p-5 shadow-apple">
           <div className="flex items-start justify-between gap-3">
@@ -603,8 +638,10 @@ export default function HomeDashboardPage() {
             </div>
           )}
         </section>
+          </>
+        )}
 
-        {/* 오늘 잘한 일 — 항상 펼쳐진 상태로 노출. */}
+        {activeTab === "today" && (
         <section className="rounded-[16px] border border-black/[0.06] bg-white p-5 shadow-apple">
           <div className="flex items-baseline justify-between gap-2">
             <h2 className="flex items-center gap-2 text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
@@ -679,6 +716,7 @@ export default function HomeDashboardPage() {
             </button>
           </div>
         </section>
+        )}
       </main>
     </div>
   );

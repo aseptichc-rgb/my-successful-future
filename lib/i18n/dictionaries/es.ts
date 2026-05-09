@@ -105,6 +105,8 @@ const dict: Record<DictKey, string> = {
   "home.subtitle": "Empieza el día con una frase nueva escrita para ti.",
   "home.dateFormat": "{day}/{month}/{year}",
   "home.settingsAria": "Ajustes",
+  "home.tab.today": "Hoy",
+  "home.tab.me": "Yo",
 
   "home.future.title": "Tú, dentro de 10 años",
   "home.future.subtitle":
