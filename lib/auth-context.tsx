@@ -12,6 +12,7 @@ import {
   getUserProfile,
   type FirebaseUser,
 } from "@/lib/firebase";
+import { shouldStartTrial } from "@/lib/entitlement";
 import type { User } from "@/types";
 
 interface AuthContextValue {
@@ -57,8 +58,7 @@ async function ensureTrialStarted(fbUser: FirebaseUser): Promise<boolean> {
   try {
     const tokenResult = await fbUser.getIdTokenResult();
     const claims = tokenResult.claims as Record<string, unknown>;
-    if (claims.paid === true) return false;
-    if (typeof claims.trialEndsAt === "number") return false;
+    if (!shouldStartTrial(claims)) return false;
 
     const idToken = await fbUser.getIdToken();
     const res = await fetch("/api/auth/start-trial", {

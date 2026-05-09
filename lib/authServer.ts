@@ -14,17 +14,27 @@
 import type { NextRequest } from "next/server";
 import { getAdminAuth, getAdminDb } from "./firebase-admin";
 import { ENTITLEMENT_REQUIRED } from "./constants/quota";
+import { readEntitlement, hasProAccess, type Entitlement } from "./entitlement";
 
 export interface AuthedUser {
   uid: string;
   email?: string;
-  /** Play Billing 영수증 검증을 통과한 사용자에게만 true. */
+  /**
+   * 권한 상태(lifetime / subscription / trial / free) 의 단일 진입점.
+   * 새 호출부는 이 필드만 보면 된다. 아래 paid / productId / purchaseTimeMs 는
+   * 기존 호출부 호환을 위해 유지하는 그림자 필드이며, 점진적으로 entitlement 로 이전한다.
+   */
+  entitlement: Entitlement;
+  /** @deprecated entitlement.kind 가 'lifetime' 또는 'subscription' 인지로 대체. */
   paid: boolean;
-  /** 결제된 제품 ID (예: "anima_lifetime"). 미결제 또는 dev 모드에서는 null. */
+  /** @deprecated entitlement.productId 로 대체 (lifetime/subscription 일 때만 존재). */
   productId: string | null;
-  /** 결제 시점 (ms). claim 에 박아둔 값. */
+  /** @deprecated entitlement.grantedAt 로 대체. */
   purchaseTimeMs: number | null;
-  /** 무료 체험 종료 시각(ms). 미시작이면 null. */
+  /**
+   * 무료 체험 종료 시각(ms). 미시작이면 null. raw 값이라 만료 여부 무관.
+   * D-day UI 표시 등에 사용. 게이트 판정에는 entitlement / hasProAccess 를 쓸 것.
+   */
   trialEndsAt: number | null;
 }
 
@@ -42,15 +52,28 @@ const SESSION_COOKIE_NAME = "__session";
 function decodedToAuthedUser(
   decoded: import("firebase-admin/auth").DecodedIdToken,
 ): AuthedUser {
-  const paid = decoded.paid === true;
-  const productId = typeof decoded.productId === "string" ? decoded.productId : null;
+  const claims = decoded as unknown as Record<string, unknown>;
+  const entitlement = readEntitlement(claims);
+
+  // 그림자 필드 — 기존 호출부 호환. entitlement 에서 파생.
+  const paid = entitlement.kind === "lifetime" || entitlement.kind === "subscription";
+  const productId =
+    entitlement.kind === "lifetime" || entitlement.kind === "subscription"
+      ? entitlement.productId
+      : null;
   const purchaseTimeMs =
-    typeof decoded.purchaseTime === "number" ? (decoded.purchaseTime as number) : null;
+    (entitlement.kind === "lifetime" || entitlement.kind === "subscription") &&
+    entitlement.grantedAt > 0
+      ? entitlement.grantedAt
+      : null;
+  // trialEndsAt 은 만료 여부와 무관한 raw 값을 그대로 노출 (UI D-day 등에서 사용).
   const trialEndsAt =
-    typeof decoded.trialEndsAt === "number" ? (decoded.trialEndsAt as number) : null;
+    typeof claims.trialEndsAt === "number" ? (claims.trialEndsAt as number) : null;
+
   return {
     uid: decoded.uid,
     email: decoded.email,
+    entitlement,
     paid,
     productId,
     purchaseTimeMs,
@@ -102,9 +125,7 @@ export async function verifyRequestUser(request: NextRequest): Promise<AuthedUse
 export async function requirePaidUser(request: NextRequest): Promise<AuthedUser> {
   const user = await verifyRequestUser(request);
   if (!ENTITLEMENT_REQUIRED) return user;
-  if (user.paid) return user;
-  const now = Date.now();
-  if (user.trialEndsAt !== null && user.trialEndsAt > now) return user;
+  if (hasProAccess(user.entitlement)) return user;
   const reason = user.trialEndsAt === null ? "trial_not_started" : "trial_expired";
   throw new AuthError(
     402,
