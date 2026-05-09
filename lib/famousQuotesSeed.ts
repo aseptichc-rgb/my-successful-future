@@ -203,13 +203,6 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     originalLang: "en",
   },
   {
-    id: "en_jung_lee_byungchul",
-    text: "사업은 사람이다. 사람을 알아보는 것이 사업의 절반이다.",
-    author: "이병철",
-    category: "entrepreneur",
-    language: "ko",
-  },
-  {
     id: "en_chung_ju_yung_try",
     text: "이봐, 해 봤어?",
     author: "정주영",
