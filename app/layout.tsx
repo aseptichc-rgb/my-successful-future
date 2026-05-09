@@ -45,11 +45,9 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
-  // app/icon.svg + app/apple-icon.png 가 Next 13+ 컨벤션으로 자동 노출됨.
-  icons: {
-    icon: [{ url: "/icon", type: "image/svg+xml" }],
-    apple: [{ url: "/apple-icon", sizes: "1024x1024", type: "image/png" }],
-  },
+  // app/icon.svg + app/apple-icon.png 는 Next 13+ 파일 컨벤션이 자동으로
+  // <link rel="icon"> 태그를 주입한다 (해시 포함 URL). 수동 icons override 는
+  // 그 경로(/icon.svg)와 어긋나 404 를 만들어내므로 두지 않는다.
 };
 
 export const viewport: Viewport = {
