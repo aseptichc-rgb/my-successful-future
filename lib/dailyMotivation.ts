@@ -221,8 +221,10 @@ function buildPrompt(opts: {
   identityLabels: ReadonlyArray<string>;
   /** 매번 새 호출에서 다른 결과를 유도하는 가변 시드 (다시 받기 시 변경됨). */
   varietySalt: string;
+  /** "다시 받기" 직전에 노출됐던 명언 — 같은 줄을 또 고르면 사용자에게 변화가 안 보임. */
+  avoidQuote?: string;
 }): string {
-  const { ctx, ymd, candidates, identityLabels, varietySalt } = opts;
+  const { ctx, ymd, candidates, identityLabels, varietySalt, avoidQuote } = opts;
   const langName = geminiLanguageName(ctx.language);
   const goalsBlock =
     ctx.goals.length > 0
@@ -268,7 +270,11 @@ ${identitiesBlock}
    - Patterns like "What is the single biggest obstacle to ___ today?" / "What is the first step toward ___?".
    - No abstract encouragement ("you can do it"). Must trigger active retrieval.
 3. identityTag: exactly one label from the pool above, copied verbatim. Do not invent new labels.
-4. Variety seed: ${varietySalt} — if this value changes, actively pick a different quote/mission than last time.
+4. Variety seed: ${varietySalt} — if this value changes, actively pick a different quote/mission than last time.${
+    avoidQuote
+      ? `\n5. Last shown line: "${avoidQuote}" — do NOT pick the same line again. Choose a different candidate.`
+      : ""
+  }
 
 ## Output (a single JSON object on one line, NO other text)
 {"id":"<one of the candidate ids verbatim>","mission":"<one-line mission in ${langName}>","linkedGoal":"<a goal text verbatim or empty>","identityTag":"<one label from the pool verbatim>"}`;
@@ -680,12 +686,16 @@ export async function ensureMotivation(opts: {
   );
   const { byId: candidateById, candidates: allCandidates } = getLanguagePool(ctx.language);
 
-  // 다시 받기: 직전 명언과 같은 텍스트는 풀에서 제외 (단, 그렇게 해도 1개 이상 남을 때만).
+  // 다시 받기: 직전 명언과 같은 텍스트는 풀에서 제외한다.
+  // - 주간/핀 풀에서 1개 이상 남으면 그대로 사용.
+  // - 그렇지 않으면 (예: 핀 인물의 시드 명언이 1개뿐인 날) 전체 후보로 풀을 넓혀
+  //   "재생성해도 같은 문구가 그대로" 인 상황을 피한다.
+  const filteredFromRaw = force && existing ? rawPool.filter((q) => q.text !== existing.quote) : rawPool;
   const pool: ReadonlyArray<FamousQuoteSeed> =
     force && existing
-      ? rawPool.filter((q) => q.text !== existing.quote).length > 0
-        ? rawPool.filter((q) => q.text !== existing.quote)
-        : rawPool
+      ? filteredFromRaw.length > 0
+        ? filteredFromRaw
+        : allCandidates.filter((q) => q.text !== existing.quote)
       : rawPool;
 
   // Gemini 가 같은 입력에 같은 답을 주는 경향이 있어, 호출마다 변하는 시드를 프롬프트에 주입.
@@ -746,7 +756,14 @@ export async function ensureMotivation(opts: {
   } else {
     try {
       const raw = await generateText(
-        buildPrompt({ ctx, ymd, candidates: pool, identityLabels, varietySalt }),
+        buildPrompt({
+          ctx,
+          ymd,
+          candidates: pool,
+          identityLabels,
+          varietySalt,
+          avoidQuote: force && existing ? existing.quote : undefined,
+        }),
         QUOTE_MODEL_TOKENS,
       );
       const ext = parsePickedExtension(raw);
@@ -762,8 +779,22 @@ export async function ensureMotivation(opts: {
         "[dailyMotivation] Gemini 실패, 결정론적 폴백 사용:",
         err instanceof Error ? err.message : err,
       );
-      picked = toPickedQuote(deterministicFallback(uid, ymd, pool, ctx.language));
+      // Gemini 실패 시에도 force 면 가변 시드를 써야 매 호출마다 다른 명언이 떨어진다.
+      picked = toPickedQuote(
+        deterministicFallback(uid, force ? `${ymd}:${varietySalt}` : ymd, pool, ctx.language),
+      );
       mission = buildFallbackMission(identityLabels, ctx.goals, `${uid}:${ymd}:${varietySalt}`, ctx.language);
+    }
+  }
+
+  // 마지막 안전망: 어떤 경로로든 직전과 같은 문구가 다시 잡혔다면, 전체 후보에서
+  // 가변 시드 기반으로 다른 명언을 강제로 고른다. 사용자 입장에선 "또 다른 한마디"
+  // 인데 같은 문구가 나오는 게 가장 큰 이질감이라 여기서 무조건 끊어준다.
+  if (force && existing && picked.text === existing.quote) {
+    const altPool = allCandidates.filter((q) => q.text !== existing.quote);
+    if (altPool.length > 0) {
+      const alt = deterministicFallback(uid, `${ymd}:${varietySalt}:retry`, altPool, ctx.language);
+      picked = toPickedQuote(alt);
     }
   }
 
