@@ -140,6 +140,17 @@ export default function OnboardingPage() {
       });
       await refreshUser().catch(() => {});
 
+      // 핵심 입력이 모두 저장된 이 시점에 온보딩 완료 플래그를 박는다.
+      // Step 5 미리보기에서 카드 생성 실패나 앱 종료로 finish 버튼을 못 눌러도
+      // 다음 로그인 때 다시 온보딩으로 튕기지 않도록 보호.
+      // refreshUser 재호출은 생략 — user.onboardedAt 이 즉시 truthy 가 되면
+      // 상단 useEffect 가 /home 으로 튕겨 미리보기를 못 본다. 갱신은 finish() 가 한다.
+      try {
+        await markOnboarded(uid);
+      } catch (err) {
+        console.warn("[onboarding] markOnboarded 실패(무시하고 진행):", err);
+      }
+
       // 첫 카드 즉시 생성 (force=true 로 핀 인물 반영)
       setPreviewLoading(true);
       setPreviewError(null);
