@@ -76,7 +76,7 @@ const dict: Record<DictKey, string> = {
   "onboarding.step5.missionLabel": "今日任务",
   "onboarding.step5.missionIdentityPrefix": "我是",
   "onboarding.step5.missionFooter":
-    "在主页回答这一句,你的身份卡片会随之成长。",
+    "在主页回答这一句,你的身份会一步步累积。",
   "onboarding.step5.previewError":
     "预览生成失败。开始之后可以从主页再试。",
   "onboarding.step5.widgetTitle": "Android 上添加小组件的方法",

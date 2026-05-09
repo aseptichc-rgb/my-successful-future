@@ -75,7 +75,7 @@ const dict = {
   "onboarding.step5.todayLabel": "오늘의 한 마디",
   "onboarding.step5.missionLabel": "오늘의 한 줄 미션",
   "onboarding.step5.missionIdentityPrefix": "나는",
-  "onboarding.step5.missionFooter": "시작 후 홈에서 이 한 줄에 답하면 정체성 카드가 채워져요.",
+  "onboarding.step5.missionFooter": "시작 후 홈에서 이 한 줄에 답하면 정체성이 한 걸음씩 쌓여요.",
   "onboarding.step5.previewError":
     "카드 미리보기를 만들지 못했어요. 시작 후 홈에서 다시 시도해 주세요.",
   "onboarding.step5.widgetTitle": "안드로이드에서 위젯 추가하는 법",

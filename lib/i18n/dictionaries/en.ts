@@ -78,7 +78,7 @@ const dict: Record<DictKey, string> = {
   "onboarding.step5.missionLabel": "TODAY'S MISSION",
   "onboarding.step5.missionIdentityPrefix": "I am",
   "onboarding.step5.missionFooter":
-    "Answer this single line in Home and your identity card grows.",
+    "Answer this single line in Home and your identity grows one step at a time.",
   "onboarding.step5.previewError":
     "Couldn't generate the preview. You can try again from Home after starting.",
   "onboarding.step5.widgetTitle": "How to add the widget on Android",
