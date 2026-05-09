@@ -455,7 +455,11 @@ export default function HomeDashboardPage() {
                 {motivationError}
               </p>
             )}
+          </>
+        )}
 
+        {activeTab === "actions" && (
+          <>
         {/* 10년 후의 나의 모습 — 동기부여 카드 컨텍스트 */}
         <section className="rounded-[16px] border border-black/[0.06] bg-white p-5 shadow-apple">
           <div className="flex items-start justify-between gap-3">
@@ -527,11 +531,7 @@ export default function HomeDashboardPage() {
             </button>
           )}
         </section>
-          </>
-        )}
 
-        {activeTab === "actions" && (
-          <>
         {/* 목표를 이루기 위한 오늘의 행동 */}
         <section className="rounded-[16px] border border-black/[0.06] bg-white p-5 shadow-apple">
           <div className="flex items-baseline justify-between gap-2">
