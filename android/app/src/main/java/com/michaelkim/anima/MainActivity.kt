@@ -9,11 +9,14 @@
  *
  * 추가 동작:
  *  - 잘한 일 저녁 알림 탭으로 진입한 경우(EXTRA_OPEN_TARGET=wins) → 곧장 /home 으로 Custom Tabs 진입.
+ *  - 앱 최초 실행 시 → 곧장 /onboarding 으로 Custom Tabs 진입 (이미 온보딩 완료된 사용자는 웹쪽이 /home 으로 즉시 리다이렉트).
+ *  - HomeScreen 내부에서 Google 로그인 성공 직후에도 /onboarding 으로 진입 (신규 로그인 케이스).
  *  - Android 13+ 에서 POST_NOTIFICATIONS 런타임 권한 요청 (1회).
  */
 package com.michaelkim.anima
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -36,12 +39,18 @@ class MainActivity : ComponentActivity() {
         ensureNotificationPermission()
         setContent {
             HomeScreen(
-                onOpenAnima = { openAnimaInCustomTab(path = null) },
+                onOpenAnima = { path -> openAnimaInCustomTab(path = path) },
             )
         }
         // 알림 탭으로 진입한 경우엔 잘한 일 화면(/home)으로 바로 이동.
+        // 알림 진입은 명시적 deep-link 이므로 첫 실행 온보딩보다 우선시한다.
         if (intent?.getStringExtra(WinsReminderWorker.EXTRA_OPEN_TARGET) == WinsReminderWorker.OPEN_TARGET_WINS) {
             openAnimaInCustomTab(path = "/home")
+            return
+        }
+        // 최초 실행이면 자동으로 온보딩으로 보낸다 (멱등 — 이미 온보딩 끝낸 사용자는 웹쪽 onboarding 페이지가 /home 으로 리다이렉트).
+        if (consumeFirstLaunchFlag()) {
+            openAnimaInCustomTab(path = ONBOARDING_PATH)
         }
     }
 
@@ -50,6 +59,23 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
         if (intent.getStringExtra(WinsReminderWorker.EXTRA_OPEN_TARGET) == WinsReminderWorker.OPEN_TARGET_WINS) {
             openAnimaInCustomTab(path = "/home")
+        }
+    }
+
+    /**
+     * 최초 실행 여부를 한 번만 true 로 돌려주고, 즉시 false 로 마킹한다.
+     * SharedPreferences 호출 자체가 실패해도 (예: 디스크 풀) 앱 흐름은 유지 — 안전 기본값은 false.
+     */
+    private fun consumeFirstLaunchFlag(): Boolean {
+        return try {
+            val prefs = getSharedPreferences(PREFS_APP_FLAGS, Context.MODE_PRIVATE)
+            val firstLaunch = !prefs.getBoolean(KEY_HAS_LAUNCHED, false)
+            if (firstLaunch) {
+                prefs.edit().putBoolean(KEY_HAS_LAUNCHED, true).apply()
+            }
+            firstLaunch
+        } catch (_: Exception) {
+            false
         }
     }
 
@@ -74,5 +100,11 @@ class MainActivity : ComponentActivity() {
         } catch (_: Exception) {
             // 외부 브라우저 미설치 등 — 무시.
         }
+    }
+
+    private companion object {
+        const val PREFS_APP_FLAGS = "anima_app_flags"
+        const val KEY_HAS_LAUNCHED = "has_launched_v1"
+        const val ONBOARDING_PATH = "/onboarding"
     }
 }

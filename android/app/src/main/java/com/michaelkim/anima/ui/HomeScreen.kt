@@ -50,8 +50,13 @@ import com.michaelkim.anima.widget.parseHex
 import com.michaelkim.anima.work.WorkScheduler
 import kotlinx.coroutines.launch
 
+private const val ONBOARDING_PATH = "/onboarding"
+
+/**
+ * @param onOpenAnima Anima 웹앱을 Custom Tabs 로 연다. path=null 이면 루트(/), path="/onboarding" 등 지정 가능.
+ */
 @Composable
-fun HomeScreen(onOpenAnima: () -> Unit) {
+fun HomeScreen(onOpenAnima: (path: String?) -> Unit) {
     val context = LocalContext.current
     val cached by remember { QuoteCache.observe(context) }.collectAsState(initial = null)
     val scope = rememberCoroutineScope()
@@ -100,6 +105,9 @@ fun HomeScreen(onOpenAnima: () -> Unit) {
                             onSuccess = {
                                 signedIn = true
                                 Toast.makeText(context, "환영합니다 ${it.displayName ?: ""}", Toast.LENGTH_SHORT).show()
+                                // 신규 로그인 직후엔 곧장 온보딩으로 진입.
+                                // 이미 온보딩 완료된 사용자는 웹쪽 onboarding 페이지가 /home 으로 즉시 리다이렉트하므로 안전.
+                                onOpenAnima(ONBOARDING_PATH)
                             },
                             onFailure = {
                                 Toast.makeText(
@@ -162,7 +170,7 @@ fun HomeScreen(onOpenAnima: () -> Unit) {
             }
             Spacer(Modifier.height(8.dp))
             OutlinedButton(
-                onClick = onOpenAnima,
+                onClick = { onOpenAnima(null) },
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Anima 열기 (페르소나 대화·데일리 리추얼)")
