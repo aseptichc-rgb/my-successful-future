@@ -315,6 +315,9 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "에이브러햄 링컨",
     category: "leader",
     language: "ko",
+    originalText:
+      "Give me six hours to chop down a tree and I will spend the first four sharpening the axe.",
+    originalLang: "en",
   },
   {
     id: "ld_mandela_impossible",
@@ -391,6 +394,9 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "찰스 다윈",
     category: "scientist",
     language: "ko",
+    originalText:
+      "It is not the strongest of the species that survives, nor the most intelligent that survives. It is the one that is the most adaptable to change.",
+    originalLang: "en",
   },
 
   // ── literature ──────────────────────────────────────
