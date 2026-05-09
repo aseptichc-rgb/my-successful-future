@@ -19,15 +19,27 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.auth.UserProfileChangeRequest
 import com.michaelkim.anima.BuildConfig
 import com.michaelkim.anima.data.api.ApiClient
 import kotlinx.coroutines.tasks.await
 
+/**
+ * Google 로그인 결과. isNewUser 는 Firebase Auth 가 이번 로그인을 "신규 가입(첫 로그인)"으로 판단했는지.
+ * UI 가 신규 가입자에게만 온보딩 게이트를 띄우는 데 사용.
+ */
+data class SignInOutcome(val user: FirebaseUser, val isNewUser: Boolean)
+
 object AuthRepository {
 
     private const val TAG = "AuthRepository"
+    private const val MIN_PASSWORD_LENGTH = 6
 
     val currentUser: FirebaseUser?
         get() = FirebaseAuth.getInstance().currentUser
@@ -66,7 +78,7 @@ object AuthRepository {
      * Google Sign-In → Firebase Auth.
      * 호출자: UI Activity (Credential Manager 가 Activity Context 필요).
      */
-    suspend fun signInWithGoogle(activityContext: Context): Result<FirebaseUser> {
+    suspend fun signInWithGoogle(activityContext: Context): Result<SignInOutcome> {
         val webClientId = BuildConfig.GOOGLE_WEB_CLIENT_ID
         if (webClientId.isBlank()) {
             return Result.failure(IllegalStateException("GOOGLE_WEB_CLIENT_ID 미설정 — local.properties 확인"))
@@ -107,13 +119,14 @@ object AuthRepository {
             }
             val user = authResult.user
                 ?: return Result.failure(IllegalStateException("Firebase 사용자 정보 없음"))
-            Log.i(TAG, "Google sign-in success: uid=${user.uid}")
+            val isNewUser = authResult.additionalUserInfo?.isNewUser == true
+            Log.i(TAG, "Google sign-in success: uid=${user.uid} isNewUser=$isNewUser")
             // 가입 직후 무료 체험 claim(trialEndsAt)을 박는다. 실패해도 로그인 자체는 성공으로 본다 —
             // 사용자가 "지금 갱신" 등을 누르는 시점에 ensureTrialStarted 가 한 번 더 시도된다.
             runCatching { ensureTrialStarted() }.onFailure {
                 Log.w(TAG, "ensureTrialStarted (post-signIn) 실패", it)
             }
-            Result.success(user)
+            Result.success(SignInOutcome(user = user, isNewUser = isNewUser))
         } catch (e: GetCredentialException) {
             // Credential Manager 가 토큰 발급 자체를 거부한 경우.
             // 가장 흔한 원인:
@@ -178,6 +191,104 @@ object AuthRepository {
         }
     }
 
+    /**
+     * 이메일/비밀번호 로그인. 신규 회원가입은 [signUpWithEmail].
+     *
+     * 보안: 비밀번호는 메모리 외부로 새지 않게 즉시 Firebase SDK 로 전달하고,
+     * 로그/Toast 메시지엔 절대 포함시키지 않는다.
+     */
+    suspend fun signInWithEmail(email: String, password: String): Result<SignInOutcome> {
+        val emailTrimmed = email.trim()
+        if (emailTrimmed.isBlank() || password.isBlank()) {
+            return Result.failure(IllegalArgumentException("이메일과 비밀번호를 입력해 주세요."))
+        }
+        return try {
+            val authResult = FirebaseAuth.getInstance()
+                .signInWithEmailAndPassword(emailTrimmed, password)
+                .await()
+            val user = authResult.user
+                ?: return Result.failure(IllegalStateException("Firebase 사용자 정보 없음"))
+            val isNewUser = authResult.additionalUserInfo?.isNewUser == true
+            Log.i(TAG, "Email sign-in success: uid=${user.uid} isNewUser=$isNewUser")
+            // Google 로그인 흐름과 동일하게 trial claim 을 한 번 점검(멱등).
+            runCatching { ensureTrialStarted() }.onFailure {
+                Log.w(TAG, "ensureTrialStarted (post-email-signIn) 실패", it)
+            }
+            Result.success(SignInOutcome(user = user, isNewUser = isNewUser))
+        } catch (e: Exception) {
+            Log.e(TAG, "Email sign-in failed", e)
+            Result.failure(IllegalStateException(mapAuthError(e), e))
+        }
+    }
+
+    /**
+     * 이메일/비밀번호 신규 회원가입. 가입 직후 displayName 을 FirebaseAuth 프로필에 박고,
+     * Google 가입 흐름과 동일하게 [ensureTrialStarted] 로 14일 무료 체험 claim 을 적용한다.
+     *
+     * 호출자 책임: 비밀번호 길이/일치 검증은 UI 단에서 1차 처리. 본 메서드는 최소
+     * 6자 길이만 다시 한 번 방어한다.
+     */
+    suspend fun signUpWithEmail(
+        email: String,
+        password: String,
+        displayName: String,
+    ): Result<SignInOutcome> {
+        val emailTrimmed = email.trim()
+        val nameTrimmed = displayName.trim()
+        if (emailTrimmed.isBlank() || password.isBlank()) {
+            return Result.failure(IllegalArgumentException("이메일과 비밀번호를 입력해 주세요."))
+        }
+        if (password.length < MIN_PASSWORD_LENGTH) {
+            return Result.failure(
+                IllegalArgumentException("비밀번호는 ${MIN_PASSWORD_LENGTH}자 이상이어야 합니다."),
+            )
+        }
+        return try {
+            val auth = FirebaseAuth.getInstance()
+            val authResult = auth.createUserWithEmailAndPassword(emailTrimmed, password).await()
+            val user = authResult.user
+                ?: return Result.failure(IllegalStateException("Firebase 사용자 정보 없음"))
+            if (nameTrimmed.isNotEmpty()) {
+                try {
+                    user.updateProfile(
+                        UserProfileChangeRequest.Builder()
+                            .setDisplayName(nameTrimmed)
+                            .build(),
+                    ).await()
+                } catch (e: Exception) {
+                    // displayName 실패는 비치명적 — 가입 자체는 성공으로 간주.
+                    Log.w(TAG, "displayName 업데이트 실패", e)
+                }
+            }
+            Log.i(TAG, "Email sign-up success: uid=${user.uid}")
+            runCatching { ensureTrialStarted() }.onFailure {
+                Log.w(TAG, "ensureTrialStarted (post-email-signUp) 실패", it)
+            }
+            Result.success(SignInOutcome(user = user, isNewUser = true))
+        } catch (e: Exception) {
+            Log.e(TAG, "Email sign-up failed", e)
+            Result.failure(IllegalStateException(mapAuthError(e), e))
+        }
+    }
+
+    /**
+     * Firebase Auth 에러를 사용자에게 보여줄 한국어 메시지로 변환.
+     * 알려진 케이스만 친절하게 매핑하고, 그 외엔 errorCode 를 노출해 진단 가능하도록.
+     */
+    private fun mapAuthError(e: Throwable): String = when (e) {
+        is FirebaseAuthWeakPasswordException ->
+            "비밀번호가 너무 단순합니다. ${MIN_PASSWORD_LENGTH}자 이상의 영문/숫자 조합을 권장합니다."
+        is FirebaseAuthUserCollisionException ->
+            "이미 가입된 이메일입니다. 로그인을 시도해 주세요."
+        is FirebaseAuthInvalidUserException ->
+            "등록되지 않은 이메일이거나 비활성화된 계정입니다."
+        is FirebaseAuthInvalidCredentialsException ->
+            "이메일 또는 비밀번호가 올바르지 않습니다."
+        is FirebaseAuthException ->
+            "인증 실패 [${e.errorCode}] ${e.message ?: ""}"
+        else -> e.message ?: "알 수 없는 오류"
+    }
+
     suspend fun signOut(context: Context) {
         try {
             FirebaseAuth.getInstance().signOut()
@@ -186,6 +297,21 @@ object AuthRepository {
                 .clearCredentialState(ClearCredentialStateRequest())
         } catch (_: Exception) {
             // 로컬 정리 실패는 치명적이지 않음
+        }
+    }
+
+    /**
+     * 서버(Firestore users/{uid}.onboardedAt) 기준의 온보딩 완료 여부를 조회.
+     * 네트워크/서버 오류 시 null 반환 — 호출부가 캐시 또는 안전 기본값으로 폴백.
+     */
+    suspend fun fetchOnboardingDone(): Boolean? {
+        if (currentUser == null) return null
+        return try {
+            val resp = ApiClient.onboardingApi.status()
+            resp.onboarded
+        } catch (e: Exception) {
+            Log.w(TAG, "/api/auth/onboarding-status 호출 실패", e)
+            null
         }
     }
 }
