@@ -47,6 +47,9 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     author: "마르쿠스 아우렐리우스",
     category: "philosophy",
     language: "ko",
+    originalText:
+      "Remember that man lives only in the present, in this fleeting instant: all the rest of his life is either past and gone, or not yet revealed.",
+    originalLang: "en",
   },
   {
     id: "ph_socrates_examined",
