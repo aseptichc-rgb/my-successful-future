@@ -153,10 +153,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await firebaseSignOut();
-    await clearServerSession();
-    restoreAttemptedRef.current = false;
+    // onIdTokenChanged(null) 리스너가 /api/session/refresh 로 자동 재로그인하는 걸 막아야 한다.
+    // 1) 서버 쿠키를 먼저 지운다 — refresh 가 401 을 반환하도록.
+    // 2) 복원 시도 플래그를 닫아둔다 — 쿠키 clear 와 firebase signOut 사이의 짧은 윈도우 보호.
+    restoreAttemptedRef.current = true;
     trialAttemptedRef.current.clear();
+    await clearServerSession();
+    await firebaseSignOut();
   };
 
   const refreshUser = async () => {
