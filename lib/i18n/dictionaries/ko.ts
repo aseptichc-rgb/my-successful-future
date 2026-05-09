@@ -223,7 +223,7 @@ const dict = {
   "wins.history.loadFailed": "기록을 불러오지 못했어요.",
 
   // ── 다짐 에디터 ──────────────────────────────────
-  "affirmations.editor.placeholder": "예: 나는 매일 한 시간 글을 쓰는 사람이다.",
+  "affirmations.editor.placeholder": "예: 나는 자산이 10억 달러가 넘는 성공한 기업가이다.",
   "affirmations.editor.add": "+ 다짐 추가",
   "affirmations.editor.removeAria": "다짐 줄 제거",
   "affirmations.editor.maxNote": "최대 {max}개까지 추가할 수 있어요. 한 줄당 {len}자까지.",

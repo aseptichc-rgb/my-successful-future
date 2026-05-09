@@ -234,7 +234,7 @@ const dict: Record<DictKey, string> = {
   "wins.history.loadFailed": "记录加载失败。",
 
   // Affirmations editor
-  "affirmations.editor.placeholder": "例:我是每天写作一小时的人。",
+  "affirmations.editor.placeholder": "例:我是资产超过10亿美元的成功企业家。",
   "affirmations.editor.add": "+ 添加誓言",
   "affirmations.editor.removeAria": "移除该誓言",
   "affirmations.editor.maxNote":

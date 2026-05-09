@@ -240,7 +240,7 @@ const dict: Record<DictKey, string> = {
 
   // Affirmations editor
   "affirmations.editor.placeholder":
-    "e.g., I am someone who writes for an hour every day.",
+    "e.g., I am a successful entrepreneur with assets over $1 billion.",
   "affirmations.editor.add": "+ Add affirmation",
   "affirmations.editor.removeAria": "Remove this affirmation",
   "affirmations.editor.maxNote":
