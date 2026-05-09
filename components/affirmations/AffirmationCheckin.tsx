@@ -135,7 +135,6 @@ export default function AffirmationCheckin({
 
   const labelColor = tone === "dark" ? "text-white/65" : "text-black/55";
   const titleColor = tone === "dark" ? "text-white" : "text-[#1E1B4B]";
-  const counterColor = tone === "dark" ? "text-white/65" : "text-black/55";
   const inputBase =
     tone === "dark"
       ? "border-white/20 bg-white/15 text-white placeholder:text-white/45 focus:border-white/55"
@@ -214,24 +213,15 @@ export default function AffirmationCheckin({
                   aria-invalid={showHint || undefined}
                   className={`w-full rounded-[10px] border px-3 py-2 text-[13.5px] leading-[1.4] tracking-[-0.01em] focus:outline-none ${inputCls}`}
                 />
-                <div
-                  className={`mt-0.5 flex items-start gap-2 text-[10.5px] tabular-nums ${counterColor}`}
-                >
-                  {showHint ? (
-                    <span
-                      className={`min-w-0 flex-1 break-words ${
-                        tone === "dark" ? "text-rose-100/95" : "text-rose-700"
-                      }`}
-                    >
-                      → {target}
-                    </span>
-                  ) : (
-                    <span className="flex-1" />
-                  )}
-                  <span className="shrink-0">
-                    {displayDraft.length}/{AFFIRMATION_INPUT_MAX}
-                  </span>
-                </div>
+                {showHint && (
+                  <p
+                    className={`mt-0.5 break-words text-[10.5px] tracking-[-0.005em] ${
+                      tone === "dark" ? "text-rose-100/95" : "text-rose-700"
+                    }`}
+                  >
+                    → {target}
+                  </p>
+                )}
               </div>
             </li>
           );
