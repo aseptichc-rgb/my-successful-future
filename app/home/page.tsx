@@ -170,9 +170,17 @@ export default function HomeDashboardPage() {
         method: "POST",
         body: JSON.stringify({ ymd, force: true }),
       });
+      const data = (await res.json().catch(() => ({}))) as {
+        motivation?: DailyMotivation;
+        error?: string;
+      };
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error((data as { error?: string }).error || "다시 받기에 실패했어요.");
+        throw new Error(data.error || "다시 받기에 실패했어요.");
+      }
+      // 스냅샷 리스너가 늦게 도착하거나 같은 탭 재구독 타이밍에서 누락될 수 있어,
+      // 응답 본문의 새 카드를 즉시 적용해 UI 가 그 자리에서 갱신되도록 한다.
+      if (data.motivation) {
+        setMotivation(data.motivation);
       }
     } catch (err) {
       setMotivationError(err instanceof Error ? err.message : String(err));
