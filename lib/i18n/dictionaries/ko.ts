@@ -207,6 +207,11 @@ const dict = {
   "auth.error.invalidPassword": "비밀번호는 6자 이상이어야 해요.",
   "auth.error.requireDisplayName": "이름을 입력해주세요.",
   "auth.error.generic": "다시 시도해주세요.",
+  "auth.link.title": "Google 계정 연결",
+  "auth.link.description": "{email} 은(는) 이미 이메일/비밀번호로 가입돼 있어요. 비밀번호를 입력하면 Google 계정과 연결돼 다음부턴 두 방식 모두 사용할 수 있어요.",
+  "auth.link.submit": "연결하고 로그인",
+  "auth.link.cancel": "취소",
+  "auth.link.failed": "연결에 실패했어요. 비밀번호를 확인해주세요.",
   "auth.password.placeholder": "최소 6자",
   "auth.displayName.placeholder": "표시 이름",
 

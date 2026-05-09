@@ -218,6 +218,11 @@ const dict: Record<DictKey, string> = {
   "auth.error.invalidPassword": "密码至少 6 个字符。",
   "auth.error.requireDisplayName": "请填写昵称。",
   "auth.error.generic": "出现了问题,请重试。",
+  "auth.link.title": "关联 Google 账户",
+  "auth.link.description": "{email} 已使用邮箱/密码注册。请输入密码以关联此 Google 账户,之后两种方式都可以登录。",
+  "auth.link.submit": "关联并登录",
+  "auth.link.cancel": "取消",
+  "auth.link.failed": "关联失败,请检查密码。",
   "auth.password.placeholder": "至少 6 个字符",
   "auth.displayName.placeholder": "显示名称",
 

@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import type { AuthCredential } from "firebase/auth";
 import { useAuth } from "@/lib/auth-context";
 import Logo from "@/components/ui/Logo";
 import { useT } from "@/lib/i18n";
@@ -10,7 +11,7 @@ import { useT } from "@/lib/i18n";
 export default function LoginPage() {
   const router = useRouter();
   const t = useT();
-  const { signIn, signInGoogle, firebaseUser, loading: authLoading } = useAuth();
+  const { signIn, signInGoogle, linkGoogleToEmailPassword, firebaseUser, loading: authLoading } = useAuth();
 
   useEffect(() => {
     if (!authLoading && firebaseUser) {
@@ -21,6 +22,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Google 로그인 결과가 needsLink 인 경우, 사용자가 기존 비밀번호로 인증해 두 provider 를
+  // 한 uid 에 묶을 때까지의 보류 상태. 비번 입력 폼은 이 값이 있을 때만 노출된다.
+  const [pendingLink, setPendingLink] = useState<{
+    email: string;
+    pendingCredential: AuthCredential;
+  } | null>(null);
+  const [linkPassword, setLinkPassword] = useState("");
 
   const getRedirectPath = () => "/home";
 
@@ -43,7 +52,13 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      await signInGoogle();
+      const result = await signInGoogle();
+      if (result.kind === "needsLink") {
+        // 기존 이메일/비밀번호 계정과 같은 이메일 — 비밀번호 입력 폼을 띄워 연결을 유도.
+        setPendingLink({ email: result.email, pendingCredential: result.pendingCredential });
+        setLinkPassword("");
+        return;
+      }
       router.push(getRedirectPath());
     } catch {
       setError(t("auth.error.generic"));
@@ -51,6 +66,85 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  const handleConfirmLink = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!pendingLink) return;
+    setError("");
+    setLoading(true);
+    try {
+      await linkGoogleToEmailPassword(
+        pendingLink.email,
+        linkPassword,
+        pendingLink.pendingCredential,
+      );
+      setPendingLink(null);
+      setLinkPassword("");
+      router.push(getRedirectPath());
+    } catch {
+      setError(t("auth.link.failed"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelLink = () => {
+    setPendingLink(null);
+    setLinkPassword("");
+    setError("");
+  };
+
+  if (pendingLink) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-cream">
+        <div className="w-full max-w-md space-y-6 rounded-2xl bg-white p-8 shadow-anima">
+          <div className="flex flex-col items-center text-center">
+            <Logo variant="lockup" tone="light" size={36} priority />
+            <h2 className="mt-4 text-lg font-semibold text-gray-900">{t("auth.link.title")}</h2>
+            <p className="mt-2 text-sm text-gray-600">
+              {t("auth.link.description", { email: pendingLink.email })}
+            </p>
+          </div>
+
+          <form onSubmit={handleConfirmLink} className="space-y-5">
+            <div>
+              <label htmlFor="linkPassword" className="block text-sm font-medium text-gray-700">
+                {t("auth.password")}
+              </label>
+              <input
+                id="linkPassword"
+                type="password"
+                required
+                autoFocus
+                value={linkPassword}
+                onChange={(e) => setLinkPassword(e.target.value)}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder={t("auth.password.placeholder")}
+              />
+            </div>
+
+            {error && <p className="text-sm text-red-600">{error}</p>}
+
+            <button
+              type="submit"
+              disabled={loading || !linkPassword}
+              className="w-full rounded-lg bg-blue-600 py-3 text-white font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {loading ? t("auth.signingIn") : t("auth.link.submit")}
+            </button>
+            <button
+              type="button"
+              onClick={handleCancelLink}
+              disabled={loading}
+              className="w-full rounded-lg border border-gray-300 bg-white py-3 text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            >
+              {t("auth.link.cancel")}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-cream">

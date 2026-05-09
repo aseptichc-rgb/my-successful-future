@@ -222,6 +222,11 @@ const dict: Record<DictKey, string> = {
   "auth.error.invalidPassword": "Password must be at least 6 characters.",
   "auth.error.requireDisplayName": "Please enter your name.",
   "auth.error.generic": "Something went wrong. Please try again.",
+  "auth.link.title": "Link Google account",
+  "auth.link.description": "{email} is already registered with email/password. Enter your password to link this Google account so you can use either method from now on.",
+  "auth.link.submit": "Link and sign in",
+  "auth.link.cancel": "Cancel",
+  "auth.link.failed": "Couldn't link the account. Please check your password.",
   "auth.password.placeholder": "At least 6 characters",
   "auth.displayName.placeholder": "Display name",
 

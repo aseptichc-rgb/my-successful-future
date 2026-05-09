@@ -1,4 +1,4 @@
-import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
+import { initializeApp, getApps, getApp, FirebaseError, type FirebaseApp } from "firebase/app";
 import {
   getAuth,
   setPersistence,
@@ -9,10 +9,13 @@ import {
   signInWithPopup,
   signInWithCustomToken,
   GoogleAuthProvider,
+  fetchSignInMethodsForEmail,
+  linkWithCredential,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   onIdTokenChanged,
   type Auth,
+  type AuthCredential,
   type User as FirebaseUser,
 } from "firebase/auth";
 import {
@@ -92,8 +95,55 @@ export async function signInWithEmail(email: string, password: string) {
   return signInWithEmailAndPassword(getAuthInstance(), email, password);
 }
 
-export async function signInWithGoogle() {
-  return signInWithPopup(getAuthInstance(), googleProvider);
+/**
+ * Google 로그인 결과.
+ * - ok: 정상 로그인 완료.
+ * - needsLink: 같은 이메일로 이미 이메일/비밀번호 계정이 있어 Firebase 가
+ *   account-exists-with-different-credential 을 던진 케이스. 호출자는 사용자에게
+ *   비밀번호를 입력받아 [linkGoogleCredentialToEmailAccount] 로 두 provider 를 합쳐야 한다.
+ */
+export type GoogleSignInResult =
+  | { kind: "ok" }
+  | {
+      kind: "needsLink";
+      email: string;
+      pendingCredential: AuthCredential;
+      existingMethods: string[];
+    };
+
+export async function signInWithGoogle(): Promise<GoogleSignInResult> {
+  try {
+    await signInWithPopup(getAuthInstance(), googleProvider);
+    return { kind: "ok" };
+  } catch (err) {
+    // 동일 이메일이 이미 다른 provider(이메일/비밀번호)로 가입된 경우.
+    // pending Google credential 을 보존했다가, 사용자가 기존 비밀번호로 인증하면
+    // linkWithCredential 로 두 provider 를 한 uid 에 묶는다.
+    if (err instanceof FirebaseError && err.code === "auth/account-exists-with-different-credential") {
+      const pendingCredential = GoogleAuthProvider.credentialFromError(err);
+      const email = (err.customData?.email as string | undefined) ?? "";
+      if (!pendingCredential || !email) throw err;
+      // 이메일 enumeration protection 이 켜져 있으면 빈 배열이 올 수 있다 — 그래도 needsLink 로 진행.
+      const existingMethods = await fetchSignInMethodsForEmail(getAuthInstance(), email).catch(() => [] as string[]);
+      return { kind: "needsLink", email, pendingCredential, existingMethods };
+    }
+    throw err;
+  }
+}
+
+/**
+ * 기존 이메일/비밀번호 계정에 보류된 Google credential 을 연결.
+ * 흐름: signInWithEmailAndPassword 로 본인 인증 → linkWithCredential 로 Google provider 추가.
+ * 다음번부터는 두 방식 어느 쪽으로도 같은 uid 에 로그인할 수 있다.
+ */
+export async function linkGoogleCredentialToEmailAccount(
+  email: string,
+  password: string,
+  pendingCredential: AuthCredential,
+) {
+  const cred = await signInWithEmailAndPassword(getAuthInstance(), email, password);
+  await linkWithCredential(cred.user, pendingCredential);
+  return cred;
 }
 
 export async function signUp(email: string, password: string, displayName: string) {

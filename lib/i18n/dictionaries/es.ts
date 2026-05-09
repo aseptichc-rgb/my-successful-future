@@ -227,6 +227,11 @@ const dict: Record<DictKey, string> = {
     "La contraseña debe tener al menos 6 caracteres.",
   "auth.error.requireDisplayName": "Por favor, escribe tu nombre.",
   "auth.error.generic": "Algo salió mal. Inténtalo de nuevo.",
+  "auth.link.title": "Vincular cuenta de Google",
+  "auth.link.description": "{email} ya está registrado con correo y contraseña. Escribe tu contraseña para vincular esta cuenta de Google y usar cualquiera de los dos métodos.",
+  "auth.link.submit": "Vincular e iniciar sesión",
+  "auth.link.cancel": "Cancelar",
+  "auth.link.failed": "No se pudo vincular la cuenta. Verifica tu contraseña.",
   "auth.password.placeholder": "Mínimo 6 caracteres",
   "auth.displayName.placeholder": "Nombre para mostrar",
 
