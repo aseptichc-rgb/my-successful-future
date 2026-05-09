@@ -85,7 +85,7 @@ export default function HomeDashboardPage() {
 
   const [alreadyCheckedInToday, setAlreadyCheckedInToday] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<"today" | "me">("today");
+  const [activeTab, setActiveTab] = useState<"future" | "actions">("future");
 
   useEffect(() => {
     if (loading) return;
@@ -406,7 +406,7 @@ export default function HomeDashboardPage() {
           aria-label={t("home.title")}
           className="flex rounded-pill border border-black/[0.06] bg-white p-1 shadow-apple"
         >
-          {(["today", "me"] as const).map((tab) => {
+          {(["future", "actions"] as const).map((tab) => {
             const selected = activeTab === tab;
             return (
               <button
@@ -421,13 +421,13 @@ export default function HomeDashboardPage() {
                     : "text-black/60 hover:text-[#1E1B4B]"
                 }`}
               >
-                {t(tab === "today" ? "home.tab.today" : "home.tab.me")}
+                {t(tab === "future" ? "home.tab.future" : "home.tab.actions")}
               </button>
             );
           })}
         </div>
 
-        {activeTab === "today" && (
+        {activeTab === "future" && (
           <>
             <MotivationCard
               motivation={motivation}
@@ -447,11 +447,7 @@ export default function HomeDashboardPage() {
                 {motivationError}
               </p>
             )}
-          </>
-        )}
 
-        {activeTab === "me" && (
-          <>
         {/* 10년 후의 나의 모습 — 동기부여 카드 컨텍스트 */}
         <section className="rounded-[16px] border border-black/[0.06] bg-white p-5 shadow-apple">
           <div className="flex items-start justify-between gap-3">
@@ -523,7 +519,11 @@ export default function HomeDashboardPage() {
             </button>
           )}
         </section>
+          </>
+        )}
 
+        {activeTab === "actions" && (
+          <>
         {/* 목표를 이루기 위한 오늘의 행동 */}
         <section className="rounded-[16px] border border-black/[0.06] bg-white p-5 shadow-apple">
           <div className="flex items-baseline justify-between gap-2">
@@ -641,7 +641,7 @@ export default function HomeDashboardPage() {
           </>
         )}
 
-        {activeTab === "today" && (
+        {activeTab === "actions" && (
         <section className="rounded-[16px] border border-black/[0.06] bg-white p-5 shadow-apple">
           <div className="flex items-baseline justify-between gap-2">
             <h2 className="flex items-center gap-2 text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">

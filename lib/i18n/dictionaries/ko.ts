@@ -98,8 +98,8 @@ const dict = {
   "home.subtitle": "매일 새로 도착하는 한 마디로 하루를 시작하세요.",
   "home.dateFormat": "{year}년 {month}월 {day}일",
   "home.settingsAria": "설정",
-  "home.tab.today": "오늘",
-  "home.tab.me": "나",
+  "home.tab.future": "미래의 나",
+  "home.tab.actions": "오늘의 행동",
 
   "home.future.title": "10년 후의 나의 모습",
   "home.future.subtitle": "되고 싶은 모습이 구체적일수록, 매일 도착하는 한 마디도 더 명확해져요.",
