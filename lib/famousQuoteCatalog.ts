@@ -12,7 +12,7 @@ import { FAMOUS_QUOTES_SEED } from "@/lib/famousQuotesSeed";
 import { FAMOUS_QUOTES_SEED_EN } from "@/lib/famousQuotesSeed.en";
 import { FAMOUS_QUOTES_SEED_ES } from "@/lib/famousQuotesSeed.es";
 import { FAMOUS_QUOTES_SEED_ZH } from "@/lib/famousQuotesSeed.zh";
-import type { UserLanguage } from "@/types";
+import type { FamousQuoteCategory, UserLanguage } from "@/types";
 
 const KO_POOL = FAMOUS_QUOTES_SEED;
 
@@ -62,6 +62,41 @@ export const ALL_LANGUAGES: ReadonlyArray<UserLanguage> = ["ko", "en", "es", "zh
 export interface AuthorGroup {
   language: UserLanguage;
   authors: string[];
+}
+
+/**
+ * 인물 → 가장 자주 등장하는 카테고리. 온보딩 step4 카드 태그용.
+ * 같은 인물이 여러 카테고리에 등장하면 최빈값을 고르고 동률은 첫 등장 우선.
+ * personal 카테고리는 제외 — getKnownAuthorsForLanguage 와 동일한 필터.
+ */
+export function getAuthorCategoryMap(
+  language: UserLanguage | undefined,
+): Map<string, FamousQuoteCategory> {
+  const pool = getQuoteSeedPool(language);
+  const counts = new Map<string, Map<FamousQuoteCategory, number>>();
+  const order = new Map<string, FamousQuoteCategory>();
+  for (const q of pool) {
+    if (q.category === "personal") continue;
+    const a = typeof q.author === "string" ? q.author.trim() : "";
+    if (!a) continue;
+    if (!order.has(a)) order.set(a, q.category);
+    const inner = counts.get(a) ?? new Map<FamousQuoteCategory, number>();
+    inner.set(q.category, (inner.get(q.category) ?? 0) + 1);
+    counts.set(a, inner);
+  }
+  const result = new Map<string, FamousQuoteCategory>();
+  for (const [author, inner] of counts.entries()) {
+    let best: FamousQuoteCategory = order.get(author) ?? "philosophy";
+    let bestCount = inner.get(best) ?? 0;
+    for (const [cat, n] of inner.entries()) {
+      if (n > bestCount) {
+        best = cat;
+        bestCount = n;
+      }
+    }
+    result.set(author, best);
+  }
+  return result;
 }
 
 export function getAllKnownAuthorsGrouped(currentLanguage: UserLanguage | undefined): AuthorGroup[] {

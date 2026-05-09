@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -15,7 +15,11 @@ import {
 import { authedFetch } from "@/lib/authedFetch";
 import AffirmationsEditor from "@/components/affirmations/AffirmationsEditor";
 import { useLanguage, LOCALE_META, SUPPORTED_LOCALES, type Locale, type DictKey } from "@/lib/i18n";
-import type { DailyMotivation } from "@/types";
+import {
+  getKnownAuthorsForLanguage,
+  getAuthorCategoryMap,
+} from "@/lib/famousQuoteCatalog";
+import type { DailyMotivation, FamousQuoteCategory, UserLanguage } from "@/types";
 
 const FUTURE_PERSONA_MAX = 500;
 const GOAL_MAX = 80;
@@ -23,21 +27,16 @@ const GOAL_MAX = 80;
 const TOTAL_STEPS = 6;
 type Step = 0 | 1 | 2 | 3 | 4 | 5;
 
-interface PinAuthorOption {
-  /** 사전 키 — 표시용 라벨/태그/톤이 모두 i18n 으로 갈린다. */
-  nameKey: DictKey;
-  tagKey: DictKey;
-  toneKey: DictKey;
-}
-
-const PIN_AUTHOR_OPTIONS: ReadonlyArray<PinAuthorOption> = [
-  { nameKey: "onboarding.author.steveJobs", tagKey: "onboarding.author.steveJobs.tag", toneKey: "onboarding.author.steveJobs.tone" },
-  { nameKey: "onboarding.author.einstein", tagKey: "onboarding.author.einstein.tag", toneKey: "onboarding.author.einstein.tone" },
-  { nameKey: "onboarding.author.aurelius", tagKey: "onboarding.author.aurelius.tag", toneKey: "onboarding.author.aurelius.tone" },
-  { nameKey: "onboarding.author.angelou", tagKey: "onboarding.author.angelou.tag", toneKey: "onboarding.author.angelou.tone" },
-  { nameKey: "onboarding.author.buffett", tagKey: "onboarding.author.buffett.tag", toneKey: "onboarding.author.buffett.tone" },
-  { nameKey: "onboarding.author.leeOryeong", tagKey: "onboarding.author.leeOryeong.tag", toneKey: "onboarding.author.leeOryeong.tone" },
-];
+const CATEGORY_LABEL_KEY: Record<FamousQuoteCategory, DictKey> = {
+  philosophy: "onboarding.category.philosophy",
+  entrepreneur: "onboarding.category.entrepreneur",
+  classic: "onboarding.category.classic",
+  leader: "onboarding.category.leader",
+  scientist: "onboarding.category.scientist",
+  literature: "onboarding.category.literature",
+  // personal 은 핀 후보에서 이미 제외되므로 노출되지 않지만 타입 안전을 위해 매핑.
+  personal: "onboarding.category.philosophy",
+};
 
 const PIN_DAYS_DEFAULT = 4;
 
@@ -57,6 +56,20 @@ export default function OnboardingPage() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [preview, setPreview] = useState<DailyMotivation | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+
+  /**
+   * 현재 언어 풀의 모든 인물을 노출. 시드가 늘면 자동으로 따라온다.
+   * Locale 과 UserLanguage 는 동일한 4개 코드라 그대로 넘긴다.
+   */
+  const pinAuthors = useMemo(() => {
+    const lang: UserLanguage = locale;
+    const names = getKnownAuthorsForLanguage(lang);
+    const catMap = getAuthorCategoryMap(lang);
+    return names.map((name) => ({
+      name,
+      category: catMap.get(name) ?? ("philosophy" as FamousQuoteCategory),
+    }));
+  }, [locale]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -411,12 +424,11 @@ export default function OnboardingPage() {
                     {t("onboarding.step4.autoSubtitle")}
                   </p>
                 </button>
-                {PIN_AUTHOR_OPTIONS.map((opt) => {
-                  const name = t(opt.nameKey);
+                {pinAuthors.map(({ name, category }) => {
                   const isSelected = pinnedAuthor === name;
                   return (
                     <button
-                      key={opt.nameKey}
+                      key={name}
                       type="button"
                       onClick={() => setPinnedAuthor(name)}
                       className={`rounded-[14px] border px-4 py-3 text-left transition-all ${
@@ -429,10 +441,7 @@ export default function OnboardingPage() {
                         {name}
                       </p>
                       <p className="mt-0.5 text-[11px] font-medium uppercase tracking-[0.08em] text-[#1E1B4B]/60">
-                        {t(opt.tagKey)}
-                      </p>
-                      <p className="mt-1 text-[12px] tracking-[-0.005em] text-black/55">
-                        {t(opt.toneKey)}
+                        {t(CATEGORY_LABEL_KEY[category])}
                       </p>
                     </button>
                   );
@@ -475,6 +484,16 @@ export default function OnboardingPage() {
                   }`}>
                     {preview.quote}
                   </p>
+                  {preview.originalText && (
+                    <p
+                      className={`mt-3 whitespace-pre-wrap text-[13px] italic leading-[1.5] tracking-[-0.01em] ${
+                        preview.gradient.tone === "dark" ? "text-white/72" : "text-black/56"
+                      }`}
+                      lang={preview.originalLang}
+                    >
+                      {preview.originalText}
+                    </p>
+                  )}
                   <p className={`mt-4 text-[13px] font-medium tracking-[-0.005em] ${
                     preview.gradient.tone === "dark" ? "text-white/72" : "text-black/56"
                   }`}>
