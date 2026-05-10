@@ -77,6 +77,11 @@ fun HomeScreen(onOpenAnima: (path: String?) -> Unit) {
     var signedIn by remember { mutableStateOf(AuthRepository.isSignedIn) }
     var busy by remember { mutableStateOf(false) }
 
+    // "이번 세션에 방금 로그인했음" 플래그 — true 인 동안 onboardingStatus 가 DONE 으로 확정되면
+    // 1회만 자동으로 /home 을 Custom Tab 으로 띄운다. 앱 아이콘으로 재진입한 케이스는 false 로
+    // 시작하므로 그대로 이 컨트롤 패널이 보인다.
+    var pendingHomeOpen by remember { mutableStateOf(false) }
+
     // 온보딩 상태(UNKNOWN / DONE / PENDING).
     // 진실은 서버 (/api/auth/onboarding-status) — Firestore.users.{uid}.onboardedAt.
     // 부팅 직후엔 캐시된 값을 즉시 보여주고, LaunchedEffect 가 서버에 다시 문의해 보정한다.
@@ -117,6 +122,16 @@ fun HomeScreen(onOpenAnima: (path: String?) -> Unit) {
     // (PENDING → PENDING 으로 같은 값 재할당은 LaunchedEffect 를 재기동시키지 않으므로 무한 루프 없음.)
     LaunchedEffect(onboardingStatus) {
         if (onboardingStatus == OnboardingStatus.PENDING) onOpenAnima(ONBOARDING_PATH)
+    }
+
+    // 방금 로그인한 세션에 한해, 온보딩이 DONE 으로 확정되면 자동으로 /home 을 띄운다.
+    // 신규 가입자 → /onboarding 게이트를 거쳐 DONE 이 되는 순간에도 한 번만 발동.
+    // 기존 사용자는 onSignedIn 직후 캐시/서버가 DONE 으로 빠르게 도달해 거의 즉시 /home 진입.
+    LaunchedEffect(pendingHomeOpen, onboardingStatus) {
+        if (pendingHomeOpen && onboardingStatus == OnboardingStatus.DONE) {
+            pendingHomeOpen = false
+            onOpenAnima(null)
+        }
     }
 
     // 비로그인은 기존 인증 화면, PENDING 은 게이트, UNKNOWN 은 로딩, DONE 은 메인 홈.
@@ -191,6 +206,9 @@ fun HomeScreen(onOpenAnima: (path: String?) -> Unit) {
                         OnboardingPrefs.cache(context, outcome.user.uid, false)
                         onboardingStatus = OnboardingStatus.PENDING
                     }
+                    // 이번 세션에 방금 로그인했음을 마킹 — onboardingStatus 가 DONE 으로 확정되면
+                    // 위쪽 LaunchedEffect 가 자동으로 /home 을 1회 띄운다.
+                    pendingHomeOpen = true
                 },
             )
         } else {
