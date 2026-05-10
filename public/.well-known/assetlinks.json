@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.michaelkim.anima",
+      "sha256_cert_fingerprints": [
+        "D4:64:93:1C:46:F5:AE:80:0A:98:3F:DE:31:AB:5A:86:80:32:F7:B0:AD:C8:43:31:82:4E:BA:FE:5F:FE:54:B9"
+      ]
+    }
+  }
+]

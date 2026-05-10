@@ -18,7 +18,7 @@ googleId = "1.1.1"
 lifecycle = "2.8.7"
 billing = "7.1.1"
 playIntegrity = "1.4.0"
-browserHelper = "2.6.0"
+browserHelper = "2.5.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
