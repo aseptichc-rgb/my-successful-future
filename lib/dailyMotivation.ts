@@ -221,10 +221,10 @@ function buildPrompt(opts: {
   identityLabels: ReadonlyArray<string>;
   /** 매번 새 호출에서 다른 결과를 유도하는 가변 시드 (다시 받기 시 변경됨). */
   varietySalt: string;
-  /** "다시 받기" 직전에 노출됐던 명언 — 같은 줄을 또 고르면 사용자에게 변화가 안 보임. */
-  avoidQuote?: string;
+  /** 오늘 이미 노출됐던 명언들 — 같은 줄을 또 고르면 변화가 안 보임. */
+  avoidQuotes?: ReadonlyArray<string>;
 }): string {
-  const { ctx, ymd, candidates, identityLabels, varietySalt, avoidQuote } = opts;
+  const { ctx, ymd, candidates, identityLabels, varietySalt, avoidQuotes } = opts;
   const langName = geminiLanguageName(ctx.language);
   const goalsBlock =
     ctx.goals.length > 0
@@ -271,8 +271,10 @@ ${identitiesBlock}
    - No abstract encouragement ("you can do it"). Must trigger active retrieval.
 3. identityTag: exactly one label from the pool above, copied verbatim. Do not invent new labels.
 4. Variety seed: ${varietySalt} — if this value changes, actively pick a different quote/mission than last time.${
-    avoidQuote
-      ? `\n5. Last shown line: "${avoidQuote}" — do NOT pick the same line again. Choose a different candidate.`
+    avoidQuotes && avoidQuotes.length > 0
+      ? `\n5. Already shown today (do NOT pick any of these — choose a different candidate):\n${avoidQuotes
+          .map((q) => `   - "${q}"`)
+          .join("\n")}`
       : ""
   }
 
@@ -543,9 +545,9 @@ function buildFreeAuthorPrompt(opts: {
   author: string;
   identityLabels: ReadonlyArray<string>;
   varietySalt: string;
-  avoidQuote?: string;
+  avoidQuotes?: ReadonlyArray<string>;
 }): string {
-  const { ctx, ymd, author, identityLabels, varietySalt, avoidQuote } = opts;
+  const { ctx, ymd, author, identityLabels, varietySalt, avoidQuotes } = opts;
   const langName = geminiLanguageName(ctx.language);
   const goalsBlock =
     ctx.goals.length > 0
@@ -562,7 +564,11 @@ Task: bring back ONE widely cited, verifiable line that "${author}" (a real or w
 ${goalsBlock}
 - Today: ${ymd} (KST) — use as a seed so a different day yields a different line for the same author.
 - Variety seed: ${varietySalt} — changes per call. Prefer a different line from the previous one.${
-    avoidQuote ? `\n- Last shown line: "${avoidQuote}" — do NOT pick the same line again.` : ""
+    avoidQuotes && avoidQuotes.length > 0
+      ? `\n- Already shown today (do NOT pick any of these — choose a different line by ${author}):\n${avoidQuotes
+          .map((q) => `   - "${q}"`)
+          .join("\n")}`
+      : ""
   }
 
 ## Identity label pool (pick exactly one verbatim — already in ${langName})
@@ -686,16 +692,31 @@ export async function ensureMotivation(opts: {
   );
   const { byId: candidateById, candidates: allCandidates } = getLanguagePool(ctx.language);
 
-  // 다시 받기: 직전 명언과 같은 텍스트는 풀에서 제외한다.
+  // 오늘 이미 노출됐던 명언들. existing.seenQuotes 가 누적이고, 거기 빠져있을 수
+  // 있는 직전 quote 까지 합쳐 둔다 (옛 문서 호환 — 처음 도입 전 카드엔 seenQuotes 가 없음).
+  const seenQuotesArr: string[] =
+    force && existing
+      ? Array.from(
+          new Set([
+            ...(Array.isArray(existing.seenQuotes) ? existing.seenQuotes : []),
+            existing.quote,
+          ]),
+        )
+      : [];
+  const seenSet = new Set(seenQuotesArr);
+
+  // 다시 받기: 오늘 이미 본 명언들은 풀에서 모두 제외한다 (alternating 방지).
   // - 주간/핀 풀에서 1개 이상 남으면 그대로 사용.
-  // - 그렇지 않으면 (예: 핀 인물의 시드 명언이 1개뿐인 날) 전체 후보로 풀을 넓혀
-  //   "재생성해도 같은 문구가 그대로" 인 상황을 피한다.
-  const filteredFromRaw = force && existing ? rawPool.filter((q) => q.text !== existing.quote) : rawPool;
+  // - 그렇지 않으면 (예: 핀 인물의 시드 명언이 적은 날) 전체 후보로 풀을 넓혀
+  //   "재생성해도 같은 문구만 돌고 도는" 상황을 피한다.
+  const excludeSeen = (q: FamousQuoteSeed) => !seenSet.has(q.text);
+  const filteredFromRaw = force && existing ? rawPool.filter(excludeSeen) : rawPool;
+  const widenedAll = force && existing ? allCandidates.filter(excludeSeen) : allCandidates;
   const pool: ReadonlyArray<FamousQuoteSeed> =
     force && existing
       ? filteredFromRaw.length > 0
         ? filteredFromRaw
-        : allCandidates.filter((q) => q.text !== existing.quote)
+        : widenedAll
       : rawPool;
 
   // Gemini 가 같은 입력에 같은 답을 주는 경향이 있어, 호출마다 변하는 시드를 프롬프트에 주입.
@@ -716,7 +737,7 @@ export async function ensureMotivation(opts: {
           author: freeAuthor,
           identityLabels,
           varietySalt,
-          avoidQuote: force && existing ? existing.quote : undefined,
+          avoidQuotes: seenQuotesArr,
         }),
         QUOTE_MODEL_TOKENS,
       );
@@ -762,7 +783,7 @@ export async function ensureMotivation(opts: {
           candidates: pool,
           identityLabels,
           varietySalt,
-          avoidQuote: force && existing ? existing.quote : undefined,
+          avoidQuotes: seenQuotesArr,
         }),
         QUOTE_MODEL_TOKENS,
       );
@@ -787,16 +808,19 @@ export async function ensureMotivation(opts: {
     }
   }
 
-  // 마지막 안전망: 어떤 경로로든 직전과 같은 문구가 다시 잡혔다면, 전체 후보에서
+  // 마지막 안전망: 어떤 경로로든 오늘 이미 본 문구가 다시 잡혔다면, 전체 후보에서
   // 가변 시드 기반으로 다른 명언을 강제로 고른다. 사용자 입장에선 "또 다른 한마디"
   // 인데 같은 문구가 나오는 게 가장 큰 이질감이라 여기서 무조건 끊어준다.
-  if (force && existing && picked.text === existing.quote) {
-    const altPool = allCandidates.filter((q) => q.text !== existing.quote);
+  if (force && existing && seenSet.has(picked.text)) {
+    const altPool = allCandidates.filter((q) => !seenSet.has(q.text));
     if (altPool.length > 0) {
       const alt = deterministicFallback(uid, `${ymd}:${varietySalt}:retry`, altPool, ctx.language);
       picked = toPickedQuote(alt);
     }
   }
+
+  // 오늘 노출 누적 — 다음 재생성 호출에서 풀에서 제외할 명단.
+  const nextSeenQuotes = Array.from(new Set([...seenQuotesArr, picked.text]));
 
   const motivation: DailyMotivation = {
     ymd,
@@ -812,6 +836,7 @@ export async function ensureMotivation(opts: {
     ...(ctx.futurePersona ? { futurePersonaSnapshot: ctx.futurePersona } : {}),
     gradient,
     mission,
+    seenQuotes: nextSeenQuotes,
     createdAt: Timestamp.now() as unknown as DailyMotivation["createdAt"],
   };
 

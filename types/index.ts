@@ -110,6 +110,11 @@ export interface DailyMotivation {
   mission?: MotivationMission;
   /** 사용자가 직접 적은 한 줄 응답 — 정체성 누적의 1차 증거. */
   response?: MotivationResponse;
+  /**
+   * 오늘 이 사용자에게 노출됐던 명언 텍스트 누적. "또 다른 한마디" 재생성 시
+   * 같은 문구가 다시 잡히지 않도록 풀에서 제외하는 데 쓴다. 첫 카드의 quote 도 포함.
+   */
+  seenQuotes?: string[];
   createdAt: Timestamp;
 }
 
