@@ -9,6 +9,7 @@
  *
  * 추가 동작:
  *  - 잘한 일 저녁 알림 탭으로 진입한 경우(EXTRA_OPEN_TARGET=wins) → 곧장 /home 으로 Custom Tabs 진입.
+ *  - 잠금화면 위젯 탭으로 진입한 경우(EXTRA_OPEN_TARGET=home) → 곧장 /home 으로 Custom Tabs 진입.
  *  - 앱 최초 실행 시 → 곧장 /onboarding 으로 Custom Tabs 진입 (이미 온보딩 완료된 사용자는 웹쪽이 /home 으로 즉시 리다이렉트).
  *  - HomeScreen 내부에서 Google 로그인 성공 직후에도 /onboarding 으로 진입 (신규 로그인 케이스).
  *  - Android 13+ 에서 POST_NOTIFICATIONS 런타임 권한 요청 (1회).
@@ -42,9 +43,9 @@ class MainActivity : ComponentActivity() {
                 onOpenAnima = { path -> openAnimaInCustomTab(path = path) },
             )
         }
-        // 알림 탭으로 진입한 경우엔 잘한 일 화면(/home)으로 바로 이동.
-        // 알림 진입은 명시적 deep-link 이므로 첫 실행 온보딩보다 우선시한다.
-        if (intent?.getStringExtra(WinsReminderWorker.EXTRA_OPEN_TARGET) == WinsReminderWorker.OPEN_TARGET_WINS) {
+        // 알림 탭/위젯 탭으로 진입한 경우엔 곧장 /home 으로 이동.
+        // 명시적 deep-link 이므로 첫 실행 온보딩보다 우선시한다.
+        if (shouldOpenHomeFromIntent(intent)) {
             openAnimaInCustomTab(path = "/home")
             return
         }
@@ -57,9 +58,14 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (intent.getStringExtra(WinsReminderWorker.EXTRA_OPEN_TARGET) == WinsReminderWorker.OPEN_TARGET_WINS) {
+        if (shouldOpenHomeFromIntent(intent)) {
             openAnimaInCustomTab(path = "/home")
         }
+    }
+
+    private fun shouldOpenHomeFromIntent(intent: Intent?): Boolean {
+        val target = intent?.getStringExtra(EXTRA_OPEN_TARGET) ?: return false
+        return target == OPEN_TARGET_WINS || target == OPEN_TARGET_HOME
     }
 
     /**
@@ -102,9 +108,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private companion object {
-        const val PREFS_APP_FLAGS = "anima_app_flags"
-        const val KEY_HAS_LAUNCHED = "has_launched_v1"
-        const val ONBOARDING_PATH = "/onboarding"
+    companion object {
+        // 인텐트 extra 키: 어느 화면을 열어 달라는 지시. 위젯/알림 등 외부 진입점이 공유한다.
+        const val EXTRA_OPEN_TARGET = "open_target"
+        // 잘한 일 저녁 알림 탭 — /home (잘한 일 섹션 포함) 으로 보낸다.
+        const val OPEN_TARGET_WINS = "wins"
+        // 잠금화면 위젯 탭 — /home 으로 보낸다.
+        const val OPEN_TARGET_HOME = "home"
+
+        private const val PREFS_APP_FLAGS = "anima_app_flags"
+        private const val KEY_HAS_LAUNCHED = "has_launched_v1"
+        private const val ONBOARDING_PATH = "/onboarding"
     }
 }

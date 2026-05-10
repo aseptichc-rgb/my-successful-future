@@ -72,7 +72,7 @@ class WinsReminderWorker(
     private fun postWinsReminder(ctx: Context) {
         val tapIntent = Intent(ctx, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra(EXTRA_OPEN_TARGET, OPEN_TARGET_WINS)
+            putExtra(MainActivity.EXTRA_OPEN_TARGET, MainActivity.OPEN_TARGET_WINS)
         }
         val pending = PendingIntent.getActivity(
             ctx,
@@ -95,7 +95,5 @@ class WinsReminderWorker(
         const val CHANNEL_ID = "wins_reminder"
         const val NOTIFICATION_ID = 2001
         const val REQUEST_CODE_TAP = 2002
-        const val EXTRA_OPEN_TARGET = "open_target"
-        const val OPEN_TARGET_WINS = "wins"
     }
 }

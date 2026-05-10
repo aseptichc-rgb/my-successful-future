@@ -48,7 +48,11 @@ fun WidgetContent(slot: WidgetSlot?) {
             .padding(16.dp)
             .clickable(
                 actionStartActivity(
-                    Intent(context, MainActivity::class.java),
+                    Intent(context, MainActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        // 위젯 탭은 곧장 웹 /home 으로 보낸다 — 컨트롤 패널을 거치지 않음.
+                        putExtra(MainActivity.EXTRA_OPEN_TARGET, MainActivity.OPEN_TARGET_HOME)
+                    },
                 ),
             ),
         contentAlignment = Alignment.CenterStart,
