@@ -16,4 +16,10 @@
     <string name="wins_reminder_channel_description">매일 저녁 9시에 오늘 잘한 일 3가지를 적어보도록 알려드려요.</string>
     <string name="wins_reminder_title">오늘 잘한 일 3가지</string>
     <string name="wins_reminder_body">오늘 잘한 일 3가지를 적어보세요.</string>
+
+    <!-- 다짐 따라쓰기 아침 알림 (매일 08:00 KST 로컬 알림) -->
+    <string name="affirmations_reminder_channel_name">성공한 나에게 한 발 더 알림</string>
+    <string name="affirmations_reminder_channel_description">매일 아침 8시에 \"성공한 나의 모습\" 다짐을 따라 적어보도록 알려드려요.</string>
+    <string name="affirmations_reminder_title">성공한 나에게 한 발 더</string>
+    <string name="affirmations_reminder_body">오늘도 다짐을 따라 적으며 하루를 시작해요.</string>
 </resources>

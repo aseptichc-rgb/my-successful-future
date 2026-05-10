@@ -9,6 +9,7 @@
  *
  * 추가 동작:
  *  - 잘한 일 저녁 알림 탭으로 진입한 경우(EXTRA_OPEN_TARGET=wins) → 곧장 /home 으로 Custom Tabs 진입.
+ *  - 다짐 아침 알림 탭으로 진입한 경우(EXTRA_OPEN_TARGET=affirmations) → 곧장 /home 으로 Custom Tabs 진입.
  *  - 잠금화면 위젯 탭으로 진입한 경우(EXTRA_OPEN_TARGET=home) → 곧장 /home 으로 Custom Tabs 진입.
  *  - 앱 최초 실행 시 → 곧장 /onboarding 으로 Custom Tabs 진입 (이미 온보딩 완료된 사용자는 웹쪽이 /home 으로 즉시 리다이렉트).
  *  - HomeScreen 내부에서 Google 로그인 성공 직후에도 /onboarding 으로 진입 (신규 로그인 케이스).
@@ -65,7 +66,9 @@ class MainActivity : ComponentActivity() {
 
     private fun shouldOpenHomeFromIntent(intent: Intent?): Boolean {
         val target = intent?.getStringExtra(EXTRA_OPEN_TARGET) ?: return false
-        return target == OPEN_TARGET_WINS || target == OPEN_TARGET_HOME
+        return target == OPEN_TARGET_WINS ||
+            target == OPEN_TARGET_HOME ||
+            target == OPEN_TARGET_AFFIRMATIONS
     }
 
     /**
@@ -113,6 +116,8 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_OPEN_TARGET = "open_target"
         // 잘한 일 저녁 알림 탭 — /home (잘한 일 섹션 포함) 으로 보낸다.
         const val OPEN_TARGET_WINS = "wins"
+        // 다짐 아침 알림 탭 — /home (다짐 따라쓰기 영역 포함) 으로 보낸다.
+        const val OPEN_TARGET_AFFIRMATIONS = "affirmations"
         // 잠금화면 위젯 탭 — /home 으로 보낸다.
         const val OPEN_TARGET_HOME = "home"
 
