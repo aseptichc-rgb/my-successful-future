@@ -19,6 +19,11 @@
         tools:targetApi="34"
         xmlns:tools="http://schemas.android.com/tools">
 
+        <!-- Trusted Web Activity 가 신뢰 도메인을 검증할 때 참조. assetlinks.json 과 SHA-256 이 매칭되어야 주소창이 사라진다. -->
+        <meta-data
+            android:name="asset_statements"
+            android:resource="@string/asset_statements" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

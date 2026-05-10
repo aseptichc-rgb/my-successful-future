@@ -18,6 +18,7 @@ googleId = "1.1.1"
 lifecycle = "2.8.7"
 billing = "7.1.1"
 playIntegrity = "1.4.0"
+browserHelper = "2.6.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -64,6 +65,9 @@ billing-ktx = { module = "com.android.billingclient:billing-ktx", version.ref = 
 
 # Play Integrity (호출자 정품 검증)
 play-integrity = { module = "com.google.android.play:integrity", version.ref = "playIntegrity" }
+
+# Trusted Web Activity (전체화면 웹 진입 — 주소창 숨김)
+androidbrowserhelper = { module = "com.google.androidbrowserhelper:androidbrowserhelper", version.ref = "browserHelper" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

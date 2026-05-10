@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      TWA 가 참조하는 신뢰 도메인 선언. Digital Asset Links 로
+      https://my-successful-future.vercel.app/.well-known/assetlinks.json 과 매칭되어야
+      Chrome 이 주소창을 숨기고 전체화면 TWA 로 띄운다. 매칭 실패 시 Custom Tabs 로 fallback.
+    -->
+    <string name="asset_statements" translatable="false">
+        [{
+          \"relation\": [\"delegate_permission/common.handle_all_urls\"],
+          \"target\": {
+            \"namespace\": \"web\",
+            \"site\": \"https://my-successful-future.vercel.app\"
+          }
+        }]
+    </string>
+</resources>

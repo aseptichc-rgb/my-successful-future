@@ -122,4 +122,7 @@ dependencies {
 
     // Play Integrity (호출자 정품 검증 → 서버에서 영수증 위조 차단)
     implementation(libs.play.integrity)
+
+    // Trusted Web Activity — 웹앱을 주소창 없이 전체화면으로 띄우기 위함
+    implementation(libs.androidbrowserhelper)
 }
