@@ -86,6 +86,94 @@ async function ensureTrialStarted(fbUser: FirebaseUser): Promise<boolean> {
   }
 }
 
+/**
+ * TWA(안드로이드 네이티브 앱) 안에서 띄워진 세션인지 판정.
+ * MainActivity 가 TWA 를 띄울 때 ?fromApp=1 을 쿼리에 붙여주므로 그 값을 sessionStorage 에
+ * 저장해두고 이후 라우팅 사이에도 유지한다. document.referrer (android-app://...) 도 보조로 본다.
+ */
+const NATIVE_BRIDGE_LAST_UID_KEY = "anima.nativeBridge.lastUid";
+const FROM_APP_FLAG_KEY = "anima.fromApp";
+
+function isInsideAndroidApp(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("fromApp") === "1") {
+      window.sessionStorage.setItem(FROM_APP_FLAG_KEY, "1");
+      return true;
+    }
+    if (window.sessionStorage.getItem(FROM_APP_FLAG_KEY) === "1") return true;
+    if (document.referrer.startsWith("android-app://com.michaelkim.anima")) {
+      window.sessionStorage.setItem(FROM_APP_FLAG_KEY, "1");
+      return true;
+    }
+  } catch {
+    // sessionStorage 차단 환경 — 브릿지 건너뛴다 (실패해도 웹 동작엔 영향 없음).
+  }
+  return false;
+}
+
+/**
+ * 웹 세션을 네이티브 FirebaseAuth 로 옮겨주는 단방향 브릿지.
+ *
+ * 동일 uid 로 이번 세션에 이미 브릿지를 쏜 적 있으면 no-op — 라우팅마다 재발화 방지.
+ * 발화 방식: intent:// URL 을 hidden iframe 에 로드 — Chrome 이 Android intent 로 해석해
+ * MainActivity 에 customToken 을 전달한다. top-level navigation 이 아니므로 TWA 가 그대로 살아있음.
+ *
+ * 보안: customToken 은 URL 쿼리에 실리지만, TWA → Android intent 경로는 OS 내부 IPC 로
+ * 브라우저 히스토리/Referer 에 남지 않는다. 토큰의 짧은 수명도 추가 방어선.
+ */
+async function bridgeToNativeIfNeeded(fbUser: FirebaseUser): Promise<void> {
+  if (!isInsideAndroidApp()) return;
+  let lastUid: string | null = null;
+  try {
+    lastUid = window.localStorage.getItem(NATIVE_BRIDGE_LAST_UID_KEY);
+  } catch {
+    // localStorage 차단 — 매번 시도하더라도 idempotent 하므로 진행.
+  }
+  if (lastUid === fbUser.uid) return;
+
+  try {
+    const idToken = await fbUser.getIdToken();
+    if (!idToken) return;
+    const res = await fetch("/api/auth/native-bridge", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${idToken}` },
+      credentials: "same-origin",
+    });
+    if (!res.ok) return;
+    const data = (await res.json()) as { customToken?: string };
+    const customToken = data.customToken;
+    if (!customToken) return;
+
+    try {
+      window.localStorage.setItem(NATIVE_BRIDGE_LAST_UID_KEY, fbUser.uid);
+    } catch {
+      // 무시 — 다음 라우팅에서 또 한 번 쏘게 되지만 네이티브 쪽이 멱등.
+    }
+
+    // intent:// 형식이면 Chrome 이 자체 핸들러로 처리. 패키지 지정해 우리 앱으로 라우팅 보장.
+    const url =
+      "intent://auth?token=" +
+      encodeURIComponent(customToken) +
+      "#Intent;scheme=anima;package=com.michaelkim.anima;end";
+    const iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.src = url;
+    document.body.appendChild(iframe);
+    // intent 발화 후엔 iframe 제거 — DOM 깨끗하게 유지.
+    window.setTimeout(() => {
+      try {
+        iframe.remove();
+      } catch {
+        // 무시
+      }
+    }, 1000);
+  } catch {
+    // 네트워크/JSON 오류 — 다음 로그인 사이클에 다시 시도 (lastUid 기록 안 했으므로).
+  }
+}
+
 async function tryRestoreFromServerCookie(): Promise<boolean> {
   try {
     const res = await fetch("/api/session/refresh", { method: "GET", credentials: "same-origin" });
@@ -131,6 +219,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch {
           // 다음 갱신 사이클에서 다시 시도
         }
+        // TWA 안에서 띄워진 세션이면 동일 uid 로 네이티브 FirebaseAuth 에도 로그인 시킨다.
+        // 실패해도 웹 동작에는 영향 없음 — 위젯/알림이 미인증 상태로 머무를 뿐.
+        await bridgeToNativeIfNeeded(fbUser);
         setLoading(false);
         return;
       }
@@ -174,6 +265,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // 2) 복원 시도 플래그를 닫아둔다 — 쿠키 clear 와 firebase signOut 사이의 짧은 윈도우 보호.
     restoreAttemptedRef.current = true;
     trialAttemptedRef.current.clear();
+    // 네이티브 브릿지 마커를 비워 다음 로그인 때 새 uid 로 브릿지가 다시 쏘이도록 한다.
+    try {
+      window.localStorage.removeItem(NATIVE_BRIDGE_LAST_UID_KEY);
+    } catch {
+      // 무시
+    }
     await clearServerSession();
     await firebaseSignOut();
   };

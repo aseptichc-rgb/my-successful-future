@@ -32,6 +32,17 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!--
+              anima://auth?token=<customToken>
+              웹(TWA) 로그인 세션을 네이티브 FirebaseAuth 로 옮기는 브릿지 딥링크.
+              BROWSABLE 카테고리가 있어야 Chrome/Custom Tabs 안에서 발화한 intent 도 라우팅된다.
+            -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="anima" android:host="auth" />
+            </intent-filter>
         </activity>
 
         <!-- Glance 위젯 리시버 -->
