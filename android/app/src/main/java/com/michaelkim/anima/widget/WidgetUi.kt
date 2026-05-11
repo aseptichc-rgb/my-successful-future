@@ -4,6 +4,7 @@
  * 슬롯 종류 (motivation / famous) 에 따라 카드 톤을 다르게.
  * - 미인증/캐시 비어있을 때: "로그인 후 위젯이 채워집니다" 안내
  * - 본문이 너무 길면 ellipsize 로 잘림 (Glance 의 maxLines)
+ * - 하단에는 오늘 3가지 이행 여부(다짐 따라쓰기 / 행동 체크 / 잘한 일 3가지)를 ✓/○ 로 노출.
  */
 package com.michaelkim.anima.widget
 
@@ -20,19 +21,29 @@ import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
+import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
+import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.michaelkim.anima.MainActivity
 import com.michaelkim.anima.data.WidgetSlot
+import com.michaelkim.anima.data.WidgetTodayProgress
+
+private const val PROGRESS_LABEL_AFFIRMATION = "한발더"
+private const val PROGRESS_LABEL_ACTIONS = "행동"
+private const val PROGRESS_LABEL_WINS = "잘한일"
+private const val PROGRESS_MARK_DONE = "✓"
+private const val PROGRESS_MARK_TODO = "○"
 
 @Composable
-fun WidgetContent(slot: WidgetSlot?) {
+fun WidgetContent(slot: WidgetSlot?, progress: WidgetTodayProgress?) {
     val context = LocalContext.current
     val bgColor = when (slot?.gradient?.tone) {
         "light" -> Color(parseHex(slot.gradient.from))
@@ -82,7 +93,7 @@ fun WidgetContent(slot: WidgetSlot?) {
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Medium,
                 ),
-                maxLines = 5,
+                maxLines = 4,
             )
             val author = when (slot) {
                 is WidgetSlot.Motivation -> slot.author
@@ -96,8 +107,38 @@ fun WidgetContent(slot: WidgetSlot?) {
                     maxLines = 1,
                 )
             }
+            if (progress != null) {
+                Spacer(GlanceModifier.height(8.dp))
+                TodayProgressRow(progress = progress, textColor = textColor)
+            }
         }
     }
+}
+
+@Composable
+private fun TodayProgressRow(progress: WidgetTodayProgress, textColor: Color) {
+    Row(modifier = GlanceModifier.fillMaxWidth()) {
+        ProgressChip(label = PROGRESS_LABEL_AFFIRMATION, done = progress.affirmation, textColor = textColor)
+        Spacer(GlanceModifier.width(8.dp))
+        ProgressChip(label = PROGRESS_LABEL_ACTIONS, done = progress.actions, textColor = textColor)
+        Spacer(GlanceModifier.width(8.dp))
+        ProgressChip(label = PROGRESS_LABEL_WINS, done = progress.wins, textColor = textColor)
+    }
+}
+
+@Composable
+private fun ProgressChip(label: String, done: Boolean, textColor: Color) {
+    val alpha = if (done) 1.0f else 0.6f
+    val mark = if (done) PROGRESS_MARK_DONE else PROGRESS_MARK_TODO
+    Text(
+        text = "$mark $label",
+        style = TextStyle(
+            color = ColorProvider(textColor.copy(alpha = alpha)),
+            fontSize = 11.sp,
+            fontWeight = if (done) FontWeight.Bold else FontWeight.Normal,
+        ),
+        maxLines = 1,
+    )
 }
 
 /** "#RRGGBB" → ARGB Int. 잘못된 입력은 anima_indigo 폴백. */

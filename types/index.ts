@@ -193,10 +193,23 @@ export interface WidgetSlotFamous {
 }
 export type WidgetSlot = WidgetSlotMotivation | WidgetSlotFamous;
 
+/**
+ * 위젯 하단에 보이는 "오늘 3가지 이행 여부" 요약.
+ * - affirmation: `affirmationLogs/{ymd}` 존재 (다짐 따라쓰기 1회 완료)
+ * - actions: 사용자 목표가 1개 이상이고 모두 `achievedGoals` 에 포함 (전부 체크)
+ * - wins: 오늘 잘한 일 3칸이 모두 비어있지 않음 (3가지 다 작성)
+ */
+export interface WidgetTodayProgress {
+  affirmation: boolean;
+  actions: boolean;
+  wins: boolean;
+}
+
 export interface WidgetTodayResponse {
   generatedAt: string;
   ymd: string;
   currentSlotIndex: number;
   slots: WidgetSlot[];
   nextRefreshAt: string;
+  todayProgress: WidgetTodayProgress;
 }

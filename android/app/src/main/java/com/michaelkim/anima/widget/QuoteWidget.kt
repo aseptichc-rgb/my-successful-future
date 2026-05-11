@@ -28,8 +28,9 @@ class QuoteWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val cached = QuoteRepository.getCached(context)
         val slot = QuoteRepository.currentSlot(cached)
+        val progress = cached?.response?.todayProgress
         provideContent {
-            WidgetContent(slot)
+            WidgetContent(slot, progress)
         }
     }
 }

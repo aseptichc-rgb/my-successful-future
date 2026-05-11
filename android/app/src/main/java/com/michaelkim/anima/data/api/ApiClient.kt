@@ -29,6 +29,7 @@ object ApiClient {
     val entitlementApi: EntitlementApi by lazy { buildRetrofit().create(EntitlementApi::class.java) }
     val trialApi: TrialApi by lazy { buildRetrofit().create(TrialApi::class.java) }
     val onboardingApi: OnboardingApi by lazy { buildRetrofit().create(OnboardingApi::class.java) }
+    val nativeBridgeApi: NativeBridgeApi by lazy { buildRetrofit().create(NativeBridgeApi::class.java) }
 
     private fun buildRetrofit(): Retrofit {
         val baseUrl = BuildConfig.ANIMA_API_BASE_URL.let {

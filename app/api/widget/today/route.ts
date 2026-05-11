@@ -33,6 +33,7 @@ import type {
   WidgetSlot,
   WidgetSlotFamous,
   WidgetSlotMotivation,
+  WidgetTodayProgress,
   WidgetTodayResponse,
 } from "@/types";
 
@@ -43,6 +44,64 @@ const SLOT_HOURS = 3;
 const TOTAL_SLOTS = 24 / SLOT_HOURS; // 8
 const FAMOUS_SLOT_COUNT = TOTAL_SLOTS - 1; // 7
 const DEFAULT_LANG: FamousQuoteLang = "ko";
+const REQUIRED_WINS = 3;
+
+/**
+ * 홈에서 사용자가 오늘 이행한 3가지 작업의 완료 여부를 모아 반환.
+ * 각 조회는 독립적이므로 한 곳이 실패해도 다른 항목은 영향 없도록 try-catch 로 격리.
+ * 실패 시 해당 항목은 false 로 안전 폴백 — 위젯이 "미완료" 상태로 보이는 게
+ * "있다고 잘못 표시" 보다 안전하다.
+ */
+async function fetchTodayProgress(
+  uid: string,
+  ymd: string,
+  userGoals: string[] | undefined,
+): Promise<WidgetTodayProgress> {
+  const db = getAdminDb();
+  const userDocRef = db.collection("users").doc(uid);
+
+  const affirmationSafe = async (): Promise<boolean> => {
+    try {
+      const snap = await userDocRef.collection("affirmationLogs").doc(ymd).get();
+      return snap.exists;
+    } catch (err) {
+      console.error("[widget/today] affirmation 진척도 조회 실패:", err);
+      return false;
+    }
+  };
+
+  const dailyEntrySafe = async (): Promise<{ wins: string[]; achievedGoals: string[] }> => {
+    try {
+      const snap = await userDocRef.collection("dailyEntries").doc(ymd).get();
+      if (!snap.exists) return { wins: [], achievedGoals: [] };
+      const data = snap.data() ?? {};
+      const wins = Array.isArray(data.wins) ? (data.wins as unknown[]) : [];
+      const achievedGoals = Array.isArray(data.achievedGoals) ? (data.achievedGoals as unknown[]) : [];
+      return {
+        wins: wins.map((w) => (typeof w === "string" ? w.trim() : "")),
+        achievedGoals: achievedGoals
+          .map((g) => (typeof g === "string" ? g.trim() : ""))
+          .filter((g) => g.length > 0),
+      };
+    } catch (err) {
+      console.error("[widget/today] dailyEntry 진척도 조회 실패:", err);
+      return { wins: [], achievedGoals: [] };
+    }
+  };
+
+  const [affirmation, entry] = await Promise.all([affirmationSafe(), dailyEntrySafe()]);
+
+  const goals = Array.isArray(userGoals)
+    ? userGoals.map((g) => (typeof g === "string" ? g.trim() : "")).filter((g) => g.length > 0)
+    : [];
+  const achievedSet = new Set(entry.achievedGoals);
+  const actions = goals.length > 0 && goals.every((g) => achievedSet.has(g));
+
+  const winsFilled = entry.wins.filter((w) => w.length > 0).length;
+  const wins = winsFilled >= REQUIRED_WINS;
+
+  return { affirmation, actions, wins };
+}
 
 /** KST 현재 시각으로 0~TOTAL_SLOTS-1 슬롯 인덱스 계산 */
 function currentSlotKst(now: Date): number {
@@ -135,6 +194,20 @@ export async function GET(request: NextRequest) {
     // 2) famousQuotes 풀에서 7개 결정론적 추출
     const famous = await pickFamousQuotes(me.uid, ymd, lang, FAMOUS_SLOT_COUNT);
 
+    // 2.5) 위젯 하단 진척도(다짐/행동/잘한 일) 수집.
+    //      home 의 "오늘 행동 체크" 와 일치하도록 user.goals 를 실시간으로 읽는다.
+    let userGoals: string[] | undefined;
+    try {
+      const userSnap = await getAdminDb().collection("users").doc(me.uid).get();
+      const data = userSnap.data();
+      if (data && Array.isArray(data.goals)) {
+        userGoals = data.goals as string[];
+      }
+    } catch (err) {
+      console.error("[widget/today] user.goals 조회 실패:", err);
+    }
+    const todayProgress = await fetchTodayProgress(me.uid, ymd, userGoals);
+
     // 3) 슬롯 조립
     const motivationSlot: WidgetSlotMotivation = {
       kind: "motivation",
@@ -172,6 +245,7 @@ export async function GET(request: NextRequest) {
       currentSlotIndex,
       slots,
       nextRefreshAt: nextRefreshIso(now),
+      todayProgress,
     };
 
     return NextResponse.json(body, {

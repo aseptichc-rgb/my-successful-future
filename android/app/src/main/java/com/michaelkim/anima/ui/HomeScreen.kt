@@ -1,14 +1,13 @@
 /**
- * 메인 앱 화면 — 위젯 미리보기 + 로그인/로그아웃 + Anima 웹 열기.
+ * 비로그인 진입자 전용 화면 — 위젯 미리보기 + 이메일/Google 로그인.
  *
- * 의도적으로 "단순한 컨트롤 패널". 실제 페르소나 대화/온보딩 등은 Custom Tabs 의 Anima 웹앱에서.
+ * 로그인된 사용자는 MainActivity 가 곧장 TWA /home 으로 보내므로 이 컴포저블에 도달하지 않는다.
+ * 다만 폼 안에서 방금 로그인한 직후엔 잠깐 이 컴포저블이 살아있을 수 있어 — 그 경우
+ * 온보딩 PENDING 이면 OnboardingGate, DONE 이면 곧장 TWA /home 으로 보내고 액티비티를 finish() 한다.
  */
 package com.michaelkim.anima.ui
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.util.Log
+import android.app.Activity
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -25,7 +24,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Tab
@@ -77,11 +75,6 @@ fun HomeScreen(onOpenAnima: (path: String?) -> Unit) {
     var signedIn by remember { mutableStateOf(AuthRepository.isSignedIn) }
     var busy by remember { mutableStateOf(false) }
 
-    // "이번 세션에 방금 로그인했음" 플래그 — true 인 동안 onboardingStatus 가 DONE 으로 확정되면
-    // 1회만 자동으로 /home 을 Custom Tab 으로 띄운다. 앱 아이콘으로 재진입한 케이스는 false 로
-    // 시작하므로 그대로 이 컨트롤 패널이 보인다.
-    var pendingHomeOpen by remember { mutableStateOf(false) }
-
     // 온보딩 상태(UNKNOWN / DONE / PENDING).
     // 진실은 서버 (/api/auth/onboarding-status) — Firestore.users.{uid}.onboardedAt.
     // 부팅 직후엔 캐시된 값을 즉시 보여주고, LaunchedEffect 가 서버에 다시 문의해 보정한다.
@@ -124,24 +117,70 @@ fun HomeScreen(onOpenAnima: (path: String?) -> Unit) {
         if (onboardingStatus == OnboardingStatus.PENDING) onOpenAnima(ONBOARDING_PATH)
     }
 
-    // 방금 로그인한 세션에 한해, 온보딩이 DONE 으로 확정되면 자동으로 /home 을 띄운다.
-    // 신규 가입자 → /onboarding 게이트를 거쳐 DONE 이 되는 순간에도 한 번만 발동.
-    // 기존 사용자는 onSignedIn 직후 캐시/서버가 DONE 으로 빠르게 도달해 거의 즉시 /home 진입.
-    LaunchedEffect(pendingHomeOpen, onboardingStatus) {
-        if (pendingHomeOpen && onboardingStatus == OnboardingStatus.DONE) {
-            pendingHomeOpen = false
-            onOpenAnima(null)
+    // DONE 이 확정되는 즉시 TWA /home 으로 보내고 네이티브 액티비티를 finish() 한다.
+    // 네이티브 컨트롤 패널은 더 이상 노출하지 않는다 — 로그아웃·새로고침 등 모든 컨트롤은 웹에서 제공.
+    LaunchedEffect(signedIn, onboardingStatus) {
+        if (signedIn && onboardingStatus == OnboardingStatus.DONE) {
+            onOpenAnima("/home")
+            (context as? Activity)?.finish()
         }
     }
 
-    // 비로그인은 기존 인증 화면, PENDING 은 게이트, UNKNOWN 은 로딩, DONE 은 메인 홈.
+    // 비로그인은 로그인 폼, PENDING 은 온보딩 게이트, UNKNOWN/DONE 은 잠깐 로딩만 노출.
     when {
         !signedIn -> {
-            // fallthrough → 아래 메인 컬럼이 AuthSection 을 렌더한다.
-        }
-        onboardingStatus == OnboardingStatus.UNKNOWN -> {
-            LoadingGate()
-            return
+            val slot = QuoteRepository.currentSlot(cached)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFFF0EDE6))
+                    .padding(20.dp),
+            ) {
+                Text(
+                    text = "Anima",
+                    color = Color(0xFF1E1B4B),
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "오늘의 한 마디 미리보기",
+                    color = Color(0xFF1E1B4B).copy(alpha = 0.6f),
+                    fontSize = 13.sp,
+                )
+                Spacer(Modifier.height(16.dp))
+
+                SlotPreview(slot)
+
+                Spacer(Modifier.height(20.dp))
+
+                AuthSection(
+                    busy = busy,
+                    onBusyChange = { busy = it },
+                    onSignedIn = { outcome ->
+                        signedIn = true
+                        Toast.makeText(
+                            context,
+                            "환영합니다 ${outcome.user.displayName ?: ""}",
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                        // 신규 가입자는 즉시 PENDING 으로 — 서버 응답을 기다리지 않고 게이트를 띄운다.
+                        // 기존 사용자는 UNKNOWN 으로 유지 → LaunchedEffect 가 서버에 물어 DONE/PENDING 결정.
+                        // DONE 으로 전환되는 순간 위쪽 LaunchedEffect 가 TWA /home 으로 보내고 액티비티를 종료.
+                        if (outcome.isNewUser) {
+                            OnboardingPrefs.cache(context, outcome.user.uid, false)
+                            onboardingStatus = OnboardingStatus.PENDING
+                        }
+                    },
+                )
+
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = "홈 화면을 길게 눌러 위젯 메뉴에서 Anima 위젯을 추가하세요.",
+                    color = Color(0xFF1E1B4B).copy(alpha = 0.55f),
+                    fontSize = 11.sp,
+                )
+            }
         }
         onboardingStatus == OnboardingStatus.PENDING -> {
             OnboardingGate(
@@ -159,130 +198,11 @@ fun HomeScreen(onOpenAnima: (path: String?) -> Unit) {
                     }
                 },
             )
-            return
         }
-    }
-
-    val slot = QuoteRepository.currentSlot(cached)
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF0EDE6))
-            .padding(20.dp),
-    ) {
-        Text(
-            text = "Anima",
-            color = Color(0xFF1E1B4B),
-            fontSize = 24.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = "오늘의 한 마디 미리보기",
-            color = Color(0xFF1E1B4B).copy(alpha = 0.6f),
-            fontSize = 13.sp,
-        )
-        Spacer(Modifier.height(16.dp))
-
-        SlotPreview(slot)
-
-        Spacer(Modifier.height(20.dp))
-
-        if (!signedIn) {
-            AuthSection(
-                busy = busy,
-                onBusyChange = { busy = it },
-                onSignedIn = { outcome ->
-                    signedIn = true
-                    Toast.makeText(
-                        context,
-                        "환영합니다 ${outcome.user.displayName ?: ""}",
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                    // 신규 가입자는 즉시 PENDING 으로 — 서버 응답을 기다리지 않고 게이트를 띄운다.
-                    // 기존 사용자는 UNKNOWN 으로 유지 → LaunchedEffect 가 서버에 물어 DONE/PENDING 결정.
-                    if (outcome.isNewUser) {
-                        OnboardingPrefs.cache(context, outcome.user.uid, false)
-                        onboardingStatus = OnboardingStatus.PENDING
-                    }
-                    // 이번 세션에 방금 로그인했음을 마킹 — onboardingStatus 가 DONE 으로 확정되면
-                    // 위쪽 LaunchedEffect 가 자동으로 /home 을 1회 띄운다.
-                    pendingHomeOpen = true
-                },
-            )
-        } else {
-            Button(
-                onClick = {
-                    busy = true
-                    scope.launch {
-                        try {
-                            // 신규/구 사용자 모두 위젯 호출 직전에 trial claim 을 한 번 점검.
-                            // 이미 claim 이 있으면 멱등 no-op.
-                            AuthRepository.ensureTrialStarted()
-                            QuoteRepository.refresh(context)
-                            Toast.makeText(context, "오늘의 한 마디를 받아왔어요", Toast.LENGTH_SHORT).show()
-                        } catch (e: Exception) {
-                            // HttpException 의 경우 코드/본문을 같이 보여 진짜 원인을 추적 가능하게.
-                            val detail = when (e) {
-                                is retrofit2.HttpException -> {
-                                    val body = runCatching { e.response()?.errorBody()?.string() }.getOrNull()
-                                    "HTTP ${e.code()} ${body ?: e.message() ?: ""}"
-                                }
-                                else -> e.message ?: "네트워크 확인"
-                            }
-                            // 토스트가 잘려 진짜 원인이 안 보이는 문제 — 에러 전문을 클립보드에 복사하고
-                            // Logcat 에도 동일하게 남겨 진단 가능하도록.
-                            Log.e("Anima/Home", "오늘의 한 마디 받기 실패: $detail", e)
-                            runCatching {
-                                val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                                cm?.setPrimaryClip(ClipData.newPlainText("Anima error", detail))
-                            }
-                            Toast.makeText(
-                                context,
-                                "오늘의 한 마디 받기 실패 — 에러 전문을 클립보드에 복사했습니다.",
-                                Toast.LENGTH_LONG,
-                            ).show()
-                        } finally {
-                            busy = false
-                        }
-                    }
-                },
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E1B4B)),
-            ) {
-                Text(if (busy) "받아오는 중…" else "오늘의 한 마디 받기")
-            }
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = { onOpenAnima(null) },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Anima 열기 (페르소나 대화·데일리 리추얼)")
-            }
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = {
-                    scope.launch {
-                        OnboardingPrefs.clear(context)
-                        AuthRepository.signOut(context)
-                        onboardingStatus = OnboardingStatus.UNKNOWN
-                        signedIn = false
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("로그아웃")
-            }
+        else -> {
+            // UNKNOWN(서버 응답 대기) 또는 DONE(곧 TWA 로 넘어가는 짧은 순간).
+            LoadingGate()
         }
-
-        Spacer(Modifier.height(16.dp))
-        Text(
-            text = "홈 화면을 길게 눌러 위젯 메뉴에서 Anima 위젯을 추가하세요.",
-            color = Color(0xFF1E1B4B).copy(alpha = 0.55f),
-            fontSize = 11.sp,
-        )
     }
 }
 

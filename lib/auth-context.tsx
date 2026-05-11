@@ -187,6 +187,32 @@ async function tryRestoreFromServerCookie(): Promise<boolean> {
   }
 }
 
+/**
+ * 네이티브 → 웹 SSO: TWA URL 에 ?nativeToken=<customToken> 가 실려 들어오면 한 번만 소비해
+ * Firebase 클라이언트 세션을 시작한다. 토큰은 단발성 + 짧은 수명이라 사용 직후 URL 에서 제거.
+ *
+ * 만료/위변조 토큰은 signInWithCustomToken 이 거절 → 사용자는 평소처럼 수동 로그인.
+ */
+async function tryConsumeNativeToken(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  let token: string | null = null;
+  try {
+    const url = new URL(window.location.href);
+    token = url.searchParams.get("nativeToken");
+    if (!token) return false;
+    url.searchParams.delete("nativeToken");
+    window.history.replaceState({}, "", url.toString());
+  } catch {
+    return false;
+  }
+  try {
+    await signInWithCustomTokenClient(token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
@@ -228,6 +254,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!restoreAttemptedRef.current) {
         restoreAttemptedRef.current = true;
+        // 네이티브 앱에서 막 진입한 케이스 — URL 의 nativeToken 을 먼저 소비해 즉시 로그인.
+        // 성공 시 signInWithCustomToken 이 onIdTokenChanged 를 재발화하므로 여기서 종료.
+        const consumed = await tryConsumeNativeToken();
+        if (consumed) return;
         const restored = await tryRestoreFromServerCookie();
         if (restored) return;
       }

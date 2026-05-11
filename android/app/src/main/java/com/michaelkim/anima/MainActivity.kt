@@ -38,6 +38,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.androidbrowserhelper.trusted.TwaLauncher
 import com.google.firebase.auth.FirebaseAuth
+import com.michaelkim.anima.data.api.ApiClient
+import com.michaelkim.anima.data.auth.AuthRepository
 import com.michaelkim.anima.ui.HomeScreen
 import com.michaelkim.anima.work.WinsReminderWorker
 import com.michaelkim.anima.work.WorkScheduler
@@ -69,6 +71,12 @@ class MainActivity : ComponentActivity() {
             openAnimaInTwa(path = "/home")
             return
         }
+        // 이미 로그인된 사용자는 네이티브 컨트롤 패널을 거치지 않고 곧장 TWA /home 으로 보낸다.
+        // 위젯 인증·로그아웃 등 컨트롤은 웹앱 안에서 제공하므로 네이티브 화면은 비로그인 진입자 전용.
+        if (AuthRepository.isSignedIn) {
+            openAnimaInTwa(path = "/home")
+            return
+        }
         setContent {
             HomeScreen(
                 onOpenAnima = { path -> openAnimaInTwa(path = path) },
@@ -87,6 +95,11 @@ class MainActivity : ComponentActivity() {
             return
         }
         if (shouldOpenHomeFromIntent(intent)) {
+            openAnimaInTwa(path = "/home")
+            return
+        }
+        // singleTop 이 아니므로 LAUNCHER 재진입에서 이 경로는 잘 안 타지만, 안전을 위해 동일 가드 유지.
+        if (AuthRepository.isSignedIn) {
             openAnimaInTwa(path = "/home")
         }
     }
@@ -172,11 +185,35 @@ class MainActivity : ComponentActivity() {
         val rawUrl = if (path.isNullOrBlank()) baseUrl else baseUrl + path
         // fromApp=1 마커를 항상 부착 — 웹 AuthProvider 가 이 값을 보고 native-bridge 를 발화한다.
         // 이미 fromApp 쿼리가 있으면 그대로 둔다 (중복 추가 방지).
-        val url = if (rawUrl.contains("fromApp=")) {
+        val urlWithFromApp = if (rawUrl.contains("fromApp=")) {
             rawUrl
         } else {
             rawUrl + (if (rawUrl.contains("?")) "&" else "?") + "fromApp=1"
         }
+        // 비로그인이거나 토큰 발급에 실패하면 그대로 띄운다 — 사용자가 웹에서 로그인하면 web→native 브릿지로 보정.
+        if (!AuthRepository.isSignedIn) {
+            launchTwaWithUrl(urlWithFromApp)
+            return
+        }
+        // 로그인 상태면 customToken 을 받아 URL 에 실어 보낸다 — 웹 AuthProvider 가 1회 소비.
+        // 네트워크가 200~500ms 가량 추가되지만 TWA 자체 로딩이 가려 사용자 체감은 거의 없음.
+        lifecycleScope.launch {
+            val customToken = try {
+                ApiClient.nativeBridgeApi.exchange().customToken
+            } catch (e: Exception) {
+                Log.w(TAG, "native-bridge customToken 발급 실패 — 웹은 미인증 상태로 진입", e)
+                null
+            }
+            val finalUrl = if (customToken.isNullOrBlank()) {
+                urlWithFromApp
+            } else {
+                urlWithFromApp + "&nativeToken=" + Uri.encode(customToken)
+            }
+            launchTwaWithUrl(finalUrl)
+        }
+    }
+
+    private fun launchTwaWithUrl(url: String) {
         val uri = try {
             Uri.parse(url)
         } catch (_: Exception) {

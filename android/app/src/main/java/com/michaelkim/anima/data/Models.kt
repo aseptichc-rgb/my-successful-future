@@ -52,6 +52,18 @@ sealed class WidgetSlot {
     ) : WidgetSlot()
 }
 
+/**
+ * 위젯 하단 "오늘 3가지 이행 여부" 요약.
+ * 백엔드 미발급(과거 캐시) 경우 explicitNulls=false 로 null 이 들어와도 폴백 가능하도록
+ * 전부 기본값 false 로 둔다.
+ */
+@Serializable
+data class WidgetTodayProgress(
+    val affirmation: Boolean = false,
+    val actions: Boolean = false,
+    val wins: Boolean = false,
+)
+
 @Serializable
 data class WidgetTodayResponse(
     val generatedAt: String,
@@ -59,6 +71,7 @@ data class WidgetTodayResponse(
     val currentSlotIndex: Int,
     val slots: List<WidgetSlot>,
     val nextRefreshAt: String,
+    val todayProgress: WidgetTodayProgress = WidgetTodayProgress(),
 )
 
 /** DataStore 캐시 직렬화용 — 마지막 응답 + 디스크 기록 시각. */
