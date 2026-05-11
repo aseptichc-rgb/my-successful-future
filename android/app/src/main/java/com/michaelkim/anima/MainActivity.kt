@@ -49,16 +49,19 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ensureNotificationPermission()
+        // 위젯/알림 탭으로 진입한 경우엔 네이티브 HomeScreen 을 그리지 않고
+        // 곧장 /home TWA 로 보낸다 — 깜빡임 없이 "바로 홈 화면" 으로 보이도록.
+        // 명시적 deep-link 이므로 첫 실행 온보딩보다 우선시한다.
+        // 주의: TwaLauncher 가 CustomTabsService 바인딩을 비동기로 마칠 수 있어
+        // 여기서 finish() 하지 않는다. 액티비티는 빈 화면으로 잠시 호스팅만 한다.
+        if (shouldOpenHomeFromIntent(intent)) {
+            openAnimaInTwa(path = "/home")
+            return
+        }
         setContent {
             HomeScreen(
                 onOpenAnima = { path -> openAnimaInTwa(path = path) },
             )
-        }
-        // 알림 탭/위젯 탭으로 진입한 경우엔 곧장 /home 으로 이동.
-        // 명시적 deep-link 이므로 첫 실행 온보딩보다 우선시한다.
-        if (shouldOpenHomeFromIntent(intent)) {
-            openAnimaInTwa(path = "/home")
-            return
         }
         // 최초 실행이면 자동으로 온보딩으로 보낸다 (멱등 — 이미 온보딩 끝낸 사용자는 웹쪽 onboarding 페이지가 /home 으로 리다이렉트).
         if (consumeFirstLaunchFlag()) {
