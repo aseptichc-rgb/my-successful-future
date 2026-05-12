@@ -59,16 +59,16 @@ class MainActivity : ComponentActivity() {
         // 위젯/알림 탭으로 진입한 경우엔 네이티브 HomeScreen 을 그리지 않고
         // 곧장 /home TWA 로 보낸다 — 깜빡임 없이 "바로 홈 화면" 으로 보이도록.
         // 명시적 deep-link 이므로 첫 실행 온보딩보다 우선시한다.
-        // 주의: TwaLauncher 가 CustomTabsService 바인딩을 비동기로 마칠 수 있어
-        // 여기서 finish() 하지 않는다. 액티비티는 빈 화면으로 잠시 호스팅만 한다.
+        // finishAfterLaunch=true: TWA 가 실제로 뜬 뒤 MainActivity 를 종료 — 그렇게 안 하면
+        // 빈 윈도(흰 화면) 가 백스택에 남아 TWA 에서 뒤로가기를 누르면 흰 화면에 멈춘다.
         if (shouldOpenHomeFromIntent(intent)) {
-            openAnimaInTwa(path = "/home")
+            openAnimaInTwa(path = "/home", finishAfterLaunch = true)
             return
         }
         // 이미 로그인된 사용자는 네이티브 컨트롤 패널을 거치지 않고 곧장 TWA /home 으로 보낸다.
         // 위젯 인증·로그아웃 등 컨트롤은 웹앱 안에서 제공하므로 네이티브 화면은 비로그인 진입자 전용.
         if (AuthRepository.isSignedIn) {
-            openAnimaInTwa(path = "/home")
+            openAnimaInTwa(path = "/home", finishAfterLaunch = true)
             return
         }
         setContent {
@@ -86,12 +86,12 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         if (shouldOpenHomeFromIntent(intent)) {
-            openAnimaInTwa(path = "/home")
+            openAnimaInTwa(path = "/home", finishAfterLaunch = true)
             return
         }
         // singleTop 이 아니므로 LAUNCHER 재진입에서 이 경로는 잘 안 타지만, 안전을 위해 동일 가드 유지.
         if (AuthRepository.isSignedIn) {
-            openAnimaInTwa(path = "/home")
+            openAnimaInTwa(path = "/home", finishAfterLaunch = true)
         }
     }
 
@@ -136,7 +136,14 @@ class MainActivity : ComponentActivity() {
      * - 매칭 실패/지원 안 되는 환경이면 androidbrowserhelper 가 자동으로 Custom Tabs 로 fallback.
      * - 모든 fallback 실패 시 일반 브라우저 인텐트로 최종 fallback.
      */
-    private fun openAnimaInTwa(path: String?) {
+    /**
+     * @param finishAfterLaunch TWA 가 실제로 뜬 직후 이 액티비티를 종료한다. setContent 를
+     *   생략하고 곧장 TWA 로 넘기는 경로(딥링크, 이미 로그인된 사용자) 에서 true 로 호출 —
+     *   안 하면 빈 윈도가 백스택에 남아 TWA back 이 흰 화면으로 떨어진다.
+     *   HomeScreen Composable 가 떠 있는 경로에서는 false 로 두어 사용자가 돌아왔을 때
+     *   로그인/온보딩 UI 가 보이도록 한다.
+     */
+    private fun openAnimaInTwa(path: String?, finishAfterLaunch: Boolean = false) {
         val baseUrl = BuildConfig.ANIMA_API_BASE_URL.removeSuffix("/")
         val rawUrl = if (path.isNullOrBlank()) baseUrl else baseUrl + path
         // fromApp=1 마커를 항상 부착 — 웹 AuthProvider 가 이 값을 보고 native-bridge 를 발화한다.
@@ -149,10 +156,13 @@ class MainActivity : ComponentActivity() {
         // 비로그인이거나 토큰 발급에 실패하면 그대로 띄운다 — 사용자가 웹에서 로그인하면 web→native 브릿지로 보정.
         if (!AuthRepository.isSignedIn) {
             launchTwaWithUrl(urlWithFromApp)
+            if (finishAfterLaunch) finish()
             return
         }
         // 로그인 상태면 customToken 을 받아 URL 에 실어 보낸다 — 웹 AuthProvider 가 1회 소비.
         // 네트워크가 200~500ms 가량 추가되지만 TWA 자체 로딩이 가려 사용자 체감은 거의 없음.
+        // finish 는 customToken 교환과 launchTwaWithUrl 이 끝난 뒤 — 그 전에 finish 하면
+        // lifecycleScope 가 취소돼 코루틴이 죽고 TWA 가 미인증 상태로 떠 흰 화면이 자주 난다.
         lifecycleScope.launch {
             val customToken = try {
                 ApiClient.nativeBridgeApi.exchange().customToken
@@ -166,6 +176,7 @@ class MainActivity : ComponentActivity() {
                 urlWithFromApp + "&nativeToken=" + Uri.encode(customToken)
             }
             launchTwaWithUrl(finalUrl)
+            if (finishAfterLaunch) finish()
         }
     }
 
