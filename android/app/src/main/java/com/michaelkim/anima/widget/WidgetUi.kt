@@ -4,7 +4,7 @@
  * 슬롯 종류 (motivation / famous) 에 따라 카드 톤을 다르게.
  * - 미인증/캐시 비어있을 때: "로그인 후 위젯이 채워집니다" 안내
  * - 본문이 너무 길면 ellipsize 로 잘림 (Glance 의 maxLines)
- * - 하단에는 오늘 3가지 이행 여부(다짐 따라쓰기 / 행동 체크 / 잘한 일 3가지)를 ✓/○ 로 노출.
+ * - 하단에는 오늘 3가지 이행 여부(다짐 따라쓰기 / 행동 체크 / 잘한 일 3가지)를 ☑/☐ 로 노출.
  */
 package com.michaelkim.anima.widget
 
@@ -39,8 +39,8 @@ import com.michaelkim.anima.data.WidgetTodayProgress
 private const val PROGRESS_LABEL_AFFIRMATION = "한발더"
 private const val PROGRESS_LABEL_ACTIONS = "행동"
 private const val PROGRESS_LABEL_WINS = "잘한일"
-private const val PROGRESS_MARK_DONE = "✓"
-private const val PROGRESS_MARK_TODO = "○"
+private const val PROGRESS_MARK_DONE = "☑"
+private const val PROGRESS_MARK_TODO = "☐"
 
 @Composable
 fun WidgetContent(slot: WidgetSlot?, progress: WidgetTodayProgress?) {
