@@ -229,6 +229,10 @@ export async function GET(request: NextRequest) {
       text: q.text,
       author: q.author,
       category: q.category,
+      // 위젯이 충분히 넓을 때 원어 병기 — 시드에 명시된 항목만 전달.
+      ...(q.originalText && q.originalLang
+        ? { originalText: q.originalText, originalLang: q.originalLang }
+        : {}),
       gradient: pickGradient(`${me.uid}:${ymd}:famous:${i}`),
     }));
 

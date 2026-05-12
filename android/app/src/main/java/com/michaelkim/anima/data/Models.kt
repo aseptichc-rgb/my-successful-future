@@ -39,6 +39,8 @@ sealed class WidgetSlot {
         override val text: String,
         val author: String,
         val goalsSnapshot: List<String> = emptyList(),
+        val originalText: String? = null,
+        val originalLang: String? = null,
         override val gradient: MotivationGradient,
     ) : WidgetSlot()
 
@@ -48,6 +50,8 @@ sealed class WidgetSlot {
         override val text: String,
         val author: String? = null,
         val category: String,
+        val originalText: String? = null,
+        val originalLang: String? = null,
         override val gradient: MotivationGradient,
     ) : WidgetSlot()
 }

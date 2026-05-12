@@ -56,6 +56,10 @@ export async function POST(req: NextRequest) {
             category: seed.category,
             language: seed.language,
             tags: seed.tags ?? [],
+            // 원문(원어) — 시드에 명시된 경우만 채우고, 없으면 null 로 명시 저장해
+            // 시드에서 제거된 항목이 Firestore 에 잔존하지 않도록 한다.
+            originalText: seed.originalText ?? null,
+            originalLang: seed.originalLang ?? null,
             active: true,
             updatedAt: now,
             createdAt: now, // merge:true 라 첫 생성 때만 의미 있음

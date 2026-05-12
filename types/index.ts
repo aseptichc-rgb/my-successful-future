@@ -170,6 +170,10 @@ export interface FamousQuote {
   language: FamousQuoteLang;
   active: boolean;
   tags?: string[];
+  /** 외국인 명언일 때 원어(원문). 한국 인물이면 비워둔다. */
+  originalText?: string;
+  /** ISO 코드 — "en","de","fr","ru","zh","la","grc","ja" 등. originalText 가 있을 때만 의미. */
+  originalLang?: string;
   createdAt: unknown;
   updatedAt: unknown;
 }
@@ -189,6 +193,8 @@ export interface WidgetSlotFamous {
   text: string;
   author?: string;
   category: FamousQuoteCategory;
+  originalText?: string;
+  originalLang?: string;
   gradient: MotivationGradient;
 }
 export type WidgetSlot = WidgetSlotMotivation | WidgetSlotFamous;

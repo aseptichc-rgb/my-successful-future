@@ -4,6 +4,7 @@
  * 슬롯 종류 (motivation / famous) 에 따라 카드 톤을 다르게.
  * - 미인증/캐시 비어있을 때: "로그인 후 위젯이 채워집니다" 안내
  * - 본문이 너무 길면 ellipsize 로 잘림 (Glance 의 maxLines)
+ * - 위젯이 가로로 넓을 때(medium / large)는 본문 밑에 원어 원문을 흐리게 병기.
  * - 하단에는 오늘 3가지 이행 여부(다짐 따라쓰기 / 행동 체크 / 잘한 일 3가지)를 ☑/☐ 로 노출.
  */
 package com.michaelkim.anima.widget
@@ -15,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceModifier
 import androidx.glance.LocalContext
+import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.background
@@ -42,9 +44,16 @@ private const val PROGRESS_LABEL_WINS = "잘한일"
 private const val PROGRESS_MARK_DONE = "☑"
 private const val PROGRESS_MARK_TODO = "☐"
 
+// 위젯이 "넓다" 고 간주하는 최소 가로 폭. SizeMode.Responsive 의
+// medium(250x120) / large(250x250) 가 이 임계치를 넘는다.
+// small(120x120) 에서는 좁아 원문을 추가로 끼우면 본문이 잘려서 표시하지 않는다.
+private val WIDE_THRESHOLD_DP = 220.dp
+
 @Composable
 fun WidgetContent(slot: WidgetSlot?, progress: WidgetTodayProgress?) {
     val context = LocalContext.current
+    val size = LocalSize.current
+    val isWide = size.width >= WIDE_THRESHOLD_DP
     val bgColor = when (slot?.gradient?.tone) {
         "light" -> Color(parseHex(slot.gradient.from))
         "dark" -> Color(parseHex(slot.gradient.from))
@@ -98,6 +107,24 @@ fun WidgetContent(slot: WidgetSlot?, progress: WidgetTodayProgress?) {
             val author = when (slot) {
                 is WidgetSlot.Motivation -> slot.author
                 is WidgetSlot.Famous -> slot.author
+            }
+            val originalText = when (slot) {
+                is WidgetSlot.Motivation -> slot.originalText
+                is WidgetSlot.Famous -> slot.originalText
+            }
+            // 위젯이 넓을 때만 원문(원어)을 본문 아래에 작게 병기.
+            // 좁은 위젯에서는 본문이 잘려 가독성이 떨어지므로 생략.
+            if (isWide && !originalText.isNullOrBlank()) {
+                Spacer(GlanceModifier.height(4.dp))
+                Text(
+                    text = originalText,
+                    style = TextStyle(
+                        color = ColorProvider(textColor.copy(alpha = 0.65f)),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Normal,
+                    ),
+                    maxLines = 3,
+                )
             }
             if (!author.isNullOrBlank()) {
                 Spacer(GlanceModifier.height(6.dp))
