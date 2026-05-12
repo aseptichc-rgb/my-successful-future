@@ -55,3 +55,6 @@ playwright-report/
 # 임시 스크린샷 (UI 디버깅용)
 desktop-view.png
 mobile-view.png
+
+# 로컬 보관용 안드로이드 APK
+*.apk
