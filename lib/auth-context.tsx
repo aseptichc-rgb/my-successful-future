@@ -206,7 +206,16 @@ async function tryConsumeNativeToken(): Promise<boolean> {
     return false;
   }
   try {
-    await signInWithCustomTokenClient(token);
+    const cred = await signInWithCustomTokenClient(token);
+    // 네이티브가 이 토큰을 발급했다 = 이미 동일 uid 로 네이티브 FirebaseAuth 가 인증돼 있다.
+    // 따라서 bridgeToNativeIfNeeded 를 다시 쏘는 건 100% 멱등 — 그런데도 발화하면
+    // anima://auth 인텐트가 액티비티를 띄워 TWA 위에 빈 화면을 잠깐 노출시킨다 (정확히 사용자가
+    // 보던 "로그인 후 흰 화면 멈춤"). 미리 lastUid 마커를 박아 bridge 를 no-op 으로 만든다.
+    try {
+      window.localStorage.setItem(NATIVE_BRIDGE_LAST_UID_KEY, cred.user.uid);
+    } catch {
+      // localStorage 차단 — 브릿지가 한 번 더 발화될 수는 있지만 B 픽스(NoDisplay 액티비티)가 가려준다.
+    }
     return true;
   } catch {
     return false;

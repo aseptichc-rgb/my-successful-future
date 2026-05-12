@@ -36,8 +36,8 @@ android {
         applicationId = "com.michaelkim.anima"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.1.1"
 
         buildConfigField("String", "ANIMA_API_BASE_URL", "\"$animaApiBaseUrl\"")
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
@@ -71,6 +71,19 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+}
+
+// APK 파일명에 버전을 박는다 — 빌드끼리 헷갈리지 않도록.
+// 예: anima-v0.1.0-1-debug.apk
+androidComponents {
+    onVariants { variant ->
+        val versionName = android.defaultConfig.versionName
+        val versionCode = android.defaultConfig.versionCode
+        variant.outputs.forEach { output ->
+            val impl = output as com.android.build.api.variant.impl.VariantOutputImpl
+            impl.outputFileName.set("anima-v$versionName-$versionCode-${variant.name}.apk")
         }
     }
 }

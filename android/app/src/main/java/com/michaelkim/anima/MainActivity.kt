@@ -37,14 +37,11 @@ import androidx.browser.trusted.TrustedWebActivityIntentBuilder
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.androidbrowserhelper.trusted.TwaLauncher
-import com.google.firebase.auth.FirebaseAuth
 import com.michaelkim.anima.data.api.ApiClient
 import com.michaelkim.anima.data.auth.AuthRepository
 import com.michaelkim.anima.ui.HomeScreen
 import com.michaelkim.anima.work.WinsReminderWorker
-import com.michaelkim.anima.work.WorkScheduler
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
 class MainActivity : ComponentActivity() {
 
@@ -57,11 +54,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ensureNotificationPermission()
-        // 웹(TWA) 세션을 네이티브 FirebaseAuth 로 옮기는 브릿지 딥링크.
-        // anima://auth?token=<customToken> — 처리 후 즉시 finish() 해서 TWA 가 그대로 살아있도록.
-        if (handleNativeAuthBridge(intent)) {
-            return
-        }
+        // 주의: anima://auth 브릿지 딥링크는 AuthBridgeActivity (NoDisplay) 가 전담한다.
+        // MainActivity 가 처리하면 setContent 전에 finish 가 비동기 대기되어 흰 화면이 보였다.
         // 위젯/알림 탭으로 진입한 경우엔 네이티브 HomeScreen 을 그리지 않고
         // 곧장 /home TWA 로 보낸다 — 깜빡임 없이 "바로 홈 화면" 으로 보이도록.
         // 명시적 deep-link 이므로 첫 실행 온보딩보다 우선시한다.
@@ -91,9 +85,6 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (handleNativeAuthBridge(intent)) {
-            return
-        }
         if (shouldOpenHomeFromIntent(intent)) {
             openAnimaInTwa(path = "/home")
             return
@@ -102,41 +93,6 @@ class MainActivity : ComponentActivity() {
         if (AuthRepository.isSignedIn) {
             openAnimaInTwa(path = "/home")
         }
-    }
-
-    /**
-     * 웹에서 들어온 anima://auth?token=<customToken> 딥링크 처리.
-     *
-     * 처리한 경우 true 를 돌려주고 호출자는 다른 분기를 타지 않는다.
-     * customToken 으로 FirebaseAuth.signInWithCustomToken 호출 → 성공 시 위젯 즉시 갱신.
-     * 처리 후 finish() — 사용자는 TWA 안에서 그대로 작업을 이어간다.
-     *
-     * 보안: 받는 토큰이 잘못/만료여도 FirebaseAuth 가 거부하므로 추가 검증 불필요.
-     * 외부 앱이 anima://auth 를 임의로 쏘아도 customToken 위조는 Firebase 서명 검증으로 막힌다.
-     */
-    private fun handleNativeAuthBridge(intent: Intent?): Boolean {
-        val data = intent?.data ?: return false
-        if (data.scheme != "anima" || data.host != "auth") return false
-        val token = data.getQueryParameter("token")
-        if (token.isNullOrBlank()) {
-            Log.w(TAG, "anima://auth deep link 에 token 이 없음")
-            finish()
-            return true
-        }
-        lifecycleScope.launch {
-            try {
-                FirebaseAuth.getInstance().signInWithCustomToken(token).await()
-                Log.i(TAG, "네이티브 브릿지 로그인 성공 — 위젯 즉시 갱신")
-                // 새 토큰으로 즉시 위젯을 채워준다. 정주기 Worker 도 함께 보장.
-                WorkScheduler.scheduleOneTimeRefresh(applicationContext)
-                WorkScheduler.schedulePeriodicRefresh(applicationContext)
-            } catch (e: Exception) {
-                Log.w(TAG, "네이티브 브릿지 signInWithCustomToken 실패", e)
-            } finally {
-                finish()
-            }
-        }
-        return true
     }
 
     private fun shouldOpenHomeFromIntent(intent: Intent?): Boolean {

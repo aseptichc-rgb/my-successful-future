@@ -32,11 +32,22 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!--
-              anima://auth?token=<customToken>
-              웹(TWA) 로그인 세션을 네이티브 FirebaseAuth 로 옮기는 브릿지 딥링크.
-              BROWSABLE 카테고리가 있어야 Chrome/Custom Tabs 안에서 발화한 intent 도 라우팅된다.
-            -->
+        </activity>
+
+        <!--
+          anima://auth?token=<customToken>
+          웹(TWA) 로그인 세션을 네이티브 FirebaseAuth 로 옮기는 브릿지 딥링크 전용.
+          NoDisplay 테마 + noHistory 로 어떤 UI 도 그리지 않고 처리 후 즉시 사라짐 —
+          TWA 위에 빈 화면이 깜빡이는 회귀를 차단한다.
+          BROWSABLE 카테고리가 있어야 Chrome/Custom Tabs 안에서 발화한 intent 도 라우팅된다.
+        -->
+        <activity
+            android:name=".AuthBridgeActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.NoDisplay">
             <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

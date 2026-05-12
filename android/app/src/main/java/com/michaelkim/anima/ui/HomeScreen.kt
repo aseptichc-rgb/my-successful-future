@@ -7,7 +7,6 @@
  */
 package com.michaelkim.anima.ui
 
-import android.app.Activity
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -117,12 +116,18 @@ fun HomeScreen(onOpenAnima: (path: String?) -> Unit) {
         if (onboardingStatus == OnboardingStatus.PENDING) onOpenAnima(ONBOARDING_PATH)
     }
 
-    // DONE 이 확정되는 즉시 TWA /home 으로 보내고 네이티브 액티비티를 finish() 한다.
+    // DONE 이 확정되는 즉시 TWA /home 으로 보낸다.
     // 네이티브 컨트롤 패널은 더 이상 노출하지 않는다 — 로그아웃·새로고침 등 모든 컨트롤은 웹에서 제공.
+    //
+    // 주의: 여기서 (context as Activity).finish() 를 부르지 않는다.
+    //   onOpenAnima → MainActivity.openAnimaInTwa 안의 lifecycleScope.launch 가
+    //   nativeBridgeApi.exchange() 로 customToken 을 받아 TWA URL 에 붙여 띄우는데,
+    //   액티비티가 즉시 finish 되면 lifecycleScope 가 취소돼 코루틴이 중간에 죽는다.
+    //   결과: TWA 가 nativeToken 없이 (혹은 아예 안) 떠서 사용자는 흰 화면을 보게 됨.
+    //   TWA 가 떠 오르면 MainActivity 는 자연스럽게 onPause 로 백그라운드 진입.
     LaunchedEffect(signedIn, onboardingStatus) {
         if (signedIn && onboardingStatus == OnboardingStatus.DONE) {
             onOpenAnima("/home")
-            (context as? Activity)?.finish()
         }
     }
 
