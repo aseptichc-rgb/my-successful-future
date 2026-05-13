@@ -197,6 +197,17 @@ const dict: Record<DictKey, string> = {
   "settings.quote.daysPerWeek": "每周 {n} 天",
   "settings.account.title": "账户",
   "settings.account.signOut": "退出登录",
+  "settings.account.delete": "删除账户",
+  "settings.account.delete.subtitle": "永久删除你的资料、宣言与日志。此操作无法撤销。",
+  "settings.account.delete.confirmTitle": "确定要删除账户吗？",
+  "settings.account.delete.confirmBody":
+    "你写下的未来的自己、每日宣言、做得好的事记录都会被清除。\n购买凭证也会一并清理。日后仍可用同一邮箱重新注册。",
+  "settings.account.delete.confirmInputLabel": "请在下方输入「删除」以确认。",
+  "settings.account.delete.confirmInputKeyword": "删除",
+  "settings.account.delete.confirmCancel": "取消",
+  "settings.account.delete.confirmConfirm": "永久删除",
+  "settings.account.delete.deleting": "删除中…",
+  "settings.account.delete.failed": "账户删除失败，请稍后再试。",
 
   // Auth
   "auth.email": "邮箱",

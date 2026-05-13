@@ -127,8 +127,17 @@ export default function LandingPage() {
           />
         </section>
 
-        <footer className="mt-20 text-center text-[11px] tracking-[-0.01em] text-black/40">
-          © Anima · made for the future you
+        <footer className="mt-20 flex flex-col items-center gap-2 text-[11px] tracking-[-0.01em] text-black/40">
+          <div className="flex items-center gap-3">
+            <Link href="/privacy" className="hover:text-[#1E1B4B]">
+              개인정보 처리방침
+            </Link>
+            <span aria-hidden>·</span>
+            <Link href="/terms" className="hover:text-[#1E1B4B]">
+              이용약관
+            </Link>
+          </div>
+          <p>© Anima · made for the future you</p>
         </footer>
       </main>
     </div>

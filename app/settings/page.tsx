@@ -13,6 +13,7 @@ import {
   MAX_SUCCESS_AFFIRMATIONS,
   QUOTE_PINNED_DAYS_MAX,
 } from "@/lib/firebase";
+import { authedFetch } from "@/lib/authedFetch";
 import { getAllKnownAuthorsGrouped } from "@/lib/famousQuoteCatalog";
 import AffirmationsEditor from "@/components/affirmations/AffirmationsEditor";
 import { useLanguage, LOCALE_META, SUPPORTED_LOCALES, type Locale } from "@/lib/i18n";
@@ -39,6 +40,11 @@ export default function SettingsPage() {
   const [affirmations, setAffirmations] = useState<string[]>([]);
   const [affirmationsSaving, setAffirmationsSaving] = useState(false);
   const [affirmationsJustSaved, setAffirmationsJustSaved] = useState(false);
+
+  // 계정 삭제 — 모달 열림 / 입력 키워드 / 삭제 진행
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -146,6 +152,43 @@ export default function SettingsPage() {
       window.alert(t("common.saveFailed"));
     } finally {
       setAffirmationsSaving(false);
+    }
+  };
+
+  /**
+   * 계정 영구 삭제 — 서버가 Firestore 데이터와 Firebase Auth 사용자를 함께 정리한다.
+   *
+   * 흐름:
+   *   1) DELETE /api/account/delete (Bearer 토큰)
+   *   2) 성공 시 클라 signOut (이미 서버에서 user 가 삭제됐을 수 있어 실패 무시)
+   *   3) /login 으로 이동
+   *
+   * 사용자가 "삭제" 키워드를 입력해야만 confirm 버튼이 활성화된다 — 오발화 차단.
+   */
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      const res = await authedFetch("/api/account/delete", { method: "DELETE" });
+      if (!res.ok) {
+        // 본문이 JSON 이 아닐 가능성을 방어 — 그래도 사용자에겐 friendly 메시지.
+        let serverMsg = "";
+        try {
+          const body = (await res.json()) as { error?: string };
+          serverMsg = body?.error ?? "";
+        } catch {
+          /* ignore */
+        }
+        throw new Error(serverMsg || t("settings.account.delete.failed"));
+      }
+      // 클라 측 Firebase 세션 정리. 이미 user 가 사라져 onIdTokenChanged 로 자동 sign-out 됐을 수도 있음.
+      await signOut().catch(() => {});
+      router.replace("/login");
+    } catch (err) {
+      console.error("[settings] 계정 삭제 실패:", err);
+      window.alert(
+        err instanceof Error ? err.message : t("settings.account.delete.failed"),
+      );
+      setDeleting(false);
     }
   };
 
@@ -448,9 +491,109 @@ export default function SettingsPage() {
                 {t("settings.account.signOut")}
               </button>
             </div>
+
+            {/*
+              Google Play 정책상 앱 내에서 계정 삭제 진입이 반드시 있어야 한다.
+              실수 삭제 방지를 위해 사용자가 키워드를 정확히 입력해야 확인 버튼이 활성화된다.
+            */}
+            <div className="mt-4 border-t border-black/[0.06] pt-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-semibold tracking-[-0.015em] text-red-600">
+                    {t("settings.account.delete")}
+                  </p>
+                  <p className="mt-1 text-[12px] tracking-[-0.01em] text-black/56">
+                    {t("settings.account.delete.subtitle")}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeleteConfirmText("");
+                    setDeleteOpen(true);
+                  }}
+                  className="shrink-0 rounded-pill border border-red-200 px-4 py-2 text-[13px] font-medium text-red-600 transition-colors hover:bg-red-50"
+                >
+                  {t("settings.account.delete")}
+                </button>
+              </div>
+            </div>
+
+            {/* 법적 고지 — Play 심사자가 앱 내에서도 찾을 수 있도록 노출. */}
+            <div className="mt-4 flex items-center gap-3 border-t border-black/[0.06] pt-4 text-[12px] tracking-[-0.01em] text-black/56">
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-[#1E1B4B]">
+                개인정보 처리방침
+              </a>
+              <span aria-hidden>·</span>
+              <a href="/terms" target="_blank" rel="noopener noreferrer" className="hover:text-[#1E1B4B]">
+                이용약관
+              </a>
+            </div>
           </section>
         </div>
       </div>
+
+      {/*
+        삭제 확인 모달. 키워드 입력이 정확히 일치할 때만 확정 버튼이 활성화된다.
+        삭제 진행 중에는 닫기/취소 차단 — 부분 삭제 상태로 모달이 닫히는 케이스 방지.
+      */}
+      {deleteOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-5"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-account-title"
+        >
+          <div className="w-full max-w-md rounded-[20px] bg-white p-6 shadow-2xl">
+            <h3
+              id="delete-account-title"
+              className="text-[18px] font-semibold tracking-[-0.022em] text-[#1E1B4B]"
+            >
+              {t("settings.account.delete.confirmTitle")}
+            </h3>
+            <p className="mt-3 whitespace-pre-line text-[13px] leading-[1.6] tracking-[-0.01em] text-black/64">
+              {t("settings.account.delete.confirmBody")}
+            </p>
+
+            <label className="mt-5 block text-[12px] font-semibold tracking-[-0.01em] text-black/70">
+              {t("settings.account.delete.confirmInputLabel")}
+            </label>
+            <input
+              type="text"
+              value={deleteConfirmText}
+              disabled={deleting}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              autoFocus
+              className="mt-1.5 w-full rounded-[10px] border border-black/15 bg-white px-3 py-2 text-[14px] tracking-[-0.01em] text-[#1E1B4B] focus:border-red-500 focus:outline-none disabled:opacity-60"
+            />
+
+            <div className="mt-6 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteOpen(false)}
+                disabled={deleting}
+                className="rounded-pill border border-black/10 px-4 py-2 text-[13px] font-medium text-black/70 transition-colors hover:bg-black/[0.04] disabled:opacity-50"
+              >
+                {t("settings.account.delete.confirmCancel")}
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={
+                  deleting ||
+                  deleteConfirmText.trim().toLowerCase() !==
+                    t("settings.account.delete.confirmInputKeyword").toLowerCase()
+                }
+                className="rounded-pill bg-red-600 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-red-700 disabled:bg-red-300"
+              >
+                {deleting
+                  ? t("settings.account.delete.deleting")
+                  : t("settings.account.delete.confirmConfirm")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

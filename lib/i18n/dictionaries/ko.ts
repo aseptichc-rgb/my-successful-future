@@ -187,6 +187,17 @@ const dict = {
   "settings.quote.daysPerWeek": "주 {n}일",
   "settings.account.title": "계정",
   "settings.account.signOut": "로그아웃",
+  "settings.account.delete": "계정 삭제",
+  "settings.account.delete.subtitle": "내 정보·다짐·기록을 모두 영구 삭제합니다. 되돌릴 수 없어요.",
+  "settings.account.delete.confirmTitle": "정말 계정을 삭제할까요?",
+  "settings.account.delete.confirmBody":
+    "10년 후의 나에게 적은 모습, 매일의 다짐, 잘한 일 기록이 모두 사라집니다.\n결제 영수증도 함께 정리되며, 같은 이메일로 다시 가입할 수는 있어요.",
+  "settings.account.delete.confirmInputLabel": "확인을 위해 아래에 \"삭제\"를 입력해주세요.",
+  "settings.account.delete.confirmInputKeyword": "삭제",
+  "settings.account.delete.confirmCancel": "취소",
+  "settings.account.delete.confirmConfirm": "영구 삭제",
+  "settings.account.delete.deleting": "삭제 중…",
+  "settings.account.delete.failed": "계정 삭제에 실패했어요. 잠시 후 다시 시도해주세요.",
 
   // ── 인증 ─────────────────────────────────────────
   "auth.email": "이메일",

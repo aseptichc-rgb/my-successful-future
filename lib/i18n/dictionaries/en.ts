@@ -201,6 +201,17 @@ const dict: Record<DictKey, string> = {
   "settings.quote.daysPerWeek": "{n} days/week",
   "settings.account.title": "Account",
   "settings.account.signOut": "Sign out",
+  "settings.account.delete": "Delete account",
+  "settings.account.delete.subtitle": "Permanently removes your profile, affirmations, and history. This cannot be undone.",
+  "settings.account.delete.confirmTitle": "Delete your account?",
+  "settings.account.delete.confirmBody":
+    "Your future self, daily affirmations, and wins log will be erased.\nReceipts will be cleared too. You can sign up again with the same email later.",
+  "settings.account.delete.confirmInputLabel": "Type \"delete\" below to confirm.",
+  "settings.account.delete.confirmInputKeyword": "delete",
+  "settings.account.delete.confirmCancel": "Cancel",
+  "settings.account.delete.confirmConfirm": "Delete permanently",
+  "settings.account.delete.deleting": "Deleting…",
+  "settings.account.delete.failed": "Failed to delete account. Please try again shortly.",
 
   // Auth
   "auth.email": "Email",
