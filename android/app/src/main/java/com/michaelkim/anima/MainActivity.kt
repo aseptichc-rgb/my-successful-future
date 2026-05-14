@@ -35,14 +35,18 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.browser.trusted.TrustedWebActivityIntentBuilder
 import androidx.core.content.ContextCompat
+import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.lifecycleScope
 import com.google.androidbrowserhelper.trusted.TwaLauncher
+import com.michaelkim.anima.data.QuoteRepository
 import com.michaelkim.anima.data.api.ApiClient
 import com.michaelkim.anima.data.auth.AuthRepository
 import com.michaelkim.anima.ui.HomeScreen
+import com.michaelkim.anima.widget.QuoteWidget
 import com.michaelkim.anima.work.WinsReminderWorker
 import com.michaelkim.anima.work.WorkScheduler
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 class MainActivity : ComponentActivity() {
 
@@ -63,11 +67,10 @@ class MainActivity : ComponentActivity() {
         // finishAfterLaunch=true: TWA 가 실제로 뜬 뒤 MainActivity 를 종료 — 그렇게 안 하면
         // 빈 윈도(흰 화면) 가 백스택에 남아 TWA 에서 뒤로가기를 누르면 흰 화면에 멈춘다.
         if (shouldOpenHomeFromIntent(intent)) {
-            // 위젯/알림에서 진입한 케이스 — 캐시가 최대 3시간 stale 일 수 있어
-            // 즉시 백그라운드 갱신을 1회 큐잉. TWA 가 그리는 /home 의 motivation 과
-            // 위젯이 보여주는 한 마디가 어긋나는 현상을 다음 fetch 에서 즉시 봉합한다.
-            WorkScheduler.scheduleOneTimeRefresh(this)
-            openAnimaInTwa(path = "/home", finishAfterLaunch = true)
+            // 위젯/알림에서 진입한 케이스 — 캐시가 최대 3시간 stale 일 수 있다.
+            // 비동기 Worker 만으로는 TWA 가 먼저 열려 위젯(stale) 과 /home(최신) 이
+            // 그 순간 어긋나 보이므로, TWA 를 띄우기 전에 동기로 한번 더 fetch.
+            refreshWidgetCacheThenOpenHome()
             return
         }
         // 이미 로그인된 사용자는 네이티브 컨트롤 패널을 거치지 않고 곧장 TWA /home 으로 보낸다.
@@ -91,12 +94,42 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         if (shouldOpenHomeFromIntent(intent)) {
-            WorkScheduler.scheduleOneTimeRefresh(this)
-            openAnimaInTwa(path = "/home", finishAfterLaunch = true)
+            refreshWidgetCacheThenOpenHome()
             return
         }
         // singleTop 이 아니므로 LAUNCHER 재진입에서 이 경로는 잘 안 타지만, 안전을 위해 동일 가드 유지.
         if (AuthRepository.isSignedIn) {
+            openAnimaInTwa(path = "/home", finishAfterLaunch = true)
+        }
+    }
+
+    /**
+     * 위젯/알림 탭 → /home 진입 직전, 위젯 캐시를 한번 동기로 갱신해 /home 과의 명언 불일치를 봉합.
+     *
+     * - 미로그인이면 갱신 의미가 없어 스킵하고 곧장 TWA 진입.
+     * - 네트워크가 느리거나 실패해도 최대 [REFRESH_BEFORE_HOME_TIMEOUT_MS] 만 기다리고 진행 —
+     *   잠시 stale 한 위젯을 한번 더 봐도, TWA 탭이 무한 대기하는 것보다 사용자 경험이 나음.
+     * - 타임아웃/예외 시에는 비동기 Worker 를 폴백으로 큐잉해 다음 fetch 에서 봉합.
+     */
+    private fun refreshWidgetCacheThenOpenHome() {
+        if (!AuthRepository.isSignedIn) {
+            openAnimaInTwa(path = "/home", finishAfterLaunch = true)
+            return
+        }
+        lifecycleScope.launch {
+            val completed = try {
+                withTimeoutOrNull(REFRESH_BEFORE_HOME_TIMEOUT_MS) {
+                    QuoteRepository.refresh(this@MainActivity)
+                    QuoteWidget().updateAll(this@MainActivity)
+                    true
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "TWA 진입 전 위젯 캐시 갱신 실패 — Worker 폴백", e)
+                null
+            }
+            if (completed != true) {
+                WorkScheduler.scheduleOneTimeRefresh(this@MainActivity)
+            }
             openAnimaInTwa(path = "/home", finishAfterLaunch = true)
         }
     }
@@ -230,5 +263,8 @@ class MainActivity : ComponentActivity() {
         private const val PREFS_APP_FLAGS = "anima_app_flags"
         private const val KEY_HAS_LAUNCHED = "has_launched_v1"
         private const val ONBOARDING_PATH = "/onboarding"
+        // 위젯/알림 탭에서 /home TWA 를 띄우기 전, 위젯 캐시 동기 갱신에 허용할 최대 대기.
+        // 정상 캐시 히트(Firestore 1회 read) 는 200-500ms 라 보통 그 안에 끝난다.
+        private const val REFRESH_BEFORE_HOME_TIMEOUT_MS = 2500L
     }
 }
