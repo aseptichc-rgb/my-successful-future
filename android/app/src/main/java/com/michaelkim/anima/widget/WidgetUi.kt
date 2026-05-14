@@ -38,11 +38,16 @@ import com.michaelkim.anima.MainActivity
 import com.michaelkim.anima.data.WidgetSlot
 import com.michaelkim.anima.data.WidgetTodayProgress
 
-private const val PROGRESS_LABEL_AFFIRMATION = "한발더"
-private const val PROGRESS_LABEL_ACTIONS = "행동"
-private const val PROGRESS_LABEL_WINS = "잘한일"
+// 위젯 진행 칩 라벨 — 홈 화면의 섹션 타이틀과 동일한 문구를 그대로 사용해
+// "어떤 항목이 체크된 건지" 즉시 알아볼 수 있게 한다.
+// 좁은 칩 폭에 맞추기 위해 줄바꿈(\n)을 명시적으로 넣어 2줄로 표시한다.
+// "3가지" 는 lib/firebase.ts 의 MAX_DAILY_WINS(=3) 와 동기화되어 있다.
+private const val PROGRESS_LABEL_AFFIRMATION = "성공한 나에게\n한 발 더"
+private const val PROGRESS_LABEL_ACTIONS = "목표를 이루기 위한\n오늘의 행동"
+private const val PROGRESS_LABEL_WINS = "오늘 잘한 일\n3가지"
 private const val PROGRESS_MARK_DONE = "☑"
 private const val PROGRESS_MARK_TODO = "☐"
+private const val PROGRESS_CHIP_MAX_LINES = 2
 
 // 위젯이 "넓다" 고 간주하는 최소 가로 폭. SizeMode.Responsive 의
 // medium(250x120) / large(250x250) 가 이 임계치를 넘는다.
@@ -157,7 +162,7 @@ private fun ProgressChip(label: String, done: Boolean, textColor: Color) {
             fontSize = 11.sp,
             fontWeight = if (done) FontWeight.Bold else FontWeight.Normal,
         ),
-        maxLines = 1,
+        maxLines = PROGRESS_CHIP_MAX_LINES,
     )
 }
 
