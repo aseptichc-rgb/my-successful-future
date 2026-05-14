@@ -115,6 +115,11 @@ export interface DailyMotivation {
    * 같은 문구가 다시 잡히지 않도록 풀에서 제외하는 데 쓴다. 첫 카드의 quote 도 포함.
    */
   seenQuotes?: string[];
+  /**
+   * 카드 생성 시 풀에 남은 항목이 없어 누적 히스토리(`users/{uid}.seenQuoteTexts`) 를
+   * 리셋한 경우 true. 운영 디버깅용 메타 — UI 는 사용하지 않는다.
+   */
+  historyReset?: boolean;
   createdAt: Timestamp;
 }
 
@@ -178,7 +183,12 @@ export interface FamousQuote {
   updatedAt: unknown;
 }
 
-export interface WidgetSlotMotivation {
+/**
+ * 위젯에 보이는 한 장의 카드. 과거에는 motivation 1장 + famous 7장이 24h 슬롯으로 회전했으나,
+ * 웹 /home 이 motivation 1장만 노출하므로 위젯도 동일하게 motivation 1장만 보여준다.
+ * 응답 호환성을 위해 `kind` 필드는 유지 — 안드로이드 측 캐시가 단일 형태로 디코딩한다.
+ */
+export interface WidgetSlot {
   kind: "motivation";
   text: string;
   author: string;
@@ -188,16 +198,6 @@ export interface WidgetSlotMotivation {
   goalsSnapshot: string[];
   gradient: MotivationGradient;
 }
-export interface WidgetSlotFamous {
-  kind: "famous";
-  text: string;
-  author?: string;
-  category: FamousQuoteCategory;
-  originalText?: string;
-  originalLang?: string;
-  gradient: MotivationGradient;
-}
-export type WidgetSlot = WidgetSlotMotivation | WidgetSlotFamous;
 
 /**
  * 위젯 하단에 보이는 "오늘 3가지 이행 여부" 요약.

@@ -41,6 +41,7 @@ import com.michaelkim.anima.data.api.ApiClient
 import com.michaelkim.anima.data.auth.AuthRepository
 import com.michaelkim.anima.ui.HomeScreen
 import com.michaelkim.anima.work.WinsReminderWorker
+import com.michaelkim.anima.work.WorkScheduler
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -62,6 +63,10 @@ class MainActivity : ComponentActivity() {
         // finishAfterLaunch=true: TWA 가 실제로 뜬 뒤 MainActivity 를 종료 — 그렇게 안 하면
         // 빈 윈도(흰 화면) 가 백스택에 남아 TWA 에서 뒤로가기를 누르면 흰 화면에 멈춘다.
         if (shouldOpenHomeFromIntent(intent)) {
+            // 위젯/알림에서 진입한 케이스 — 캐시가 최대 3시간 stale 일 수 있어
+            // 즉시 백그라운드 갱신을 1회 큐잉. TWA 가 그리는 /home 의 motivation 과
+            // 위젯이 보여주는 한 마디가 어긋나는 현상을 다음 fetch 에서 즉시 봉합한다.
+            WorkScheduler.scheduleOneTimeRefresh(this)
             openAnimaInTwa(path = "/home", finishAfterLaunch = true)
             return
         }
@@ -86,6 +91,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         if (shouldOpenHomeFromIntent(intent)) {
+            WorkScheduler.scheduleOneTimeRefresh(this)
             openAnimaInTwa(path = "/home", finishAfterLaunch = true)
             return
         }

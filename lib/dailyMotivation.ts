@@ -13,7 +13,7 @@
  *   3) 환각(가짜 인용)을 막기 위해 큐레이션 시드 `FAMOUS_QUOTES_SEED` 를 후보로 주고,
  *      Gemini 는 그 풀 안에서 한 건의 id 를 고르는 역할만 한다.
  */
-import { Timestamp } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { generateText } from "@/lib/gemini";
 import { type FamousQuoteSeed } from "@/lib/famousQuotesSeed";
@@ -55,6 +55,17 @@ const MAX_GOALS_ON_CARD = 3;
 const QUOTE_MODEL_TOKENS = 240;
 const MISSION_PROMPT_MAX_LEN = 80;
 const MISSION_PROMPT_MIN_LEN = 18;
+/**
+ * 사용자가 과거에 봤던 명언 텍스트 누적 상한.
+ * - 풀 자체가 유한(언어별 수백 건)이라, 풀을 다 본 시점에 자연스럽게 자동 리셋되므로
+ *   상한은 안전망(문서 크기 폭주 방지) 의미. 1MB 문서 한도 대비 충분히 여유 있음.
+ */
+const MAX_SEEN_QUOTE_HISTORY = 600;
+/**
+ * 자유 인물(시드 풀에 없는 인물) 명언 생성 시 Gemini 에게 회피 힌트로 전달할 과거 노출 건수.
+ * 너무 많이 넣으면 프롬프트가 비대해지므로 최근 N 건만 추린다.
+ */
+const MAX_HISTORY_HINTS_FOR_PROMPT = 30;
 /** 한 주에 노출되는 인물 풀의 목표 인원수 — 너무 좁으면 단조롭고, 너무 넓으면 회전 효과가 사라진다. */
 const WEEKLY_AUTHOR_POOL_SIZE = 8;
 const MIN_PINNED_DAYS = 0;
@@ -212,6 +223,12 @@ interface UserContext {
   preference: QuotePreference;
   /** 사용자 UI / 카드 출력 언어. 미설정 시 "ko". */
   language: UserLanguage;
+  /**
+   * 이 사용자에게 과거에 (어떤 날이든) 노출됐던 명언 텍스트 누적.
+   * 날짜 경계를 넘어가도 같은 격언이 다시 나오지 않게 풀에서 제외하는 데 쓴다.
+   * 풀이 모두 소진되면 자연스럽게 리셋된다.
+   */
+  seenQuoteTexts: string[];
 }
 
 function buildPrompt(opts: {
@@ -313,7 +330,11 @@ async function fetchUserContext(uid: string): Promise<UserContext> {
     .slice(0, MAX_GOALS_ON_CARD);
   const preference = sanitizePreference(data.quotePreference);
   const language = normalizeLanguage(data.language);
-  return { displayName, futurePersona, goals, preference, language };
+  const seenQuoteTexts = Array.isArray(data.seenQuoteTexts)
+    ? (data.seenQuoteTexts as unknown[])
+        .filter((t): t is string => typeof t === "string" && t.length > 0)
+    : [];
+  return { displayName, futurePersona, goals, preference, language, seenQuoteTexts };
 }
 
 interface PickedExtension {
@@ -703,21 +724,35 @@ export async function ensureMotivation(opts: {
           ]),
         )
       : [];
-  const seenSet = new Set(seenQuotesArr);
+  const todaysSeenSet = new Set(seenQuotesArr);
 
-  // 다시 받기: 오늘 이미 본 명언들은 풀에서 모두 제외한다 (alternating 방지).
-  // - 주간/핀 풀에서 1개 이상 남으면 그대로 사용.
-  // - 그렇지 않으면 (예: 핀 인물의 시드 명언이 적은 날) 전체 후보로 풀을 넓혀
-  //   "재생성해도 같은 문구만 돌고 도는" 상황을 피한다.
-  const excludeSeen = (q: FamousQuoteSeed) => !seenSet.has(q.text);
-  const filteredFromRaw = force && existing ? rawPool.filter(excludeSeen) : rawPool;
-  const widenedAll = force && existing ? allCandidates.filter(excludeSeen) : allCandidates;
-  const pool: ReadonlyArray<FamousQuoteSeed> =
-    force && existing
-      ? filteredFromRaw.length > 0
-        ? filteredFromRaw
-        : widenedAll
-      : rawPool;
+  // 날짜를 넘어가도 같은 격언이 또 나오지 않도록, 사용자 누적 히스토리를 기본 제외 집합으로 쓴다.
+  // 오늘 이미 노출된 텍스트(같은 날 "다시 받기") 도 합쳐 한 번에 풀에서 빼낸다.
+  const historySet = new Set(ctx.seenQuoteTexts);
+  const excludeSet = new Set<string>([...historySet, ...todaysSeenSet]);
+  const notExcluded = (q: FamousQuoteSeed) => !excludeSet.has(q.text);
+
+  // 풀 결정 우선순위:
+  //   1) 오늘의 의도된 풀(rawPool: override / pinned / weekly / all) 에서 과거 노출 제외 후 남은 것
+  //   2) 1) 이 비면 전체 시드 풀에서 과거 노출 제외 후 남은 것
+  //   3) 둘 다 비면 → 풀이 소진된 것이므로 히스토리 리셋(이번 카드 저장 시 누적 배열을 새로 시작)
+  //      후 오늘만 피해 다시 고른다.
+  const filteredFromRaw = rawPool.filter(notExcluded);
+  const filteredFromAll = allCandidates.filter(notExcluded);
+  let resetHistory = false;
+  let pool: ReadonlyArray<FamousQuoteSeed>;
+  if (filteredFromRaw.length > 0) {
+    pool = filteredFromRaw;
+  } else if (filteredFromAll.length > 0) {
+    pool = filteredFromAll;
+  } else {
+    resetHistory = true;
+    const todayOnlyFromRaw = rawPool.filter((q) => !todaysSeenSet.has(q.text));
+    const todayOnlyFromAll = allCandidates.filter((q) => !todaysSeenSet.has(q.text));
+    if (todayOnlyFromRaw.length > 0) pool = todayOnlyFromRaw;
+    else if (todayOnlyFromAll.length > 0) pool = todayOnlyFromAll;
+    else pool = rawPool.length > 0 ? rawPool : allCandidates; // 최후 안전망
+  }
 
   // Gemini 가 같은 입력에 같은 답을 주는 경향이 있어, 호출마다 변하는 시드를 프롬프트에 주입.
   const varietySalt = force
@@ -726,6 +761,14 @@ export async function ensureMotivation(opts: {
 
   let picked: PickedQuote;
   let mission: MotivationMission;
+
+  // Gemini 회피 힌트: 오늘 본 것 + 과거 누적 일부. 프롬프트 비대화를 막으려 최근만 추린다.
+  const avoidQuotesForPrompt = Array.from(
+    new Set([
+      ...seenQuotesArr,
+      ...ctx.seenQuoteTexts.slice(-MAX_HISTORY_HINTS_FOR_PROMPT),
+    ]),
+  );
 
   if (pool.length === 0 && freeAuthor) {
     // 시드에 없는 free-text 인물 → Gemini 가 실제 발언 + mission/identityTag 를 같이 가져옴.
@@ -737,7 +780,7 @@ export async function ensureMotivation(opts: {
           author: freeAuthor,
           identityLabels,
           varietySalt,
-          avoidQuotes: seenQuotesArr,
+          avoidQuotes: avoidQuotesForPrompt,
         }),
         QUOTE_MODEL_TOKENS,
       );
@@ -783,7 +826,7 @@ export async function ensureMotivation(opts: {
           candidates: pool,
           identityLabels,
           varietySalt,
-          avoidQuotes: seenQuotesArr,
+          avoidQuotes: avoidQuotesForPrompt,
         }),
         QUOTE_MODEL_TOKENS,
       );
@@ -808,11 +851,13 @@ export async function ensureMotivation(opts: {
     }
   }
 
-  // 마지막 안전망: 어떤 경로로든 오늘 이미 본 문구가 다시 잡혔다면, 전체 후보에서
-  // 가변 시드 기반으로 다른 명언을 강제로 고른다. 사용자 입장에선 "또 다른 한마디"
-  // 인데 같은 문구가 나오는 게 가장 큰 이질감이라 여기서 무조건 끊어준다.
-  if (force && existing && seenSet.has(picked.text)) {
-    const altPool = allCandidates.filter((q) => !seenSet.has(q.text));
+  // 마지막 안전망: 어떤 경로로든 (오늘 이미 본 문구 + 과거에 본 문구) 에 다시 걸렸다면,
+  // 전체 후보에서 가변 시드 기반으로 다른 명언을 강제로 고른다.
+  // 풀이 history 리셋 후 좁아진 상태라면 excludeSet 적용이 불가능하므로 오늘만 피한다.
+  if (excludeSet.has(picked.text)) {
+    const altPool = resetHistory
+      ? allCandidates.filter((q) => !todaysSeenSet.has(q.text))
+      : allCandidates.filter((q) => !excludeSet.has(q.text));
     if (altPool.length > 0) {
       const alt = deterministicFallback(uid, `${ymd}:${varietySalt}:retry`, altPool, ctx.language);
       picked = toPickedQuote(alt);
@@ -837,9 +882,38 @@ export async function ensureMotivation(opts: {
     gradient,
     mission,
     seenQuotes: nextSeenQuotes,
+    ...(resetHistory ? { historyReset: true } : {}),
     createdAt: Timestamp.now() as unknown as DailyMotivation["createdAt"],
   };
 
   await ref.set(motivation);
+
+  // 사용자 문서의 누적 히스토리 갱신.
+  // - 풀 소진으로 리셋된 경우: 배열을 새로 시작(이번 카드 텍스트만 남김).
+  // - 그렇지 않으면: arrayUnion 으로 중복 없이 누적, 상한 초과 시 오래된 항목 정리.
+  // 카드 저장 자체는 성공해야 하므로 히스토리 업데이트 실패는 로그만 남기고 삼킨다.
+  try {
+    const userRef = getAdminDb().doc(`users/${uid}`);
+    if (resetHistory) {
+      await userRef.set({ seenQuoteTexts: [picked.text] }, { merge: true });
+    } else if (ctx.seenQuoteTexts.length + 1 > MAX_SEEN_QUOTE_HISTORY) {
+      // 상한 초과: 가장 오래된 항목들을 잘라낸 뒤 통째로 교체.
+      const trimmed = Array.from(new Set([...ctx.seenQuoteTexts, picked.text])).slice(
+        -MAX_SEEN_QUOTE_HISTORY,
+      );
+      await userRef.set({ seenQuoteTexts: trimmed }, { merge: true });
+    } else {
+      await userRef.set(
+        { seenQuoteTexts: FieldValue.arrayUnion(picked.text) },
+        { merge: true },
+      );
+    }
+  } catch (err) {
+    console.warn(
+      "[dailyMotivation] 누적 명언 히스토리 갱신 실패:",
+      err instanceof Error ? err.message : err,
+    );
+  }
+
   return { motivation, cached: false };
 }

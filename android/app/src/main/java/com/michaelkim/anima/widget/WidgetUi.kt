@@ -104,16 +104,9 @@ fun WidgetContent(slot: WidgetSlot?, progress: WidgetTodayProgress?) {
                 ),
                 maxLines = 4,
             )
-            val author = when (slot) {
-                is WidgetSlot.Motivation -> slot.author
-                is WidgetSlot.Famous -> slot.author
-            }
-            val originalText = when (slot) {
-                is WidgetSlot.Motivation -> slot.originalText
-                is WidgetSlot.Famous -> slot.originalText
-            }
             // 위젯이 넓을 때만 원문(원어)을 본문 아래에 작게 병기.
             // 좁은 위젯에서는 본문이 잘려 가독성이 떨어지므로 생략.
+            val originalText = slot.originalText
             if (isWide && !originalText.isNullOrBlank()) {
                 Spacer(GlanceModifier.height(4.dp))
                 Text(
@@ -126,10 +119,10 @@ fun WidgetContent(slot: WidgetSlot?, progress: WidgetTodayProgress?) {
                     maxLines = 3,
                 )
             }
-            if (!author.isNullOrBlank()) {
+            if (slot.author.isNotBlank()) {
                 Spacer(GlanceModifier.height(6.dp))
                 Text(
-                    text = "— $author",
+                    text = "— ${slot.author}",
                     style = TextStyle(color = ColorProvider(textColor.copy(alpha = 0.75f)), fontSize = 11.sp),
                     maxLines = 1,
                 )

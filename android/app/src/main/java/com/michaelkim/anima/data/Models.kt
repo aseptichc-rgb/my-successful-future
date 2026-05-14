@@ -4,14 +4,7 @@
  */
 package com.michaelkim.anima.data
 
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonClassDiscriminator
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 
 @Serializable
 data class MotivationGradient(
@@ -22,39 +15,19 @@ data class MotivationGradient(
 )
 
 /**
- * 백엔드의 WidgetSlot 합타입을 안전하게 풀기 위한 Kotlin 표현.
- * kotlinx.serialization 의 sealed class + JsonClassDiscriminator 를 쓰면 가장 깔끔하지만,
- * 백엔드는 "kind" 라는 평탄한 필드를 쓰므로 OptIn 으로 정합.
+ * 위젯에 보이는 한 장의 카드. 백엔드가 `kind: "motivation"` 을 보내지만 단일 형태이므로
+ * 디스크리미네이터 분기 없이 평탄한 data class 로 디코딩한다.
+ * `Json { ignoreUnknownKeys = true }` 라 `kind` 필드는 안전히 무시된다.
  */
-@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 @Serializable
-@JsonClassDiscriminator("kind")
-sealed class WidgetSlot {
-    abstract val text: String
-    abstract val gradient: MotivationGradient
-
-    @Serializable
-    @SerialName("motivation")
-    data class Motivation(
-        override val text: String,
-        val author: String,
-        val goalsSnapshot: List<String> = emptyList(),
-        val originalText: String? = null,
-        val originalLang: String? = null,
-        override val gradient: MotivationGradient,
-    ) : WidgetSlot()
-
-    @Serializable
-    @SerialName("famous")
-    data class Famous(
-        override val text: String,
-        val author: String? = null,
-        val category: String,
-        val originalText: String? = null,
-        val originalLang: String? = null,
-        override val gradient: MotivationGradient,
-    ) : WidgetSlot()
-}
+data class WidgetSlot(
+    val text: String,
+    val author: String,
+    val originalText: String? = null,
+    val originalLang: String? = null,
+    val goalsSnapshot: List<String> = emptyList(),
+    val gradient: MotivationGradient,
+)
 
 /**
  * 위젯 하단 "오늘 3가지 이행 여부" 요약.
@@ -72,7 +45,7 @@ data class WidgetTodayProgress(
 data class WidgetTodayResponse(
     val generatedAt: String,
     val ymd: String,
-    val currentSlotIndex: Int,
+    val currentSlotIndex: Int = 0,
     val slots: List<WidgetSlot>,
     val nextRefreshAt: String,
     val todayProgress: WidgetTodayProgress = WidgetTodayProgress(),
@@ -84,6 +57,3 @@ data class CachedWidgetState(
     val response: WidgetTodayResponse,
     val cachedAtEpochMs: Long,
 )
-
-internal fun JsonObject.stringOrNull(key: String): String? =
-    (this[key] as? JsonElement)?.jsonPrimitive?.contentOrNull

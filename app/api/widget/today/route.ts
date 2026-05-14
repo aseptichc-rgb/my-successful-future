@@ -1,17 +1,14 @@
 /**
  * GET /api/widget/today
  *
- * 안드로이드 위젯/메인 앱이 한 번 호출로 받아가는 "오늘의 슬롯" 응답.
+ * 안드로이드 위젯/메인 앱이 한 번 호출로 받아가는 "오늘의 카드" 응답.
  *
- * 슬롯 구성 (총 8개, KST 자정 기준 3시간 단위 = 24h):
- *   slot[0]              = 오늘의 동기부여 카드 (개인화 한 마디 / dailyMotivation)
- *   slot[1] ~ slot[7]    = famousQuotes 컬렉션에서 결정론적으로 7개 선택
+ * 응답 구성:
+ *   slots[0]       = 오늘의 동기부여 카드 (개인화 한 마디 / dailyMotivation)
+ *   todayProgress  = 다짐/행동/잘한일 3가지 이행 여부
  *
- * 결정론: 같은 uid+ymd 라면 항상 같은 7개가 같은 순서로 뽑힘 → 위젯이 시간별로
- *         같은 콘텐츠를 보여줌. 다음 날엔 다른 7개가 뽑힘.
- *
- * currentSlotIndex: 서버가 현재 KST 시간을 보고 0~7 중 어느 슬롯이 "지금"인지 알려줌.
- * 위젯은 그 인덱스만 보여주면 됨.
+ * 정책: 웹 /home 화면이 dailyMotivation 한 장만 노출하므로 위젯도 같은 한 장만 보여준다.
+ *       과거에 슬롯 회전(8개)이 있었으나, 위젯-홈 불일치만 만들고 사실상 사용되지 않아 단순화.
  *
  * 인증: Authorization: Bearer <Firebase ID Token>. uid 위장 불가.
  */
@@ -22,17 +19,11 @@ import { enforceQuota, QuotaExceededError } from "@/lib/quota";
 import {
   KST_OFFSET_MS,
   ensureMotivation,
-  hash32,
   isValidYmd,
-  pickGradient,
   todayKst,
 } from "@/lib/dailyMotivation";
 import type {
-  FamousQuote,
-  FamousQuoteLang,
   WidgetSlot,
-  WidgetSlotFamous,
-  WidgetSlotMotivation,
   WidgetTodayProgress,
   WidgetTodayResponse,
 } from "@/types";
@@ -40,10 +31,6 @@ import type {
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
-const SLOT_HOURS = 3;
-const TOTAL_SLOTS = 24 / SLOT_HOURS; // 8
-const FAMOUS_SLOT_COUNT = TOTAL_SLOTS - 1; // 7
-const DEFAULT_LANG: FamousQuoteLang = "ko";
 const REQUIRED_WINS = 3;
 
 /**
@@ -103,74 +90,15 @@ async function fetchTodayProgress(
   return { affirmation, actions, wins };
 }
 
-/** KST 현재 시각으로 0~TOTAL_SLOTS-1 슬롯 인덱스 계산 */
-function currentSlotKst(now: Date): number {
-  const kst = new Date(now.getTime() + KST_OFFSET_MS);
-  // toISOString 은 UTC 기준이지만, 우리가 더한 offset 덕에 시 부분이 KST 시간이 됨
-  const hour = kst.getUTCHours();
-  return Math.floor(hour / SLOT_HOURS);
-}
-
-/** 슬롯 시작 시각 (KST) → ISO timestamp. 다음 갱신 시각 계산용. */
+/** KST 다음 자정의 ISO timestamp — 위젯 다음 갱신 시각 hint. */
 function nextRefreshIso(now: Date): string {
   const kst = new Date(now.getTime() + KST_OFFSET_MS);
-  const hour = kst.getUTCHours();
-  const nextSlotHour = (Math.floor(hour / SLOT_HOURS) + 1) * SLOT_HOURS; // 다음 슬롯 시각
-  // KST 자정 + nextSlotHour
-  const kstMidnight = Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate());
-  const nextKstEpoch = kstMidnight + nextSlotHour * 3600 * 1000;
-  // KST → UTC 환산
-  return new Date(nextKstEpoch - KST_OFFSET_MS).toISOString();
-}
-
-/**
- * famousQuotes 에서 active=true, language=lang 만 가져와 결정론적으로 N 개 추출.
- * 큐레이션 풀이 N 보다 작으면 가능한 만큼만 반환.
- */
-async function pickFamousQuotes(
-  uid: string,
-  ymd: string,
-  lang: FamousQuoteLang,
-  count: number,
-): Promise<FamousQuote[]> {
-  const snap = await getAdminDb()
-    .collection("famousQuotes")
-    .where("active", "==", true)
-    .where("language", "==", lang)
-    .get();
-
-  const all: FamousQuote[] = snap.docs
-    .map((d) => d.data() as FamousQuote)
-    .filter((q): q is FamousQuote => Boolean(q && q.id && q.text));
-
-  if (all.length === 0) return [];
-
-  // ID 기준 정렬로 결정론 보장 (Firestore 순서 비결정성 회피)
-  all.sort((a, b) => a.id.localeCompare(b.id));
-
-  const startSeed = hash32(`${uid}:${ymd}:famous`);
-  const start = startSeed % all.length;
-  // 같은 day 내에서도 슬롯마다 다른 인용이 보이도록 stride 적용
-  const strideSeed = hash32(`${uid}:${ymd}:stride`);
-  // gcd(stride, all.length) == 1 이어야 중복 없이 회전. 안전하게 1 로 폴백.
-  let stride = (strideSeed % Math.max(all.length - 1, 1)) + 1;
-  if (gcd(stride, all.length) !== 1) stride = 1;
-
-  const picked: FamousQuote[] = [];
-  const seen = new Set<number>();
-  let idx = start;
-  while (picked.length < Math.min(count, all.length)) {
-    if (!seen.has(idx)) {
-      picked.push(all[idx]);
-      seen.add(idx);
-    }
-    idx = (idx + stride) % all.length;
-  }
-  return picked;
-}
-
-function gcd(a: number, b: number): number {
-  return b === 0 ? a : gcd(b, a % b);
+  const tomorrowKstMidnight = Date.UTC(
+    kst.getUTCFullYear(),
+    kst.getUTCMonth(),
+    kst.getUTCDate() + 1,
+  );
+  return new Date(tomorrowKstMidnight - KST_OFFSET_MS).toISOString();
 }
 
 export async function GET(request: NextRequest) {
@@ -185,17 +113,11 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const ymdParam = url.searchParams.get("ymd");
     const ymd = ymdParam && isValidYmd(ymdParam) ? ymdParam : todayKst();
-    const langParam = url.searchParams.get("lang");
-    const lang: FamousQuoteLang = langParam === "en" ? "en" : DEFAULT_LANG;
 
     // 1) 오늘의 개인화 카드 보장 (없으면 생성)
     const { motivation } = await ensureMotivation({ uid: me.uid, ymd });
 
-    // 2) famousQuotes 풀에서 7개 결정론적 추출
-    const famous = await pickFamousQuotes(me.uid, ymd, lang, FAMOUS_SLOT_COUNT);
-
-    // 2.5) 위젯 하단 진척도(다짐/행동/잘한 일) 수집.
-    //      home 의 "오늘 행동 체크" 와 일치하도록 user.goals 를 실시간으로 읽는다.
+    // 2) 진척도 수집. home 의 "오늘 행동 체크" 와 일치하도록 user.goals 를 실시간으로 읽는다.
     let userGoals: string[] | undefined;
     try {
       const userSnap = await getAdminDb().collection("users").doc(me.uid).get();
@@ -208,8 +130,8 @@ export async function GET(request: NextRequest) {
     }
     const todayProgress = await fetchTodayProgress(me.uid, ymd, userGoals);
 
-    // 3) 슬롯 조립
-    const motivationSlot: WidgetSlotMotivation = {
+    // 3) 슬롯 조립 — motivation 한 장만 노출 (홈과 동일).
+    const motivationSlot: WidgetSlot = {
       kind: "motivation",
       text: motivation.quote,
       author: motivation.author,
@@ -224,30 +146,12 @@ export async function GET(request: NextRequest) {
       gradient: motivation.gradient,
     };
 
-    const famousSlots: WidgetSlotFamous[] = famous.map((q, i) => ({
-      kind: "famous",
-      text: q.text,
-      author: q.author,
-      category: q.category,
-      // 위젯이 충분히 넓을 때 원어 병기 — 시드에 명시된 항목만 전달.
-      ...(q.originalText && q.originalLang
-        ? { originalText: q.originalText, originalLang: q.originalLang }
-        : {}),
-      gradient: pickGradient(`${me.uid}:${ymd}:famous:${i}`),
-    }));
-
-    const slots: WidgetSlot[] = [motivationSlot, ...famousSlots];
-
     const now = new Date();
-    const rawCurrent = currentSlotKst(now);
-    // 슬롯이 부족(예: famous 풀이 비어 1개뿐)할 때 인덱스 클램프
-    const currentSlotIndex = slots.length === 0 ? 0 : rawCurrent % slots.length;
-
     const body: WidgetTodayResponse = {
       generatedAt: now.toISOString(),
       ymd,
-      currentSlotIndex,
-      slots,
+      currentSlotIndex: 0,
+      slots: [motivationSlot],
       nextRefreshAt: nextRefreshIso(now),
       todayProgress,
     };

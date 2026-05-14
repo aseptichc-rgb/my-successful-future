@@ -249,14 +249,10 @@ private fun SlotPreview(slot: WidgetSlot?) {
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Medium,
                 )
-                val author = when (slot) {
-                    is WidgetSlot.Motivation -> slot.author
-                    is WidgetSlot.Famous -> slot.author
-                }
-                if (!author.isNullOrBlank()) {
+                if (slot.author.isNotBlank()) {
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = "— $author",
+                        text = "— ${slot.author}",
                         color = textColor.copy(alpha = 0.8f),
                         fontSize = 13.sp,
                     )
