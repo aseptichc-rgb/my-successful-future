@@ -232,48 +232,6 @@ export default function SettingsPage() {
 
       <div className="flex-1 overflow-y-auto px-5 py-8 sm:px-6">
         <div className="mx-auto max-w-3xl space-y-4">
-          {/* 언어 */}
-          <section className="rounded-[18px] bg-white p-5 shadow-apple">
-            <h2 className="text-[16px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
-              {t("language.settings.title")}
-            </h2>
-            <p className="mt-1 text-[12px] tracking-[-0.01em] text-black/56">
-              {t("language.settings.subtitle")}
-            </p>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              {SUPPORTED_LOCALES.map((code) => {
-                const meta = LOCALE_META[code];
-                const selected = locale === code;
-                return (
-                  <button
-                    key={code}
-                    type="button"
-                    disabled={languageSaving}
-                    onClick={() => handleChangeLanguage(code)}
-                    className={`flex items-center gap-3 rounded-[12px] border px-3 py-2.5 text-left transition-all disabled:cursor-not-allowed disabled:opacity-60 ${
-                      selected
-                        ? "border-[#1E1B4B] bg-[#1E1B4B]/[0.04]"
-                        : "border-black/10 bg-white hover:border-[#1E1B4B]/40"
-                    }`}
-                  >
-                    <span className="text-[20px] leading-none" aria-hidden>{meta.flag}</span>
-                    <span className="min-w-0">
-                      <p className="truncate text-[14px] font-semibold tracking-[-0.015em] text-[#1E1B4B]">
-                        {meta.nativeLabel}
-                      </p>
-                      <p className="truncate text-[11px] tracking-[-0.005em] text-black/55">
-                        {meta.englishLabel}
-                      </p>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            <p className="mt-3 text-[11px] tracking-[-0.01em] text-black/48">
-              {t("language.settings.note")}
-            </p>
-          </section>
-
           {/* 10년 후의 나 */}
           <section className="rounded-[18px] bg-white p-5 shadow-apple">
             <div className="flex items-baseline justify-between gap-2">
@@ -466,6 +424,39 @@ export default function SettingsPage() {
                 {quoteSaving ? t("common.saving") : t("common.save")}
               </button>
             </div>
+          </section>
+
+          {/* 언어 */}
+          <section className="rounded-[18px] bg-white p-5 shadow-apple">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-[16px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
+                  {t("language.settings.title")}
+                </h2>
+                <p className="mt-1 text-[12px] tracking-[-0.01em] text-black/56">
+                  {t("language.settings.subtitle")}
+                </p>
+              </div>
+              <select
+                value={locale}
+                disabled={languageSaving}
+                onChange={(e) => handleChangeLanguage(e.target.value as Locale)}
+                aria-label={t("language.settings.title")}
+                className="shrink-0 rounded-[10px] border border-black/10 bg-white px-3 py-2 text-[14px] tracking-[-0.01em] text-[#1E1B4B] focus:border-[#1E1B4B] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {SUPPORTED_LOCALES.map((code) => {
+                  const meta = LOCALE_META[code];
+                  return (
+                    <option key={code} value={code}>
+                      {meta.flag} {meta.nativeLabel}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+            <p className="mt-3 text-[11px] tracking-[-0.01em] text-black/48">
+              {t("language.settings.note")}
+            </p>
           </section>
 
           {/* 계정 */}
