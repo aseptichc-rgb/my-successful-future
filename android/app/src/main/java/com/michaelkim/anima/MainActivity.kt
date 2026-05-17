@@ -75,8 +75,10 @@ class MainActivity : ComponentActivity() {
         }
         // 이미 로그인된 사용자는 네이티브 컨트롤 패널을 거치지 않고 곧장 TWA /home 으로 보낸다.
         // 위젯 인증·로그아웃 등 컨트롤은 웹앱 안에서 제공하므로 네이티브 화면은 비로그인 진입자 전용.
+        // 위젯 탭과 동일하게 TWA 진입 전 위젯 캐시를 동기 갱신 — 앱 아이콘으로 들어와도
+        // 홈 화면 위젯(stale 로컬 캐시) 과 /home(서버 최신) 의 명언이 어긋나지 않도록.
         if (AuthRepository.isSignedIn) {
-            openAnimaInTwa(path = "/home", finishAfterLaunch = true)
+            refreshWidgetCacheThenOpenHome()
             return
         }
         setContent {
@@ -99,12 +101,13 @@ class MainActivity : ComponentActivity() {
         }
         // singleTop 이 아니므로 LAUNCHER 재진입에서 이 경로는 잘 안 타지만, 안전을 위해 동일 가드 유지.
         if (AuthRepository.isSignedIn) {
-            openAnimaInTwa(path = "/home", finishAfterLaunch = true)
+            refreshWidgetCacheThenOpenHome()
         }
     }
 
     /**
-     * 위젯/알림 탭 → /home 진입 직전, 위젯 캐시를 한번 동기로 갱신해 /home 과의 명언 불일치를 봉합.
+     * /home TWA 진입 직전, 위젯 로컬 캐시를 한번 동기로 갱신해 /home 과의 명언 불일치를 봉합.
+     * 모든 진입 경로(위젯 탭 · 알림 탭 · 앱 아이콘) 가 이 함수를 거쳐 들어온다.
      *
      * - 미로그인이면 갱신 의미가 없어 스킵하고 곧장 TWA 진입.
      * - 네트워크가 느리거나 실패해도 최대 [REFRESH_BEFORE_HOME_TIMEOUT_MS] 만 기다리고 진행 —
