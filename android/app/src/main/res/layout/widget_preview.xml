@@ -1,24 +1,90 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 위젯 선택기(picker)에 보이는 미리보기 — 실제 글래스 디자인과 톤을 맞춘다. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/anima_indigo"
-    android:gravity="center_vertical"
+    android:background="@drawable/widget_card_dark"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="18dp">
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="@color/white"
-        android:textSize="14sp"
+        android:textColor="@color/widget_text_dark"
+        android:alpha="0.20"
+        android:textSize="34sp"
         android:textStyle="bold"
-        android:text="오늘 너의 한 걸음이\n10년 뒤의 내 모습을 만들었어." />
+        android:text="“" />
+
     <TextView
         android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/widget_text_dark"
+        android:textSize="15sp"
+        android:text="오늘 너의 한 걸음이\n10년 뒤의 내 모습을 만들었어." />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:textColor="@color/widget_text_dark"
+        android:alpha="0.62"
+        android:textSize="10sp"
+        android:gravity="end"
+        android:text="— 10년 후의 나" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="14dp"
+        android:layout_marginBottom="14dp"
+        android:background="#24FFFFFF" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/widget_row_dark"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="9dp">
+        <ImageView
+            android:layout_width="21dp"
+            android:layout_height="21dp"
+            android:src="@drawable/ic_widget_check_done"
+            android:contentDescription="@null" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:textColor="@color/widget_text_dark"
+            android:alpha="0.50"
+            android:textSize="12sp"
+            android:text="성공한 나에게 한 발 더" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:textColor="@color/white"
-        android:alpha="0.7"
-        android:textSize="11sp"
-        android:text="— 10년 후의 나" />
+        android:background="@drawable/widget_row_dark"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="9dp">
+        <ImageView
+            android:layout_width="21dp"
+            android:layout_height="21dp"
+            android:src="@drawable/ic_widget_check_todo"
+            android:contentDescription="@null"
+            android:alpha="0.72" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:textColor="@color/widget_text_dark"
+            android:alpha="0.92"
+            android:textSize="12sp"
+            android:text="목표를 이루기 위한 오늘의 행동" />
+    </LinearLayout>
 </LinearLayout>

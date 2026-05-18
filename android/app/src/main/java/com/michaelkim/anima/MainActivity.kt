@@ -115,8 +115,13 @@ class MainActivity : ComponentActivity() {
      * - 타임아웃/예외 시에는 비동기 Worker 를 폴백으로 큐잉해 다음 fetch 에서 봉합.
      */
     private fun refreshWidgetCacheThenOpenHome() {
+        // 사용자가 위젯에서 실제로 본 카드의 날짜. 동기 갱신이 실패해도 이 키로
+        // /home 을 고정하면 "방금 탭한 그 카드"와 화면이 일치한다.
+        val clickedYmd = intent?.getStringExtra(EXTRA_QUOTE_YMD)
+            ?.takeIf { YMD_REGEX.matches(it) }
+
         if (!AuthRepository.isSignedIn) {
-            openAnimaInTwa(path = "/home", finishAfterLaunch = true)
+            openAnimaInTwa(path = "/home", finishAfterLaunch = true, qDate = clickedYmd)
             return
         }
         lifecycleScope.launch {
@@ -133,7 +138,19 @@ class MainActivity : ComponentActivity() {
             if (completed != true) {
                 WorkScheduler.scheduleOneTimeRefresh(this@MainActivity)
             }
-            openAnimaInTwa(path = "/home", finishAfterLaunch = true)
+            // 권위 키 결정:
+            //  - 갱신 성공: 방금 받은 서버-기준 캐시의 ymd (위젯도 updateAll 로 같은 값으로 재렌더됨).
+            //  - 실패/타임아웃: 사용자가 본 stale 위젯과 맞추기 위해 clickedYmd 로 폴백.
+            // 어느 쪽이든 /home 과 화면의 위젯이 같은 dailyMotivations 문서를 가리킨다.
+            val syncedYmd = try {
+                QuoteRepository.getCached(this@MainActivity)?.response?.ymd
+                    ?.takeIf { YMD_REGEX.matches(it) }
+            } catch (e: Exception) {
+                Log.w(TAG, "동기화된 캐시 ymd 조회 실패 — clickedYmd 폴백", e)
+                null
+            }
+            val authoritativeYmd = if (completed == true) (syncedYmd ?: clickedYmd) else clickedYmd
+            openAnimaInTwa(path = "/home", finishAfterLaunch = true, qDate = authoritativeYmd)
         }
     }
 
@@ -177,15 +194,20 @@ class MainActivity : ComponentActivity() {
      * - assetlinks.json 매칭이 성공하면 주소창 없이 전체화면.
      * - 매칭 실패/지원 안 되는 환경이면 androidbrowserhelper 가 자동으로 Custom Tabs 로 fallback.
      * - 모든 fallback 실패 시 일반 브라우저 인텐트로 최종 fallback.
-     */
-    /**
+     *
      * @param finishAfterLaunch TWA 가 실제로 뜬 직후 이 액티비티를 종료한다. setContent 를
      *   생략하고 곧장 TWA 로 넘기는 경로(딥링크, 이미 로그인된 사용자) 에서 true 로 호출 —
      *   안 하면 빈 윈도가 백스택에 남아 TWA back 이 흰 화면으로 떨어진다.
      *   HomeScreen Composable 가 떠 있는 경로에서는 false 로 두어 사용자가 돌아왔을 때
      *   로그인/온보딩 UI 가 보이도록 한다.
+     * @param qDate 위젯이 보던 카드의 날짜(YYYY-MM-DD). null 이 아니면 `&qDate=` 로 실어
+     *   /home 이 기기 시계 대신 이 날짜로 dailyMotivations 문서를 읽게 한다 (위젯-홈 명언 일치의 핵심).
      */
-    private fun openAnimaInTwa(path: String?, finishAfterLaunch: Boolean = false) {
+    private fun openAnimaInTwa(
+        path: String?,
+        finishAfterLaunch: Boolean = false,
+        qDate: String? = null,
+    ) {
         val baseUrl = BuildConfig.ANIMA_API_BASE_URL.removeSuffix("/")
         val rawUrl = if (path.isNullOrBlank()) baseUrl else baseUrl + path
         // fromApp=1 마커를 항상 부착 — 웹 AuthProvider 가 이 값을 보고 native-bridge 를 발화한다.
@@ -195,9 +217,18 @@ class MainActivity : ComponentActivity() {
         } else {
             rawUrl + (if (rawUrl.contains("?")) "&" else "?") + "fromApp=1"
         }
+        // 위젯-홈 명언 일치: 위젯이 본 날짜를 권위 키로 넘긴다. 형식 검증된 값만,
+        // 중복 부착 방지. (별도 statement 로 분리 — Kotlin 에서 if-식에 .let 을 체이닝하면
+        // else 분기에만 바인딩되는 함정이 있어 가독성·정확성 위해 풀어 쓴다.)
+        val finalUrlBeforeToken =
+            if (qDate != null && YMD_REGEX.matches(qDate) && !urlWithFromApp.contains("qDate=")) {
+                "$urlWithFromApp&qDate=${Uri.encode(qDate)}"
+            } else {
+                urlWithFromApp
+            }
         // 비로그인이거나 토큰 발급에 실패하면 그대로 띄운다 — 사용자가 웹에서 로그인하면 web→native 브릿지로 보정.
         if (!AuthRepository.isSignedIn) {
-            launchTwaWithUrl(urlWithFromApp)
+            launchTwaWithUrl(finalUrlBeforeToken)
             if (finishAfterLaunch) finish()
             return
         }
@@ -213,9 +244,9 @@ class MainActivity : ComponentActivity() {
                 null
             }
             val finalUrl = if (customToken.isNullOrBlank()) {
-                urlWithFromApp
+                finalUrlBeforeToken
             } else {
-                urlWithFromApp + "&nativeToken=" + Uri.encode(customToken)
+                finalUrlBeforeToken + "&nativeToken=" + Uri.encode(customToken)
             }
             launchTwaWithUrl(finalUrl)
             if (finishAfterLaunch) finish()
@@ -262,6 +293,12 @@ class MainActivity : ComponentActivity() {
         const val OPEN_TARGET_AFFIRMATIONS = "affirmations"
         // 잠금화면 위젯 탭 — /home 으로 보낸다.
         const val OPEN_TARGET_HOME = "home"
+        // 위젯이 탭 순간 "그리고 있던" 카드의 날짜(YYYY-MM-DD). /home 이 기기 시계로
+        // ymd 를 다시 계산하지 않고 위젯과 같은 dailyMotivations 문서를 읽게 하는 권위 키.
+        const val EXTRA_QUOTE_YMD = "quote_ymd"
+        // qDate 로 넘기기 전 형식 검증 — 잘못된 값이 URL 에 실리면 웹이 그냥 무시하지만
+        // 애초에 안 싣는 게 안전하다.
+        private val YMD_REGEX = Regex("""^\d{4}-\d{2}-\d{2}$""")
 
         private const val PREFS_APP_FLAGS = "anima_app_flags"
         private const val KEY_HAS_LAUNCHED = "has_launched_v1"

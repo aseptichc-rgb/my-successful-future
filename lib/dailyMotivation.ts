@@ -886,7 +886,28 @@ export async function ensureMotivation(opts: {
     createdAt: Timestamp.now() as unknown as DailyMotivation["createdAt"],
   };
 
-  await ref.set(motivation);
+  // 동시 최초 생성 레이스 차단 (split-brain 방지).
+  //   위젯 라우트(/api/widget/today)와 /home POST(/api/daily-motivation)가
+  //   같은 ymd 를 "처음" 동시에 만들면, 둘 다 캐시 미스로 각자 Gemini 를 호출해
+  //   서로 다른 명언을 set 한다 → 진리원천이 갈라져 위젯과 홈이 영구히 어긋난다.
+  //   - force(명시적 재생성/overrideAuthor)는 의도된 덮어쓰기이므로 set 유지.
+  //   - 그 외(최초 생성)는 create() 로 원자적 삽입. 이미 다른 호출이 만들었다면
+  //     ALREADY_EXISTS 로 거부 → 진 쪽은 "이긴 문서"를 다시 읽어 그대로 반환한다.
+  //     (히스토리 누적도 건너뛴다 — 사용자가 본 적 없는 명언을 기록하지 않도록.)
+  if (force) {
+    await ref.set(motivation);
+  } else {
+    try {
+      await ref.create(motivation);
+    } catch (err) {
+      const winner = await ref.get();
+      if (winner.exists) {
+        return { motivation: winner.data() as DailyMotivation, cached: true };
+      }
+      // ALREADY_EXISTS 가 아닌 다른 사유로 실패 + 문서도 없음 → 원에러 전파.
+      throw err;
+    }
+  }
 
   // 사용자 문서의 누적 히스토리 갱신.
   // - 풀 소진으로 리셋된 경우: 배열을 새로 시작(이번 카드 텍스트만 남김).

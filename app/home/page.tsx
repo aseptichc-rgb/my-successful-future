@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -27,6 +27,68 @@ const FUTURE_PERSONA_MAX = 500;
 const GOAL_MAX = 80;
 const WIN_MAX = 140;
 const WINS_SAVED_TOAST_MS = 2000;
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * 위젯이 탭 순간 넘긴 권위 날짜 키(?qDate=YYYY-MM-DD)를 URL 에서 읽는다.
+ * 위젯-홈 명언 일치의 핵심: 웹이 기기 시계로 ymd 를 다시 계산하지 않고,
+ * 위젯이 실제로 보여주던 그 dailyMotivations 문서를 그대로 읽게 한다.
+ * 형식이 어긋나면 null → 호출부가 기기 KST 로 폴백.
+ */
+function readQDateFromUrl(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const v = new URL(window.location.href).searchParams.get("qDate");
+    return v && YMD_RE.test(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * /home 이 구독할 "오늘" 키를 결정한다.
+ *
+ * 과거 버그(위젯-홈 명언 불일치)의 근본 원인:
+ *   1) ymd 를 마운트 시 useMemo([]) 로 1회 고정 → TWA 웹뷰가 자정(KST)을
+ *      백그라운드로 넘기면 어제 키로 굳어 위젯(오늘)과 어긋남.
+ *   2) 기기 시계 기반 계산이 서버 todayKst() 와 갈라짐.
+ *
+ * 해결:
+ *   - 초기값은 위젯이 넘긴 qDate(권위) → 없으면 기기 KST.
+ *   - 화면이 다시 보일 때(visibilitychange/focus) 기기 KST 를 재계산해,
+ *     현재 키보다 "이후 날짜"면 그날로 전진(과거로 회귀하지 않음).
+ *     위젯이 stale 카드를 넘겨 과거 키로 들어왔어도, 앱을 켜둔 채
+ *     날짜가 바뀌면 오늘 카드로 자연스럽게 따라간다.
+ */
+function useResolvedYmd(): string {
+  const [ymd, setYmd] = useState<string>(() => readQDateFromUrl() ?? getKstYmd());
+  useEffect(() => {
+    // qDate 는 1회성 핸드오프 — 캡처 후 URL 에서 제거한다. 인앱 네비게이션으로
+    // /home 이 다시 마운트돼도 옛 날짜로 재고정되지 않게(nativeToken 과 동일 패턴).
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("qDate")) {
+        url.searchParams.delete("qDate");
+        window.history.replaceState({}, "", url.toString());
+      }
+    } catch {
+      /* URL 조작 실패는 치명적이지 않음 — 무시 */
+    }
+    const syncForward = () => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      const live = getKstYmd();
+      // YYYY-MM-DD 는 사전식 비교가 곧 날짜 순서. 더 이후 날짜로만 전진.
+      setYmd((cur) => (live > cur ? live : cur));
+    };
+    document.addEventListener("visibilitychange", syncForward);
+    window.addEventListener("focus", syncForward);
+    return () => {
+      document.removeEventListener("visibilitychange", syncForward);
+      window.removeEventListener("focus", syncForward);
+    };
+  }, []);
+  return ymd;
+}
 
 function formatKstHeader(ymd: string, locale: string): string {
   const [y, m, d] = ymd.split("-").map((s) => parseInt(s, 10));
@@ -62,7 +124,7 @@ export default function HomeDashboardPage() {
   const [goalDraft, setGoalDraft] = useState("");
   const goalsHydratedRef = useRef(false);
 
-  const ymd = useMemo(() => getKstYmd(), []);
+  const ymd = useResolvedYmd();
   const [wins, setWins] = useState<string[]>(["", "", ""]);
   const [savedWins, setSavedWins] = useState<string[]>(["", "", ""]);
   const [winsSaving, setWinsSaving] = useState(false);
@@ -81,7 +143,9 @@ export default function HomeDashboardPage() {
   const [motivation, setMotivation] = useState<DailyMotivation | null>(null);
   const [motivationLoading, setMotivationLoading] = useState(true);
   const [motivationError, setMotivationError] = useState<string | null>(null);
-  const ensureRequestedRef = useRef(false);
+  // ymd 별로 "카드 생성 POST 를 이미 쐈는지" 추적. ymd 가 자정 전진으로 바뀌면
+  // 새 날짜의 카드를 다시 한 번 보장해야 하므로 boolean 이 아닌 마지막 요청 ymd 를 들고 있는다.
+  const ensureRequestedYmdRef = useRef<string | null>(null);
 
   const [alreadyCheckedInToday, setAlreadyCheckedInToday] = useState(false);
 
@@ -139,8 +203,10 @@ export default function HomeDashboardPage() {
       if (cancelled) return;
       setMotivation(m);
       setMotivationLoading(false);
-      if (!m && !ensureRequestedRef.current) {
-        ensureRequestedRef.current = true;
+      if (!m && ensureRequestedYmdRef.current !== ymd) {
+        // 이 ymd 에 대해 한 번만 생성 POST. ymd 가 자정 전진으로 바뀌면
+        // 새 날짜에 대해 다시 한 번 보장된다.
+        ensureRequestedYmdRef.current = ymd;
         authedFetch("/api/daily-motivation", {
           method: "POST",
           body: JSON.stringify({ ymd }),
