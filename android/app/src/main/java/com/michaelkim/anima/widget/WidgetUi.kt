@@ -63,6 +63,11 @@ private const val PROGRESS_LABEL_WINS = "오늘 잘한 일 3가지"
 // small(120x120) 에서는 좁아 세로 카드 리스트 대신 아이콘만 노출한다.
 private val WIDE_THRESHOLD_DP = 220.dp
 
+// 라벨 달린 세로 체크리스트 3행을 클립 없이 그리려면 최소 이 정도의 세로 폭이 필요.
+// medium(250x120) 처럼 키가 낮은 위젯은 명언만으로도 공간이 빠듯해 라벨을 펼치면
+// 두 번째·세 번째 행이 그대로 잘려 나가므로, 이 임계치 미만에서는 콤팩트 아이콘 행으로 폴백한다.
+private val TALL_THRESHOLD_DP = 200.dp
+
 // 매직 넘버 제거용 디자인 토큰.
 private const val ALPHA_QUOTE_GLYPH = 0.20f
 private const val ALPHA_SECONDARY = 0.55f
@@ -80,6 +85,8 @@ fun WidgetContent(slot: WidgetSlot?, progress: WidgetTodayProgress?, ymd: String
     val context = LocalContext.current
     val size = LocalSize.current
     val isWide = size.width >= WIDE_THRESHOLD_DP
+    // 라벨 리스트는 가로뿐 아니라 세로 공간도 충분해야 펼친다 — 그렇지 않으면 클립 발생.
+    val isTall = size.height >= TALL_THRESHOLD_DP
     val isLight = slot?.gradient?.tone == "light"
 
     val cardRes = if (isLight) R.drawable.widget_card_light else R.drawable.widget_card_dark
@@ -111,7 +118,7 @@ fun WidgetContent(slot: WidgetSlot?, progress: WidgetTodayProgress?, ymd: String
             EmptyState(textPrimary)
             return@Box
         }
-        LoadedContent(slot, progress, isWide, isLight, textPrimary)
+        LoadedContent(slot, progress, isWide, isTall, isLight, textPrimary)
     }
 }
 
@@ -149,6 +156,7 @@ private fun LoadedContent(
     slot: WidgetSlot,
     progress: WidgetTodayProgress?,
     isWide: Boolean,
+    isTall: Boolean,
     isLight: Boolean,
     textPrimary: Color,
 ) {
@@ -213,7 +221,9 @@ private fun LoadedContent(
                     .background(ColorProvider(textPrimary.copy(alpha = ALPHA_DIVIDER))),
             ) {}
             Spacer(GlanceModifier.height(14.dp))
-            if (isWide) {
+            // 가로뿐 아니라 세로도 넉넉할 때만 라벨 리스트. medium(250x120) 처럼 키가 낮은
+            // 위젯은 명언 영역이 이미 ~100dp 를 차지해 세 번째·두 번째 행이 클립된다.
+            if (isWide && isTall) {
                 ProgressList(progress, isLight, textPrimary)
             } else {
                 ProgressIconsCompact(progress, isLight, textPrimary)
@@ -226,9 +236,9 @@ private fun LoadedContent(
 @Composable
 private fun ProgressList(progress: WidgetTodayProgress, isLight: Boolean, textPrimary: Color) {
     ProgressRowCard(PROGRESS_LABEL_AFFIRMATION, progress.affirmation, isLight, textPrimary)
-    Spacer(GlanceModifier.height(8.dp))
+    Spacer(GlanceModifier.height(6.dp))
     ProgressRowCard(PROGRESS_LABEL_ACTIONS, progress.actions, isLight, textPrimary)
-    Spacer(GlanceModifier.height(8.dp))
+    Spacer(GlanceModifier.height(6.dp))
     ProgressRowCard(PROGRESS_LABEL_WINS, progress.wins, isLight, textPrimary)
 }
 
@@ -246,7 +256,7 @@ private fun ProgressRowCard(
             .fillMaxWidth()
             .background(ImageProvider(rowBg))
             .cornerRadius(13.dp)
-            .padding(horizontal = 12.dp, vertical = 9.dp),
+            .padding(horizontal = 12.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CheckIcon(done, isLight, textPrimary)
