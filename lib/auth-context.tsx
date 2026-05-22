@@ -189,7 +189,11 @@ async function tryRestoreFromServerCookie(): Promise<boolean> {
 
 /**
  * 네이티브 → 웹 SSO: TWA URL 에 ?nativeToken=<customToken> 가 실려 들어오면 한 번만 소비해
- * Firebase 클라이언트 세션을 시작한다. 토큰은 단발성 + 짧은 수명이라 사용 직후 URL 에서 제거.
+ * Firebase 클라이언트 세션을 시작/교체한다. 토큰은 단발성 + 짧은 수명이라 사용 직후 URL 에서 제거.
+ *
+ * 중요: 웹에 이미 다른(오래된) 계정 세션이 남아 있어도 nativeToken 이 있으면 그쪽으로 전환한다.
+ * nativeToken 은 이 웹뷰를 띄운 네이티브 앱의 현재 계정 = 위젯이 보는 계정이므로,
+ * "이 화면이 어느 계정이어야 하는지"의 권위 소스다. 무시하면 위젯과 홈이 영구히 어긋난다.
  *
  * 만료/위변조 토큰은 signInWithCustomToken 이 거절 → 사용자는 평소처럼 수동 로그인.
  */
@@ -230,9 +234,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // uid 별로 트라이얼 시작 시도 여부 — customToken 재로그인이 onIdTokenChanged 를
   // 다시 발동시키므로 무한 호출 방지용. 로그아웃 시 비운다.
   const trialAttemptedRef = useRef<Set<string>>(new Set());
+  // 이번 마운트에서 nativeToken(네이티브→웹 SSO)을 이미 처리했는지.
+  // signInWithCustomToken 이 onIdTokenChanged 를 재발화하므로 1회만 시도하도록 가드한다.
+  const nativeTokenHandledRef = useRef(false);
 
   useEffect(() => {
     const unsubscribe = onIdTokenChanged(getAuth_(), async (fbUser) => {
+      // 네이티브 앱(TWA 호스트)이 URL 에 실어 보낸 nativeToken 은 "이 웹뷰가 어느 계정이어야
+      // 하는지"의 권위 소스다. 웹 IndexedDB 에 다른(오래된) 계정 세션이 남아 있으면
+      // onIdTokenChanged 가 그 세션으로 먼저 발화하는데, 그 경우에도 nativeToken 을 소비해
+      // 네이티브 계정으로 전환해야 한다 — 안 그러면 위젯(네이티브 계정)과 홈(웹 세션)이
+      // 영구히 다른 dailyMotivations 문서를 보게 된다(위젯-홈 명언 불일치의 근본 원인).
+      // signInWithCustomToken 이 이 리스너를 재발화하므로 마운트당 1회만 시도.
+      if (!nativeTokenHandledRef.current) {
+        nativeTokenHandledRef.current = true;
+        const switchedToNativeAccount = await tryConsumeNativeToken();
+        if (switchedToNativeAccount) return; // 네이티브 계정으로 리스너 재발화 → 거기서 이어감
+      }
+
       if (fbUser) {
         setFirebaseUser(fbUser);
         const profile = await getUserProfile(fbUser.uid);
@@ -263,10 +282,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!restoreAttemptedRef.current) {
         restoreAttemptedRef.current = true;
-        // 네이티브 앱에서 막 진입한 케이스 — URL 의 nativeToken 을 먼저 소비해 즉시 로그인.
-        // 성공 시 signInWithCustomToken 이 onIdTokenChanged 를 재발화하므로 여기서 종료.
-        const consumed = await tryConsumeNativeToken();
-        if (consumed) return;
+        // nativeToken 은 위에서 (기존 세션 유무와 무관하게) 이미 처리됐다.
+        // 여기서는 서버 세션 쿠키로부터의 복원만 시도한다.
         const restored = await tryRestoreFromServerCookie();
         if (restored) return;
       }
