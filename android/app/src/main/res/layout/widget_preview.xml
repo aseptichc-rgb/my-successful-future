@@ -33,7 +33,13 @@
         android:gravity="end"
         android:text="— 10년 후의 나" />
 
-    <View
+    <!--
+      구분선. AppWidget 레이아웃은 시스템/런처가 RemoteViews 제한 인플레이터로 그리므로
+      @RemoteView 화이트리스트 뷰만 허용된다. 순수 android.view.View 는 불가 —
+      넣으면 "Class not allowed to be inflated" 로 미리보기·위젯 추가가 통째로 실패한다.
+      그래서 1dp 라인은 FrameLayout(허용됨)으로 그린다.
+    -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginTop="14dp"
