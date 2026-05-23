@@ -23,8 +23,11 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.lifecycleScope
 import com.google.firebase.auth.FirebaseAuth
+import com.michaelkim.anima.data.local.QuoteCache
+import com.michaelkim.anima.widget.QuoteWidget
 import com.michaelkim.anima.work.WorkScheduler
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -56,7 +59,21 @@ class AuthBridgeActivity : ComponentActivity() {
         }
         lifecycleScope.launch {
             try {
-                FirebaseAuth.getInstance().signInWithCustomToken(token).await()
+                // 계정 전환 감지: 브릿지 진입 직전 uid 와 signInWithCustomToken 결과 uid 가 다르면
+                // 이전 계정의 위젯 캐시는 그 즉시 stale 이다 — 새 토큰으로 데이터를 받기 전까지의
+                // 짧은 구간 동안 "이전 계정의 명언/체크리스트" 가 노출되는 회귀를 막기 위해 비운다.
+                val previousUid = FirebaseAuth.getInstance().currentUser?.uid
+                val result = FirebaseAuth.getInstance().signInWithCustomToken(token).await()
+                val newUid = result.user?.uid
+                if (previousUid != null && newUid != null && previousUid != newUid) {
+                    Log.i(TAG, "브릿지 로그인 계정 전환 감지: $previousUid → $newUid — 위젯 캐시 무효화")
+                    try {
+                        QuoteCache.clear(applicationContext)
+                        QuoteWidget().updateAll(applicationContext)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "계정 전환 캐시 정리 실패", e)
+                    }
+                }
                 Log.i(TAG, "네이티브 브릿지 로그인 성공 — 위젯 즉시 갱신")
                 // 새 토큰으로 즉시 위젯을 채워준다. 정주기 Worker 도 함께 보장.
                 WorkScheduler.scheduleOneTimeRefresh(applicationContext)

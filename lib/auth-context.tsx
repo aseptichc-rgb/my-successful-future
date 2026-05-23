@@ -16,6 +16,7 @@ import {
 } from "@/lib/firebase";
 import type { AuthCredential } from "firebase/auth";
 import { shouldStartTrial } from "@/lib/entitlement";
+import { notifyAndroidSignOut } from "@/lib/widgetBridge";
 import type { User } from "@/types";
 
 interface AuthContextValue {
@@ -329,6 +330,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     await clearServerSession();
     await firebaseSignOut();
+    // TWA 환경이면 네이티브 FirebaseAuth · 위젯 캐시도 같이 비운다 — 안 하면 홈 화면 위젯이
+    // 이전 계정의 명언/체크리스트를 계속 노출한다(다른 계정 재로그인 시 새 데이터가 도착하기
+    // 전까지의 짧은 구간 동안에도 stale 데이터가 보이는 회귀 방지).
+    notifyAndroidSignOut();
   };
 
   const refreshUser = async () => {

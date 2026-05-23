@@ -22,12 +22,16 @@
  */
 
 const FROM_APP_FLAG_KEY = "anima.fromApp";
-const INTENT_URL =
+const REFRESH_INTENT_URL =
   "intent://widget-refresh#Intent;scheme=anima;package=com.michaelkim.anima;end";
+const SIGNOUT_INTENT_URL =
+  "intent://signout#Intent;scheme=anima;package=com.michaelkim.anima;end";
 const DEDUP_WINDOW_MS = 1500;
 const IFRAME_CLEANUP_MS = 1000;
 
-let lastFiredAt = 0;
+// 인텐트 종류별 마지막 발화 시각 — 같은 인텐트의 연속 발화만 흡수하고,
+// 서로 다른 인텐트(예: signout 직후 widget-refresh) 는 서로 영향을 주지 않게 분리한다.
+const lastFiredAt: Record<string, number> = {};
 
 /**
  * TWA(안드로이드 네이티브 앱) 안에서 띄워진 세션인지 판정.
@@ -53,23 +57,21 @@ function isInsideAndroidApp(): boolean {
 }
 
 /**
- * 위젯 즉시 갱신 인텐트 발화. TWA 환경이 아니면 즉시 반환(no-op).
- * 어떤 예외도 호출자에게 전파하지 않는다 — "저장은 성공했는데 위젯만 못 깨운" 시나리오는
- * 다음 정주기 Worker 가 봉합하므로 사용자 흐름에 영향 0.
+ * hidden iframe 으로 intent:// URL 발화. 모든 브릿지의 공통 구현.
+ * @param key 디바운스 키 — 동일 키 호출은 [DEDUP_WINDOW_MS] 이내라면 1회로 합친다.
  */
-export function notifyAndroidWidgetRefresh(): void {
+function fireIntent(intentUrl: string, key: string): void {
   try {
     if (!isInsideAndroidApp()) return;
 
-    // 디바운스: 사용자가 연속 저장 버튼을 눌러도 1.5초 이내라면 한 번만 발화.
     const now = Date.now();
-    if (now - lastFiredAt < DEDUP_WINDOW_MS) return;
-    lastFiredAt = now;
+    if (now - (lastFiredAt[key] ?? 0) < DEDUP_WINDOW_MS) return;
+    lastFiredAt[key] = now;
 
     const iframe = document.createElement("iframe");
     iframe.style.display = "none";
     iframe.setAttribute("aria-hidden", "true");
-    iframe.src = INTENT_URL;
+    iframe.src = intentUrl;
     document.body.appendChild(iframe);
     window.setTimeout(() => {
       try {
@@ -79,6 +81,32 @@ export function notifyAndroidWidgetRefresh(): void {
       }
     }, IFRAME_CLEANUP_MS);
   } catch {
-    // intent 발화 실패는 정주기 Worker(3시간) 가 봉합. 사용자에게 노출할 가치 없음.
+    // intent 발화 실패는 호출자 흐름에 영향 주지 않는다 — 다음 동작 사이클에서 봉합.
   }
+}
+
+/**
+ * 위젯 즉시 갱신 인텐트 발화. TWA 환경이 아니면 즉시 반환(no-op).
+ * 어떤 예외도 호출자에게 전파하지 않는다 — "저장은 성공했는데 위젯만 못 깨운" 시나리오는
+ * 다음 정주기 Worker 가 봉합하므로 사용자 흐름에 영향 0.
+ */
+export function notifyAndroidWidgetRefresh(): void {
+  fireIntent(REFRESH_INTENT_URL, "widget-refresh");
+}
+
+/**
+ * 웹 로그아웃 직후 네이티브 세션·위젯 캐시 정리 인텐트 발화.
+ *
+ * 왜 필요한가:
+ *   - 웹 /settings 에서 로그아웃 → 웹 FirebaseAuth 세션만 종료된다.
+ *   - 네이티브 FirebaseAuth 와 위젯 캐시(QuoteCache) 는 그대로 남아 홈 화면 위젯이
+ *     "이전 계정의 명언/체크리스트" 를 계속 노출하는 회귀가 발생했다.
+ *
+ * 이 함수가 발화하는 anima://signout 을 [SignOutBridgeActivity] 가 받아
+ * AuthRepository.signOut → 위젯 캐시 정리 → updateAll 까지 한 번에 처리한다.
+ *
+ * 다른 브라우저(TWA 가 아닌 환경) 에서는 no-op — fireIntent 가 자체 가드한다.
+ */
+export function notifyAndroidSignOut(): void {
+  fireIntent(SIGNOUT_INTENT_URL, "signout");
 }

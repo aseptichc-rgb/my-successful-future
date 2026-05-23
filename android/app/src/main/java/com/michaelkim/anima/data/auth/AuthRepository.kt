@@ -14,6 +14,7 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import android.util.Log
 import androidx.credentials.exceptions.GetCredentialException
+import androidx.glance.appwidget.updateAll
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
@@ -28,6 +29,8 @@ import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.UserProfileChangeRequest
 import com.michaelkim.anima.BuildConfig
 import com.michaelkim.anima.data.api.ApiClient
+import com.michaelkim.anima.data.local.QuoteCache
+import com.michaelkim.anima.widget.QuoteWidget
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -289,14 +292,34 @@ object AuthRepository {
         else -> e.message ?: "알 수 없는 오류"
     }
 
+    /**
+     * 로그아웃 + 위젯 캐시 정리.
+     *
+     * 위젯 캐시(QuoteCache)는 uid 식별자 없이 마지막 응답만 들고 있으므로, 로그아웃 후
+     * 비우지 않으면 "이전 계정의 명언/체크리스트"가 그대로 노출되는 회귀가 생긴다.
+     * (다른 계정 재로그인 케이스에서도 새 데이터가 도착하기 전 stale 데이터가 잠시 노출됨.)
+     *
+     * 각 단계는 독립적으로 try-catch — 한 곳이 실패해도 나머지 정리는 진행한다.
+     */
     suspend fun signOut(context: Context) {
         try {
             FirebaseAuth.getInstance().signOut()
-            // Credential Manager 의 자동 로그인 캐시도 비움
+        } catch (e: Exception) {
+            Log.w(TAG, "FirebaseAuth signOut 실패", e)
+        }
+        try {
+            // Credential Manager 의 자동 로그인 캐시도 비움 — 다음 로그인에서 계정 선택 다이얼로그가 다시 뜬다.
             CredentialManager.create(context)
                 .clearCredentialState(ClearCredentialStateRequest())
-        } catch (_: Exception) {
-            // 로컬 정리 실패는 치명적이지 않음
+        } catch (e: Exception) {
+            Log.w(TAG, "Credential 캐시 정리 실패", e)
+        }
+        try {
+            // 위젯이 즉시 EmptyState 로 떨어지도록 캐시 비움 + RemoteViews 재렌더.
+            QuoteCache.clear(context)
+            QuoteWidget().updateAll(context)
+        } catch (e: Exception) {
+            Log.w(TAG, "위젯 캐시 정리 실패", e)
         }
     }
 
