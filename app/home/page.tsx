@@ -16,6 +16,7 @@ import {
   MAX_DAILY_WINS,
 } from "@/lib/firebase";
 import { authedFetch } from "@/lib/authedFetch";
+import { notifyAndroidWidgetRefresh } from "@/lib/widgetBridge";
 import MotivationCard from "@/components/home/MotivationCard";
 import { useLanguage } from "@/lib/i18n";
 import type {
@@ -303,6 +304,8 @@ export default function HomeDashboardPage() {
       // 새로 체크인됐으면 user 프로필을 다시 불러와 streak.count 를 갱신.
       if (data.matched) {
         await refreshUser().catch(() => {});
+        // TWA 환경이면 위젯 즉시 갱신 트리거 — "앱은 완료 / 위젯은 미완료" 불일치 봉합.
+        notifyAndroidWidgetRefresh();
       }
       return {
         matched: Boolean(data.matched),
@@ -362,6 +365,8 @@ export default function HomeDashboardPage() {
     setAchievedGoals(next);
     try {
       await saveDailyAchievedGoals(uid, ymd, next);
+      // TWA 환경이면 위젯 즉시 갱신 트리거 — 모든 목표 달성 토글이 즉시 위젯에 반영.
+      notifyAndroidWidgetRefresh();
     } catch (err) {
       console.error("[home] 목표 달성 저장 실패:", err);
       setAchievedGoals(achievedGoals);
@@ -376,6 +381,8 @@ export default function HomeDashboardPage() {
     setAchievedGoals(pruned);
     try {
       await saveDailyAchievedGoals(uid, ymd, pruned);
+      // 목표 삭제로 인해 "전부 달성" 상태가 false 로 바뀔 수 있으므로 위젯도 같이 깨운다.
+      notifyAndroidWidgetRefresh();
     } catch (err) {
       console.error("달성 목표 정리 실패:", err);
     }
@@ -434,6 +441,8 @@ export default function HomeDashboardPage() {
       await saveDailyWins(uid, ymd, wins);
       setSavedWins(wins);
       setWinsJustSaved(true);
+      // TWA 환경이면 위젯 즉시 갱신 트리거 — 잘한 일 3가지 입력 직후 위젯에도 체크 표시.
+      notifyAndroidWidgetRefresh();
       if (winsSavedToastTimerRef.current) clearTimeout(winsSavedToastTimerRef.current);
       winsSavedToastTimerRef.current = setTimeout(() => setWinsJustSaved(false), WINS_SAVED_TOAST_MS);
     } catch (err) {
