@@ -80,6 +80,20 @@ private const val ALPHA_ICON_TODO_LIGHT = 0.50f
 private val CHECK_ICON_SIZE = 21.dp
 private val CARD_RADIUS = 22.dp
 
+// 인용구 영역 타이포 토큰. 글리프를 24sp 로 줄여 큰 위젯에서도 체크리스트 3행이 자리 잡을
+// 세로 공간을 확보한다 — 시각 무게는 여전히 충분.
+private val QUOTE_GLYPH_SIZE = 24.sp
+private const val QUOTE_MAX_LINES_TALL = 4
+private const val QUOTE_MAX_LINES_SHORT = 3
+private const val ORIGINAL_MAX_LINES = 2
+
+// 명언/체크리스트 사이의 여백. 14dp → 10dp 로 좁혀 세 번째 행이 잘리는 마진을 추가 확보.
+private val DIVIDER_SPACER = 10.dp
+
+// 체크리스트 한 줄의 위·아래 패딩. 7dp → 6dp 로 1dp 씩 줄여, 3행 합산 6dp 의 여유 확보.
+private val PROGRESS_ROW_V_PADDING = 6.dp
+private val PROGRESS_ROW_GAP = 5.dp
+
 @Composable
 fun WidgetContent(slot: WidgetSlot?, progress: WidgetTodayProgress?, ymd: String?) {
     val context = LocalContext.current
@@ -161,68 +175,76 @@ private fun LoadedContent(
     textPrimary: Color,
 ) {
     Column(modifier = GlanceModifier.fillMaxSize()) {
-        // 인용구 글리프 — 명언임을 직관적으로 인지시키는 그래픽 요소.
-        Text(
-            text = "“",
-            style = TextStyle(
-                color = ColorProvider(textPrimary.copy(alpha = ALPHA_QUOTE_GLYPH)),
-                fontSize = 34.sp,
-                fontWeight = FontWeight.Bold,
-            ),
-            maxLines = 1,
-        )
-        Text(
-            text = slot.text,
-            style = TextStyle(
-                color = ColorProvider(textPrimary),
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
-            ),
-            maxLines = 4,
-        )
-        // 넓은 위젯에서만 원어 원문을 본문 아래 작게(이탤릭·연회색) 병기.
-        val originalText = slot.originalText
-        if (isWide && !originalText.isNullOrBlank()) {
-            Spacer(GlanceModifier.height(4.dp))
+        // 인용구 영역을 weight 로 묶어 "남는 공간"만 차지하게 한다.
+        // 이렇게 두면 체크리스트 3행이 항상 자연 크기로 먼저 자리를 잡고, 명언 본문/원문은
+        // 남는 만큼만 그려진 뒤 maxLines 로 말줄임된다 — 과거처럼 체크리스트 2·3행이
+        // 위젯 바깥으로 잘려 나가는 사고를 차단한다.
+        Column(modifier = GlanceModifier.fillMaxWidth().defaultWeight()) {
+            // 인용구 글리프 — 명언임을 직관적으로 인지시키는 그래픽 요소.
             Text(
-                text = originalText,
+                text = "“",
                 style = TextStyle(
-                    color = ColorProvider(textPrimary.copy(alpha = ALPHA_SECONDARY)),
-                    fontSize = 11.sp,
-                    fontStyle = FontStyle.Italic,
+                    color = ColorProvider(textPrimary.copy(alpha = ALPHA_QUOTE_GLYPH)),
+                    fontSize = QUOTE_GLYPH_SIZE,
+                    fontWeight = FontWeight.Bold,
                 ),
-                maxLines = 3,
+                maxLines = 1,
             )
-        }
-        if (slot.author.isNotBlank()) {
-            Spacer(GlanceModifier.height(6.dp))
-            // 작가명 — 우측 정렬·축소로 본문과의 시각 간섭 최소화.
-            Row(
-                modifier = GlanceModifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.End,
-            ) {
+            Text(
+                text = slot.text,
+                style = TextStyle(
+                    color = ColorProvider(textPrimary),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                ),
+                // 넉넉한 큰 위젯에선 4줄, 그 외에는 3줄로 자른다 — 어느 쪽이든 체크리스트 우선.
+                maxLines = if (isTall) QUOTE_MAX_LINES_TALL else QUOTE_MAX_LINES_SHORT,
+            )
+            // 넓고 키도 큰 위젯에서만 원어 원문을 본문 아래 작게(이탤릭·연회색) 병기.
+            // 키가 낮으면 체크리스트 공간이 부족하므로 과감히 생략한다.
+            val originalText = slot.originalText
+            if (isWide && isTall && !originalText.isNullOrBlank()) {
+                Spacer(GlanceModifier.height(4.dp))
                 Text(
-                    text = "— ${slot.author}",
+                    text = originalText,
                     style = TextStyle(
-                        color = ColorProvider(textPrimary.copy(alpha = ALPHA_AUTHOR)),
-                        fontSize = 10.sp,
+                        color = ColorProvider(textPrimary.copy(alpha = ALPHA_SECONDARY)),
+                        fontSize = 11.sp,
+                        fontStyle = FontStyle.Italic,
                     ),
-                    maxLines = 1,
+                    maxLines = ORIGINAL_MAX_LINES,
                 )
+            }
+            if (slot.author.isNotBlank()) {
+                Spacer(GlanceModifier.height(6.dp))
+                // 작가명 — 우측 정렬·축소로 본문과의 시각 간섭 최소화.
+                Row(
+                    modifier = GlanceModifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.End,
+                ) {
+                    Text(
+                        text = "— ${slot.author}",
+                        style = TextStyle(
+                            color = ColorProvider(textPrimary.copy(alpha = ALPHA_AUTHOR)),
+                            fontSize = 10.sp,
+                        ),
+                        maxLines = 1,
+                    )
+                }
             }
         }
         if (progress != null) {
             // 명언 영역과 체크리스트를 분리하는 여백 + 헤어라인 디바이더.
-            Spacer(GlanceModifier.height(14.dp))
+            Spacer(GlanceModifier.height(DIVIDER_SPACER))
             Box(
                 modifier = GlanceModifier
                     .fillMaxWidth()
                     .height(1.dp)
                     .background(ColorProvider(textPrimary.copy(alpha = ALPHA_DIVIDER))),
             ) {}
-            Spacer(GlanceModifier.height(14.dp))
+            Spacer(GlanceModifier.height(DIVIDER_SPACER))
             // 가로뿐 아니라 세로도 넉넉할 때만 라벨 리스트. medium(250x120) 처럼 키가 낮은
-            // 위젯은 명언 영역이 이미 ~100dp 를 차지해 세 번째·두 번째 행이 클립된다.
+            // 위젯은 라벨을 펼치면 폭이 부족해 잘리므로 콤팩트 아이콘 행으로 폴백.
             if (isWide && isTall) {
                 ProgressList(progress, isLight, textPrimary)
             } else {
@@ -236,9 +258,9 @@ private fun LoadedContent(
 @Composable
 private fun ProgressList(progress: WidgetTodayProgress, isLight: Boolean, textPrimary: Color) {
     ProgressRowCard(PROGRESS_LABEL_AFFIRMATION, progress.affirmation, isLight, textPrimary)
-    Spacer(GlanceModifier.height(6.dp))
+    Spacer(GlanceModifier.height(PROGRESS_ROW_GAP))
     ProgressRowCard(PROGRESS_LABEL_ACTIONS, progress.actions, isLight, textPrimary)
-    Spacer(GlanceModifier.height(6.dp))
+    Spacer(GlanceModifier.height(PROGRESS_ROW_GAP))
     ProgressRowCard(PROGRESS_LABEL_WINS, progress.wins, isLight, textPrimary)
 }
 
@@ -256,7 +278,7 @@ private fun ProgressRowCard(
             .fillMaxWidth()
             .background(ImageProvider(rowBg))
             .cornerRadius(13.dp)
-            .padding(horizontal = 12.dp, vertical = 7.dp),
+            .padding(horizontal = 12.dp, vertical = PROGRESS_ROW_V_PADDING),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CheckIcon(done, isLight, textPrimary)
