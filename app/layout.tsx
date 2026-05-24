@@ -51,10 +51,9 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F7F3EC" },
-    { media: "(prefers-color-scheme: dark)", color: "#1E1B4B" },
-  ],
+  // Force light theme — Samsung Internet 등 모바일 브라우저의 자동 색 반전(다크 모드) 방지
+  themeColor: "#F7F3EC",
+  colorScheme: "light",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -70,8 +69,10 @@ export default function RootLayout({
   const fontVars = `${inter.variable} ${notoSansKR.variable} ${fraunces.variable} ${jetbrainsMono.variable}`;
 
   return (
-    <html lang="ko" className={`${fontVars} h-full antialiased`}>
+    <html lang="ko" className={`${fontVars} h-full antialiased`} style={{ colorScheme: "light" }}>
       <head>
+        {/* Samsung Internet, Chrome 등의 강제 다크 모드(색 반전) 비활성화 */}
+        <meta name="color-scheme" content="only light" />
         {/* Pretendard — Korean UI 그로테스크. CDN preconnect + variable woff2 */}
         <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="" />
         <link

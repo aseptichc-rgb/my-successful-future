@@ -514,7 +514,7 @@ export default function HomeDashboardPage() {
     <div className="flex h-full flex-col overflow-y-auto bg-cream pb-12">
       {/* ── meta strip — 흰 헤더 제거. cream 한 톤 ── */}
       <header className="flex items-center justify-between px-5 pt-5 pb-3 sm:px-7">
-        <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-indigo/40">
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-indigo/45">
           <b className="font-medium text-indigo">{meta.dm}</b>
           {meta.dow && <span> · {meta.dow}</span>}
           {meta.week && <span> · {meta.week}</span>}
@@ -603,7 +603,7 @@ export default function HomeDashboardPage() {
               ymd={ymd}
             />
             {motivationError && motivation && (
-              <p className="mt-3 px-1 font-mono text-[10px] uppercase tracking-[0.1em] text-soul">
+              <p className="mt-3 px-1 text-[11px] font-medium tracking-[-0.005em] text-soul">
                 {motivationError}
               </p>
             )}
@@ -621,14 +621,14 @@ export default function HomeDashboardPage() {
             {/* ── 10년 후의 나 ── */}
             <section className="px-5 pt-7 pb-7 sm:px-7">
               <div className="flex items-baseline justify-between">
-                <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-indigo/45">
+                <span className="text-[12px] font-medium tracking-[-0.005em] text-indigo/55">
                   {t("home.future.title")}
                 </span>
                 {!futureEditing && (
                   <button
                     type="button"
                     onClick={() => setFutureEditing(true)}
-                    className="font-mono text-[10px] uppercase tracking-[0.14em] text-indigo/60 transition-colors hover:text-soul"
+                    className="text-[12px] font-medium tracking-[-0.005em] text-indigo/60 transition-colors hover:text-soul"
                   >
                     {futureText ? t("common.edit") : t("common.write")}
                   </button>
@@ -643,7 +643,7 @@ export default function HomeDashboardPage() {
                     rows={5}
                     maxLength={FUTURE_PERSONA_MAX}
                     placeholder={t("onboarding.step1.placeholder")}
-                    className="w-full resize-none border-b border-hairline bg-transparent pb-2 font-display text-[17px] font-light italic leading-[1.55] tracking-[-0.005em] text-indigo placeholder:text-indigo/35 focus:border-indigo focus:outline-none"
+                    className="w-full resize-none border-b border-hairline bg-transparent pb-2 font-display text-[17px] font-light leading-[1.55] tracking-[-0.005em] text-indigo placeholder:font-light placeholder:text-indigo/35 focus:border-indigo focus:outline-none"
                   />
                   <div className="mt-3 flex items-center justify-between">
                     <span className="font-mono text-[10px] tabular-nums text-indigo/45">
@@ -654,7 +654,7 @@ export default function HomeDashboardPage() {
                         type="button"
                         onClick={handleFutureCancel}
                         disabled={futureSaving}
-                        className="font-mono text-[10px] uppercase tracking-[0.14em] text-indigo/60 transition-colors hover:text-indigo disabled:opacity-40"
+                        className="text-[12px] font-medium tracking-[-0.005em] text-indigo/60 transition-colors hover:text-indigo disabled:opacity-40"
                       >
                         {t("common.cancel")}
                       </button>
@@ -662,7 +662,7 @@ export default function HomeDashboardPage() {
                         type="button"
                         onClick={handleFutureSave}
                         disabled={futureSaving}
-                        className="font-mono text-[10px] uppercase tracking-[0.14em] text-soul transition-colors hover:text-soul-press disabled:opacity-40"
+                        className="text-[12px] font-medium tracking-[-0.005em] text-soul transition-colors hover:text-soul-press disabled:opacity-40"
                       >
                         {futureSaving
                           ? t("common.saving")
@@ -672,14 +672,14 @@ export default function HomeDashboardPage() {
                   </div>
                 </div>
               ) : futureText ? (
-                <p className="mt-3 whitespace-pre-wrap font-display text-[17px] font-light italic leading-[1.55] tracking-[-0.005em] text-indigo/95">
+                <p className="mt-3 whitespace-pre-wrap font-display text-[17px] font-light leading-[1.55] tracking-[-0.005em] text-indigo/95">
                   {futureText}
                 </p>
               ) : (
                 <button
                   type="button"
                   onClick={() => setFutureEditing(true)}
-                  className="mt-3 block w-full text-left font-display text-[15px] font-light italic leading-[1.55] text-indigo/35 transition-colors hover:text-indigo/55"
+                  className="mt-3 block w-full text-left font-display text-[15px] font-light leading-[1.55] text-indigo/35 transition-colors hover:text-indigo/55"
                 >
                   {t("home.future.empty")}
                 </button>
@@ -691,7 +691,7 @@ export default function HomeDashboardPage() {
             {/* ── 이번 달 목표 ── */}
             <section className="px-5 pt-7 pb-7 sm:px-7">
               <div className="flex items-baseline justify-between">
-                <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-indigo/45">
+                <span className="text-[12px] font-medium tracking-[-0.005em] text-indigo/55">
                   {t("home.goals.title")}
                 </span>
                 <div className="flex items-center gap-4">
@@ -703,7 +703,7 @@ export default function HomeDashboardPage() {
                     <button
                       type="button"
                       onClick={() => setGoalsEditing((v) => !v)}
-                      className="font-mono text-[10px] uppercase tracking-[0.14em] text-indigo/60 transition-colors hover:text-soul"
+                      className="text-[12px] font-medium tracking-[-0.005em] text-indigo/60 transition-colors hover:text-soul"
                     >
                       {goalsEditing ? t("common.done") : t("common.edit")}
                     </button>
@@ -771,7 +771,7 @@ export default function HomeDashboardPage() {
                             }`}
                           >
                             {trimmed || (
-                              <span className="font-display italic text-indigo/35">
+                              <span className="font-display font-light text-indigo/35">
                                 {t("home.goals.placeholder")}
                               </span>
                             )}
@@ -820,7 +820,7 @@ export default function HomeDashboardPage() {
                     type="button"
                     onClick={handleAddGoal}
                     disabled={!goalDraft.trim()}
-                    className="font-mono text-[10px] uppercase tracking-[0.14em] text-soul transition-colors hover:text-soul-press disabled:opacity-30"
+                    className="text-[12px] font-medium tracking-[-0.005em] text-soul transition-colors hover:text-soul-press disabled:opacity-30"
                   >
                     {t("common.add")}
                   </button>
@@ -832,7 +832,7 @@ export default function HomeDashboardPage() {
                 <button
                   type="button"
                   onClick={() => setGoalsEditing(true)}
-                  className="mt-3 block w-full text-left font-display text-[15px] font-light italic text-indigo/35 transition-colors hover:text-indigo/55"
+                  className="mt-3 block w-full text-left font-display text-[15px] font-light text-indigo/35 transition-colors hover:text-indigo/55"
                 >
                   {t("home.goals.subtitle")}
                 </button>
@@ -844,27 +844,27 @@ export default function HomeDashboardPage() {
             {/* ── 오늘의 작은 승리 (wins) — auto-save ── */}
             <section className="px-5 pt-7 pb-7 sm:px-7">
               <div className="flex items-baseline justify-between">
-                <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-indigo/45">
+                <span className="text-[12px] font-medium tracking-[-0.005em] text-indigo/55">
                   {t("home.wins.title", { max: MAX_DAILY_WINS })}
                 </span>
                 <div className="flex items-center gap-4">
                   {winsError ? (
-                    <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-soul">
+                    <span className="text-[11px] font-medium tracking-[-0.005em] text-soul">
                       {winsError}
                     </span>
                   ) : winsJustSaved ? (
-                    <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-soul">
+                    <span className="text-[11px] font-medium tracking-[-0.005em] text-soul">
                       {t("common.saved")}
                     </span>
                   ) : winsAutoSaving ? (
-                    <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-indigo/45">
+                    <span className="text-[11px] font-medium tracking-[-0.005em] text-indigo/45">
                       {t("common.saving")}
                     </span>
                   ) : null}
                   <button
                     type="button"
                     onClick={() => router.push("/wins-history")}
-                    className="font-mono text-[10px] uppercase tracking-[0.14em] text-indigo/60 transition-colors hover:text-soul"
+                    className="text-[12px] font-medium tracking-[-0.005em] text-indigo/60 transition-colors hover:text-soul"
                   >
                     {t("home.wins.history")}
                   </button>
@@ -894,7 +894,7 @@ export default function HomeDashboardPage() {
                         maxLength={WIN_MAX}
                         onChange={(e) => handleChangeWin(idx, e.target.value)}
                         placeholder={placeholder}
-                        className="min-h-[24px] min-w-0 flex-1 resize-none border-none bg-transparent p-0 text-[14px] leading-[1.55] tracking-[-0.005em] text-indigo placeholder:font-display placeholder:font-light placeholder:italic placeholder:text-indigo/35 focus:outline-none"
+                        className="min-h-[24px] min-w-0 flex-1 resize-none border-none bg-transparent p-0 text-[14px] leading-[1.55] tracking-[-0.005em] text-indigo placeholder:font-display placeholder:font-light placeholder:text-indigo/35 focus:outline-none"
                       />
                     </li>
                   );

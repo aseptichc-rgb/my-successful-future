@@ -314,9 +314,7 @@ export default function MotivationCard({
     return (
       <>
         {before}
-        <em className="not-italic">
-          <span className="font-light italic text-soul">{emphasis}</span>
-        </em>
+        <span className="font-medium text-soul">{emphasis}</span>
         {after}
       </>
     );
@@ -329,7 +327,7 @@ export default function MotivationCard({
     >
       {/* ── 인용 hero ── */}
       <div>
-        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-indigo/45">
+        <div className="text-[12px] font-medium tracking-[-0.005em] text-indigo/45">
           {t("motivation.headerTodayLabel")}
         </div>
 
@@ -341,7 +339,7 @@ export default function MotivationCard({
           </div>
         ) : motivation ? (
           <>
-            <p className="mt-4 whitespace-pre-wrap font-display text-[26px] font-light italic leading-[1.3] tracking-[-0.015em] text-indigo sm:text-[30px]">
+            <p className="mt-4 whitespace-pre-wrap font-display text-[26px] font-light leading-[1.3] tracking-[-0.015em] text-indigo sm:text-[30px]">
               {renderedQuote}
             </p>
             {motivation.originalText && (
@@ -352,7 +350,7 @@ export default function MotivationCard({
                 {motivation.originalText}
               </p>
             )}
-            <div className="mt-5 font-mono text-[10px] uppercase tracking-[0.14em] text-indigo/45">
+            <div className="mt-5 text-[12px] font-medium tracking-[-0.005em] text-indigo/45">
               — <b className="font-medium text-indigo/85">{motivation.author}</b>
               {motivation.source && (
                 <span className="ml-2 text-indigo/40">《{motivation.source}》</span>
@@ -360,7 +358,7 @@ export default function MotivationCard({
             </div>
           </>
         ) : (
-          <p className="mt-4 font-display text-[16px] font-light italic leading-[1.5] text-indigo/55">
+          <p className="mt-4 font-display text-[16px] font-light leading-[1.5] text-indigo/55">
             {errorMessage || t("motivation.preparingCard")}
           </p>
         )}
@@ -389,14 +387,14 @@ export default function MotivationCard({
             <div className="h-px bg-hairline" />
             <div>
               <div className="flex items-baseline gap-3">
-                <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-indigo/45">
+                <span className="text-[12px] font-medium tracking-[-0.005em] text-indigo/55">
                   {t("motivation.missionLabel")}
                 </span>
-                <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-soul">
+                <span className="text-[11px] font-medium tracking-[-0.005em] text-soul">
                   #{motivation.mission.identityTag}
                 </span>
               </div>
-              <p className="mt-3 font-display text-[17px] font-light italic leading-[1.5] tracking-[-0.005em] text-indigo">
+              <p className="mt-3 font-display text-[17px] font-light leading-[1.5] tracking-[-0.005em] text-indigo">
                 {motivation.mission.prompt}
               </p>
 
@@ -411,7 +409,7 @@ export default function MotivationCard({
                       setResponseDraft(motivation.response?.text || "");
                       setResponseEditing(true);
                     }}
-                    className="mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-indigo/55 transition-colors hover:text-soul"
+                    className="mt-2 text-[12px] font-medium tracking-[-0.005em] text-indigo/55 transition-colors hover:text-soul"
                   >
                     {t("motivation.editResponse")}
                   </button>
@@ -424,7 +422,7 @@ export default function MotivationCard({
                     rows={2}
                     maxLength={RESPONSE_MAX}
                     placeholder={t("motivation.responsePlaceholder")}
-                    className="w-full resize-none border-b border-hairline bg-transparent pb-2 text-[14px] leading-[1.55] tracking-[-0.005em] text-indigo placeholder:font-display placeholder:font-light placeholder:italic placeholder:text-indigo/35 focus:border-indigo focus:outline-none"
+                    className="w-full resize-none border-b border-hairline bg-transparent pb-2 text-[14px] leading-[1.55] tracking-[-0.005em] text-indigo placeholder:font-display placeholder:font-light placeholder:text-indigo/35 focus:border-indigo focus:outline-none"
                   />
                   <div className="mt-2 flex items-center justify-between">
                     <span className="font-mono text-[10px] tabular-nums text-indigo/45">
@@ -440,7 +438,7 @@ export default function MotivationCard({
                             setResponseError(null);
                           }}
                           disabled={responseSaving}
-                          className="font-mono text-[10px] uppercase tracking-[0.14em] text-indigo/55 transition-colors hover:text-indigo disabled:opacity-40"
+                          className="text-[12px] font-medium tracking-[-0.005em] text-indigo/55 transition-colors hover:text-indigo disabled:opacity-40"
                         >
                           {t("common.cancel")}
                         </button>
@@ -449,14 +447,14 @@ export default function MotivationCard({
                         type="button"
                         onClick={handleSubmitResponse}
                         disabled={responseSaving || !responseDraft.trim()}
-                        className="font-mono text-[10px] uppercase tracking-[0.14em] text-soul transition-colors hover:text-soul-press disabled:opacity-30"
+                        className="text-[12px] font-medium tracking-[-0.005em] text-soul transition-colors hover:text-soul-press disabled:opacity-30"
                       >
                         {responseSaving ? t("motivation.submitting") : t("motivation.submit")}
                       </button>
                     </div>
                   </div>
                   {responseError && (
-                    <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.1em] text-soul">
+                    <p className="mt-2 text-[11px] font-medium tracking-[-0.005em] text-soul">
                       {responseError}
                     </p>
                   )}
@@ -466,7 +464,7 @@ export default function MotivationCard({
               {submitFlash && (
                 <p
                   role="status"
-                  className="mt-3 font-mono text-[10px] uppercase tracking-[0.12em] text-soul"
+                  className="mt-3 text-[11px] font-medium tracking-[-0.005em] text-soul"
                 >
                   {submitFlash}
                 </p>
@@ -481,7 +479,7 @@ export default function MotivationCard({
           type="button"
           onClick={handleDownload}
           disabled={!motivation || downloading}
-          className="font-mono text-[10px] uppercase tracking-[0.14em] text-indigo/60 transition-colors hover:text-soul disabled:opacity-40"
+          className="text-[12px] font-medium tracking-[-0.005em] text-indigo/60 transition-colors hover:text-soul disabled:opacity-40"
         >
           {downloading
             ? t("motivation.wallpaper.downloading")
@@ -491,7 +489,7 @@ export default function MotivationCard({
           type="button"
           onClick={handleRegenerate}
           disabled={loading || regenerating}
-          className="font-mono text-[10px] uppercase tracking-[0.14em] text-indigo/55 transition-colors hover:text-soul disabled:opacity-40"
+          className="text-[12px] font-medium tracking-[-0.005em] text-indigo/55 transition-colors hover:text-soul disabled:opacity-40"
           title={t("motivation.regenerate")}
         >
           {regenerating ? t("motivation.regenerating") : t("motivation.regenerate")}
@@ -499,7 +497,7 @@ export default function MotivationCard({
       </div>
 
       {downloadError && (
-        <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-soul">
+        <p className="text-[11px] font-medium tracking-[-0.005em] text-soul">
           {downloadError}
         </p>
       )}

@@ -127,23 +127,21 @@ export default function AffirmationCheckin({
     <div>
       {/* ── 섹션 헤더 ── */}
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-indigo/45">
+        <span className="text-[12px] font-medium tracking-[-0.005em] text-indigo/55">
           {t("motivation.affirmations.title")}
         </span>
-        <span className="flex items-center gap-1.5 font-mono text-[11px] text-indigo/60">
+        <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-[-0.005em] text-indigo/60">
           <span
             className="block h-1.5 w-1.5 rounded-full bg-soul"
             style={{ boxShadow: "0 0 6px var(--soul)" }}
             aria-hidden
           />
-          <span className="tracking-[0.1em]">
-            {t("motivation.affirmations.streak", { count: streakCount })}
-          </span>
+          <span>{t("motivation.affirmations.streak", { count: streakCount })}</span>
         </span>
       </div>
 
       {/* ── instructional copy — ghost italic ── */}
-      <p className="mt-2 font-display text-[13px] font-light italic leading-[1.5] text-indigo/55">
+      <p className="mt-2 font-display text-[13px] font-light leading-[1.5] text-indigo/55">
         {alreadyCheckedIn
           ? t("motivation.affirmations.alreadyToday")
           : t("motivation.affirmations.placeholder")}
@@ -207,7 +205,7 @@ export default function AffirmationCheckin({
 
               <div className="min-w-0 flex-1">
                 {/* target — Fraunces italic ghost */}
-                <div className="font-display text-[13px] font-light italic leading-[1.5] text-indigo/40">
+                <div className="font-display text-[13px] font-light leading-[1.5] text-indigo/40">
                   {target}
                 </div>
 
@@ -222,11 +220,11 @@ export default function AffirmationCheckin({
                   onBlur={() => handleBlur(idx)}
                   aria-label={`${idx + 1}번 다짐 — ${target}`}
                   aria-invalid={showHint || undefined}
-                  className={`mt-1 w-full border-b bg-transparent py-1 text-[14px] leading-[1.5] tracking-[-0.005em] text-indigo placeholder:font-display placeholder:font-light placeholder:italic placeholder:text-indigo/30 focus:outline-none ${borderClass}`}
+                  className={`mt-1 w-full border-b bg-transparent py-1 text-[14px] leading-[1.5] tracking-[-0.005em] text-indigo placeholder:font-display placeholder:font-light placeholder:text-indigo/30 focus:outline-none ${borderClass}`}
                 />
 
                 {showHint && (
-                  <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.08em] text-soul">
+                  <p className="mt-1 text-[11px] font-medium tracking-[-0.005em] text-soul">
                     → {target}
                   </p>
                 )}
@@ -243,7 +241,7 @@ export default function AffirmationCheckin({
             type="button"
             onClick={handleSubmit}
             disabled={submitting || !allFilled}
-            className="font-mono text-[10px] uppercase tracking-[0.14em] text-soul transition-colors hover:text-soul-press disabled:opacity-30"
+            className="text-[12px] font-medium tracking-[-0.005em] text-soul transition-colors hover:text-soul-press disabled:opacity-30"
           >
             {submitting
               ? t("motivation.affirmations.checkingIn")
@@ -253,14 +251,14 @@ export default function AffirmationCheckin({
       )}
 
       {errorMsg && (
-        <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.1em] text-soul">
+        <p className="mt-2 text-[11px] font-medium tracking-[-0.005em] text-soul">
           {errorMsg}
         </p>
       )}
       {flash && (
         <p
           role="status"
-          className="mt-2 font-mono text-[11px] uppercase tracking-[0.12em] text-indigo"
+          className="mt-2 text-[11px] font-medium tracking-[-0.005em] text-indigo"
         >
           {flash}
         </p>

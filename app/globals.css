@@ -379,6 +379,8 @@ html,
 body {
   background: var(--background);
   color: var(--foreground);
+  /* Samsung Internet 등 모바일 브라우저의 강제 다크 모드(색 반전) 차단 */
+  color-scheme: light;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
