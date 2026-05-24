@@ -15,6 +15,7 @@ const dict = {
   "common.skip": "건너뛰기",
   "common.add": "추가",
   "common.edit": "수정",
+  "common.done": "완료",
   "common.write": "작성",
   "common.delete": "삭제",
   "common.remove": "제거",

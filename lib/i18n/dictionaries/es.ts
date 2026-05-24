@@ -15,6 +15,7 @@ const dict: Record<DictKey, string> = {
   "common.skip": "Omitir",
   "common.add": "Añadir",
   "common.edit": "Editar",
+  "common.done": "Hecho",
   "common.write": "Escribir",
   "common.delete": "Eliminar",
   "common.remove": "Quitar",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -19,23 +19,29 @@ import { authedFetch } from "@/lib/authedFetch";
 import { notifyAndroidWidgetRefresh } from "@/lib/widgetBridge";
 import MotivationCard from "@/components/home/MotivationCard";
 import { useLanguage } from "@/lib/i18n";
-import type {
-  DailyEntry,
-  DailyMotivation,
-} from "@/types";
+import type { DailyEntry, DailyMotivation } from "@/types";
+
+/* ─────────────────────────────────────────────────────────────────
+ * Anima Home — v2 redesign
+ * ─────────────────────────────────────────────────────────────────
+ * 원칙(브랜드 시스템 문서 + Widget Directive 적용):
+ *  · 한 평면, 한 톤 — cream 위에 hairline + 여백으로 분리. 카드 금지.
+ *  · 인용·페르소나·번호는 Fraunces 300 italic.
+ *  · 컨트롤은 숨김 — 편집/삭제는 명시적 편집 모드에서만.
+ *  · 저장 버튼 없음 — wins 는 600ms debounce auto-save, 우상단 mono 토스트.
+ *  · 페이지 헤더 우상단에 streak dot + 숫자 고정 (위젯과 동일 위치).
+ *
+ * 비즈니스 로직(Firebase, i18n, 라우팅, qDate 핸드오프)은 v1 그대로 유지.
+ * ────────────────────────────────────────────────────────────────── */
 
 const FUTURE_PERSONA_MAX = 500;
 const GOAL_MAX = 80;
 const WIN_MAX = 140;
-const WINS_SAVED_TOAST_MS = 2000;
+const WINS_AUTOSAVE_MS = 600;
+const WINS_SAVED_TOAST_MS = 1800;
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-/**
- * 위젯이 탭 순간 넘긴 권위 날짜 키(?qDate=YYYY-MM-DD)를 URL 에서 읽는다.
- * 위젯-홈 명언 일치의 핵심: 웹이 기기 시계로 ymd 를 다시 계산하지 않고,
- * 위젯이 실제로 보여주던 그 dailyMotivations 문서를 그대로 읽게 한다.
- * 형식이 어긋나면 null → 호출부가 기기 KST 로 폴백.
- */
+/* ───── qDate 핸드오프 — Widget → /home ymd 권위 ───── */
 function readQDateFromUrl(): string | null {
   if (typeof window === "undefined") return null;
   try {
@@ -46,26 +52,9 @@ function readQDateFromUrl(): string | null {
   }
 }
 
-/**
- * /home 이 구독할 "오늘" 키를 결정한다.
- *
- * 과거 버그(위젯-홈 명언 불일치)의 근본 원인:
- *   1) ymd 를 마운트 시 useMemo([]) 로 1회 고정 → TWA 웹뷰가 자정(KST)을
- *      백그라운드로 넘기면 어제 키로 굳어 위젯(오늘)과 어긋남.
- *   2) 기기 시계 기반 계산이 서버 todayKst() 와 갈라짐.
- *
- * 해결:
- *   - 초기값은 위젯이 넘긴 qDate(권위) → 없으면 기기 KST.
- *   - 화면이 다시 보일 때(visibilitychange/focus) 기기 KST 를 재계산해,
- *     현재 키보다 "이후 날짜"면 그날로 전진(과거로 회귀하지 않음).
- *     위젯이 stale 카드를 넘겨 과거 키로 들어왔어도, 앱을 켜둔 채
- *     날짜가 바뀌면 오늘 카드로 자연스럽게 따라간다.
- */
 function useResolvedYmd(): string {
   const [ymd, setYmd] = useState<string>(() => readQDateFromUrl() ?? getKstYmd());
   useEffect(() => {
-    // qDate 는 1회성 핸드오프 — 캡처 후 URL 에서 제거한다. 인앱 네비게이션으로
-    // /home 이 다시 마운트돼도 옛 날짜로 재고정되지 않게(nativeToken 과 동일 패턴).
     try {
       const url = new URL(window.location.href);
       if (url.searchParams.has("qDate")) {
@@ -73,12 +62,11 @@ function useResolvedYmd(): string {
         window.history.replaceState({}, "", url.toString());
       }
     } catch {
-      /* URL 조작 실패는 치명적이지 않음 — 무시 */
+      /* noop */
     }
     const syncForward = () => {
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
       const live = getKstYmd();
-      // YYYY-MM-DD 는 사전식 비교가 곧 날짜 순서. 더 이후 날짜로만 전진.
       setYmd((cur) => (live > cur ? live : cur));
     };
     document.addEventListener("visibilitychange", syncForward);
@@ -91,24 +79,64 @@ function useResolvedYmd(): string {
   return ymd;
 }
 
-function formatKstHeader(ymd: string, locale: string): string {
+/* ───── 메타 스트립용 날짜 포맷 — mono · uppercase ─────
+ * "5 · 24" + 요일 약자 + ISO 주차. 본문과 한 톤으로 들어가도록 짧게.
+ */
+function formatMetaDate(ymd: string, locale: string): { dm: string; dow: string; week: string } {
   const [y, m, d] = ymd.split("-").map((s) => parseInt(s, 10));
-  if (!y || !m || !d) return ymd;
+  if (!y || !m || !d) return { dm: ymd, dow: "", week: "" };
   try {
     const date = new Date(Date.UTC(y, m - 1, d));
-    return new Intl.DateTimeFormat(
+    const dowFmt = new Intl.DateTimeFormat(
       locale === "ko" ? "ko-KR" : locale === "es" ? "es-ES" : locale === "zh" ? "zh-CN" : "en-US",
-      { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" },
+      { weekday: "short", timeZone: "UTC" },
     ).format(date);
+    // ISO week number
+    const tmp = new Date(Date.UTC(y, m - 1, d));
+    const dayNum = (tmp.getUTCDay() + 6) % 7;
+    tmp.setUTCDate(tmp.getUTCDate() - dayNum + 3);
+    const firstThursday = tmp.valueOf();
+    tmp.setUTCMonth(0, 1);
+    if (tmp.getUTCDay() !== 4) {
+      tmp.setUTCMonth(0, 1 + ((4 - tmp.getUTCDay() + 7) % 7));
+    }
+    const weekNum = 1 + Math.ceil((firstThursday - tmp.valueOf()) / 604800000);
+    return {
+      dm: `${m} · ${d}`,
+      dow: dowFmt.toUpperCase(),
+      week: `WEEK ${String(weekNum).padStart(2, "0")}`,
+    };
   } catch {
-    return ymd;
+    return { dm: ymd, dow: "", week: "" };
   }
 }
 
-const IconSettings = ({ className = "h-5 w-5" }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+/* ───── 아이콘 — gear 만 남김. 섹션 헤더 아이콘은 전부 제거 ───── */
+const IconGear = ({ className = "h-5 w-5" }: { className?: string }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.4}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+  >
     <circle cx="12" cy="12" r="3" />
     <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06A2 2 0 1 1 4.13 16.92l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.65 8.83a1.7 1.7 0 0 0-.34-1.87l-.06-.06A2 2 0 1 1 7.08 4.07l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1.04-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06A2 2 0 1 1 19.93 7.08l-.06.06a1.7 1.7 0 0 0-.34 1.87V9c.27.66.93 1.1 1.65 1.1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z" />
+  </svg>
+);
+
+const IconX = ({ className = "h-4 w-4" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M18 6L6 18M6 6l12 12" />
+  </svg>
+);
+
+const IconCheck = ({ className = "h-4 w-4" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M5 12l5 5L20 7" />
   </svg>
 );
 
@@ -117,41 +145,50 @@ export default function HomeDashboardPage() {
   const { user, firebaseUser, loading, refreshUser } = useAuth();
   const { t, locale } = useLanguage();
 
+  /* ── future persona ── */
   const [futureDraft, setFutureDraft] = useState("");
   const [futureEditing, setFutureEditing] = useState(false);
   const [futureSaving, setFutureSaving] = useState(false);
 
+  /* ── goals ── */
   const [goals, setGoals] = useState<string[]>([]);
   const [goalDraft, setGoalDraft] = useState("");
+  const [goalsEditing, setGoalsEditing] = useState(false); // 페이지 레벨 편집 모드
   const goalsHydratedRef = useRef(false);
 
+  /* ── ymd-bound daily state ── */
   const ymd = useResolvedYmd();
   const [wins, setWins] = useState<string[]>(["", "", ""]);
   const [savedWins, setSavedWins] = useState<string[]>(["", "", ""]);
-  const [winsSaving, setWinsSaving] = useState(false);
+  const [winsAutoSaving, setWinsAutoSaving] = useState(false);
   const [winsJustSaved, setWinsJustSaved] = useState(false);
   const [winsError, setWinsError] = useState<string | null>(null);
   const [achievedGoals, setAchievedGoals] = useState<string[]>([]);
   const dailyHydratedRef = useRef(false);
   const winsSavedToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const winsAutosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
       if (winsSavedToastTimerRef.current) clearTimeout(winsSavedToastTimerRef.current);
+      if (winsAutosaveTimerRef.current) clearTimeout(winsAutosaveTimerRef.current);
     };
   }, []);
 
+  /* ── motivation card ── */
   const [motivation, setMotivation] = useState<DailyMotivation | null>(null);
   const [motivationLoading, setMotivationLoading] = useState(true);
   const [motivationError, setMotivationError] = useState<string | null>(null);
-  // ymd 별로 "카드 생성 POST 를 이미 쐈는지" 추적. ymd 가 자정 전진으로 바뀌면
-  // 새 날짜의 카드를 다시 한 번 보장해야 하므로 boolean 이 아닌 마지막 요청 ymd 를 들고 있는다.
   const ensureRequestedYmdRef = useRef<string | null>(null);
-
   const [alreadyCheckedInToday, setAlreadyCheckedInToday] = useState(false);
 
+  /* ── tabs ──
+   * v1 의 "future"/"actions" 라벨 그대로 유지(스토리지/i18n 키 호환).
+   * 의미 재정의는 Phase 4 (CHANGES.md 참조).
+   */
   const [activeTab, setActiveTab] = useState<"future" | "actions">("future");
 
+  /* ───── auth gate ───── */
   useEffect(() => {
     if (loading) return;
     if (!firebaseUser) {
@@ -163,6 +200,7 @@ export default function HomeDashboardPage() {
     }
   }, [firebaseUser, loading, router, user]);
 
+  /* ───── hydrate from user profile ───── */
   useEffect(() => {
     if (!user) return;
     setFutureDraft(user.futurePersona || "");
@@ -172,6 +210,7 @@ export default function HomeDashboardPage() {
     }
   }, [user]);
 
+  /* ───── daily entry subscribe ───── */
   useEffect(() => {
     if (!firebaseUser) return;
     const unsub = onDailyEntrySnapshot(firebaseUser.uid, ymd, (entry: DailyEntry | null) => {
@@ -196,6 +235,7 @@ export default function HomeDashboardPage() {
     return unsub;
   }, [firebaseUser, ymd]);
 
+  /* ───── motivation subscribe + generate ───── */
   useEffect(() => {
     if (!firebaseUser) return;
     setMotivationLoading(true);
@@ -205,8 +245,6 @@ export default function HomeDashboardPage() {
       setMotivation(m);
       setMotivationLoading(false);
       if (!m && ensureRequestedYmdRef.current !== ymd) {
-        // 이 ymd 에 대해 한 번만 생성 POST. ymd 가 자정 전진으로 바뀌면
-        // 새 날짜에 대해 다시 한 번 보장된다.
         ensureRequestedYmdRef.current = ymd;
         authedFetch("/api/daily-motivation", {
           method: "POST",
@@ -244,8 +282,6 @@ export default function HomeDashboardPage() {
       if (!res.ok) {
         throw new Error(data.error || "다시 받기에 실패했어요.");
       }
-      // 스냅샷 리스너가 늦게 도착하거나 같은 탭 재구독 타이밍에서 누락될 수 있어,
-      // 응답 본문의 새 카드를 즉시 적용해 UI 가 그 자리에서 갱신되도록 한다.
       if (data.motivation) {
         setMotivation(data.motivation);
       }
@@ -277,6 +313,7 @@ export default function HomeDashboardPage() {
     [ymd],
   );
 
+  /* ───── affirmation check-in subscribe + submit ───── */
   useEffect(() => {
     if (!firebaseUser) return;
     const unsub = onAffirmationCheckinSnapshot(firebaseUser.uid, ymd, (checked) => {
@@ -301,10 +338,8 @@ export default function HomeDashboardPage() {
       if (!res.ok || !data.ok) {
         throw new Error(data.error || "체크인을 저장하지 못했어요.");
       }
-      // 새로 체크인됐으면 user 프로필을 다시 불러와 streak.count 를 갱신.
       if (data.matched) {
         await refreshUser().catch(() => {});
-        // TWA 환경이면 위젯 즉시 갱신 트리거 — "앱은 완료 / 위젯은 미완료" 불일치 봉합.
         notifyAndroidWidgetRefresh();
       }
       return {
@@ -318,13 +353,15 @@ export default function HomeDashboardPage() {
 
   if (loading || !firebaseUser) {
     return (
-      <div className="flex h-full items-center justify-center bg-[#F0EDE6]">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-black/10 border-t-[#1E1B4B]" />
+      <div className="flex h-full items-center justify-center bg-cream">
+        <div className="h-6 w-6 animate-spin rounded-full border-[1.5px] border-indigo/15 border-t-indigo" />
       </div>
     );
   }
 
   const uid = firebaseUser.uid;
+
+  /* ───── handlers ───── */
 
   const handleFutureSave = async () => {
     const next = futureDraft.trim().slice(0, FUTURE_PERSONA_MAX);
@@ -365,7 +402,6 @@ export default function HomeDashboardPage() {
     setAchievedGoals(next);
     try {
       await saveDailyAchievedGoals(uid, ymd, next);
-      // TWA 환경이면 위젯 즉시 갱신 트리거 — 모든 목표 달성 토글이 즉시 위젯에 반영.
       notifyAndroidWidgetRefresh();
     } catch (err) {
       console.error("[home] 목표 달성 저장 실패:", err);
@@ -381,7 +417,6 @@ export default function HomeDashboardPage() {
     setAchievedGoals(pruned);
     try {
       await saveDailyAchievedGoals(uid, ymd, pruned);
-      // 목표 삭제로 인해 "전부 달성" 상태가 false 로 바뀔 수 있으므로 위젯도 같이 깨운다.
       notifyAndroidWidgetRefresh();
     } catch (err) {
       console.error("달성 목표 정리 실패:", err);
@@ -427,70 +462,102 @@ export default function HomeDashboardPage() {
     await pruneAchievedGoals(next);
   };
 
+  /* ───── wins auto-save ─────
+   * 저장 버튼을 제거하고 입력 변경 시 600ms debounce 후 Firebase 에 저장.
+   * 저장 직후 "저장됨" 토스트 1.8s. 빈 입력만 있을 때는 저장 스킵.
+   */
   const handleChangeWin = (idx: number, value: string) => {
     const next = wins.map((w, i) => (i === idx ? value.slice(0, WIN_MAX) : w));
     setWins(next);
     if (winsJustSaved) setWinsJustSaved(false);
     if (winsError) setWinsError(null);
+
+    // 변경이 savedWins 와 동일하면 저장 트리거 안 함.
+    const dirty = next.some((w, i) => (w || "") !== (savedWins[i] || ""));
+    const hasContent = next.some((w) => (w || "").trim().length > 0);
+    if (winsAutosaveTimerRef.current) clearTimeout(winsAutosaveTimerRef.current);
+    if (!dirty || !hasContent) return;
+    winsAutosaveTimerRef.current = setTimeout(() => {
+      void doAutoSaveWins(next);
+    }, WINS_AUTOSAVE_MS);
   };
 
-  const handleSaveWins = async () => {
-    setWinsSaving(true);
+  const doAutoSaveWins = async (snapshot: string[]) => {
+    setWinsAutoSaving(true);
     setWinsError(null);
     try {
-      await saveDailyWins(uid, ymd, wins);
-      setSavedWins(wins);
+      await saveDailyWins(uid, ymd, snapshot);
+      setSavedWins(snapshot);
       setWinsJustSaved(true);
-      // TWA 환경이면 위젯 즉시 갱신 트리거 — 잘한 일 3가지 입력 직후 위젯에도 체크 표시.
       notifyAndroidWidgetRefresh();
       if (winsSavedToastTimerRef.current) clearTimeout(winsSavedToastTimerRef.current);
-      winsSavedToastTimerRef.current = setTimeout(() => setWinsJustSaved(false), WINS_SAVED_TOAST_MS);
+      winsSavedToastTimerRef.current = setTimeout(
+        () => setWinsJustSaved(false),
+        WINS_SAVED_TOAST_MS,
+      );
     } catch (err) {
-      console.error("[home] 잘한 일 저장 실패:", err);
+      console.error("[home] 잘한 일 자동 저장 실패:", err);
       setWinsError(t("home.wins.saveFailed"));
     } finally {
-      setWinsSaving(false);
+      setWinsAutoSaving(false);
     }
   };
 
   const futureText = user?.futurePersona || "";
-  const winsDirty = wins.some((w, i) => (w || "") !== (savedWins[i] || ""));
-  const winsHasContent = wins.some((w) => (w || "").trim().length > 0);
+  const streakCount = user?.affirmationStreak?.count ?? 0;
+  const meta = formatMetaDate(ymd, locale);
+  const goalsDone = achievedGoals.filter((g) => goals.includes(g)).length;
+
+  /* ───── render ───── */
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto bg-[#F0EDE6] pb-8">
-      <header className="border-b border-black/[0.06] bg-white px-5 py-5 sm:px-6 sm:py-7">
-        <div className="mx-auto flex max-w-3xl items-start justify-between gap-4">
-          <div>
-            <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.005em] text-[#1E1B4B] sm:text-[32px]">
-              {t("home.title")}
-            </h1>
-            <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
-              {formatKstHeader(ymd, locale)} · {t("home.subtitle")}
-            </p>
-          </div>
+    <div className="flex h-full flex-col overflow-y-auto bg-cream pb-12">
+      {/* ── meta strip — 흰 헤더 제거. cream 한 톤 ── */}
+      <header className="flex items-center justify-between px-5 pt-5 pb-3 sm:px-7">
+        <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-indigo/40">
+          <b className="font-medium text-indigo">{meta.dm}</b>
+          {meta.dow && <span> · {meta.dow}</span>}
+          {meta.week && <span> · {meta.week}</span>}
+        </div>
+        <div className="flex items-center gap-4">
+          {streakCount > 0 && (
+            <span
+              className="flex items-center gap-1.5 font-mono text-[11px] text-indigo/60"
+              aria-label={`${streakCount} day streak`}
+            >
+              <span
+                className="block h-1.5 w-1.5 rounded-full bg-soul"
+                style={{ boxShadow: "0 0 6px var(--soul)" }}
+                aria-hidden
+              />
+              <span className="tracking-[0.1em]">STREAK {streakCount}</span>
+            </span>
+          )}
           <button
             type="button"
             onClick={() => router.push("/settings")}
             aria-label={t("home.settingsAria")}
             title={t("home.settingsAria")}
-            className="mt-1 flex h-10 shrink-0 items-center gap-1.5 rounded-full border border-black/[0.06] bg-white px-3.5 text-[14px] font-medium tracking-[-0.01em] text-[#1E1B4B] shadow-apple transition-colors hover:bg-[#F7F4ED]"
+            className="-m-2 p-2 text-indigo/55 transition-colors hover:text-indigo"
           >
-            <IconSettings className="h-[18px] w-[18px]" />
-            <span>{t("home.settingsAria")}</span>
+            <IconGear className="h-5 w-5" />
           </button>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl space-y-4 px-4 py-5 sm:px-6">
-        {/* 탭: 오늘 / 나 */}
-        <div
-          role="tablist"
-          aria-label={t("home.title")}
-          className="flex rounded-pill border border-black/[0.06] bg-white p-1 shadow-apple"
-        >
+      {/* ── tabs — 텍스트 + 1.5px Soul 밑줄 인디케이터 ── */}
+      <div role="tablist" aria-label={t("home.title")} className="border-b border-hairline px-5 sm:px-7">
+        <div className="mx-auto flex max-w-3xl gap-6">
           {(["future", "actions"] as const).map((tab) => {
             const selected = activeTab === tab;
+            const count =
+              tab === "future"
+                ? alreadyCheckedInToday
+                  ? `✓`
+                  : ""
+                : goals.length > 0
+                  ? `${goalsDone}/${goals.length}`
+                  : "";
             return (
               <button
                 key={tab}
@@ -498,20 +565,31 @@ export default function HomeDashboardPage() {
                 role="tab"
                 aria-selected={selected}
                 onClick={() => setActiveTab(tab)}
-                className={`flex-1 rounded-pill px-4 py-2 text-[14px] font-medium tracking-[-0.01em] transition-colors ${
+                className={`-mb-px flex items-baseline gap-1.5 border-b-[1.5px] pb-3 pt-2 text-[14px] font-medium tracking-[-0.01em] transition-colors ${
                   selected
-                    ? "bg-[#1E1B4B] text-white"
-                    : "text-black/60 hover:text-[#1E1B4B]"
+                    ? "border-soul text-indigo"
+                    : "border-transparent text-indigo/55 hover:text-indigo"
                 }`}
               >
-                {t(tab === "future" ? "home.tab.future" : "home.tab.actions")}
+                <span>{t(tab === "future" ? "home.tab.future" : "home.tab.actions")}</span>
+                {count && (
+                  <span className="font-mono text-[10px] tracking-[0.06em] text-indigo/40">
+                    {count}
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
+      </div>
 
+      <main className="mx-auto w-full max-w-3xl">
+        {/* ─────────────────────────────────────────────
+         * Tab · 오늘 (future) — MotivationCard 하나만.
+         * 카드 안에 AffirmationCheckin 이 포함되어 있어 인용 + 의식이 한 흐름.
+         * ───────────────────────────────────────────── */}
         {activeTab === "future" && (
-          <>
+          <div className="px-5 pt-6 sm:px-7">
             <MotivationCard
               motivation={motivation}
               loading={motivationLoading}
@@ -519,286 +597,311 @@ export default function HomeDashboardPage() {
               onRegenerate={handleRegenerateMotivation}
               onSubmitResponse={handleSubmitMissionResponse}
               affirmations={user?.successAffirmations ?? []}
-              affirmationStreakCount={user?.affirmationStreak?.count ?? 0}
+              affirmationStreakCount={streakCount}
               alreadyCheckedInToday={alreadyCheckedInToday}
               onCheckinAffirmations={handleAffirmationCheckin}
               ymd={ymd}
             />
-
             {motivationError && motivation && (
-              <p className="rounded-[12px] bg-rose-50 px-4 py-2 text-[12px] tracking-[-0.01em] text-rose-700">
+              <p className="mt-3 px-1 font-mono text-[10px] uppercase tracking-[0.1em] text-soul">
                 {motivationError}
               </p>
             )}
-          </>
+          </div>
         )}
 
+        {/* ─────────────────────────────────────────────
+         * Tab · 나의 행동 (actions)
+         *   · 10년 후의 나 (페르소나)
+         *   · 이번 달 목표
+         *   · 오늘의 작은 승리  ← v1 "잘한 일 3가지"
+         * ───────────────────────────────────────────── */}
         {activeTab === "actions" && (
           <>
-        {/* 10년 후의 나의 모습 — 동기부여 카드 컨텍스트 */}
-        <section className="rounded-[16px] border border-black/[0.06] bg-white p-5 shadow-apple">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="flex items-center gap-2 text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
-                <svg className="h-[18px] w-[18px] text-[#1E1B4B]/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 3l2.6 5.4 5.9.9-4.3 4.1 1 5.9L12 16.6 6.8 19.3l1-5.9L3.5 9.3l5.9-.9L12 3z" />
-                </svg>
-                {t("home.future.title")}
-              </h2>
-              <p className="mt-1 text-[12px] tracking-[-0.01em] text-black/56">
-                {t("home.future.subtitle")}
-              </p>
-            </div>
-            {!futureEditing && (
-              <button
-                type="button"
-                onClick={() => setFutureEditing(true)}
-                className="shrink-0 rounded-pill border border-black/[0.08] bg-white px-3 py-1.5 text-[12px] font-medium tracking-[-0.01em] text-black/70 transition-colors hover:border-[#1E1B4B] hover:text-[#1E1B4B]"
-              >
-                {futureText ? t("common.edit") : t("common.write")}
-              </button>
-            )}
-          </div>
-
-          {futureEditing ? (
-            <div className="mt-4">
-              <textarea
-                value={futureDraft}
-                onChange={(e) => setFutureDraft(e.target.value)}
-                rows={5}
-                maxLength={FUTURE_PERSONA_MAX}
-                placeholder={t("onboarding.step1.placeholder")}
-                className="w-full resize-none rounded-[14px] border border-black/10 bg-white px-4 py-3 text-[14px] leading-[1.5] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
-              />
-              <div className="mt-2 flex items-center justify-between text-[11px] tracking-[-0.01em] text-black/40">
-                <span>{futureDraft.length}/{FUTURE_PERSONA_MAX}</span>
-                <div className="flex gap-2">
+            {/* ── 10년 후의 나 ── */}
+            <section className="px-5 pt-7 pb-7 sm:px-7">
+              <div className="flex items-baseline justify-between">
+                <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-indigo/45">
+                  {t("home.future.title")}
+                </span>
+                {!futureEditing && (
                   <button
                     type="button"
-                    onClick={handleFutureCancel}
-                    disabled={futureSaving}
-                    className="rounded-pill border border-black/[0.08] bg-white px-3 py-1.5 text-[12px] font-medium text-black/70 transition-colors hover:border-black/20 disabled:opacity-50"
+                    onClick={() => setFutureEditing(true)}
+                    className="font-mono text-[10px] uppercase tracking-[0.14em] text-indigo/60 transition-colors hover:text-soul"
                   >
-                    {t("common.cancel")}
+                    {futureText ? t("common.edit") : t("common.write")}
                   </button>
+                )}
+              </div>
+
+              {futureEditing ? (
+                <div className="mt-3">
+                  <textarea
+                    value={futureDraft}
+                    onChange={(e) => setFutureDraft(e.target.value)}
+                    rows={5}
+                    maxLength={FUTURE_PERSONA_MAX}
+                    placeholder={t("onboarding.step1.placeholder")}
+                    className="w-full resize-none border-b border-hairline bg-transparent pb-2 font-display text-[17px] font-light italic leading-[1.55] tracking-[-0.005em] text-indigo placeholder:text-indigo/35 focus:border-indigo focus:outline-none"
+                  />
+                  <div className="mt-3 flex items-center justify-between">
+                    <span className="font-mono text-[10px] tabular-nums text-indigo/45">
+                      {futureDraft.length}/{FUTURE_PERSONA_MAX}
+                    </span>
+                    <div className="flex gap-4">
+                      <button
+                        type="button"
+                        onClick={handleFutureCancel}
+                        disabled={futureSaving}
+                        className="font-mono text-[10px] uppercase tracking-[0.14em] text-indigo/60 transition-colors hover:text-indigo disabled:opacity-40"
+                      >
+                        {t("common.cancel")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleFutureSave}
+                        disabled={futureSaving}
+                        className="font-mono text-[10px] uppercase tracking-[0.14em] text-soul transition-colors hover:text-soul-press disabled:opacity-40"
+                      >
+                        {futureSaving
+                          ? t("common.saving")
+                          : t("home.future.saveAndRegen")}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : futureText ? (
+                <p className="mt-3 whitespace-pre-wrap font-display text-[17px] font-light italic leading-[1.55] tracking-[-0.005em] text-indigo/95">
+                  {futureText}
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setFutureEditing(true)}
+                  className="mt-3 block w-full text-left font-display text-[15px] font-light italic leading-[1.55] text-indigo/35 transition-colors hover:text-indigo/55"
+                >
+                  {t("home.future.empty")}
+                </button>
+              )}
+            </section>
+
+            <div className="mx-5 h-px bg-hairline sm:mx-7" />
+
+            {/* ── 이번 달 목표 ── */}
+            <section className="px-5 pt-7 pb-7 sm:px-7">
+              <div className="flex items-baseline justify-between">
+                <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-indigo/45">
+                  {t("home.goals.title")}
+                </span>
+                <div className="flex items-center gap-4">
+                  <span className="font-mono text-[11px] text-indigo/60">
+                    <b className="font-medium text-indigo">{goalsDone}</b>
+                    <span className="text-indigo/40"> / {goals.length}</span>
+                  </span>
+                  {goals.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setGoalsEditing((v) => !v)}
+                      className="font-mono text-[10px] uppercase tracking-[0.14em] text-indigo/60 transition-colors hover:text-soul"
+                    >
+                      {goalsEditing ? t("common.done") : t("common.edit")}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {goals.length > 0 && (
+                <ul className="mt-2">
+                  {goals.map((goal, idx) => {
+                    const trimmed = goal.trim();
+                    const achieved =
+                      trimmed.length > 0 && achievedGoals.includes(trimmed);
+                    const num = String(idx + 1).padStart(2, "0");
+                    return (
+                      <li
+                        key={idx}
+                        className="grid grid-cols-[28px_1fr_auto] items-center gap-3 border-b border-hairline py-3 last:border-b-0"
+                      >
+                        {/* 번호 — display italic Soul. tap-to-toggle 달성 */}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleGoalAchieved(goal)}
+                          aria-label={
+                            achieved
+                              ? t("home.goals.toggleUnachievedAria")
+                              : t("home.goals.toggleAchievedAria")
+                          }
+                          aria-pressed={achieved}
+                          disabled={trimmed.length === 0}
+                          className={`relative font-display text-[22px] font-light leading-none italic transition-colors disabled:opacity-40 ${
+                            achieved
+                              ? "text-indigo/40"
+                              : "text-soul hover:text-soul-press"
+                          }`}
+                        >
+                          {achieved ? (
+                            <IconCheck className="h-5 w-5 text-indigo/55" />
+                          ) : (
+                            num
+                          )}
+                        </button>
+
+                        {/* 텍스트 — 편집 모드일 때만 input, 평시는 정적 텍스트 */}
+                        {goalsEditing ? (
+                          <input
+                            value={goal}
+                            maxLength={GOAL_MAX}
+                            onChange={(e) => handleUpdateGoal(idx, e.target.value)}
+                            onBlur={() => handleCommitGoal(idx)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                (e.currentTarget as HTMLInputElement).blur();
+                              }
+                            }}
+                            className="min-w-0 border-b border-dashed border-indigo/20 bg-transparent py-1 text-[14px] tracking-[-0.005em] text-indigo focus:border-indigo focus:outline-none"
+                          />
+                        ) : (
+                          <div
+                            className={`min-w-0 text-[14px] leading-[1.45] tracking-[-0.005em] ${
+                              achieved
+                                ? "text-indigo/40 line-through decoration-indigo/20"
+                                : "text-indigo"
+                            }`}
+                          >
+                            {trimmed || (
+                              <span className="font-display italic text-indigo/35">
+                                {t("home.goals.placeholder")}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* 오른쪽 슬롯: 편집 모드면 ×, 평시면 빈 공간(향후 진척 bar 자리) */}
+                        <div className="flex justify-end">
+                          {goalsEditing ? (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveGoal(idx)}
+                              aria-label={t("home.goals.deleteAria")}
+                              className="-m-1.5 p-1.5 text-indigo/35 transition-colors hover:text-soul"
+                            >
+                              <IconX className="h-4 w-4" />
+                            </button>
+                          ) : (
+                            <span className="w-4" aria-hidden />
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+
+              {/* 새 목표 추가 — 편집 모드일 때만, 또는 비어 있을 때 ghost */}
+              {goalsEditing && goals.length < MAX_USER_GOALS && (
+                <div className="mt-3 grid grid-cols-[28px_1fr_auto] items-center gap-3 py-1">
+                  <span className="font-mono text-[11px] text-indigo/35">＋</span>
+                  <input
+                    value={goalDraft}
+                    maxLength={GOAL_MAX}
+                    onChange={(e) => setGoalDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddGoal();
+                      }
+                    }}
+                    placeholder={t("home.goals.placeholder")}
+                    className="min-w-0 border-b border-dashed border-indigo/20 bg-transparent py-1 text-[14px] tracking-[-0.005em] text-indigo placeholder:text-indigo/35 focus:border-indigo focus:outline-none"
+                  />
                   <button
                     type="button"
-                    onClick={handleFutureSave}
-                    disabled={futureSaving}
-                    className="rounded-pill bg-[#1E1B4B] px-3 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-[#2A2766] disabled:opacity-50"
+                    onClick={handleAddGoal}
+                    disabled={!goalDraft.trim()}
+                    className="font-mono text-[10px] uppercase tracking-[0.14em] text-soul transition-colors hover:text-soul-press disabled:opacity-30"
                   >
-                    {futureSaving ? t("common.saving") : t("home.future.saveAndRegen")}
+                    {t("common.add")}
+                  </button>
+                </div>
+              )}
+
+              {/* 목록이 비었을 때 — 빈 상태 prompt */}
+              {goals.length === 0 && !goalsEditing && (
+                <button
+                  type="button"
+                  onClick={() => setGoalsEditing(true)}
+                  className="mt-3 block w-full text-left font-display text-[15px] font-light italic text-indigo/35 transition-colors hover:text-indigo/55"
+                >
+                  {t("home.goals.subtitle")}
+                </button>
+              )}
+            </section>
+
+            <div className="mx-5 h-px bg-hairline sm:mx-7" />
+
+            {/* ── 오늘의 작은 승리 (wins) — auto-save ── */}
+            <section className="px-5 pt-7 pb-7 sm:px-7">
+              <div className="flex items-baseline justify-between">
+                <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-indigo/45">
+                  {t("home.wins.title", { max: MAX_DAILY_WINS })}
+                </span>
+                <div className="flex items-center gap-4">
+                  {winsError ? (
+                    <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-soul">
+                      {winsError}
+                    </span>
+                  ) : winsJustSaved ? (
+                    <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-soul">
+                      {t("common.saved")}
+                    </span>
+                  ) : winsAutoSaving ? (
+                    <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-indigo/45">
+                      {t("common.saving")}
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => router.push("/wins-history")}
+                    className="font-mono text-[10px] uppercase tracking-[0.14em] text-indigo/60 transition-colors hover:text-soul"
+                  >
+                    {t("home.wins.history")}
                   </button>
                 </div>
               </div>
-            </div>
-          ) : futureText ? (
-            <p className="mt-4 whitespace-pre-wrap rounded-[12px] bg-[#F7F4ED] px-4 py-3 text-[14px] leading-[1.6] tracking-[-0.01em] text-[#1E1B4B]">
-              {futureText}
-            </p>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setFutureEditing(true)}
-              className="mt-4 w-full rounded-[12px] border border-dashed border-black/15 bg-[#F7F4ED] px-4 py-5 text-[13px] tracking-[-0.01em] text-black/50 transition-colors hover:border-[#1E1B4B]/40 hover:text-[#1E1B4B]"
-            >
-              {t("home.future.empty")}
-            </button>
-          )}
-        </section>
 
-        {/* 목표를 이루기 위한 오늘의 행동 */}
-        <section className="rounded-[16px] border border-black/[0.06] bg-white p-5 shadow-apple">
-          <div className="flex items-baseline justify-between gap-2">
-            <h2 className="flex items-center gap-2 text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
-              <svg className="h-[18px] w-[18px] text-[#1E1B4B]/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="9" />
-                <circle cx="12" cy="12" r="5" />
-                <circle cx="12" cy="12" r="1.5" fill="currentColor" />
-              </svg>
-              {t("home.goals.title")}
-            </h2>
-            <span className="text-[12px] tracking-[-0.01em] text-black/48">
-              {goals.length}/{MAX_USER_GOALS}
-            </span>
-          </div>
-          <div className="mt-1 flex items-baseline justify-between gap-2">
-            <p className="text-[12px] tracking-[-0.01em] text-black/56">
-              {t("home.goals.subtitle")}
-            </p>
-            {goals.length > 0 && (
-              <span className="shrink-0 text-[12px] font-medium tracking-[-0.01em] text-[#1E1B4B]/70">
-                {t("home.goals.todayProgress", {
-                  done: achievedGoals.filter((g) => goals.includes(g)).length,
-                  total: goals.length,
-                })}
-              </span>
-            )}
-          </div>
-
-          {goals.length > 0 && (
-            <ul className="mt-4 space-y-2">
-              {goals.map((goal, idx) => {
-                const trimmed = goal.trim();
-                const achieved = trimmed.length > 0 && achievedGoals.includes(trimmed);
-                return (
-                  <li key={idx} className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleToggleGoalAchieved(goal)}
-                      aria-label={achieved ? t("home.goals.toggleUnachievedAria") : t("home.goals.toggleAchievedAria")}
-                      aria-pressed={achieved}
-                      title={achieved ? t("home.goals.toggleUnachievedTitle") : t("home.goals.toggleAchievedTitle")}
-                      disabled={trimmed.length === 0}
-                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-[11px] font-semibold transition-colors ${
-                        achieved
-                          ? "border-[#1E1B4B] bg-[#1E1B4B] text-white"
-                          : "border-black/15 bg-[#F0EDE6] text-[#1E1B4B] hover:border-[#1E1B4B]"
-                      } disabled:cursor-not-allowed disabled:opacity-40`}
-                    >
-                      {achieved ? (
-                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M5 12l5 5L20 7" />
-                        </svg>
-                      ) : (
-                        idx + 1
-                      )}
-                    </button>
-                    <input
-                      value={goal}
-                      maxLength={GOAL_MAX}
-                      onChange={(e) => handleUpdateGoal(idx, e.target.value)}
-                      onBlur={() => handleCommitGoal(idx)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          (e.currentTarget as HTMLInputElement).blur();
-                        }
-                      }}
-                      className={`min-w-0 flex-1 rounded-[10px] border border-transparent bg-[#F7F4ED] px-3 py-2 text-[14px] tracking-[-0.01em] focus:border-[#1E1B4B] focus:bg-white focus:outline-none ${
-                        achieved ? "text-black/40 line-through" : "text-[#1E1B4B]"
-                      }`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveGoal(idx)}
-                      aria-label={t("home.goals.deleteAria")}
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-black/40 transition-colors hover:bg-black/[0.04] hover:text-black/80"
-                    >
-                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M18 6L6 18M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-
-          {goals.length < MAX_USER_GOALS && (
-            <div className="mt-3 flex items-center gap-2">
-              <input
-                value={goalDraft}
-                maxLength={GOAL_MAX}
-                onChange={(e) => setGoalDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleAddGoal();
-                  }
-                }}
-                placeholder={t("home.goals.placeholder")}
-                className="min-w-0 flex-1 rounded-[10px] border border-black/10 bg-white px-3 py-2 text-[14px] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
-              />
-              <button
-                type="button"
-                onClick={handleAddGoal}
-                disabled={!goalDraft.trim()}
-                className="shrink-0 rounded-pill bg-[#1E1B4B] px-4 py-2 text-[12px] font-medium text-white transition-colors hover:bg-[#2A2766] disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {t("common.add")}
-              </button>
-            </div>
-          )}
-        </section>
-          </>
-        )}
-
-        {activeTab === "actions" && (
-        <section className="rounded-[16px] border border-black/[0.06] bg-white p-5 shadow-apple">
-          <div className="flex items-baseline justify-between gap-2">
-            <h2 className="flex items-center gap-2 text-[17px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
-              <svg className="h-[18px] w-[18px] text-[#1E1B4B]/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 11l3 3L22 4" />
-                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
-              </svg>
-              {t("home.wins.title", { max: MAX_DAILY_WINS })}
-            </h2>
-            <button
-              type="button"
-              onClick={() => router.push("/wins-history")}
-              className="shrink-0 text-[12px] font-medium tracking-[-0.01em] text-[#1E1B4B]/70 underline-offset-2 hover:text-[#1E1B4B] hover:underline"
-            >
-              {t("home.wins.history")}
-            </button>
-          </div>
-          <p className="mt-1 text-[12px] tracking-[-0.01em] text-black/56">
-            {t("home.wins.subtitle")}
-          </p>
-
-          <ul className="mt-3 space-y-2">
-            {[0, 1, 2].map((idx) => (
-              <li key={idx} className="flex items-start gap-2">
-                <span className="mt-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F0EDE6] text-[11px] font-semibold text-[#1E1B4B]">
-                  {idx + 1}
-                </span>
-                <textarea
-                  value={wins[idx] || ""}
-                  rows={1}
-                  maxLength={WIN_MAX}
-                  onChange={(e) => handleChangeWin(idx, e.target.value)}
-                  placeholder={
+              <ul className="mt-2">
+                {[0, 1, 2].map((idx) => {
+                  const num = String(idx + 1).padStart(2, "0");
+                  const placeholder =
                     idx === 0
                       ? t("home.wins.placeholder1")
                       : idx === 1
                         ? t("home.wins.placeholder2")
-                        : t("home.wins.placeholder3")
-                  }
-                  className="min-h-[40px] min-w-0 flex-1 resize-none rounded-[10px] border border-black/10 bg-white px-3 py-2 text-[14px] leading-[1.45] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
-                />
-              </li>
-            ))}
-          </ul>
-
-          <div className="mt-3 flex items-center justify-end gap-3">
-            {winsError ? (
-              <span className="text-[12px] tracking-[-0.01em] text-rose-600">{winsError}</span>
-            ) : winsJustSaved ? (
-              <span className="flex items-center gap-1 text-[12px] tracking-[-0.01em] text-emerald-600">
-                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12l5 5L20 7" />
-                </svg>
-                {t("common.saved")}
-              </span>
-            ) : winsDirty ? (
-              <span className="text-[12px] tracking-[-0.01em] text-amber-600">
-                {t("common.unsavedChanges")}
-              </span>
-            ) : winsHasContent ? (
-              <span className="text-[12px] tracking-[-0.01em] text-black/48">
-                {t("common.savedState")}
-              </span>
-            ) : null}
-            <button
-              type="button"
-              onClick={handleSaveWins}
-              disabled={winsSaving || !winsHasContent}
-              className="shrink-0 rounded-pill bg-[#1E1B4B] px-4 py-2 text-[12px] font-medium text-white transition-colors hover:bg-[#2A2766] disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {winsSaving ? t("common.saving") : t("common.save")}
-            </button>
-          </div>
-        </section>
+                        : t("home.wins.placeholder3");
+                  return (
+                    <li
+                      key={idx}
+                      className="flex items-start gap-3 border-b border-hairline py-3 last:border-b-0"
+                    >
+                      <span className="w-7 shrink-0 pt-[2px] font-display text-[22px] font-light italic leading-none text-soul">
+                        {num}
+                      </span>
+                      <textarea
+                        value={wins[idx] || ""}
+                        rows={1}
+                        maxLength={WIN_MAX}
+                        onChange={(e) => handleChangeWin(idx, e.target.value)}
+                        placeholder={placeholder}
+                        className="min-h-[24px] min-w-0 flex-1 resize-none border-none bg-transparent p-0 text-[14px] leading-[1.55] tracking-[-0.005em] text-indigo placeholder:font-display placeholder:font-light placeholder:italic placeholder:text-indigo/35 focus:outline-none"
+                      />
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          </>
         )}
       </main>
     </div>

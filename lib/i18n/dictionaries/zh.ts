@@ -15,6 +15,7 @@ const dict: Record<DictKey, string> = {
   "common.skip": "跳过",
   "common.add": "添加",
   "common.edit": "编辑",
+  "common.done": "完成",
   "common.write": "撰写",
   "common.delete": "删除",
   "common.remove": "移除",
