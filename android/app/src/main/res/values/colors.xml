@@ -7,13 +7,22 @@
     <color name="black">#FF000000</color>
     <color name="widget_loading_bg">#1E1B4B</color>
 
-    <!-- 위젯 글래스모피즘 디자인 토큰 (우주 배경화면과의 일체감용) -->
-    <color name="widget_accent">#FF8B5CF6</color>          <!-- 라벤더 퍼플 포인트 -->
-    <color name="widget_glass_top">#E61E1B3A</color>       <!-- 프로스트 패널 상단 (≈90%) -->
-    <color name="widget_glass_bottom">#F00B0B14</color>    <!-- 프로스트 패널 하단 (≈94%) -->
-    <color name="widget_glass_stroke">#2EFFFFFF</color>    <!-- 1px 글래스 테두리 (≈18% 화이트) -->
-    <color name="widget_glass_top_light">#F2F4F1EC</color> <!-- 라이트 톤 상단 -->
-    <color name="widget_glass_bottom_light">#F7EDE9F6</color><!-- 라이트 톤 하단 -->
-    <color name="widget_glass_stroke_light">#1F1E1B4B</color>
-    <color name="widget_text_dark">#FFF6F5FA</color>       <!-- 소프트 화이트 본문 -->
+    <!-- 위젯 디자인 토큰 v2 — "신호판" 컨셉.
+         - 배경: 우주 배경 투과 X. 완전 불투명 딥 네이비 그라데이션으로 가독성 사수.
+         - 강조: 따뜻한 단일 액센트(soul orange) — 체크 완료·streak·번호·CTA 한 곳에만.
+         - 본문: cream ink(F4F1E9) 한 톤 + 알파 단계로만 위계 표현. -->
+    <color name="widget_bg_top">#FF1A1B24</color>             <!-- 상단 (gradient start) -->
+    <color name="widget_bg_bottom">#FF14151B</color>          <!-- 하단 (gradient end) -->
+    <color name="widget_bg_top_light">#FFF4F1EC</color>       <!-- 라이트 톤 상단 -->
+    <color name="widget_bg_bottom_light">#FFEDE9F6</color>    <!-- 라이트 톤 하단 -->
+    <color name="widget_hairline_dark">#14FFFFFF</color>      <!-- 8% 화이트 divider -->
+    <color name="widget_hairline_light">#141E1B4B</color>     <!-- 8% 잉크 divider -->
+
+    <color name="widget_ink">#FFF4F1E9</color>                <!-- 본문 100% (cream) -->
+    <color name="widget_accent_soul">#FFD85A30</color>        <!-- 단일 강조색 (terracotta) -->
+    <color name="widget_success">#FF7CB377</color>            <!-- 3/3 완료 시 액센트 swap -->
+
+    <!-- 글래스 시절 토큰 (호환용 — 위젯에서 더는 사용하지 않으나 외부 참조 잔존시 빌드 보호) -->
+    <color name="widget_accent">#FFD85A30</color>
+    <color name="widget_text_dark">#FFF4F1E9</color>
 </resources>

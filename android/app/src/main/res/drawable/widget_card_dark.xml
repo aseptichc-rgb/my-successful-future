@@ -1,17 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  위젯 글래스 패널 (다크 톤).
-  RemoteViews 라 backdrop blur 가 불가능하므로, 우주 배경화면 위에서
-  "프로스트 글래스" 로 읽히도록 반투명 딥 네이비 그라데이션 + 1px 화이트 테두리로 마감.
+  위젯 카드 배경 (다크) — v2 "신호판" 디자인.
+  과거 글래스(반투명) 패널은 우주 배경화면 위에서 본문이 묻혀 가독성이 죽었기에,
+  완전 불투명 딥 네이비 그라데이션으로 잠가둔다. (#1A1B24 상단 → #14151B 하단)
+  스트로크 제거 — 분리는 내부 헤어라인이 담당한다.
 -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <corners android:radius="22dp" />
+    <corners android:radius="28dp" />
     <gradient
         android:angle="270"
-        android:startColor="@color/widget_glass_top"
-        android:endColor="@color/widget_glass_bottom" />
-    <stroke
-        android:width="1dp"
-        android:color="@color/widget_glass_stroke" />
+        android:startColor="@color/widget_bg_top"
+        android:endColor="@color/widget_bg_bottom" />
 </shape>

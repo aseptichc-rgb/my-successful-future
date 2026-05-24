@@ -3,13 +3,15 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_card_dark"
-    android:padding="18dp">
+    android:padding="22dp">
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:textColor="@color/widget_text_dark"
-        android:textSize="14sp"
-        android:textStyle="bold"
+        android:textColor="@color/widget_ink"
+        android:textSize="13sp"
+        android:fontFamily="monospace"
+        android:letterSpacing="0.14"
+        android:textAllCaps="true"
         android:text="@string/loading" />
 </FrameLayout>
