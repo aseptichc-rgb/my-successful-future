@@ -1,19 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Fraunces, JetBrains_Mono, Noto_Sans_KR, Noto_Serif_KR } from "next/font/google";
+import { Inter, Noto_Sans_KR } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
 import LanguageBridge from "@/components/LanguageBridge";
 import KakaoScript from "@/components/KakaoScript";
 import "./globals.css";
 
-// UI grotesque (Latin)
+// SF Pro substitute on non-Apple platforms.
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
-// Korean UI fallback. Pretendard는 head <link>로 우선 로드, 실패 시 Noto Sans KR.
+// Korean UI fallback chain when Pretendard fails to load.
 const notoSansKR = Noto_Sans_KR({
   variable: "--font-noto-kr",
   subsets: ["latin"],
@@ -21,47 +21,17 @@ const notoSansKR = Noto_Sans_KR({
   display: "swap",
 });
 
-// Korean display serif — Fraunces가 라틴 전용이라 한글 인용문은 Noto Serif KR로 렌더링.
-// font-display 체인에서 Fraunces 뒤에 놓이면 브라우저가 글리프 단위로 폴백한다.
-const notoSerifKR = Noto_Serif_KR({
-  variable: "--font-noto-serif-kr",
-  subsets: ["latin"],
-  weight: ["300", "400", "500"],
-  display: "swap",
-});
-
-// Display serif — 명상적·사상적 톤. Fraunces로 Tiempos / GT Sectra 대체
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
-  subsets: ["latin"],
-  weight: ["300", "400"],
-  style: ["normal", "italic"],
-  display: "swap",
-});
-
-// Mono — 인용·날짜·메타 텍스트
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains",
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  display: "swap",
-});
-
 export const metadata: Metadata = {
   title: "Anima — daily motivation",
-  description: "10년 후의 나에게서 매일 도착하는 한 마디. 목표를 적어두면 매일 새 카드로 받아봅니다.",
+  description:
+    "10년 후의 나에게서 매일 도착하는 한 마디. 목표를 적어두면 매일 새 카드로 받아봅니다.",
   applicationName: "Anima",
-  formatDetection: {
-    telephone: false,
-  },
-  // app/icon.svg + app/apple-icon.png 는 Next 13+ 파일 컨벤션이 자동으로
-  // <link rel="icon"> 태그를 주입한다 (해시 포함 URL). 수동 icons override 는
-  // 그 경로(/icon.svg)와 어긋나 404 를 만들어내므로 두지 않는다.
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
-  // Force light theme — Samsung Internet 등 모바일 브라우저의 자동 색 반전(다크 모드) 방지
-  themeColor: "#F7F3EC",
+  // Force light theme — block forced dark mode injection by Samsung Internet etc.
+  themeColor: "#F2F2F7",
   colorScheme: "light",
   width: "device-width",
   initialScale: 1,
@@ -72,17 +42,18 @@ export const viewport: Viewport = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  const fontVars = `${inter.variable} ${notoSansKR.variable} ${notoSerifKR.variable} ${fraunces.variable} ${jetbrainsMono.variable}`;
+}: Readonly<{ children: React.ReactNode }>) {
+  const fontVars = `${inter.variable} ${notoSansKR.variable}`;
 
   return (
-    <html lang="ko" className={`${fontVars} h-full antialiased`} style={{ colorScheme: "light" }}>
+    <html
+      lang="ko"
+      className={`${fontVars} h-full antialiased`}
+      style={{ colorScheme: "light" }}
+    >
       <head>
-        {/* Samsung Internet, Chrome 등의 강제 다크 모드(색 반전) 비활성화 */}
         <meta name="color-scheme" content="only light" />
-        {/* Pretendard — Korean UI 그로테스크. CDN preconnect + variable woff2 */}
+        {/* Pretendard — Korean UI typeface (CDN). Used by font-sans for hangul glyphs */}
         <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="" />
         <link
           rel="stylesheet"
@@ -90,7 +61,7 @@ export default function RootLayout({
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         />
       </head>
-      <body className="min-h-full flex flex-col font-sans bg-cream text-indigo">
+      <body className="min-h-full flex flex-col font-sans bg-[#F2F2F7] text-black">
         <KakaoScript />
         <AuthProvider>
           <LanguageBridge>{children}</LanguageBridge>

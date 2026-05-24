@@ -1,554 +1,566 @@
 @import "tailwindcss";
 
 /*
- * Anima Brand System
- * "안에서 듣는다 — listening within"
- * 한 화면에 Primary + Cream + Soul 세 색만. Soul은 화면당 1~2회 포인트.
+ * Anima · Apple iOS Design System
+ * SF Pro (Latin) + Pretendard (Korean), System Blue accent, full system color palette.
+ * Light mode only. Color-scheme: light to block forced inversion by Samsung Internet etc.
  */
 :root {
-  /* Brand palette — frozen tokens, do not introduce new hues */
-  --indigo: #1E1B4B;        /* Primary — 본문, 마크 외곽선, 다크 surface */
-  --indigo-700: #2A2766;
-  --indigo-500: #4F4BA8;
-  --indigo-300: #A6A3D1;
+  /* ────────────────────────────────────────────────
+   * iOS System Colors (light mode)
+   * ──────────────────────────────────────────────── */
+  --red:        #FF3B30;
+  --orange:     #FF9500;
+  --yellow:     #FFCC00;
+  --green:      #34C759;
+  --mint:       #00C7BE;
+  --teal:       #30B0C7;
+  --cyan:       #32ADE6;
+  --blue:       #007AFF;
+  --indigo:     #5856D6;
+  --purple:     #AF52DE;
+  --pink:       #FF2D55;
+  --brown:      #A2845E;
 
-  --soul: #D85A30;          /* Coral Warm — 중심점, 핵심 CTA, 페르소나 디폴트 */
-  --soul-press: #BE4B26;
-  --soul-soft: #F2C9B8;
+  /* Tinted backgrounds (15% alpha) — used for icon square bg, tinted buttons */
+  --red-t:      rgba(255,59,48,0.15);
+  --orange-t:   rgba(255,149,0,0.15);
+  --green-t:    rgba(52,199,89,0.15);
+  --blue-t:     rgba(0,122,255,0.15);
+  --indigo-t:   rgba(88,86,214,0.15);
+  --purple-t:   rgba(175,82,222,0.15);
+  --pink-t:     rgba(255,45,85,0.15);
 
-  --cream: #F7F3EC;         /* Bone — 라이트모드 배경, 카드 */
-  --mist: #E8E6DF;          /* Cool Gray — 구분선, 보조 표면 */
-  --mist-soft: #F0EDE6;
-  --charcoal: #1A1A1A;      /* 헤드라인 텍스트, 다크 텍스트 */
+  /* ────────────────────────────────────────────────
+   * System Grays (light mode)
+   * ──────────────────────────────────────────────── */
+  --g1: #8E8E93;
+  --g2: #AEAEB2;
+  --g3: #C7C7CC;
+  --g4: #D1D1D6;
+  --g5: #E5E5EA;
+  --g6: #F2F2F7;
 
-  /* Semantic mapping */
-  --background: var(--cream);
-  --foreground: var(--indigo);
-  --surface: #FBF8F2;       /* card on cream */
-  --surface-2: var(--mist-soft);
-  --surface-dark: var(--indigo);
-  --border-subtle: rgba(30, 27, 75, 0.10);
-  --border-soft: rgba(30, 27, 75, 0.06);
-  --hairline: rgba(30, 27, 75, 0.14);
+  /* ────────────────────────────────────────────────
+   * Backgrounds / Labels (HIG semantic)
+   * ──────────────────────────────────────────────── */
+  --bg-system:           #FFFFFF;
+  --bg-grouped:          #F2F2F7;   /* systemGroupedBackground — main page bg */
+  --bg-grouped-2:        #FFFFFF;   /* secondarySystemGroupedBackground — inset cards */
+  --bg-grouped-3:        #F2F2F7;
 
-  /* Interactive */
-  --accent: var(--soul);
-  --accent-press: var(--soul-press);
-  --link: var(--indigo);
-  --link-hover: var(--soul);
-  --focus-ring: var(--indigo);
+  --label:               rgba(0,0,0,1);
+  --label-2:             rgba(60,60,67,0.6);
+  --label-3:             rgba(60,60,67,0.3);
+  --label-4:             rgba(60,60,67,0.18);
 
-  /* Text scale */
-  --text-secondary: rgba(30, 27, 75, 0.78);
-  --text-tertiary: rgba(30, 27, 75, 0.56);
-  --text-quaternary: rgba(30, 27, 75, 0.42);
+  --sep-opaque:          rgba(60,60,67,0.29);
+  --sep:                 rgba(60,60,67,0.12);
+  --hairline:            rgba(60,60,67,0.12);  /* alias for legacy code */
 
-  /* Glass nav — Cream-tinted */
-  --nav-bg: rgba(247, 243, 236, 0.78);
-  --nav-bg-dark: rgba(30, 27, 75, 0.84);
+  /* ────────────────────────────────────────────────
+   * Backwards-compat aliases — old Anima tokens map onto iOS now.
+   * 기존 컴포넌트의 bg-cream, text-indigo, bg-soul 등이 깨지지 않게.
+   * ──────────────────────────────────────────────── */
+  --cream:          var(--bg-grouped);     /* old page bg → systemGroupedBackground */
+  --cream-soft:     var(--bg-grouped);
+  --mist:           var(--g5);
+  --mist-soft:      var(--bg-grouped);
+  --indigo-brand:   var(--indigo);
+  --soul:           var(--orange);         /* old accent coral → iOS orange (warm) */
+  --soul-press:     #E08600;
+  --soul-soft:      var(--orange-t);
+  --charcoal:       #1A1A1A;
 
-  /* Shadows — almost nothing. 임상적 절제. */
-  --shadow-card: 0 1px 2px rgba(30, 27, 75, 0.04), 0 8px 24px rgba(30, 27, 75, 0.04);
-  --shadow-card-hover: 0 1px 2px rgba(30, 27, 75, 0.06), 0 12px 32px rgba(30, 27, 75, 0.08);
-  --shadow-product: 0 2px 4px rgba(30, 27, 75, 0.06), 0 24px 48px rgba(30, 27, 75, 0.10);
+  /* Anima 기존 indigo 스케일 — iOS blue/indigo 톤으로 흡수 */
+  --indigo-300:     #A6A3D1;
+  --indigo-500:     var(--indigo);
+  --indigo-700:     #3A3786;
+
+  /* Semantic */
+  --background:     var(--bg-grouped);
+  --foreground:     var(--label);
+  --surface:        var(--bg-grouped-2);
+  --surface-2:      var(--bg-grouped);
+  --border-subtle:  rgba(60,60,67,0.10);
+  --border-soft:    rgba(60,60,67,0.06);
+  --focus-ring:     var(--blue);
+
+  --text-secondary:  var(--label-2);
+  --text-tertiary:   var(--label-2);
+  --text-quaternary: var(--label-3);
+
+  --nav-bg:          rgba(242,242,247,0.78);
+  --nav-bg-dark:     rgba(28,28,30,0.84);
+
+  /* iOS shadows — soft and minimal */
+  --shadow-card:        0 1px 2px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04);
+  --shadow-card-hover:  0 1px 2px rgba(0,0,0,0.06), 0 8px 20px rgba(0,0,0,0.08);
+  --shadow-product:     0 2px 4px rgba(0,0,0,0.06), 0 16px 32px rgba(0,0,0,0.10);
+  --shadow-tinted:      0 2px 14px rgba(255,149,0,0.16);  /* warm hero card */
 }
 
 @theme inline {
   /* Brand tokens exposed to Tailwind */
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
-  --color-accent: var(--accent);
-  --color-link: var(--link);
+  --color-background:        var(--background);
+  --color-foreground:        var(--foreground);
+  --color-surface:           var(--surface);
+  --color-surface-2:         var(--surface-2);
+  --color-accent:            var(--blue);
+  --color-link:              var(--blue);
 
-  --color-indigo: var(--indigo);
-  --color-indigo-700: var(--indigo-700);
-  --color-indigo-500: var(--indigo-500);
-  --color-indigo-300: var(--indigo-300);
-  --color-soul: var(--soul);
-  --color-soul-press: var(--soul-press);
-  --color-soul-soft: var(--soul-soft);
-  --color-cream: var(--cream);
-  --color-mist: var(--mist);
-  --color-mist-soft: var(--mist-soft);
-  --color-charcoal: var(--charcoal);
+  /* iOS system color tokens */
+  --color-ios-red:           var(--red);
+  --color-ios-orange:        var(--orange);
+  --color-ios-yellow:        var(--yellow);
+  --color-ios-green:         var(--green);
+  --color-ios-mint:          var(--mint);
+  --color-ios-teal:          var(--teal);
+  --color-ios-cyan:          var(--cyan);
+  --color-ios-blue:          var(--blue);
+  --color-ios-indigo:        var(--indigo);
+  --color-ios-purple:        var(--purple);
+  --color-ios-pink:          var(--pink);
+  --color-ios-brown:         var(--brown);
 
-  --color-text-secondary: var(--text-secondary);
-  --color-text-tertiary: var(--text-tertiary);
-  --color-text-quaternary: var(--text-quaternary);
-  --color-hairline: var(--hairline);
-  --color-border-subtle: var(--border-subtle);
+  --color-label:             var(--label);
+  --color-label-2:           var(--label-2);
+  --color-label-3:           var(--label-3);
+  --color-label-4:           var(--label-4);
+  --color-separator:         var(--sep);
+  --color-separator-opaque:  var(--sep-opaque);
 
-  /* Typography stacks
-   * Display: serif — 명상적 사상적 톤
-   * UI: Pretendard(Korean) + Inter(Latin) — 모던 그로테스크
-   * Mono: 인용·날짜 — 임상적 정확성 */
+  --color-bg-grouped:        var(--bg-grouped);
+  --color-bg-grouped-2:      var(--bg-grouped-2);
+  --color-bg-system:         var(--bg-system);
+
+  /* Legacy aliases — 기존 컴포넌트 호환 */
+  --color-indigo:            var(--indigo);
+  --color-indigo-700:        var(--indigo-700);
+  --color-indigo-500:        var(--indigo-500);
+  --color-indigo-300:        var(--indigo-300);
+  --color-soul:              var(--soul);
+  --color-soul-press:        var(--soul-press);
+  --color-soul-soft:         var(--soul-soft);
+  --color-cream:             var(--cream);
+  --color-mist:              var(--mist);
+  --color-mist-soft:         var(--mist-soft);
+  --color-charcoal:          var(--charcoal);
+
+  --color-text-secondary:    var(--label-2);
+  --color-text-tertiary:     var(--label-2);
+  --color-text-quaternary:   var(--label-3);
+  --color-hairline:          var(--sep);
+  --color-border-subtle:     var(--border-subtle);
+
+  /* Typography — SF Pro for Latin, Pretendard for Korean */
   --font-sans:
-    "Pretendard Variable", "Pretendard", "Inter", var(--font-noto-kr),
-    -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
-    "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro",
+    "Pretendard Variable", "Pretendard",
+    system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-display:
-    var(--font-fraunces), var(--font-noto-serif-kr),
-    "GT Sectra", "Tiempos Headline", "Apple SD Gothic Neo",
-    "Noto Serif KR", Georgia, "Times New Roman", serif;
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro",
+    "Pretendard Variable", "Pretendard",
+    system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-mono:
-    var(--font-jetbrains), "JetBrains Mono", "SF Mono", "ABC Diatype Mono",
-    "D2 Coding", ui-monospace, Menlo, Consolas, monospace;
+    ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas,
+    "Liberation Mono", monospace;
 
   /* ────────────────────────────────────────────────────────────────
-   * Tailwind 팔레트 재정의 — 모든 hue를 Anima 3축으로 흡수
-   *   blues family (blue/indigo/sky/cyan/violet/purple/fuchsia)  → Indigo
-   *   neutrals    (slate/gray/zinc/neutral/stone)                → Cream/Mist/Indigo
-   *   warms       (red/rose/pink/orange)                         → Soul (Coral)
-   *   amber/yellow                                               → 절제된 warm-warning
-   *   greens      (emerald/green/teal/lime)                      → Sage
-   *
-   * 결과: 기존 컴포넌트의 bg-blue-500, text-slate-700 등이 자동으로
-   *       Anima 브랜드 톤으로 매핑됨. 한 곳만 수정해서 전체 서비스 반영.
+   * Tailwind 팔레트 → iOS system colors 매핑
+   *   blue/indigo  → iOS Blue / Indigo
+   *   slate/gray   → iOS System Gray scale
+   *   red/rose/pink/orange → 각 iOS color
+   *   amber/yellow → iOS Yellow
+   *   green/emerald/teal → iOS Green / Teal
+   * 결과: 기존 bg-blue-500, text-slate-700 등이 iOS 톤으로 자동 매핑.
    * ──────────────────────────────────────────────────────────────── */
 
-  /* Indigo axis (blues family + indigo itself) */
-  --color-indigo-50: #EFEEF7;
-  --color-indigo-100: #DEDCEE;
-  --color-indigo-200: #BFBCDC;
-  --color-indigo-400: #7B77BD;
-  --color-indigo-600: #3A3786;
-  --color-indigo-800: #1E1B4B;
-  --color-indigo-900: #16143A;
-  --color-indigo-950: #0E0C26;
-  /* indigo-300/500/700 already defined as brand tokens above */
+  /* Blue/Indigo family → iOS Blue */
+  --color-blue-50:   #E5F1FF;
+  --color-blue-100:  #B8DBFF;
+  --color-blue-200:  #80BDFF;
+  --color-blue-300:  #4D9FFF;
+  --color-blue-400:  #2680FF;
+  --color-blue-500:  #007AFF;   /* iOS Blue */
+  --color-blue-600:  #006FE5;
+  --color-blue-700:  #0058B8;
+  --color-blue-800:  #00428A;
+  --color-blue-900:  #002C5C;
+  --color-blue-950:  #001A38;
 
-  --color-blue-50: #EFEEF7;
-  --color-blue-100: #DEDCEE;
-  --color-blue-200: #BFBCDC;
-  --color-blue-300: #A6A3D1;
-  --color-blue-400: #7B77BD;
-  --color-blue-500: #4F4BA8;
-  --color-blue-600: #3A3786;
-  --color-blue-700: #2A2766;
-  --color-blue-800: #1E1B4B;
-  --color-blue-900: #16143A;
-  --color-blue-950: #0E0C26;
+  /* Indigo family → iOS Indigo #5856D6 */
+  --color-indigo-50:   #EFEEFB;
+  --color-indigo-100:  #D5D3F4;
+  --color-indigo-200:  #B8B5EC;
+  --color-indigo-400:  #7976E2;
+  --color-indigo-600:  #4D4BB8;
+  --color-indigo-800:  #2D2C72;
+  --color-indigo-900:  #1F1E54;
+  --color-indigo-950:  #11102C;
 
-  --color-sky-50: #EFEEF7;
-  --color-sky-100: #DEDCEE;
-  --color-sky-200: #BFBCDC;
-  --color-sky-300: #A6A3D1;
-  --color-sky-400: #7B77BD;
-  --color-sky-500: #4F4BA8;
-  --color-sky-600: #3A3786;
-  --color-sky-700: #2A2766;
-  --color-sky-800: #1E1B4B;
-  --color-sky-900: #16143A;
-  --color-sky-950: #0E0C26;
+  /* Sky/cyan → iOS Cyan */
+  --color-sky-500:  #32ADE6;
+  --color-cyan-500: #32ADE6;
+  --color-sky-600:  #1E92C7;
+  --color-cyan-600: #1E92C7;
 
-  --color-cyan-50: #EFEEF7;
-  --color-cyan-100: #DEDCEE;
-  --color-cyan-200: #BFBCDC;
-  --color-cyan-300: #A6A3D1;
-  --color-cyan-400: #7B77BD;
-  --color-cyan-500: #4F4BA8;
-  --color-cyan-600: #3A3786;
-  --color-cyan-700: #2A2766;
-  --color-cyan-800: #1E1B4B;
-  --color-cyan-900: #16143A;
-  --color-cyan-950: #0E0C26;
+  /* Violet/purple/fuchsia → iOS Purple */
+  --color-violet-500:  #AF52DE;
+  --color-purple-500:  #AF52DE;
+  --color-fuchsia-500: #FF2D55;
 
-  --color-violet-50: #EFEEF7;
-  --color-violet-100: #DEDCEE;
-  --color-violet-200: #BFBCDC;
-  --color-violet-300: #A6A3D1;
-  --color-violet-400: #7B77BD;
-  --color-violet-500: #4F4BA8;
-  --color-violet-600: #3A3786;
-  --color-violet-700: #2A2766;
-  --color-violet-800: #1E1B4B;
-  --color-violet-900: #16143A;
-  --color-violet-950: #0E0C26;
+  /* Neutrals → iOS gray scale on a system bg */
+  --color-slate-50:  #F2F2F7;
+  --color-slate-100: #E5E5EA;
+  --color-slate-200: #D1D1D6;
+  --color-slate-300: #C7C7CC;
+  --color-slate-400: #AEAEB2;
+  --color-slate-500: #8E8E93;
+  --color-slate-600: #6C6C70;
+  --color-slate-700: #48484A;
+  --color-slate-800: #3A3A3C;
+  --color-slate-900: #1C1C1E;
+  --color-slate-950: #000000;
 
-  --color-purple-50: #EFEEF7;
-  --color-purple-100: #DEDCEE;
-  --color-purple-200: #BFBCDC;
-  --color-purple-300: #A6A3D1;
-  --color-purple-400: #7B77BD;
-  --color-purple-500: #4F4BA8;
-  --color-purple-600: #3A3786;
-  --color-purple-700: #2A2766;
-  --color-purple-800: #1E1B4B;
-  --color-purple-900: #16143A;
-  --color-purple-950: #0E0C26;
+  --color-gray-50:  #F2F2F7;
+  --color-gray-100: #E5E5EA;
+  --color-gray-200: #D1D1D6;
+  --color-gray-300: #C7C7CC;
+  --color-gray-400: #AEAEB2;
+  --color-gray-500: #8E8E93;
+  --color-gray-600: #6C6C70;
+  --color-gray-700: #48484A;
+  --color-gray-800: #3A3A3C;
+  --color-gray-900: #1C1C1E;
+  --color-gray-950: #000000;
 
-  --color-fuchsia-50: #FBEAE2;
-  --color-fuchsia-100: #F2C9B8;
-  --color-fuchsia-200: #EAA88E;
-  --color-fuchsia-300: #E08C6A;
-  --color-fuchsia-400: #DC7048;
-  --color-fuchsia-500: #D85A30;
-  --color-fuchsia-600: #BE4B26;
-  --color-fuchsia-700: #983B1D;
-  --color-fuchsia-800: #722C16;
-  --color-fuchsia-900: #4D1D0E;
-  --color-fuchsia-950: #2A1007;
+  --color-zinc-50:  #F2F2F7;
+  --color-zinc-100: #E5E5EA;
+  --color-zinc-200: #D1D1D6;
+  --color-zinc-300: #C7C7CC;
+  --color-zinc-400: #AEAEB2;
+  --color-zinc-500: #8E8E93;
+  --color-zinc-600: #6C6C70;
+  --color-zinc-700: #48484A;
+  --color-zinc-800: #3A3A3C;
+  --color-zinc-900: #1C1C1E;
+  --color-zinc-950: #000000;
 
-  /* Neutrals (slate/gray/zinc/neutral/stone) → Cream / Mist / Indigo */
-  --color-slate-50: #F7F3EC;
-  --color-slate-100: #F0EDE6;
-  --color-slate-200: #E8E6DF;
-  --color-slate-300: #D7D4CC;
-  --color-slate-400: #9B98AE;
-  --color-slate-500: #6F6C88;
-  --color-slate-600: #4F4D6E;
-  --color-slate-700: #2E2C56;
-  --color-slate-800: #221F45;
-  --color-slate-900: #1E1B4B;
-  --color-slate-950: #0F0D2A;
+  --color-neutral-50:  #F2F2F7;
+  --color-neutral-100: #E5E5EA;
+  --color-neutral-200: #D1D1D6;
+  --color-neutral-300: #C7C7CC;
+  --color-neutral-400: #AEAEB2;
+  --color-neutral-500: #8E8E93;
+  --color-neutral-600: #6C6C70;
+  --color-neutral-700: #48484A;
+  --color-neutral-800: #3A3A3C;
+  --color-neutral-900: #1C1C1E;
+  --color-neutral-950: #000000;
 
-  --color-gray-50: #F7F3EC;
-  --color-gray-100: #F0EDE6;
-  --color-gray-200: #E8E6DF;
-  --color-gray-300: #D7D4CC;
-  --color-gray-400: #9B98AE;
-  --color-gray-500: #6F6C88;
-  --color-gray-600: #4F4D6E;
-  --color-gray-700: #2E2C56;
-  --color-gray-800: #221F45;
-  --color-gray-900: #1E1B4B;
-  --color-gray-950: #0F0D2A;
+  --color-stone-50:  #F2F2F7;
+  --color-stone-100: #E5E5EA;
+  --color-stone-200: #D1D1D6;
+  --color-stone-300: #C7C7CC;
+  --color-stone-400: #AEAEB2;
+  --color-stone-500: #8E8E93;
+  --color-stone-600: #6C6C70;
+  --color-stone-700: #48484A;
+  --color-stone-800: #3A3A3C;
+  --color-stone-900: #1C1C1E;
+  --color-stone-950: #000000;
 
-  --color-zinc-50: #F7F3EC;
-  --color-zinc-100: #F0EDE6;
-  --color-zinc-200: #E8E6DF;
-  --color-zinc-300: #D7D4CC;
-  --color-zinc-400: #9B98AE;
-  --color-zinc-500: #6F6C88;
-  --color-zinc-600: #4F4D6E;
-  --color-zinc-700: #2E2C56;
-  --color-zinc-800: #221F45;
-  --color-zinc-900: #1E1B4B;
-  --color-zinc-950: #0F0D2A;
+  /* Warms */
+  --color-red-50:   #FFE5E2;
+  --color-red-100:  #FFBFB7;
+  --color-red-200:  #FF9387;
+  --color-red-300:  #FF6757;
+  --color-red-400:  #FF4A39;
+  --color-red-500:  #FF3B30;   /* iOS Red */
+  --color-red-600:  #E1281E;
+  --color-red-700:  #B41A12;
+  --color-red-800:  #851008;
+  --color-red-900:  #560802;
+  --color-red-950:  #2F0301;
 
-  --color-neutral-50: #F7F3EC;
-  --color-neutral-100: #F0EDE6;
-  --color-neutral-200: #E8E6DF;
-  --color-neutral-300: #D7D4CC;
-  --color-neutral-400: #9B98AE;
-  --color-neutral-500: #6F6C88;
-  --color-neutral-600: #4F4D6E;
-  --color-neutral-700: #2E2C56;
-  --color-neutral-800: #221F45;
-  --color-neutral-900: #1E1B4B;
-  --color-neutral-950: #0F0D2A;
+  --color-rose-500:    #FF2D55;  /* iOS Pink */
+  --color-rose-600:    #E11D48;
+  --color-pink-500:    #FF2D55;
+  --color-pink-600:    #E11D48;
 
-  --color-stone-50: #F7F3EC;
-  --color-stone-100: #F0EDE6;
-  --color-stone-200: #E8E6DF;
-  --color-stone-300: #D7D4CC;
-  --color-stone-400: #9B98AE;
-  --color-stone-500: #6F6C88;
-  --color-stone-600: #4F4D6E;
-  --color-stone-700: #2E2C56;
-  --color-stone-800: #221F45;
-  --color-stone-900: #1E1B4B;
-  --color-stone-950: #0F0D2A;
+  --color-orange-50:   #FFF1DE;
+  --color-orange-100:  #FFDCAF;
+  --color-orange-200:  #FFC57F;
+  --color-orange-300:  #FFAD4F;
+  --color-orange-400:  #FFA127;
+  --color-orange-500:  #FF9500;   /* iOS Orange */
+  --color-orange-600:  #DB7F00;
+  --color-orange-700:  #A86100;
+  --color-orange-800:  #7A4600;
+  --color-orange-900:  #4F2D00;
 
-  /* Soul axis (warms: red/rose/pink/orange) — Coral 정중앙 */
-  --color-red-50: #FBEAE2;
-  --color-red-100: #F2C9B8;
-  --color-red-200: #EAA88E;
-  --color-red-300: #E08C6A;
-  --color-red-400: #DC7048;
-  --color-red-500: #D85A30;
-  --color-red-600: #BE4B26;
-  --color-red-700: #983B1D;
-  --color-red-800: #722C16;
-  --color-red-900: #4D1D0E;
-  --color-red-950: #2A1007;
+  /* Amber / Yellow → iOS Yellow */
+  --color-amber-500:  #FFCC00;
+  --color-amber-600:  #DBAE00;
+  --color-yellow-500: #FFCC00;
+  --color-yellow-600: #DBAE00;
 
-  --color-rose-50: #FBEAE2;
-  --color-rose-100: #F2C9B8;
-  --color-rose-200: #EAA88E;
-  --color-rose-300: #E08C6A;
-  --color-rose-400: #DC7048;
-  --color-rose-500: #D85A30;
-  --color-rose-600: #BE4B26;
-  --color-rose-700: #983B1D;
-  --color-rose-800: #722C16;
-  --color-rose-900: #4D1D0E;
-  --color-rose-950: #2A1007;
+  /* Greens → iOS Green */
+  --color-emerald-50:   #E5F8EA;
+  --color-emerald-100:  #BCEBCB;
+  --color-emerald-200:  #92DEA9;
+  --color-emerald-300:  #69D188;
+  --color-emerald-400:  #4FCB74;
+  --color-emerald-500:  #34C759;   /* iOS Green */
+  --color-emerald-600:  #2BA94B;
+  --color-emerald-700:  #1F8338;
 
-  --color-pink-50: #FBEAE2;
-  --color-pink-100: #F2C9B8;
-  --color-pink-200: #EAA88E;
-  --color-pink-300: #E08C6A;
-  --color-pink-400: #DC7048;
-  --color-pink-500: #D85A30;
-  --color-pink-600: #BE4B26;
-  --color-pink-700: #983B1D;
-  --color-pink-800: #722C16;
-  --color-pink-900: #4D1D0E;
-  --color-pink-950: #2A1007;
+  --color-green-50:   #E5F8EA;
+  --color-green-100:  #BCEBCB;
+  --color-green-200:  #92DEA9;
+  --color-green-300:  #69D188;
+  --color-green-400:  #4FCB74;
+  --color-green-500:  #34C759;
+  --color-green-600:  #2BA94B;
+  --color-green-700:  #1F8338;
 
-  --color-orange-50: #FBEAE2;
-  --color-orange-100: #F2C9B8;
-  --color-orange-200: #EAA88E;
-  --color-orange-300: #E08C6A;
-  --color-orange-400: #DC7048;
-  --color-orange-500: #D85A30;
-  --color-orange-600: #BE4B26;
-  --color-orange-700: #983B1D;
-  --color-orange-800: #722C16;
-  --color-orange-900: #4D1D0E;
-  --color-orange-950: #2A1007;
+  --color-teal-500:   #30B0C7;
+  --color-lime-500:   #34C759;
+}
 
-  /* Amber / Yellow — 절제된 warm warning. 채도 낮춤 */
-  --color-amber-50: #F7F0E1;
-  --color-amber-100: #EFE0BD;
-  --color-amber-200: #E2C58C;
-  --color-amber-300: #D2A85F;
-  --color-amber-400: #BC8E40;
-  --color-amber-500: #A07530;
-  --color-amber-600: #835D24;
-  --color-amber-700: #66481B;
-  --color-amber-800: #4B3413;
-  --color-amber-900: #33240C;
-  --color-amber-950: #1F1607;
-
-  --color-yellow-50: #F7F0E1;
-  --color-yellow-100: #EFE0BD;
-  --color-yellow-200: #E2C58C;
-  --color-yellow-300: #D2A85F;
-  --color-yellow-400: #BC8E40;
-  --color-yellow-500: #A07530;
-  --color-yellow-600: #835D24;
-  --color-yellow-700: #66481B;
-  --color-yellow-800: #4B3413;
-  --color-yellow-900: #33240C;
-  --color-yellow-950: #1F1607;
-
-  /* Greens (emerald/green/teal/lime) → Sage. 브랜드와 호환되는 차분한 녹 */
-  --color-emerald-50: #EDF1EC;
-  --color-emerald-100: #DCE4DA;
-  --color-emerald-200: #B7C5B3;
-  --color-emerald-300: #92A78D;
-  --color-emerald-400: #6E8867;
-  --color-emerald-500: #5B7554;
-  --color-emerald-600: #4A6243;
-  --color-emerald-700: #3B4F36;
-  --color-emerald-800: #2E3D2A;
-  --color-emerald-900: #232E20;
-  --color-emerald-950: #161D14;
-
-  --color-green-50: #EDF1EC;
-  --color-green-100: #DCE4DA;
-  --color-green-200: #B7C5B3;
-  --color-green-300: #92A78D;
-  --color-green-400: #6E8867;
-  --color-green-500: #5B7554;
-  --color-green-600: #4A6243;
-  --color-green-700: #3B4F36;
-  --color-green-800: #2E3D2A;
-  --color-green-900: #232E20;
-  --color-green-950: #161D14;
-
-  --color-teal-50: #EDF1EC;
-  --color-teal-100: #DCE4DA;
-  --color-teal-200: #B7C5B3;
-  --color-teal-300: #92A78D;
-  --color-teal-400: #6E8867;
-  --color-teal-500: #5B7554;
-  --color-teal-600: #4A6243;
-  --color-teal-700: #3B4F36;
-  --color-teal-800: #2E3D2A;
-  --color-teal-900: #232E20;
-  --color-teal-950: #161D14;
-
-  --color-lime-50: #EDF1EC;
-  --color-lime-100: #DCE4DA;
-  --color-lime-200: #B7C5B3;
-  --color-lime-300: #92A78D;
-  --color-lime-400: #6E8867;
-  --color-lime-500: #5B7554;
-  --color-lime-600: #4A6243;
-  --color-lime-700: #3B4F36;
-  --color-lime-800: #2E3D2A;
-  --color-lime-900: #232E20;
-  --color-lime-950: #161D14;
+html {
+  /* Block Samsung Internet etc. forced dark inversion */
+  color-scheme: light;
 }
 
 html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  /* Samsung Internet 등 모바일 브라우저의 강제 다크 모드(색 반전) 차단 */
+  background: var(--bg-grouped);
+  color: var(--label);
   color-scheme: light;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   font-feature-settings: "kern", "liga", "calt", "ss01";
-  /* 호흡감 있는 자간 — 너무 타이트하지 않게 */
   letter-spacing: -0.01em;
 }
 
-/* Headings — 본문과 같은 산세리프(Pretendard/Inter)로 통일, Semibold 톤 */
+/* Headings — SF Pro Display tone */
 h1,
 h2,
 h3 {
-  font-family: var(--font-sans);
-  font-weight: 600;
-  letter-spacing: -0.015em;
-  line-height: 1.12;
-  color: var(--indigo);
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  line-height: 1.14;
+  color: var(--label);
 }
 
-h4,
-h5,
-h6 {
-  font-family: var(--font-sans);
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  line-height: 1.25;
-  color: var(--indigo);
+h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.22;
+  color: var(--label);
 }
 
 /* iOS safe-area helper */
 @supports (padding: env(safe-area-inset-bottom)) {
-  .safe-pb {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
+  .safe-pb { padding-bottom: env(safe-area-inset-bottom); }
+  .safe-pt { padding-top: env(safe-area-inset-top); }
 }
 
 @utility hide-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
-  &::-webkit-scrollbar {
-    display: none;
-  }
+  &::-webkit-scrollbar { display: none; }
 }
 
-/* Cream-tinted glass — 차분한 반투명 */
+/* Glass nav — iOS navbar blur */
 @utility nav-glass {
   background-color: var(--nav-bg);
-  backdrop-filter: saturate(140%) blur(18px);
-  -webkit-backdrop-filter: saturate(140%) blur(18px);
-  border-bottom: 1px solid var(--hairline);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 0.5px solid var(--sep);
 }
 
 @utility nav-glass-dark {
   background-color: var(--nav-bg-dark);
-  backdrop-filter: saturate(140%) blur(18px);
-  -webkit-backdrop-filter: saturate(140%) blur(18px);
-  border-bottom: 1px solid rgba(247, 243, 236, 0.08);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 0.5px solid rgba(255,255,255,0.08);
 }
 
-/* CTA capsule — 절제된 라운드. 980px 대신 풀 라운드 */
+/* CTA capsule */
 @utility rounded-pill {
   border-radius: 9999px;
 }
 
-/* Soft Anima shadow — 거의 없는 듯이 */
-@utility shadow-anima {
-  box-shadow: var(--shadow-card);
-}
-@utility shadow-anima-lg {
-  box-shadow: var(--shadow-product);
-}
-/* Backwards-compat aliases (전 코드에서 shadow-apple* 사용 중) */
-@utility shadow-apple {
-  box-shadow: var(--shadow-card);
-}
-@utility shadow-apple-lg {
-  box-shadow: var(--shadow-product);
+/* Grouped inset card */
+@utility ios-card {
+  background: var(--bg-grouped-2);
+  border-radius: 12px;
+  overflow: hidden;
 }
 
-/* Display type — 본문과 동일한 산세리프, Semibold 톤으로 통일 */
-@utility text-display-hero {
-  font-family: var(--font-sans);
-  font-size: clamp(2.25rem, 4.6vw, 4rem);
+/* Shadows */
+@utility shadow-anima      { box-shadow: var(--shadow-card); }
+@utility shadow-anima-lg   { box-shadow: var(--shadow-product); }
+@utility shadow-apple      { box-shadow: var(--shadow-card); }
+@utility shadow-apple-lg   { box-shadow: var(--shadow-product); }
+@utility shadow-tinted     { box-shadow: var(--shadow-tinted); }
+
+/* Type utilities — iOS HIG scale */
+@utility text-large-title {
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  line-height: 41px;
+  color: var(--label);
+}
+
+@utility text-title-1 {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.36px;
+  line-height: 34px;
+  color: var(--label);
+}
+
+@utility text-title-3 {
+  font-family: var(--font-display);
+  font-size: 20px;
   font-weight: 600;
+  letter-spacing: -0.45px;
+  line-height: 25px;
+  color: var(--label);
+}
+
+@utility text-headline {
+  font-family: var(--font-sans);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.43px;
+  line-height: 22px;
+  color: var(--label);
+}
+
+@utility text-body {
+  font-family: var(--font-sans);
+  font-size: 17px;
+  font-weight: 400;
+  letter-spacing: -0.43px;
+  line-height: 22px;
+  color: var(--label);
+}
+
+@utility text-callout {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: -0.32px;
+  line-height: 21px;
+  color: var(--label);
+}
+
+@utility text-subhead {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: -0.24px;
+  line-height: 20px;
+  color: var(--label);
+}
+
+@utility text-footnote {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: -0.08px;
+  line-height: 18px;
+  color: var(--label-2);
+}
+
+@utility text-caption-1 {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 16px;
+  color: var(--label-2);
+}
+
+@utility text-caption-2 {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.066px;
+  line-height: 13px;
+  color: var(--label-2);
+}
+
+/* Legacy aliases — 기존 코드가 쓰는 클래스 유지 */
+@utility text-display-hero {
+  font-family: var(--font-display);
+  font-size: clamp(2.25rem, 4.6vw, 3rem);
+  font-weight: 700;
   line-height: 1.06;
   letter-spacing: -0.02em;
-  color: var(--indigo);
+  color: var(--label);
 }
-
 @utility text-display-section {
-  font-family: var(--font-sans);
-  font-size: clamp(1.625rem, 3vw, 2.5rem);
-  font-weight: 600;
-  line-height: 1.12;
-  letter-spacing: -0.015em;
-  color: var(--indigo);
+  font-family: var(--font-display);
+  font-size: clamp(1.625rem, 3vw, 2.125rem);
+  font-weight: 700;
+  line-height: 1.14;
+  letter-spacing: -0.022em;
+  color: var(--label);
 }
-
 @utility text-display-eyebrow {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 400;
-  line-height: 1;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-}
-
-/* Body text */
-@utility text-anima-body {
-  font-family: var(--font-sans);
-  font-size: 16px;
-  line-height: 1.6;
-  letter-spacing: -0.005em;
-  font-weight: 400;
-  color: var(--indigo);
-}
-
-@utility text-anima-caption {
   font-family: var(--font-sans);
   font-size: 13px;
-  line-height: 1.4;
-  letter-spacing: 0;
-  font-weight: 400;
-  color: var(--text-tertiary);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--label-2);
 }
-
+@utility text-anima-body {
+  font-family: var(--font-sans); font-size: 17px; line-height: 1.4;
+  letter-spacing: -0.43px; font-weight: 400; color: var(--label);
+}
+@utility text-anima-caption {
+  font-family: var(--font-sans); font-size: 13px; line-height: 1.4;
+  letter-spacing: -0.08px; font-weight: 400; color: var(--label-2);
+}
 @utility text-anima-meta {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1.3;
-  letter-spacing: 0.04em;
-  font-weight: 400;
-  color: var(--text-tertiary);
+  font-family: var(--font-sans); font-size: 13px; line-height: 1.3;
+  letter-spacing: -0.08px; font-weight: 400; color: var(--label-2);
 }
-
-/* Backwards-compat aliases */
 @utility text-apple-body {
-  font-family: var(--font-sans);
-  font-size: 16px;
-  line-height: 1.6;
-  font-weight: 400;
-  color: var(--indigo);
+  font-family: var(--font-sans); font-size: 17px; line-height: 1.4;
+  font-weight: 400; color: var(--label);
 }
 @utility text-apple-caption {
-  font-family: var(--font-sans);
-  font-size: 13px;
-  line-height: 1.4;
-  font-weight: 400;
-  color: var(--text-tertiary);
+  font-family: var(--font-sans); font-size: 13px; line-height: 1.4;
+  font-weight: 400; color: var(--label-2);
 }
 
-/* Hairline divider — 1px max, 항상 1.5px 이하 원칙 */
-@utility hairline {
-  border-color: var(--hairline);
-}
+@utility hairline { border-color: var(--sep); }
 
-/* Aperture — 동심원 마크 모티프, hover에 라임 맞추는 핀포인트 */
 @utility aperture-dot {
-  background-color: var(--soul);
+  background-color: var(--blue);
   border-radius: 9999px;
 }
 
-/* Focus ring — Indigo 1.5px (브랜드 원칙: 모든 라인은 1.5px 이하) */
+/* Focus ring — iOS uses 2px solid blue */
 :focus-visible {
-  outline: 1.5px solid var(--focus-ring);
+  outline: 2px solid var(--blue);
   outline-offset: 2px;
+  border-radius: 4px;
 }
 
 button:focus,
@@ -563,21 +575,18 @@ button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 textarea:focus-visible {
-  outline: 1.5px solid var(--focus-ring);
+  outline: 2px solid var(--blue);
   outline-offset: 2px;
 }
 
-/* Selection — Soul tinted */
+/* Selection — iOS Blue tinted */
 ::selection {
-  background-color: var(--soul-soft);
-  color: var(--indigo);
+  background-color: var(--blue-t);
+  color: var(--label);
 }
 
-/* Default link */
 a {
-  color: var(--link);
+  color: var(--blue);
   text-decoration: none;
 }
-a:hover {
-  color: var(--link-hover);
-}
+a:hover { color: var(--blue); opacity: 0.8; }

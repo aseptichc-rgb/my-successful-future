@@ -6,13 +6,23 @@ import { useAuth } from "@/lib/auth-context";
 import { getDailyWinsHistory, WINS_HISTORY_DEFAULT_LIMIT } from "@/lib/firebase";
 import { useLanguage } from "@/lib/i18n";
 
-/** 사용자 locale 에 맞춘 "긴 날짜 + 요일" 표기. */
+/* ─────────────────────────────────────────────────────────────────
+ * Wins History — Apple iOS native redesign
+ *  · Large Title nav with back button
+ *  · Per-day grouped inset card with rotating system colors
+ *  · Empty / error / loading states match iOS conventions
+ * ───────────────────────────────────────────────────────────────── */
+
+// Day-of-week color rotation (iOS palette).
+const DAY_COLORS = ["#34C759", "#FF9500", "#FF2D55", "#AF52DE", "#32ADE6", "#5856D6", "#FFCC00"];
+
 function formatKstDate(ymd: string, locale: string): string {
   const [y, m, d] = ymd.split("-").map((s) => parseInt(s, 10));
   if (!y || !m || !d) return ymd;
   try {
     const date = new Date(Date.UTC(y, m - 1, d));
-    const tag = locale === "ko" ? "ko-KR" : locale === "es" ? "es-ES" : locale === "zh" ? "zh-CN" : "en-US";
+    const tag =
+      locale === "ko" ? "ko-KR" : locale === "es" ? "es-ES" : locale === "zh" ? "zh-CN" : "en-US";
     return new Intl.DateTimeFormat(tag, {
       year: "numeric",
       month: "long",
@@ -25,11 +35,20 @@ function formatKstDate(ymd: string, locale: string): string {
   }
 }
 
-const IconBack = ({ className = "h-5 w-5" }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <path d="M15 18l-6-6 6-6" />
-  </svg>
-);
+function todayOffsetLabel(ymd: string): string | null {
+  try {
+    const [y, m, d] = ymd.split("-").map((s) => parseInt(s, 10));
+    const that = new Date(Date.UTC(y, m - 1, d));
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+    const diff = Math.round((today.getTime() - that.getTime()) / 86400000);
+    if (diff === 0) return "오늘";
+    if (diff === 1) return "어제";
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 export default function WinsHistoryPage() {
   const router = useRouter();
@@ -42,24 +61,25 @@ export default function WinsHistoryPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!firebaseUser) {
-      router.replace("/login");
-    }
+    if (!firebaseUser) router.replace("/login");
   }, [authLoading, firebaseUser, router]);
 
-  const load = useCallback(async (uid: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const list = await getDailyWinsHistory(uid, WINS_HISTORY_DEFAULT_LIMIT);
-      setEntries(list);
-    } catch (err) {
-      console.error("[wins-history] 조회 실패:", err);
-      setError(t("wins.history.loadFailed"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
+  const load = useCallback(
+    async (uid: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const list = await getDailyWinsHistory(uid, WINS_HISTORY_DEFAULT_LIMIT);
+        setEntries(list);
+      } catch (err) {
+        console.error("[wins-history] 조회 실패:", err);
+        setError(t("wins.history.loadFailed"));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [t],
+  );
 
   useEffect(() => {
     if (!firebaseUser) return;
@@ -68,100 +88,126 @@ export default function WinsHistoryPage() {
 
   if (authLoading || !firebaseUser) {
     return (
-      <div className="flex h-full items-center justify-center bg-[#F0EDE6]">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-black/10 border-t-[#1E1B4B]" />
+      <div className="flex h-full items-center justify-center bg-[#F2F2F7]">
+        <div className="h-6 w-6 animate-spin rounded-full border-[1.5px] border-black/10 border-t-[#007AFF]" />
       </div>
     );
   }
 
+  // Filter entries that have at least one non-empty win
+  const filledEntries = entries.filter((e) => e.wins.some((w) => (w || "").trim().length > 0));
+
   return (
-    <div className="flex h-full flex-col overflow-y-auto bg-[#F0EDE6] pb-8">
-      <header className="border-b border-black/[0.06] bg-white px-5 py-5 sm:px-6 sm:py-7">
-        <div className="mx-auto flex max-w-3xl items-start gap-3">
+    <div className="flex h-full flex-col overflow-y-auto bg-[#F2F2F7] pb-12">
+      <header className="pt-3 pb-2 bg-[#F2F2F7]">
+        <div className="mx-auto max-w-3xl px-2 min-h-[44px] flex items-center">
           <button
             type="button"
             onClick={() => router.push("/home")}
-            aria-label={t("wins.history.back")}
-            className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-black/[0.06] bg-white text-[#1E1B4B] shadow-apple transition-colors hover:bg-[#F7F4ED]"
+            aria-label={t("home.title")}
+            className="inline-flex items-center gap-1 text-[#007AFF] text-[17px] tracking-[-0.43px] px-1 py-2"
           >
-            <IconBack className="h-[18px] w-[18px]" />
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <path d="M14 4l-7 7 7 7" stroke="#007AFF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span>{t("home.title")}</span>
           </button>
-          <div>
-            <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.005em] text-[#1E1B4B] sm:text-[32px]">
-              {t("wins.history.title")}
-            </h1>
-            <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
-              {t("wins.history.subtitle")}
-            </p>
-          </div>
+        </div>
+        <div className="mx-auto max-w-3xl px-5">
+          <h1 className="text-large-title font-display">{t("wins.history.title")}</h1>
+          <p className="text-subhead mt-0.5 text-[var(--label-2)]">{t("wins.history.subtitle")}</p>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl space-y-3 px-4 py-5 sm:px-6">
+      <main className="mx-auto w-full max-w-3xl">
         {loading && (
-          <div className="flex items-center justify-center py-10">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-black/10 border-t-[#1E1B4B]" />
+          <div className="flex items-center justify-center py-12">
+            <div className="h-6 w-6 animate-spin rounded-full border-[1.5px] border-black/10 border-t-[#007AFF]" />
           </div>
         )}
 
         {!loading && error && (
-          <div className="rounded-[12px] bg-rose-50 px-4 py-3 text-[13px] tracking-[-0.01em] text-rose-700">
-            {error}
+          <div className="mx-4 mt-4 rounded-[12px] bg-white p-4 text-[15px] text-[#FF3B30] flex items-center gap-3">
+            <span className="flex-1">{error}</span>
             <button
               type="button"
               onClick={() => firebaseUser && load(firebaseUser.uid)}
-              className="ml-2 underline underline-offset-2"
+              className="text-[15px] font-semibold text-[#007AFF]"
             >
               {t("common.retry")}
             </button>
           </div>
         )}
 
-        {!loading && !error && entries.length === 0 && (
-          <div className="rounded-[16px] border border-dashed border-black/15 bg-white px-5 py-10 text-center">
-            <p className="text-[14px] tracking-[-0.01em] text-black/60">
-              {t("wins.history.empty")}
-            </p>
-            <button
-              type="button"
-              onClick={() => router.push("/home")}
-              className="mt-3 rounded-pill bg-[#1E1B4B] px-4 py-2 text-[12px] font-medium text-white transition-colors hover:bg-[#2A2766]"
+        {!loading && !error && filledEntries.length === 0 && (
+          <div className="mx-4 mt-12 text-center px-6 py-12">
+            <div
+              className="mx-auto w-16 h-16 rounded-[18px] flex items-center justify-center mb-4"
+              style={{
+                background: "linear-gradient(135deg, #34C759 0%, #00C7BE 100%)",
+                boxShadow: "0 6px 18px rgba(52,199,89,0.24)",
+              }}
             >
-              {t("wins.history.back")}
-            </button>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12l5 5L20 7" />
+              </svg>
+            </div>
+            <p className="text-[17px] leading-[22px] text-[var(--label-2)]">
+              {t("wins.history.empty") || "아직 기록한 잘한 일이 없어요."}
+            </p>
           </div>
         )}
 
-        {!loading && !error && entries.length > 0 && (
-          <ul className="space-y-3">
-            {entries.map((entry) => (
-              <li
-                key={entry.ymd}
-                className="rounded-[16px] border border-black/[0.06] bg-white p-5 shadow-apple"
-              >
-                <div className="flex items-baseline justify-between gap-2">
-                  <h2 className="text-[15px] font-semibold tracking-[-0.022em] text-[#1E1B4B]">
-                    {formatKstDate(entry.ymd, locale)}
-                  </h2>
-                  <span className="text-[12px] tracking-[-0.01em] text-black/48">
-                    {entry.wins.length}
-                  </span>
-                </div>
-                <ul className="mt-3 space-y-2">
-                  {entry.wins.map((win, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F0EDE6] text-[11px] font-semibold text-[#1E1B4B]">
-                        {idx + 1}
-                      </span>
-                      <p className="min-w-0 flex-1 whitespace-pre-wrap break-words text-[14px] leading-[1.5] tracking-[-0.01em] text-[#1E1B4B]">
-                        {win}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            ))}
-          </ul>
+        {!loading && !error && filledEntries.length > 0 && (
+          <div className="pb-8">
+            {filledEntries.map((entry, di) => {
+              const dayColor = DAY_COLORS[di % DAY_COLORS.length];
+              const label = todayOffsetLabel(entry.ymd);
+              const longDate = formatKstDate(entry.ymd, locale);
+              const header = label ? `${label} · ${longDate}` : longDate;
+              const filledWins = entry.wins.filter((w) => (w || "").trim().length > 0);
+
+              return (
+                <section key={entry.ymd} className="mt-7">
+                  <div className="px-7 mb-1.5 text-[13px] uppercase tracking-[-0.08px] text-[var(--label-2)]">
+                    {header}
+                  </div>
+                  <div className="mx-4 bg-white rounded-[12px] overflow-hidden">
+                    {filledWins.map((win, i) => {
+                      const isLast = i === filledWins.length - 1;
+                      return (
+                        <div
+                          key={i}
+                          className="relative flex items-start gap-3 px-4 py-3"
+                        >
+                          <div
+                            className="w-7 h-7 rounded-[8px] flex items-center justify-center flex-shrink-0 mt-0.5"
+                            style={{ background: dayColor + "1F" }}
+                          >
+                            <span
+                              className="text-[13px] font-bold tracking-[-0.2px]"
+                              style={{ color: dayColor }}
+                            >
+                              {String(i + 1).padStart(2, "0")}
+                            </span>
+                          </div>
+                          <p className="flex-1 text-[17px] leading-[24px] tracking-[-0.43px] text-black whitespace-pre-wrap py-1">
+                            {win}
+                          </p>
+                          {!isLast && (
+                            <div
+                              className="absolute bottom-0 right-0 h-[0.5px]"
+                              style={{ left: 56, background: "var(--sep)" }}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
         )}
       </main>
     </div>

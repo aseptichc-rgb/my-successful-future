@@ -6,18 +6,12 @@ import AffirmationCheckin from "@/components/affirmations/AffirmationCheckin";
 import { useLanguage } from "@/lib/i18n";
 
 /* ─────────────────────────────────────────────────────────────────
- * Anima MotivationCard — v2 redesign
- * ─────────────────────────────────────────────────────────────────
- * 변경 핵심:
- *  · 보라 그라데이션 배경 제거 — cream 평면 위 hairline 으로만 분리.
- *  · 인용문: 700 sans → 300 italic Fraunces. 외침이 아니라 들림.
- *  · 미션 박스-안-박스-안-박스 → hairline 한 줄.
- *  · 액션 바(잠금화면 받기 / 다시 받기) → 텍스트 링크로 격하.
- *  · tone(dark/light) 분기 전체 제거 — 항상 indigo on cream.
- *
- * 잠금화면 PNG 합성(downloadAsWallpaper)은 그대로 유지 — 카메라 롤에서
- * 다른 사진과 섞이려면 강한 색 그라데이션이 필요하기 때문.
- * ────────────────────────────────────────────────────────────────── */
+ * MotivationCard — Apple iOS native redesign
+ *  · Warm gradient hero card (Apple Music / Books inspired)
+ *  · iOS Headline + Subhead type
+ *  · 잠금화면 PNG export 유지 (Canvas 그라데이션 그대로)
+ *  · 미션 입력 — bordered separator + inline buttons
+ * ───────────────────────────────────────────────────────────────── */
 
 interface MotivationCardProps {
   motivation: DailyMotivation | null;
@@ -35,14 +29,10 @@ interface MotivationCardProps {
 }
 
 const RESPONSE_MAX = 60;
-
 const WALLPAPER_W = 1170;
 const WALLPAPER_H = 2532;
 const QUOTE_LEN_THRESHOLD_LARGE = 80;
 
-/**
- * 카드 상단 날짜를 사용자 locale 에 맞게 포맷 (잠금화면에서는 여전히 사용).
- */
 function formatHeader(ymd: string, locale: string): string {
   const [y, m, d] = ymd.split("-").map((s) => parseInt(s, 10));
   if (!y || !m || !d) return ymd;
@@ -53,11 +43,10 @@ function formatHeader(ymd: string, locale: string): string {
       { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" },
     ).format(date);
   } catch {
-    return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    return ymd;
   }
 }
 
-/** Canvas 워드 랩 — 한글/영문 모두 처리. */
 function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
   const words = text.split(/(\s+)/);
   const lines: string[] = [];
@@ -92,10 +81,6 @@ function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number
   return final;
 }
 
-/**
- * 잠금화면용 PNG (1170×2532) 합성 — 그라데이션은 여기서만 사용.
- * v1 그대로 유지. 카드 UI 와 별개의 export 경로.
- */
 async function downloadAsWallpaper(
   motivation: DailyMotivation,
   locale: string,
@@ -108,7 +93,6 @@ async function downloadAsWallpaper(
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas 2D 컨텍스트를 가져오지 못했습니다.");
 
-  // 배경 그라데이션
   const angleRad = ((motivation.gradient.angle - 90) * Math.PI) / 180;
   const cx = WALLPAPER_W / 2;
   const cy = WALLPAPER_H / 2;
@@ -128,34 +112,30 @@ async function downloadAsWallpaper(
   const subColor = tone === "dark" ? "rgba(255,255,255,0.66)" : "rgba(20,20,40,0.55)";
   const goalColor = tone === "dark" ? "rgba(255,255,255,0.85)" : "rgba(20,20,40,0.78)";
 
-  const FONT_STACK = `"Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif`;
-  const FONT_SERIF = `"Fraunces", "Times New Roman", serif`;
+  const FONT_STACK = `-apple-system, "SF Pro Text", "Pretendard", "Apple SD Gothic Neo", system-ui, sans-serif`;
 
-  // 날짜 (top)
   ctx.fillStyle = subColor;
   ctx.font = `500 42px ${FONT_STACK}`;
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
   ctx.fillText(formatHeader(motivation.ymd, locale), 110, 280);
 
-  // 인용문 — serif italic light 로 잠금화면에서도 톤 통일.
   ctx.fillStyle = textColor;
   const isLong = motivation.quote.length > QUOTE_LEN_THRESHOLD_LARGE;
   const quoteSize = isLong ? 88 : 110;
-  ctx.font = `300 italic ${quoteSize}px ${FONT_SERIF}`;
+  ctx.font = `700 ${quoteSize}px ${FONT_STACK}`;
   const quoteLines = wrapLines(ctx, motivation.quote, WALLPAPER_W - 220);
   let y = 460;
-  const lineHeight = quoteSize * 1.32;
+  const lineHeight = quoteSize * 1.28;
   for (const line of quoteLines) {
     ctx.fillText(line, 110, y);
     y += lineHeight;
   }
 
-  // 원어 (있을 때만)
   if (motivation.originalText) {
     ctx.fillStyle = subColor;
     const origSize = 38;
-    ctx.font = `400 italic ${origSize}px ${FONT_SERIF}`;
+    ctx.font = `400 italic ${origSize}px ${FONT_STACK}`;
     const origLines = wrapLines(ctx, motivation.originalText, WALLPAPER_W - 220);
     y += 20;
     const origLh = origSize * 1.4;
@@ -165,7 +145,6 @@ async function downloadAsWallpaper(
     }
   }
 
-  // 저자 + 출처
   ctx.fillStyle = subColor;
   ctx.font = `500 42px ${FONT_STACK}`;
   ctx.fillText(`— ${motivation.author}`, 110, y + 30);
@@ -174,7 +153,6 @@ async function downloadAsWallpaper(
     ctx.fillText(`《${motivation.source}》`, 110, y + 30 + 56);
   }
 
-  // 목표 블록 (하단)
   if (motivation.goalsSnapshot.length > 0) {
     ctx.fillStyle = subColor;
     ctx.font = `600 36px ${FONT_STACK}`;
@@ -189,7 +167,6 @@ async function downloadAsWallpaper(
     });
   }
 
-  // 워터마크
   ctx.fillStyle = subColor;
   ctx.font = `500 32px ${FONT_STACK}`;
   ctx.textAlign = "right";
@@ -208,8 +185,6 @@ async function downloadAsWallpaper(
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-
-/* ───── component ───── */
 
 export default function MotivationCard({
   motivation,
@@ -245,8 +220,6 @@ export default function MotivationCard({
     const t = setTimeout(() => setSubmitFlash(null), 2400);
     return () => clearTimeout(t);
   }, [submitFlash]);
-
-  /* 항상 indigo on cream — tone 분기 제거 */
 
   const handleDownload = useCallback(async () => {
     if (!motivation || downloading) return;
@@ -299,10 +272,6 @@ export default function MotivationCard({
     }
   }, [onSubmitResponse, motivation, responseDraft, t]);
 
-  /* ───── render — cream 평면, hairline 만으로 분리 ───── */
-
-  // emphasis 단어 강조: motivation.quoteEmphasis 가 있고 quote 의 부분 문자열이면 Soul italic 으로 감싼다.
-  // 백엔드가 아직 emphasis 필드를 안 채울 수 있어 optional. 폴백은 plain quote.
   const renderedQuote = useMemo(() => {
     if (!motivation) return null;
     const emphasis = (motivation as DailyMotivation & { quoteEmphasis?: string }).quoteEmphasis;
@@ -314,68 +283,107 @@ export default function MotivationCard({
     return (
       <>
         {before}
-        <span className="font-medium text-soul">{emphasis}</span>
+        <span className="text-[#FF9500] font-bold">{emphasis}</span>
         {after}
       </>
     );
   }, [motivation]);
 
   return (
-    <section
-      className="relative flex flex-col gap-7 py-2"
-      aria-label={t("motivation.headerTodayLabel")}
-    >
-      {/* ── 인용 hero ── */}
-      <div>
-        <div className="text-[12px] font-medium tracking-[-0.005em] text-indigo/45">
-          {t("motivation.headerTodayLabel")}
+    <section className="flex flex-col gap-4" aria-label={t("motivation.headerTodayLabel")}>
+      {/* ── Warm gradient hero quote card ── */}
+      <div
+        className="relative overflow-hidden rounded-[18px]"
+        style={{
+          background: "linear-gradient(135deg, #FFF5E8 0%, #FFE4D0 45%, #FFD1B8 100%)",
+          boxShadow: "0 2px 14px rgba(255,149,0,0.16)",
+        }}
+      >
+        {/* Decorative quote glyph */}
+        <div
+          aria-hidden
+          className="absolute top-[-12px] right-[14px] pointer-events-none"
+          style={{
+            fontSize: 120,
+            fontWeight: 700,
+            color: "rgba(255,149,0,0.18)",
+            lineHeight: 1,
+            fontFamily: "-apple-system, 'SF Pro Display', Georgia, serif",
+          }}
+        >
+          “
         </div>
-
-        {loading && !motivation ? (
-          <div className="mt-5 space-y-3">
-            <div className="h-7 w-4/5 animate-pulse rounded-full bg-indigo/8" />
-            <div className="h-7 w-3/5 animate-pulse rounded-full bg-indigo/8" />
-            <div className="h-7 w-2/5 animate-pulse rounded-full bg-indigo/8" />
+        <div className="relative px-5 pt-5 pb-5">
+          <div className="text-[11px] font-semibold tracking-[1.6px] uppercase text-[#FF9500] mb-2.5">
+            {t("motivation.headerTodayLabel")}
           </div>
-        ) : motivation ? (
-          <>
-            <p className="mt-4 whitespace-pre-wrap font-display text-[26px] font-light leading-[1.3] tracking-[-0.015em] text-indigo sm:text-[30px]">
-              {renderedQuote}
-            </p>
-            {motivation.originalText && (
-              <p
-                className="mt-3 whitespace-pre-wrap font-display text-[14px] font-light italic leading-[1.5] tracking-[-0.005em] text-indigo/55"
-                lang={motivation.originalLang}
-              >
-                {motivation.originalText}
-              </p>
-            )}
-            <div className="mt-5 text-[12px] font-medium tracking-[-0.005em] text-indigo/45">
-              — <b className="font-medium text-indigo/85">{motivation.author}</b>
-              {motivation.source && (
-                <span className="ml-2 text-indigo/40">《{motivation.source}》</span>
-              )}
+
+          {loading && !motivation ? (
+            <div className="space-y-3">
+              <div className="h-7 w-4/5 animate-pulse rounded-full bg-black/10" />
+              <div className="h-7 w-3/5 animate-pulse rounded-full bg-black/10" />
+              <div className="h-7 w-2/5 animate-pulse rounded-full bg-black/10" />
             </div>
-          </>
-        ) : (
-          <p className="mt-4 font-display text-[16px] font-light leading-[1.5] text-indigo/55">
-            {errorMessage || t("motivation.preparingCard")}
-          </p>
-        )}
+          ) : motivation ? (
+            <>
+              <p className="whitespace-pre-wrap text-[23px] leading-[30px] font-semibold tracking-[-0.4px] text-black">
+                {renderedQuote}
+              </p>
+              {motivation.originalText && (
+                <p
+                  className="mt-3 whitespace-pre-wrap text-[14px] italic leading-[20px] tracking-[-0.08px] text-[var(--label-2)]"
+                  lang={motivation.originalLang}
+                >
+                  {motivation.originalText}
+                </p>
+              )}
+              <div className="mt-4 flex items-center justify-between">
+                <div className="text-[15px] tracking-[-0.24px] text-[var(--label-2)]">
+                  — {motivation.author}
+                  {motivation.source && (
+                    <span className="ml-2 text-[13px] text-[var(--label-3)]">《{motivation.source}》</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleDownload}
+                    disabled={!motivation || downloading}
+                    className="text-[15px] font-semibold text-[#FF9500] disabled:opacity-40"
+                  >
+                    {downloading
+                      ? t("motivation.wallpaper.downloading")
+                      : t("motivation.wallpaper.download")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRegenerate}
+                    disabled={loading || regenerating}
+                    className="text-[15px] text-[var(--label-2)] disabled:opacity-40"
+                    title={t("motivation.regenerate")}
+                  >
+                    {regenerating ? t("motivation.regenerating") : "↻"}
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="text-[16px] leading-[22px] text-[var(--label-2)]">
+              {errorMessage || t("motivation.preparingCard")}
+            </p>
+          )}
+        </div>
       </div>
 
-      {/* ── 다짐 따라쓰기 — 다짐이 1개 이상이면 ── */}
+      {/* ── 다짐 따라쓰기 — Affirmation card ── */}
       {motivation && affirmations && affirmations.length > 0 && onCheckinAffirmations && (
-        <>
-          <div className="h-px bg-hairline" />
-          <AffirmationCheckin
-            affirmations={affirmations}
-            tone="light"
-            streakCount={affirmationStreakCount}
-            alreadyCheckedIn={alreadyCheckedInToday}
-            onSubmit={onCheckinAffirmations}
-          />
-        </>
+        <AffirmationCheckin
+          affirmations={affirmations}
+          tone="light"
+          streakCount={affirmationStreakCount}
+          alreadyCheckedIn={alreadyCheckedInToday}
+          onSubmit={onCheckinAffirmations}
+        />
       )}
 
       {/* ── 미션 — affirmations 미설정 사용자만 ── */}
@@ -383,124 +391,92 @@ export default function MotivationCard({
         (!affirmations || affirmations.length === 0) &&
         motivation.mission &&
         onSubmitResponse && (
-          <>
-            <div className="h-px bg-hairline" />
-            <div>
-              <div className="flex items-baseline gap-3">
-                <span className="text-[12px] font-medium tracking-[-0.005em] text-indigo/55">
-                  {t("motivation.missionLabel")}
-                </span>
-                <span className="text-[11px] font-medium tracking-[-0.005em] text-soul">
-                  #{motivation.mission.identityTag}
-                </span>
-              </div>
-              <p className="mt-3 font-display text-[17px] font-light leading-[1.5] tracking-[-0.005em] text-indigo">
-                {motivation.mission.prompt}
-              </p>
+          <div className="bg-white rounded-[12px] p-5">
+            <div className="flex items-center gap-3">
+              <span className="text-[13px] uppercase tracking-[-0.08px] text-[var(--label-2)] font-medium">
+                {t("motivation.missionLabel")}
+              </span>
+              <span className="text-[11px] font-bold uppercase tracking-[1px] text-[#AF52DE]">
+                #{motivation.mission.identityTag}
+              </span>
+            </div>
+            <p className="mt-2 text-[17px] leading-[24px] font-semibold tracking-[-0.43px] text-black">
+              {motivation.mission.prompt}
+            </p>
 
-              {motivation.response && !responseEditing ? (
-                <div className="mt-4 border-l-[1.5px] border-soul/60 pl-4">
-                  <p className="whitespace-pre-wrap text-[14px] leading-[1.55] tracking-[-0.005em] text-indigo">
-                    {motivation.response.text}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setResponseDraft(motivation.response?.text || "");
-                      setResponseEditing(true);
-                    }}
-                    className="mt-2 text-[12px] font-medium tracking-[-0.005em] text-indigo/55 transition-colors hover:text-soul"
-                  >
-                    {t("motivation.editResponse")}
-                  </button>
-                </div>
-              ) : (
-                <div className="mt-3">
-                  <textarea
-                    value={responseDraft}
-                    onChange={(e) => setResponseDraft(e.target.value.slice(0, RESPONSE_MAX))}
-                    rows={2}
-                    maxLength={RESPONSE_MAX}
-                    placeholder={t("motivation.responsePlaceholder")}
-                    className="w-full resize-none border-b border-hairline bg-transparent pb-2 text-[14px] leading-[1.55] tracking-[-0.005em] text-indigo placeholder:font-display placeholder:font-light placeholder:text-indigo/35 focus:border-indigo focus:outline-none"
-                  />
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className="font-mono text-[10px] tabular-nums text-indigo/45">
-                      {responseDraft.length}/{RESPONSE_MAX}
-                    </span>
-                    <div className="flex gap-4">
-                      {motivation.response && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setResponseEditing(false);
-                            setResponseDraft(motivation.response?.text || "");
-                            setResponseError(null);
-                          }}
-                          disabled={responseSaving}
-                          className="text-[12px] font-medium tracking-[-0.005em] text-indigo/55 transition-colors hover:text-indigo disabled:opacity-40"
-                        >
-                          {t("common.cancel")}
-                        </button>
-                      )}
+            {motivation.response && !responseEditing ? (
+              <div
+                className="mt-3 pl-4 border-l-[3px] rounded-l-[2px]"
+                style={{ borderColor: "#FF9500" }}
+              >
+                <p className="whitespace-pre-wrap text-[15px] leading-[20px] tracking-[-0.24px] text-black">
+                  {motivation.response.text}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResponseDraft(motivation.response?.text || "");
+                    setResponseEditing(true);
+                  }}
+                  className="mt-2 text-[13px] font-medium text-[#007AFF]"
+                >
+                  {t("motivation.editResponse")}
+                </button>
+              </div>
+            ) : (
+              <div className="mt-3">
+                <textarea
+                  value={responseDraft}
+                  onChange={(e) => setResponseDraft(e.target.value.slice(0, RESPONSE_MAX))}
+                  rows={2}
+                  maxLength={RESPONSE_MAX}
+                  placeholder={t("motivation.responsePlaceholder")}
+                  className="w-full resize-none rounded-[10px] border border-[var(--sep)] bg-[#F2F2F7] px-3 py-2 text-[15px] leading-[20px] tracking-[-0.24px] text-black placeholder:text-[var(--label-3)] focus:outline-none focus:border-[#007AFF]"
+                />
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="text-[12px] text-[var(--label-3)] tabular-nums">
+                    {responseDraft.length}/{RESPONSE_MAX}
+                  </span>
+                  <div className="flex gap-4">
+                    {motivation.response && (
                       <button
                         type="button"
-                        onClick={handleSubmitResponse}
-                        disabled={responseSaving || !responseDraft.trim()}
-                        className="text-[12px] font-medium tracking-[-0.005em] text-soul transition-colors hover:text-soul-press disabled:opacity-30"
+                        onClick={() => {
+                          setResponseEditing(false);
+                          setResponseDraft(motivation.response?.text || "");
+                          setResponseError(null);
+                        }}
+                        disabled={responseSaving}
+                        className="text-[15px] text-[var(--label-2)] disabled:opacity-40"
                       >
-                        {responseSaving ? t("motivation.submitting") : t("motivation.submit")}
+                        {t("common.cancel")}
                       </button>
-                    </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleSubmitResponse}
+                      disabled={responseSaving || !responseDraft.trim()}
+                      className="text-[15px] font-semibold text-[#007AFF] disabled:opacity-30"
+                    >
+                      {responseSaving ? t("motivation.submitting") : t("motivation.submit")}
+                    </button>
                   </div>
-                  {responseError && (
-                    <p className="mt-2 text-[11px] font-medium tracking-[-0.005em] text-soul">
-                      {responseError}
-                    </p>
-                  )}
                 </div>
-              )}
+                {responseError && (
+                  <p className="mt-2 text-[13px] text-[#FF3B30]">{responseError}</p>
+                )}
+              </div>
+            )}
 
-              {submitFlash && (
-                <p
-                  role="status"
-                  className="mt-3 text-[11px] font-medium tracking-[-0.005em] text-soul"
-                >
-                  {submitFlash}
-                </p>
-              )}
-            </div>
-          </>
+            {submitFlash && (
+              <p role="status" className="mt-3 text-[13px] font-semibold text-[#34C759]">
+                {submitFlash}
+              </p>
+            )}
+          </div>
         )}
 
-      {/* ── 메타 액션 — 텍스트 링크 단계 ── */}
-      <div className="flex items-center justify-between border-t border-hairline pt-4">
-        <button
-          type="button"
-          onClick={handleDownload}
-          disabled={!motivation || downloading}
-          className="text-[12px] font-medium tracking-[-0.005em] text-indigo/60 transition-colors hover:text-soul disabled:opacity-40"
-        >
-          {downloading
-            ? t("motivation.wallpaper.downloading")
-            : t("motivation.wallpaper.download")}
-        </button>
-        <button
-          type="button"
-          onClick={handleRegenerate}
-          disabled={loading || regenerating}
-          className="text-[12px] font-medium tracking-[-0.005em] text-indigo/55 transition-colors hover:text-soul disabled:opacity-40"
-          title={t("motivation.regenerate")}
-        >
-          {regenerating ? t("motivation.regenerating") : t("motivation.regenerate")}
-        </button>
-      </div>
-
-      {downloadError && (
-        <p className="text-[11px] font-medium tracking-[-0.005em] text-soul">
-          {downloadError}
-        </p>
-      )}
+      {downloadError && <p className="text-[13px] text-[#FF3B30]">{downloadError}</p>}
     </section>
   );
 }

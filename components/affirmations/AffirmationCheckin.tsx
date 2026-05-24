@@ -4,22 +4,17 @@ import { useEffect, useMemo, useState } from "react";
 import { useT } from "@/lib/i18n";
 
 /* ─────────────────────────────────────────────────────────────────
- * Anima AffirmationCheckin — v2 redesign
- * ─────────────────────────────────────────────────────────────────
- * 변경 핵심:
- *  · 회색 박스(rounded-14 bg-black/4) 제거 — cream 평면 위에 직접.
- *  · 각 다짐 행: 번호 (display italic Soul) + 목표문(italic ghost)
- *    + 입력 (border-bottom underline only). 박스 안 입력 박스 패턴 제거.
- *  · 일치 시 ✓ Soul accent, 불일치 시 dashed border-soul + 힌트.
- *  · streak: mono uppercase + Soul glow dot (위젯·페이지 헤더와 동일 형식).
- *  · 제출 버튼 → 우측 텍스트 링크.
- *  · tone(dark/light) 분기 제거 — 항상 light(cream + indigo).
- *
- * 비즈니스 로직(normalizeForCompare/stripLeadingNumber/onSubmit) 그대로.
- * ────────────────────────────────────────────────────────────────── */
+ * AffirmationCheckin — Apple iOS native redesign
+ *  · Grouped inset card (white on systemGroupedBackground)
+ *  · Per-row colored number badges — iOS palette
+ *  · Underline-only inputs · matched ✓ Green
+ *  · Streak chip — Orange (위젯과 통일)
+ * ───────────────────────────────────────────────────────────────── */
 
-/** 입력 필드 최대 길이 — 저장된 다짐(60자) + 번호 프리픽스 여유. */
 const AFFIRMATION_INPUT_MAX = 72;
+
+// Rotate through iOS system colors for the row badges.
+const ROW_COLORS = ["#5856D6", "#34C759", "#FF2D55", "#FF9500", "#32ADE6"];
 
 function normalizeForCompare(s: string): string {
   return s.trim().replace(/\s+/g, " ").slice(0, AFFIRMATION_INPUT_MAX);
@@ -30,7 +25,7 @@ function stripLeadingNumber(s: string): string {
 
 export default function AffirmationCheckin({
   affirmations,
-  tone: _tone, // ignored — 항상 cream/light
+  tone: _tone,
   streakCount,
   alreadyCheckedIn,
   onSubmit,
@@ -124,31 +119,33 @@ export default function AffirmationCheckin({
   if (affirmations.length === 0) return null;
 
   return (
-    <div>
-      {/* ── 섹션 헤더 ── */}
-      <div className="flex items-center justify-between">
-        <span className="text-[12px] font-medium tracking-[-0.005em] text-indigo/55">
+    <div className="bg-white rounded-[12px] overflow-hidden">
+      {/* Card header — Title + streak chip */}
+      <div className="flex items-center justify-between px-5 pt-4 pb-2">
+        <span className="text-[17px] font-semibold tracking-[-0.43px] text-black">
           {t("motivation.affirmations.title")}
         </span>
-        <span className="flex items-center gap-1.5 text-[11px] font-medium tracking-[-0.005em] text-indigo/60">
-          <span
-            className="block h-1.5 w-1.5 rounded-full bg-soul"
-            style={{ boxShadow: "0 0 6px var(--soul)" }}
-            aria-hidden
-          />
-          <span>{t("motivation.affirmations.streak", { count: streakCount })}</span>
+        <span
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+          style={{ background: "rgba(255,149,0,0.16)" }}
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="#FF9500" aria-hidden>
+            <path d="M13 2L4.5 13.5h6L9 22l8.5-11.5h-6L13 2z" />
+          </svg>
+          <span className="text-[12px] font-semibold tracking-[0.4px] text-[#FF9500]">
+            {t("motivation.affirmations.streak", { count: streakCount })}
+          </span>
         </span>
       </div>
 
-      {/* ── instructional copy — ghost italic ── */}
-      <p className="mt-2 font-display text-[13px] font-light leading-[1.5] text-indigo/55">
+      <p className="px-5 pb-3 text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label-2)]">
         {alreadyCheckedIn
           ? t("motivation.affirmations.alreadyToday")
           : t("motivation.affirmations.placeholder")}
       </p>
 
-      {/* ── 다짐 행들 ── */}
-      <ul className="mt-3">
+      {/* Rows */}
+      <div>
         {affirmations.map((target, idx) => {
           const draft = drafts[idx] ?? "";
           const lockedNow = alreadyCheckedIn;
@@ -160,88 +157,101 @@ export default function AffirmationCheckin({
             draftNorm !== targetNorm[idx];
           const submittedErr = mismatched.has(idx);
           const showHint = !lockedNow && (liveErr || submittedErr);
-          const matched = !lockedNow && draft.trim().length > 0 && draftNorm === targetNorm[idx];
+          const matched =
+            !lockedNow && draft.trim().length > 0 && draftNorm === targetNorm[idx];
           const num = String(idx + 1).padStart(2, "0");
-
-          // 입력 표시값 — 잠금 시엔 정답 텍스트가 보이고, 평소엔 사용자 입력 그대로.
           const displayDraft = lockedNow ? target : draft;
+          const color = ROW_COLORS[idx % ROW_COLORS.length];
+          const isLast = idx === affirmations.length - 1;
+          const done = lockedNow || matched;
 
-          // border-bottom 색: 잠금=완료(soul), 에러=soul dashed, 일치=soul solid, 기본=hairline
-          const borderClass = lockedNow
-            ? "border-soul/60"
+          // Underline color: completed = color, error = red dashed, focused = blue
+          const borderColor = done
+            ? color
             : showHint
-              ? "border-soul border-dashed"
-              : matched
-                ? "border-soul"
-                : "border-hairline focus-within:border-indigo";
+              ? "#FF3B30"
+              : "var(--sep)";
 
           return (
-            <li
+            <div
               key={idx}
-              className="flex items-start gap-3 border-b border-hairline py-3 last:border-b-0"
+              className="relative flex items-start gap-3 px-4 py-3"
             >
-              <span
-                aria-hidden
-                className="shrink-0 select-none pt-[2px] font-display text-[22px] font-light leading-none italic text-soul"
-                style={{ minWidth: "1.75rem" }}
+              {/* Colored number badge */}
+              <div
+                className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0 mt-0.5"
+                style={{
+                  background: done ? color : color + "1F",
+                }}
               >
-                {(lockedNow || matched) ? (
-                  <svg
-                    className="h-5 w-5 text-soul"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2.4}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden
-                  >
+                {done ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M5 12l5 5L20 7" />
                   </svg>
                 ) : (
-                  num
+                  <span
+                    className="text-[15px] font-bold tracking-[-0.3px]"
+                    style={{ color }}
+                  >
+                    {num}
+                  </span>
                 )}
-              </span>
+              </div>
 
-              <div className="min-w-0 flex-1">
-                {/* target — Fraunces italic ghost */}
-                <div className="font-display text-[13px] font-light leading-[1.5] text-indigo/40">
+              <div className="flex-1 min-w-0">
+                {/* Target — small gray ghost */}
+                <div className="text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label-3)] mb-1">
                   {target}
                 </div>
 
-                {/* 입력 — underline only */}
+                {/* Input — underline only */}
                 <input
                   value={displayDraft}
                   readOnly={lockedNow}
                   disabled={submitting && !lockedNow}
-                  placeholder={"따라 적어주세요…"}
+                  placeholder="따라 적어주세요…"
                   maxLength={AFFIRMATION_INPUT_MAX}
                   onChange={(e) => handleChange(idx, e.target.value)}
                   onBlur={() => handleBlur(idx)}
                   aria-label={`${idx + 1}번 다짐 — ${target}`}
                   aria-invalid={showHint || undefined}
-                  className={`mt-1 w-full border-b bg-transparent py-1 text-[14px] leading-[1.5] tracking-[-0.005em] text-indigo placeholder:font-display placeholder:font-light placeholder:text-indigo/30 focus:outline-none ${borderClass}`}
+                  className="w-full bg-transparent border-b py-1 text-[17px] leading-[22px] tracking-[-0.43px] text-black placeholder:text-[var(--label-3)] focus:outline-none transition-colors"
+                  style={{
+                    borderColor,
+                    borderStyle: showHint ? "dashed" : "solid",
+                    borderWidth: 1,
+                  }}
                 />
 
                 {showHint && (
-                  <p className="mt-1 text-[11px] font-medium tracking-[-0.005em] text-soul">
+                  <p className="mt-1 text-[12px] tracking-[-0.08px] text-[#FF3B30]">
                     → {target}
                   </p>
                 )}
               </div>
-            </li>
+
+              {!isLast && (
+                <div
+                  className="absolute bottom-0 right-0 h-[0.5px]"
+                  style={{ left: 60, background: "var(--sep)" }}
+                />
+              )}
+            </div>
           );
         })}
-      </ul>
+      </div>
 
-      {/* ── 제출 — 텍스트 링크 ── */}
+      {/* Submit footer */}
       {!alreadyCheckedIn && (
-        <div className="mt-3 flex items-center justify-end gap-4">
+        <div className="flex items-center justify-end gap-4 px-5 py-3 border-t border-[var(--sep)]">
+          {errorMsg && (
+            <span className="text-[13px] text-[#FF3B30] mr-auto">{errorMsg}</span>
+          )}
           <button
             type="button"
             onClick={handleSubmit}
             disabled={submitting || !allFilled}
-            className="text-[12px] font-medium tracking-[-0.005em] text-soul transition-colors hover:text-soul-press disabled:opacity-30"
+            className="text-[15px] font-semibold text-[#007AFF] disabled:opacity-30"
           >
             {submitting
               ? t("motivation.affirmations.checkingIn")
@@ -250,17 +260,12 @@ export default function AffirmationCheckin({
         </div>
       )}
 
-      {errorMsg && (
-        <p className="mt-2 text-[11px] font-medium tracking-[-0.005em] text-soul">
-          {errorMsg}
-        </p>
-      )}
       {flash && (
         <p
           role="status"
-          className="mt-2 text-[11px] font-medium tracking-[-0.005em] text-indigo"
+          className="px-5 py-3 text-[13px] font-semibold text-[#34C759] border-t border-[var(--sep)]"
         >
-          {flash}
+          ✓ {flash}
         </p>
       )}
     </div>

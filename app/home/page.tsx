@@ -22,16 +22,14 @@ import { useLanguage } from "@/lib/i18n";
 import type { DailyEntry, DailyMotivation } from "@/types";
 
 /* ─────────────────────────────────────────────────────────────────
- * Anima Home — v2 redesign
+ * Anima Home — Apple iOS native redesign
  * ─────────────────────────────────────────────────────────────────
- * 원칙(브랜드 시스템 문서 + Widget Directive 적용):
- *  · 한 평면, 한 톤 — cream 위에 hairline + 여백으로 분리. 카드 금지.
- *  · 인용·페르소나·번호는 Fraunces 300 italic.
- *  · 컨트롤은 숨김 — 편집/삭제는 명시적 편집 모드에서만.
- *  · 저장 버튼 없음 — wins 는 600ms debounce auto-save, 우상단 mono 토스트.
- *  · 페이지 헤더 우상단에 streak dot + 숫자 고정 (위젯과 동일 위치).
- *
- * 비즈니스 로직(Firebase, i18n, 라우팅, qDate 핸드오프)은 v1 그대로 유지.
+ *  · Large Title nav + Segmented Control
+ *  · Grouped Inset Lists (rounded white cards on systemGroupedBackground)
+ *  · 12-color iOS system palette — per-row category colors
+ *  · Orange streak chip in nav · gradient hero quote card
+ *  · 600ms debounce auto-save for wins · no save button
+ *  · Goal edit mode hides ×/inputs by default
  * ────────────────────────────────────────────────────────────────── */
 
 const FUTURE_PERSONA_MAX = 500;
@@ -41,7 +39,10 @@ const WINS_AUTOSAVE_MS = 600;
 const WINS_SAVED_TOAST_MS = 1800;
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-/* ───── qDate 핸드오프 — Widget → /home ymd 권위 ───── */
+// Three category colors for the 3 affirmations / 3 wins / 3 goals slots.
+// 다짐·작은 승리·목표 모두 같은 컬러 시퀀스를 써 시각 일관성 유지.
+const SLOT_COLORS = ["#5856D6", "#34C759", "#FF2D55"];
+
 function readQDateFromUrl(): string | null {
   if (typeof window === "undefined") return null;
   try {
@@ -79,64 +80,43 @@ function useResolvedYmd(): string {
   return ymd;
 }
 
-/* ───── 메타 스트립용 날짜 포맷 — mono · uppercase ─────
- * "5 · 24" + 요일 약자 + ISO 주차. 본문과 한 톤으로 들어가도록 짧게.
- */
-function formatMetaDate(ymd: string, locale: string): { dm: string; dow: string; week: string } {
+/** Long date for the Large Title subtitle ("2026년 5월 24일 화요일"). */
+function formatLongDate(ymd: string, locale: string): string {
   const [y, m, d] = ymd.split("-").map((s) => parseInt(s, 10));
-  if (!y || !m || !d) return { dm: ymd, dow: "", week: "" };
+  if (!y || !m || !d) return ymd;
   try {
     const date = new Date(Date.UTC(y, m - 1, d));
-    const dowFmt = new Intl.DateTimeFormat(
+    return new Intl.DateTimeFormat(
       locale === "ko" ? "ko-KR" : locale === "es" ? "es-ES" : locale === "zh" ? "zh-CN" : "en-US",
-      { weekday: "short", timeZone: "UTC" },
+      { year: "numeric", month: "long", day: "numeric", weekday: "long", timeZone: "UTC" },
     ).format(date);
-    // ISO week number
-    const tmp = new Date(Date.UTC(y, m - 1, d));
-    const dayNum = (tmp.getUTCDay() + 6) % 7;
-    tmp.setUTCDate(tmp.getUTCDate() - dayNum + 3);
-    const firstThursday = tmp.valueOf();
-    tmp.setUTCMonth(0, 1);
-    if (tmp.getUTCDay() !== 4) {
-      tmp.setUTCMonth(0, 1 + ((4 - tmp.getUTCDay() + 7) % 7));
-    }
-    const weekNum = 1 + Math.ceil((firstThursday - tmp.valueOf()) / 604800000);
-    return {
-      dm: `${m} · ${d}`,
-      dow: dowFmt.toUpperCase(),
-      week: `WEEK ${String(weekNum).padStart(2, "0")}`,
-    };
   } catch {
-    return { dm: ymd, dow: "", week: "" };
+    return ymd;
   }
 }
 
-/* ───── 아이콘 — gear 만 남김. 섹션 헤더 아이콘은 전부 제거 ───── */
-const IconGear = ({ className = "h-5 w-5" }: { className?: string }) => (
-  <svg
-    className={className}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={1.4}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden
-  >
+/* ─────────────── icons ─────────────── */
+
+const IconGear = ({ size = 24 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
     <circle cx="12" cy="12" r="3" />
     <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06A2 2 0 1 1 4.13 16.92l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.65 8.83a1.7 1.7 0 0 0-.34-1.87l-.06-.06A2 2 0 1 1 7.08 4.07l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1.04-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06A2 2 0 1 1 19.93 7.08l-.06.06a1.7 1.7 0 0 0-.34 1.87V9c.27.66.93 1.1 1.65 1.1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z" />
   </svg>
 );
-
-const IconX = ({ className = "h-4 w-4" }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <path d="M18 6L6 18M6 6l12 12" />
+const IconChevron = ({ color = "rgba(60,60,67,0.3)" }: { color?: string }) => (
+  <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden>
+    <path d="M1 1l6 6-6 6" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
-
-const IconCheck = ({ className = "h-4 w-4" }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <path d="M5 12l5 5L20 7" />
+const IconCheckCircle = ({ color, size = 22 }: { color: string; size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={color} aria-hidden>
+    <circle cx="12" cy="12" r="11" />
+    <path d="M7 12l3.5 3.5L17 9" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+  </svg>
+);
+const IconCircle = ({ color = "#C7C7CC", size = 22 }: { color?: string; size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
+    <circle cx="12" cy="12" r="10.5" stroke={color} strokeWidth="1.6" />
   </svg>
 );
 
@@ -145,18 +125,15 @@ export default function HomeDashboardPage() {
   const { user, firebaseUser, loading, refreshUser } = useAuth();
   const { t, locale } = useLanguage();
 
-  /* ── future persona ── */
   const [futureDraft, setFutureDraft] = useState("");
   const [futureEditing, setFutureEditing] = useState(false);
   const [futureSaving, setFutureSaving] = useState(false);
 
-  /* ── goals ── */
   const [goals, setGoals] = useState<string[]>([]);
   const [goalDraft, setGoalDraft] = useState("");
-  const [goalsEditing, setGoalsEditing] = useState(false); // 페이지 레벨 편집 모드
+  const [goalsEditing, setGoalsEditing] = useState(false);
   const goalsHydratedRef = useRef(false);
 
-  /* ── ymd-bound daily state ── */
   const ymd = useResolvedYmd();
   const [wins, setWins] = useState<string[]>(["", "", ""]);
   const [savedWins, setSavedWins] = useState<string[]>(["", "", ""]);
@@ -175,32 +152,23 @@ export default function HomeDashboardPage() {
     };
   }, []);
 
-  /* ── motivation card ── */
   const [motivation, setMotivation] = useState<DailyMotivation | null>(null);
   const [motivationLoading, setMotivationLoading] = useState(true);
   const [motivationError, setMotivationError] = useState<string | null>(null);
   const ensureRequestedYmdRef = useRef<string | null>(null);
   const [alreadyCheckedInToday, setAlreadyCheckedInToday] = useState(false);
 
-  /* ── tabs ──
-   * v1 의 "future"/"actions" 라벨 그대로 유지(스토리지/i18n 키 호환).
-   * 의미 재정의는 Phase 4 (CHANGES.md 참조).
-   */
   const [activeTab, setActiveTab] = useState<"future" | "actions">("future");
 
-  /* ───── auth gate ───── */
   useEffect(() => {
     if (loading) return;
     if (!firebaseUser) {
       router.push("/login");
       return;
     }
-    if (user && !user.onboardedAt) {
-      router.replace("/onboarding");
-    }
+    if (user && !user.onboardedAt) router.replace("/onboarding");
   }, [firebaseUser, loading, router, user]);
 
-  /* ───── hydrate from user profile ───── */
   useEffect(() => {
     if (!user) return;
     setFutureDraft(user.futurePersona || "");
@@ -210,7 +178,6 @@ export default function HomeDashboardPage() {
     }
   }, [user]);
 
-  /* ───── daily entry subscribe ───── */
   useEffect(() => {
     if (!firebaseUser) return;
     const unsub = onDailyEntrySnapshot(firebaseUser.uid, ymd, (entry: DailyEntry | null) => {
@@ -225,9 +192,7 @@ export default function HomeDashboardPage() {
       }
       const w = Array.isArray(entry.wins) ? entry.wins : [];
       const normalized = [0, 1, 2].map((i) => w[i] || "");
-      if (!dailyHydratedRef.current) {
-        setWins(normalized);
-      }
+      if (!dailyHydratedRef.current) setWins(normalized);
       setSavedWins(normalized);
       setAchievedGoals(Array.isArray(entry.achievedGoals) ? entry.achievedGoals : []);
       dailyHydratedRef.current = true;
@@ -235,7 +200,6 @@ export default function HomeDashboardPage() {
     return unsub;
   }, [firebaseUser, ymd]);
 
-  /* ───── motivation subscribe + generate ───── */
   useEffect(() => {
     if (!firebaseUser) return;
     setMotivationLoading(true);
@@ -279,12 +243,8 @@ export default function HomeDashboardPage() {
         motivation?: DailyMotivation;
         error?: string;
       };
-      if (!res.ok) {
-        throw new Error(data.error || "다시 받기에 실패했어요.");
-      }
-      if (data.motivation) {
-        setMotivation(data.motivation);
-      }
+      if (!res.ok) throw new Error(data.error || "다시 받기에 실패했어요.");
+      if (data.motivation) setMotivation(data.motivation);
     } catch (err) {
       setMotivationError(err instanceof Error ? err.message : String(err));
     }
@@ -302,18 +262,12 @@ export default function HomeDashboardPage() {
         identityTag?: string;
         error?: string;
       };
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || "응답을 저장하지 못했어요.");
-      }
-      return {
-        isFirst: Boolean(data.isFirst),
-        identityTag: data.identityTag || "",
-      };
+      if (!res.ok || !data.ok) throw new Error(data.error || "응답을 저장하지 못했어요.");
+      return { isFirst: Boolean(data.isFirst), identityTag: data.identityTag || "" };
     },
     [ymd],
   );
 
-  /* ───── affirmation check-in subscribe + submit ───── */
   useEffect(() => {
     if (!firebaseUser) return;
     const unsub = onAffirmationCheckinSnapshot(firebaseUser.uid, ymd, (checked) => {
@@ -335,9 +289,7 @@ export default function HomeDashboardPage() {
         mismatchedIndices?: number[];
         error?: string;
       };
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || "체크인을 저장하지 못했어요.");
-      }
+      if (!res.ok || !data.ok) throw new Error(data.error || "체크인을 저장하지 못했어요.");
       if (data.matched) {
         await refreshUser().catch(() => {});
         notifyAndroidWidgetRefresh();
@@ -353,8 +305,8 @@ export default function HomeDashboardPage() {
 
   if (loading || !firebaseUser) {
     return (
-      <div className="flex h-full items-center justify-center bg-cream">
-        <div className="h-6 w-6 animate-spin rounded-full border-[1.5px] border-indigo/15 border-t-indigo" />
+      <div className="flex h-full items-center justify-center bg-[#F2F2F7]">
+        <div className="h-6 w-6 animate-spin rounded-full border-[1.5px] border-black/10 border-t-[#007AFF]" />
       </div>
     );
   }
@@ -462,17 +414,12 @@ export default function HomeDashboardPage() {
     await pruneAchievedGoals(next);
   };
 
-  /* ───── wins auto-save ─────
-   * 저장 버튼을 제거하고 입력 변경 시 600ms debounce 후 Firebase 에 저장.
-   * 저장 직후 "저장됨" 토스트 1.8s. 빈 입력만 있을 때는 저장 스킵.
-   */
   const handleChangeWin = (idx: number, value: string) => {
     const next = wins.map((w, i) => (i === idx ? value.slice(0, WIN_MAX) : w));
     setWins(next);
     if (winsJustSaved) setWinsJustSaved(false);
     if (winsError) setWinsError(null);
 
-    // 변경이 savedWins 와 동일하면 저장 트리거 안 함.
     const dirty = next.some((w, i) => (w || "") !== (savedWins[i] || ""));
     const hasContent = next.some((w) => (w || "").trim().length > 0);
     if (winsAutosaveTimerRef.current) clearTimeout(winsAutosaveTimerRef.current);
@@ -505,59 +452,56 @@ export default function HomeDashboardPage() {
 
   const futureText = user?.futurePersona || "";
   const streakCount = user?.affirmationStreak?.count ?? 0;
-  const meta = formatMetaDate(ymd, locale);
+  const longDate = formatLongDate(ymd, locale);
   const goalsDone = achievedGoals.filter((g) => goals.includes(g)).length;
 
   /* ───── render ───── */
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto bg-cream pb-12">
-      {/* ── meta strip — 흰 헤더 제거. cream 한 톤 ── */}
-      <header className="flex items-center justify-between px-5 pt-5 pb-3 sm:px-7">
-        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-indigo/45">
-          <b className="font-medium text-indigo">{meta.dm}</b>
-          {meta.dow && <span> · {meta.dow}</span>}
-          {meta.week && <span> · {meta.week}</span>}
-        </div>
-        <div className="flex items-center gap-4">
-          {streakCount > 0 && (
-            <span
-              className="flex items-center gap-1.5 font-mono text-[11px] text-indigo/60"
-              aria-label={`${streakCount} day streak`}
+    <div className="flex h-full flex-col overflow-y-auto bg-[#F2F2F7] pb-12">
+      {/* ── Large Title bar — Apple iOS native pattern ── */}
+      <header className="bg-[#F2F2F7] pt-3 pb-2">
+        <div className="mx-auto flex max-w-3xl items-center justify-between px-2 min-h-[44px]">
+          <div className="w-[44px]" />
+          <div className="flex items-center gap-2">
+            {streakCount > 0 && (
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                style={{ background: "rgba(255,149,0,0.16)" }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="#FF9500" aria-hidden>
+                  <path d="M13 2L4.5 13.5h6L9 22l8.5-11.5h-6L13 2z" />
+                </svg>
+                <span className="text-[12px] font-semibold tracking-[0.4px] text-[#FF9500]">
+                  {streakCount}
+                </span>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => router.push("/settings")}
+              aria-label={t("home.settingsAria")}
+              className="w-11 h-11 flex items-center justify-center text-[#007AFF] hover:opacity-70 transition-opacity"
             >
-              <span
-                className="block h-1.5 w-1.5 rounded-full bg-soul"
-                style={{ boxShadow: "0 0 6px var(--soul)" }}
-                aria-hidden
-              />
-              <span className="tracking-[0.1em]">STREAK {streakCount}</span>
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={() => router.push("/settings")}
-            aria-label={t("home.settingsAria")}
-            title={t("home.settingsAria")}
-            className="-m-2 p-2 text-indigo/55 transition-colors hover:text-indigo"
-          >
-            <IconGear className="h-5 w-5" />
-          </button>
+              <IconGear />
+            </button>
+          </div>
+        </div>
+        <div className="mx-auto max-w-3xl px-5">
+          <h1 className="text-large-title font-display">{t("home.title")}</h1>
+          <p className="text-subhead mt-0.5 text-[var(--label-2)]">{longDate}</p>
         </div>
       </header>
 
-      {/* ── tabs — 텍스트 + 1.5px Soul 밑줄 인디케이터 ── */}
-      <div role="tablist" aria-label={t("home.title")} className="border-b border-hairline px-5 sm:px-7">
-        <div className="mx-auto flex max-w-3xl gap-6">
+      {/* ── Segmented control ── */}
+      <div className="mx-auto w-full max-w-3xl px-4 mt-3">
+        <div role="tablist" aria-label={t("home.title")}
+          className="flex p-[2px] rounded-[9px]"
+          style={{ background: "rgba(118,118,128,0.12)" }}>
           {(["future", "actions"] as const).map((tab) => {
             const selected = activeTab === tab;
-            const count =
+            const badge =
               tab === "future"
-                ? alreadyCheckedInToday
-                  ? `✓`
-                  : ""
-                : goals.length > 0
-                  ? `${goalsDone}/${goals.length}`
-                  : "";
+                ? alreadyCheckedInToday ? " ✓" : ""
+                : goals.length > 0 ? ` ${goalsDone}/${goals.length}` : "";
             return (
               <button
                 key={tab}
@@ -565,17 +509,19 @@ export default function HomeDashboardPage() {
                 role="tab"
                 aria-selected={selected}
                 onClick={() => setActiveTab(tab)}
-                className={`-mb-px flex items-baseline gap-1.5 border-b-[1.5px] pb-3 pt-2 text-[14px] font-medium tracking-[-0.01em] transition-colors ${
-                  selected
-                    ? "border-soul text-indigo"
-                    : "border-transparent text-indigo/55 hover:text-indigo"
-                }`}
+                className="flex-1 h-7 rounded-[7px] text-[13px] tracking-[-0.08px] transition-colors"
+                style={{
+                  background: selected ? "#FFFFFF" : "transparent",
+                  color: "#000",
+                  fontWeight: selected ? 600 : 500,
+                  boxShadow: selected
+                    ? "0 3px 8px rgba(0,0,0,0.12), 0 1px 1px rgba(0,0,0,0.04), 0 0 0 0.5px rgba(0,0,0,0.04)"
+                    : "none",
+                }}
               >
-                <span>{t(tab === "future" ? "home.tab.future" : "home.tab.actions")}</span>
-                {count && (
-                  <span className="font-mono text-[10px] tracking-[0.06em] text-indigo/40">
-                    {count}
-                  </span>
+                {t(tab === "future" ? "home.tab.future" : "home.tab.actions")}
+                {badge && (
+                  <span className="ml-1 text-[11px] text-[var(--label-3)]">{badge}</span>
                 )}
               </button>
             );
@@ -584,170 +530,162 @@ export default function HomeDashboardPage() {
       </div>
 
       <main className="mx-auto w-full max-w-3xl">
-        {/* ─────────────────────────────────────────────
-         * Tab · 오늘 (future) — MotivationCard 하나만.
-         * 카드 안에 AffirmationCheckin 이 포함되어 있어 인용 + 의식이 한 흐름.
-         * ───────────────────────────────────────────── */}
+        {/* ─── Tab · 오늘 (future) ─── */}
         {activeTab === "future" && (
-          <div className="px-5 pt-6 sm:px-7">
-            <MotivationCard
-              motivation={motivation}
-              loading={motivationLoading}
-              errorMessage={motivationError}
-              onRegenerate={handleRegenerateMotivation}
-              onSubmitResponse={handleSubmitMissionResponse}
-              affirmations={user?.successAffirmations ?? []}
-              affirmationStreakCount={streakCount}
-              alreadyCheckedInToday={alreadyCheckedInToday}
-              onCheckinAffirmations={handleAffirmationCheckin}
-              ymd={ymd}
-            />
+          <>
+            <div className="px-4 pt-5">
+              <MotivationCard
+                motivation={motivation}
+                loading={motivationLoading}
+                errorMessage={motivationError}
+                onRegenerate={handleRegenerateMotivation}
+                onSubmitResponse={handleSubmitMissionResponse}
+                affirmations={user?.successAffirmations ?? []}
+                affirmationStreakCount={streakCount}
+                alreadyCheckedInToday={alreadyCheckedInToday}
+                onCheckinAffirmations={handleAffirmationCheckin}
+                ymd={ymd}
+              />
+            </div>
             {motivationError && motivation && (
-              <p className="mt-3 px-1 text-[11px] font-medium tracking-[-0.005em] text-soul">
-                {motivationError}
-              </p>
+              <p className="mx-5 mt-3 text-[13px] text-[#FF3B30]">{motivationError}</p>
             )}
-          </div>
+          </>
         )}
 
-        {/* ─────────────────────────────────────────────
-         * Tab · 나의 행동 (actions)
-         *   · 10년 후의 나 (페르소나)
-         *   · 이번 달 목표
-         *   · 오늘의 작은 승리  ← v1 "잘한 일 3가지"
-         * ───────────────────────────────────────────── */}
+        {/* ─── Tab · 나의 행동 (actions) ─── */}
         {activeTab === "actions" && (
           <>
             {/* ── 10년 후의 나 ── */}
-            <section className="px-5 pt-7 pb-7 sm:px-7">
-              <div className="flex items-baseline justify-between">
-                <span className="text-[12px] font-medium tracking-[-0.005em] text-indigo/55">
-                  {t("home.future.title")}
-                </span>
-                {!futureEditing && (
+            <GroupedSection
+              header={t("home.future.title")}
+              trailing={
+                !futureEditing && (
                   <button
                     type="button"
                     onClick={() => setFutureEditing(true)}
-                    className="text-[12px] font-medium tracking-[-0.005em] text-indigo/60 transition-colors hover:text-soul"
+                    className="text-[15px] font-medium text-[#007AFF]"
                   >
                     {futureText ? t("common.edit") : t("common.write")}
                   </button>
+                )
+              }
+            >
+              <div className="px-5 py-4">
+                {futureEditing ? (
+                  <>
+                    <textarea
+                      value={futureDraft}
+                      onChange={(e) => setFutureDraft(e.target.value)}
+                      rows={5}
+                      maxLength={FUTURE_PERSONA_MAX}
+                      placeholder={t("onboarding.step1.placeholder")}
+                      className="w-full resize-none bg-transparent text-[17px] leading-[24px] tracking-[-0.43px] text-black placeholder:text-[var(--label-3)] focus:outline-none"
+                    />
+                    <div className="mt-3 flex items-center justify-between">
+                      <span className="text-[12px] text-[var(--label-3)] tabular-nums">
+                        {futureDraft.length}/{FUTURE_PERSONA_MAX}
+                      </span>
+                      <div className="flex gap-4">
+                        <button
+                          type="button"
+                          onClick={handleFutureCancel}
+                          disabled={futureSaving}
+                          className="text-[15px] text-[var(--label-2)] disabled:opacity-40"
+                        >
+                          {t("common.cancel")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleFutureSave}
+                          disabled={futureSaving}
+                          className="text-[15px] font-semibold text-[#007AFF] disabled:opacity-40"
+                        >
+                          {futureSaving ? t("common.saving") : t("home.future.saveAndRegen")}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                ) : futureText ? (
+                  <p className="whitespace-pre-wrap text-[17px] leading-[24px] tracking-[-0.43px] text-black">
+                    {futureText}
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setFutureEditing(true)}
+                    className="block w-full text-left text-[17px] leading-[24px] text-[var(--label-3)]"
+                  >
+                    {t("home.future.empty")}
+                  </button>
                 )}
               </div>
-
-              {futureEditing ? (
-                <div className="mt-3">
-                  <textarea
-                    value={futureDraft}
-                    onChange={(e) => setFutureDraft(e.target.value)}
-                    rows={5}
-                    maxLength={FUTURE_PERSONA_MAX}
-                    placeholder={t("onboarding.step1.placeholder")}
-                    className="w-full resize-none border-b border-hairline bg-transparent pb-2 font-display text-[17px] font-light leading-[1.55] tracking-[-0.005em] text-indigo placeholder:font-light placeholder:text-indigo/35 focus:border-indigo focus:outline-none"
-                  />
-                  <div className="mt-3 flex items-center justify-between">
-                    <span className="font-mono text-[10px] tabular-nums text-indigo/45">
-                      {futureDraft.length}/{FUTURE_PERSONA_MAX}
-                    </span>
-                    <div className="flex gap-4">
-                      <button
-                        type="button"
-                        onClick={handleFutureCancel}
-                        disabled={futureSaving}
-                        className="text-[12px] font-medium tracking-[-0.005em] text-indigo/60 transition-colors hover:text-indigo disabled:opacity-40"
-                      >
-                        {t("common.cancel")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleFutureSave}
-                        disabled={futureSaving}
-                        className="text-[12px] font-medium tracking-[-0.005em] text-soul transition-colors hover:text-soul-press disabled:opacity-40"
-                      >
-                        {futureSaving
-                          ? t("common.saving")
-                          : t("home.future.saveAndRegen")}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : futureText ? (
-                <p className="mt-3 whitespace-pre-wrap font-display text-[17px] font-light leading-[1.55] tracking-[-0.005em] text-indigo/95">
-                  {futureText}
-                </p>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setFutureEditing(true)}
-                  className="mt-3 block w-full text-left font-display text-[15px] font-light leading-[1.55] text-indigo/35 transition-colors hover:text-indigo/55"
-                >
-                  {t("home.future.empty")}
-                </button>
-              )}
-            </section>
-
-            <div className="mx-5 h-px bg-hairline sm:mx-7" />
+            </GroupedSection>
 
             {/* ── 이번 달 목표 ── */}
-            <section className="px-5 pt-7 pb-7 sm:px-7">
-              <div className="flex items-baseline justify-between">
-                <span className="text-[12px] font-medium tracking-[-0.005em] text-indigo/55">
-                  {t("home.goals.title")}
-                </span>
+            <GroupedSection
+              header={t("home.goals.title")}
+              trailing={
                 <div className="flex items-center gap-4">
-                  <span className="font-mono text-[11px] text-indigo/60">
-                    <b className="font-medium text-indigo">{goalsDone}</b>
-                    <span className="text-indigo/40"> / {goals.length}</span>
+                  <span className="text-[13px] text-[var(--label-2)] tabular-nums">
+                    {goalsDone} / {goals.length}
                   </span>
                   {goals.length > 0 && (
                     <button
                       type="button"
                       onClick={() => setGoalsEditing((v) => !v)}
-                      className="text-[12px] font-medium tracking-[-0.005em] text-indigo/60 transition-colors hover:text-soul"
+                      className="text-[15px] font-medium text-[#007AFF]"
                     >
                       {goalsEditing ? t("common.done") : t("common.edit")}
                     </button>
                   )}
                 </div>
-              </div>
-
-              {goals.length > 0 && (
-                <ul className="mt-2">
-                  {goals.map((goal, idx) => {
-                    const trimmed = goal.trim();
-                    const achieved =
-                      trimmed.length > 0 && achievedGoals.includes(trimmed);
-                    const num = String(idx + 1).padStart(2, "0");
-                    return (
-                      <li
-                        key={idx}
-                        className="grid grid-cols-[28px_1fr_auto] items-center gap-3 border-b border-hairline py-3 last:border-b-0"
+              }
+            >
+              {goals.length > 0 ? (
+                goals.map((goal, idx) => {
+                  const trimmed = goal.trim();
+                  const achieved =
+                    trimmed.length > 0 && achievedGoals.includes(trimmed);
+                  const color = SLOT_COLORS[idx % SLOT_COLORS.length];
+                  const num = String(idx + 1).padStart(2, "0");
+                  const isLast = idx === goals.length - 1;
+                  return (
+                    <div
+                      key={idx}
+                      className="relative flex items-center gap-3 px-4 min-h-[60px]"
+                    >
+                      {/* Colored number badge — tap to toggle achieved */}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleGoalAchieved(goal)}
+                        aria-label={
+                          achieved
+                            ? t("home.goals.toggleUnachievedAria")
+                            : t("home.goals.toggleAchievedAria")
+                        }
+                        aria-pressed={achieved}
+                        disabled={trimmed.length === 0}
+                        className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0 transition-opacity"
+                        style={{
+                          background: achieved ? color : color + "1A",
+                          opacity: trimmed.length === 0 ? 0.4 : 1,
+                        }}
                       >
-                        {/* 번호 — display italic Soul. tap-to-toggle 달성 */}
-                        <button
-                          type="button"
-                          onClick={() => handleToggleGoalAchieved(goal)}
-                          aria-label={
-                            achieved
-                              ? t("home.goals.toggleUnachievedAria")
-                              : t("home.goals.toggleAchievedAria")
-                          }
-                          aria-pressed={achieved}
-                          disabled={trimmed.length === 0}
-                          className={`relative font-display text-[22px] font-light leading-none italic transition-colors disabled:opacity-40 ${
-                            achieved
-                              ? "text-indigo/40"
-                              : "text-soul hover:text-soul-press"
-                          }`}
-                        >
-                          {achieved ? (
-                            <IconCheck className="h-5 w-5 text-indigo/55" />
-                          ) : (
-                            num
-                          )}
-                        </button>
-
-                        {/* 텍스트 — 편집 모드일 때만 input, 평시는 정적 텍스트 */}
+                        {achieved ? (
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M5 12l5 5L20 7" />
+                          </svg>
+                        ) : (
+                          <span
+                            className="text-[15px] font-bold tracking-[-0.3px]"
+                            style={{ color }}
+                          >
+                            {num}
+                          </span>
+                        )}
+                      </button>
+                      <div className="flex-1 min-w-0 py-2">
                         {goalsEditing ? (
                           <input
                             value={goal}
@@ -760,49 +698,58 @@ export default function HomeDashboardPage() {
                                 (e.currentTarget as HTMLInputElement).blur();
                               }
                             }}
-                            className="min-w-0 border-b border-dashed border-indigo/20 bg-transparent py-1 text-[14px] tracking-[-0.005em] text-indigo focus:border-indigo focus:outline-none"
+                            className="w-full bg-transparent text-[17px] leading-[22px] tracking-[-0.43px] text-black focus:outline-none border-b border-dashed border-[var(--sep)] focus:border-[var(--blue)]"
                           />
                         ) : (
                           <div
-                            className={`min-w-0 text-[14px] leading-[1.45] tracking-[-0.005em] ${
-                              achieved
-                                ? "text-indigo/40 line-through decoration-indigo/20"
-                                : "text-indigo"
+                            className={`text-[17px] leading-[22px] tracking-[-0.43px] ${
+                              achieved ? "text-[var(--label-2)] line-through decoration-[var(--label-3)]" : "text-black"
                             }`}
                           >
                             {trimmed || (
-                              <span className="font-display font-light text-indigo/35">
-                                {t("home.goals.placeholder")}
-                              </span>
+                              <span className="text-[var(--label-3)]">{t("home.goals.placeholder")}</span>
                             )}
                           </div>
                         )}
-
-                        {/* 오른쪽 슬롯: 편집 모드면 ×, 평시면 빈 공간(향후 진척 bar 자리) */}
-                        <div className="flex justify-end">
-                          {goalsEditing ? (
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveGoal(idx)}
-                              aria-label={t("home.goals.deleteAria")}
-                              className="-m-1.5 p-1.5 text-indigo/35 transition-colors hover:text-soul"
-                            >
-                              <IconX className="h-4 w-4" />
-                            </button>
-                          ) : (
-                            <span className="w-4" aria-hidden />
-                          )}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
+                      </div>
+                      {goalsEditing ? (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveGoal(idx)}
+                          aria-label={t("home.goals.deleteAria")}
+                          className="w-8 h-8 flex items-center justify-center text-[#FF3B30] flex-shrink-0"
+                        >
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                            <circle cx="12" cy="12" r="11" />
+                            <path d="M8 12h8" stroke="white" strokeWidth="2.2" strokeLinecap="round" />
+                          </svg>
+                        </button>
+                      ) : null}
+                      {!isLast && (
+                        <div
+                          className="absolute bottom-0 right-0 h-[0.5px]"
+                          style={{ left: 60, background: "var(--sep)" }}
+                        />
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setGoalsEditing(true)}
+                  className="block w-full px-5 py-4 text-left text-[17px] text-[var(--label-3)]"
+                >
+                  {t("home.goals.subtitle")}
+                </button>
               )}
 
-              {/* 새 목표 추가 — 편집 모드일 때만, 또는 비어 있을 때 ghost */}
               {goalsEditing && goals.length < MAX_USER_GOALS && (
-                <div className="mt-3 grid grid-cols-[28px_1fr_auto] items-center gap-3 py-1">
-                  <span className="font-mono text-[11px] text-indigo/35">＋</span>
+                <div className="relative flex items-center gap-3 px-4 min-h-[52px]">
+                  <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0"
+                    style={{ background: "rgba(52,199,89,0.15)" }}>
+                    <span className="text-[20px] leading-none text-[#34C759]">＋</span>
+                  </div>
                   <input
                     value={goalDraft}
                     maxLength={GOAL_MAX}
@@ -814,96 +761,122 @@ export default function HomeDashboardPage() {
                       }
                     }}
                     placeholder={t("home.goals.placeholder")}
-                    className="min-w-0 border-b border-dashed border-indigo/20 bg-transparent py-1 text-[14px] tracking-[-0.005em] text-indigo placeholder:text-indigo/35 focus:border-indigo focus:outline-none"
+                    className="flex-1 bg-transparent text-[17px] tracking-[-0.43px] text-black placeholder:text-[var(--label-3)] focus:outline-none py-2"
                   />
                   <button
                     type="button"
                     onClick={handleAddGoal}
                     disabled={!goalDraft.trim()}
-                    className="text-[12px] font-medium tracking-[-0.005em] text-soul transition-colors hover:text-soul-press disabled:opacity-30"
+                    className="text-[15px] font-semibold text-[#34C759] disabled:opacity-30"
                   >
                     {t("common.add")}
                   </button>
                 </div>
               )}
+            </GroupedSection>
 
-              {/* 목록이 비었을 때 — 빈 상태 prompt */}
-              {goals.length === 0 && !goalsEditing && (
-                <button
-                  type="button"
-                  onClick={() => setGoalsEditing(true)}
-                  className="mt-3 block w-full text-left font-display text-[15px] font-light text-indigo/35 transition-colors hover:text-indigo/55"
-                >
-                  {t("home.goals.subtitle")}
-                </button>
-              )}
-            </section>
-
-            <div className="mx-5 h-px bg-hairline sm:mx-7" />
-
-            {/* ── 오늘의 작은 승리 (wins) — auto-save ── */}
-            <section className="px-5 pt-7 pb-7 sm:px-7">
-              <div className="flex items-baseline justify-between">
-                <span className="text-[12px] font-medium tracking-[-0.005em] text-indigo/55">
-                  {t("home.wins.title", { max: MAX_DAILY_WINS })}
-                </span>
+            {/* ── 오늘의 작은 승리 ── */}
+            <GroupedSection
+              header={t("home.wins.title", { max: MAX_DAILY_WINS })}
+              trailing={
                 <div className="flex items-center gap-4">
                   {winsError ? (
-                    <span className="text-[11px] font-medium tracking-[-0.005em] text-soul">
-                      {winsError}
-                    </span>
+                    <span className="text-[13px] text-[#FF3B30]">{winsError}</span>
                   ) : winsJustSaved ? (
-                    <span className="text-[11px] font-medium tracking-[-0.005em] text-soul">
+                    <span className="text-[13px] font-medium text-[#34C759]">
                       {t("common.saved")}
                     </span>
                   ) : winsAutoSaving ? (
-                    <span className="text-[11px] font-medium tracking-[-0.005em] text-indigo/45">
-                      {t("common.saving")}
-                    </span>
+                    <span className="text-[13px] text-[var(--label-3)]">{t("common.saving")}</span>
                   ) : null}
                   <button
                     type="button"
                     onClick={() => router.push("/wins-history")}
-                    className="text-[12px] font-medium tracking-[-0.005em] text-indigo/60 transition-colors hover:text-soul"
+                    className="text-[15px] font-medium text-[#007AFF]"
                   >
                     {t("home.wins.history")}
                   </button>
                 </div>
-              </div>
-
-              <ul className="mt-2">
-                {[0, 1, 2].map((idx) => {
-                  const num = String(idx + 1).padStart(2, "0");
-                  const placeholder =
-                    idx === 0
-                      ? t("home.wins.placeholder1")
-                      : idx === 1
-                        ? t("home.wins.placeholder2")
-                        : t("home.wins.placeholder3");
-                  return (
-                    <li
-                      key={idx}
-                      className="flex items-start gap-3 border-b border-hairline py-3 last:border-b-0"
-                    >
-                      <span className="w-7 shrink-0 pt-[2px] font-display text-[22px] font-light italic leading-none text-soul">
+              }
+              footer="자동으로 저장돼요"
+            >
+              {[0, 1, 2].map((idx) => {
+                const num = String(idx + 1).padStart(2, "0");
+                const color = SLOT_COLORS[idx % SLOT_COLORS.length];
+                const placeholder =
+                  idx === 0 ? t("home.wins.placeholder1")
+                  : idx === 1 ? t("home.wins.placeholder2")
+                  : t("home.wins.placeholder3");
+                const isLast = idx === 2;
+                return (
+                  <div key={idx} className="relative flex items-start gap-3 px-4 py-3">
+                    <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0 mt-0.5"
+                      style={{ background: color + "1A" }}>
+                      <span className="text-[15px] font-bold tracking-[-0.3px]" style={{ color }}>
                         {num}
                       </span>
-                      <textarea
-                        value={wins[idx] || ""}
-                        rows={1}
-                        maxLength={WIN_MAX}
-                        onChange={(e) => handleChangeWin(idx, e.target.value)}
-                        placeholder={placeholder}
-                        className="min-h-[24px] min-w-0 flex-1 resize-none border-none bg-transparent p-0 text-[14px] leading-[1.55] tracking-[-0.005em] text-indigo placeholder:font-display placeholder:font-light placeholder:text-indigo/35 focus:outline-none"
+                    </div>
+                    <textarea
+                      value={wins[idx] || ""}
+                      rows={1}
+                      maxLength={WIN_MAX}
+                      onChange={(e) => handleChangeWin(idx, e.target.value)}
+                      placeholder={placeholder}
+                      className="flex-1 min-h-[24px] resize-none bg-transparent text-[17px] leading-[24px] tracking-[-0.43px] text-black placeholder:text-[var(--label-3)] focus:outline-none py-2"
+                    />
+                    {!isLast && (
+                      <div
+                        className="absolute bottom-0 right-0 h-[0.5px]"
+                        style={{ left: 60, background: "var(--sep)" }}
                       />
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
+                    )}
+                  </div>
+                );
+              })}
+            </GroupedSection>
           </>
         )}
       </main>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────
+ * GroupedSection — iOS Settings.app's inset card pattern.
+ * Header (uppercase, label2) above + footer (label2 footnote) below.
+ * Card itself: white bg, 12px radius, 16px side inset.
+ * ───────────────────────────────────────────────────────────── */
+function GroupedSection({
+  header,
+  footer,
+  trailing,
+  children,
+}: {
+  header?: string;
+  footer?: string;
+  trailing?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="mt-7">
+      {(header || trailing) && (
+        <div className="flex items-end justify-between px-7 mb-1.5">
+          {header && (
+            <span className="text-[13px] uppercase tracking-[-0.08px] text-[var(--label-2)]">
+              {header}
+            </span>
+          )}
+          {trailing}
+        </div>
+      )}
+      <div className="mx-4 bg-white rounded-[12px] overflow-hidden">
+        {children}
+      </div>
+      {footer && (
+        <p className="px-7 mt-1.5 text-[13px] tracking-[-0.08px] text-[var(--label-2)]">
+          {footer}
+        </p>
+      )}
     </div>
   );
 }
