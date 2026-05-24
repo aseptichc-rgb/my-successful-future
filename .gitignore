@@ -59,3 +59,7 @@ mobile-view.png
 
 # 로컬 보관용 안드로이드 APK
 *.apk
+
+# 디자인 패치 원본 자료 (이미 코드에 적용됨 — 원본 zip·중복 파일은 로컬에만 보존)
+/motivator.zip
+/patch/
