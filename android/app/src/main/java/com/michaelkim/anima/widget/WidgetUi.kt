@@ -185,34 +185,36 @@ private fun LoadedContent(
     val allDone = progress != null && doneCount >= TOTAL_DAILY_ACTIONS
     val accent = if (allDone) SUCCESS else ACCENT_SOUL
 
+    // Glance → RemoteViews 변환은 if/else 분기 안에 직접 자식이 2개 이상이면 두 번째부터
+    // 통째로 누락되는 회귀가 있다(실측: 1.1.1). 그래서 모든 조건부 블록은 단일 Column 으로
+    // 감싸 if 분기의 직접 자식을 1개로 유지한다. 마찬가지로 컴포저블 함수 호출(SectionHeader,
+    // ProgressList 등)도 호출 시 다중 자식이 펼쳐지므로, 함수 내부에서도 Column 으로 래핑.
     Column(modifier = GlanceModifier.fillMaxSize()) {
         // ── 1. 헤더 ────────────────────────────────────────────────────
-        // 좌: 날짜 (mono upper) / 우: 진척도 카운트 (mono upper, accent)
-        // isTall 인 경우에만 노출 — 좁은 위젯에서는 공간 절약.
         if (isTall) {
-            HeaderRow(ymd, progress, doneCount, accent, ink)
-            Spacer(GlanceModifier.height(SECTION_GAP))
+            Column(modifier = GlanceModifier.fillMaxWidth()) {
+                HeaderRow(ymd, progress, doneCount, accent, ink)
+                Spacer(GlanceModifier.height(SECTION_GAP))
+            }
         }
 
         // ── 2. 인용문 + 작가 ───────────────────────────────────────────
         QuoteBlock(slot, isWide, isTall, ink)
 
         if (progress != null) {
-            // ── 3. 헤어라인 ────────────────────────────────────────────
-            HairlineDivider(ink)
-
-            // ── 4. 오늘의 행동 ─────────────────────────────────────────
-            if (isWide && isTall) {
-                SectionHeader(SECTION_TODAY, "$doneCount / $TOTAL_DAILY_ACTIONS", accent, ink)
-                Spacer(GlanceModifier.height(ROW_GAP))
-                ProgressList(progress, isLight, ink)
-            } else {
-                ProgressIconsCompact(progress, isLight, ink)
+            Column(modifier = GlanceModifier.fillMaxWidth()) {
+                HairlineDivider(ink)
+                if (isWide && isTall) {
+                    SectionHeader(SECTION_TODAY, "$doneCount / $TOTAL_DAILY_ACTIONS", accent, ink)
+                    Spacer(GlanceModifier.height(ROW_GAP))
+                    ProgressList(progress, isLight, ink)
+                } else {
+                    ProgressIconsCompact(progress, isLight, ink)
+                }
             }
         }
 
         // ── 5. 이번 달 목표 ────────────────────────────────────────────
-        // 단일 Column 래핑으로 if 분기 내부 자식 1개 유지 (Glance 누락 회귀 방지).
         if (isExtraTall && isWide && slot.goalsSnapshot.isNotEmpty()) {
             GoalsSection(slot.goalsSnapshot, accent, ink)
         }
@@ -272,53 +274,58 @@ private fun HeaderRow(
 // ────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun QuoteBlock(slot: WidgetSlot, isWide: Boolean, isTall: Boolean, ink: Color) {
-    // 인용 글리프(") 제거 — 의미 없는 장식. serif italic 자체가 인용임을 알린다.
-    Text(
-        text = slot.text,
-        style = TextStyle(
-            color = ColorProvider(ink),
-            fontSize = QUOTE_FONT_SIZE,
-            fontFamily = FontFamily.Serif,
-            fontStyle = FontStyle.Italic,
-            fontWeight = FontWeight.Normal,
-        ),
-        maxLines = if (isTall) QUOTE_MAX_LINES_TALL else QUOTE_MAX_LINES_SHORT,
-    )
-
-    // 원어 원문 — 넓고 큰 위젯에서만 노출.
-    val originalText = slot.originalText
-    if (isWide && isTall && !originalText.isNullOrBlank()) {
-        Spacer(GlanceModifier.height(4.dp))
+    // 호출자 입장에서 항상 1개 자식으로 보이도록 Column 으로 감싼다 (Glance if-branch
+    // 누락 회귀 방어).
+    Column(modifier = GlanceModifier.fillMaxWidth()) {
+        // 인용 글리프(") 제거 — 의미 없는 장식. serif italic 자체가 인용임을 알린다.
         Text(
-            text = originalText,
+            text = slot.text,
             style = TextStyle(
-                color = ColorProvider(ink.copy(alpha = ALPHA_DIM)),
-                fontSize = 11.sp,
+                color = ColorProvider(ink),
+                fontSize = QUOTE_FONT_SIZE,
                 fontFamily = FontFamily.Serif,
                 fontStyle = FontStyle.Italic,
+                fontWeight = FontWeight.Normal,
             ),
-            maxLines = 2,
+            maxLines = if (isTall) QUOTE_MAX_LINES_TALL else QUOTE_MAX_LINES_SHORT,
         )
-    }
 
-    if (slot.author.isNotBlank()) {
-        Spacer(GlanceModifier.height(6.dp))
-        Row(
-            modifier = GlanceModifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.End,
-        ) {
-            // 작가 — mono uppercase 36% — "—" 대시 제거(과거 가로선 오독 방지),
-            // 폰트 가족 차이로 충분히 인용문과 분리된다.
-            Text(
-                text = slot.author.uppercase(),
-                style = TextStyle(
-                    color = ColorProvider(ink.copy(alpha = ALPHA_META)),
-                    fontSize = ATTRIBUTION_FONT_SIZE,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Medium,
-                ),
-                maxLines = 1,
-            )
+        val originalText = slot.originalText
+        if (isWide && isTall && !originalText.isNullOrBlank()) {
+            Column(modifier = GlanceModifier.fillMaxWidth()) {
+                Spacer(GlanceModifier.height(4.dp))
+                Text(
+                    text = originalText,
+                    style = TextStyle(
+                        color = ColorProvider(ink.copy(alpha = ALPHA_DIM)),
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Serif,
+                        fontStyle = FontStyle.Italic,
+                    ),
+                    maxLines = 2,
+                )
+            }
+        }
+
+        if (slot.author.isNotBlank()) {
+            Column(modifier = GlanceModifier.fillMaxWidth()) {
+                Spacer(GlanceModifier.height(6.dp))
+                Row(
+                    modifier = GlanceModifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.End,
+                ) {
+                    Text(
+                        text = slot.author.uppercase(),
+                        style = TextStyle(
+                            color = ColorProvider(ink.copy(alpha = ALPHA_META)),
+                            fontSize = ATTRIBUTION_FONT_SIZE,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Medium,
+                        ),
+                        maxLines = 1,
+                    )
+                }
+            }
         }
     }
 }
@@ -328,36 +335,39 @@ private fun QuoteBlock(slot: WidgetSlot, isWide: Boolean, isTall: Boolean, ink: 
 // ────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun SectionHeader(title: String, badge: String?, accent: Color, ink: Color) {
-    Spacer(GlanceModifier.height(10.dp))
-    Row(
-        modifier = GlanceModifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = title,
-            style = TextStyle(
-                color = ColorProvider(ink.copy(alpha = ALPHA_META)),
-                fontSize = SECTION_HEADER_SIZE,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Medium,
-            ),
-            maxLines = 1,
-            modifier = GlanceModifier.defaultWeight(),
-        )
-        if (badge != null) {
+    // 함수 호출이 호출자 스코프에서 1개 자식으로 보이도록 Column 래핑 (Glance 회귀 방어).
+    Column(modifier = GlanceModifier.fillMaxWidth()) {
+        Spacer(GlanceModifier.height(10.dp))
+        Row(
+            modifier = GlanceModifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                text = badge,
+                text = title,
                 style = TextStyle(
-                    color = ColorProvider(accent.copy(alpha = ALPHA_DIM)),
+                    color = ColorProvider(ink.copy(alpha = ALPHA_META)),
                     fontSize = SECTION_HEADER_SIZE,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Medium,
                 ),
                 maxLines = 1,
+                modifier = GlanceModifier.defaultWeight(),
             )
+            if (badge != null) {
+                Text(
+                    text = badge,
+                    style = TextStyle(
+                        color = ColorProvider(accent.copy(alpha = ALPHA_DIM)),
+                        fontSize = SECTION_HEADER_SIZE,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Medium,
+                    ),
+                    maxLines = 1,
+                )
+            }
         }
+        Spacer(GlanceModifier.height(8.dp))
     }
-    Spacer(GlanceModifier.height(8.dp))
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -365,13 +375,16 @@ private fun SectionHeader(title: String, badge: String?, accent: Color, ink: Col
 // ────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun HairlineDivider(ink: Color) {
-    Spacer(GlanceModifier.height(SECTION_GAP))
-    Box(
-        modifier = GlanceModifier
-            .fillMaxWidth()
-            .height(1.dp)
-            .background(ColorProvider(ink.copy(alpha = ALPHA_FAINT_DIVIDER))),
-    ) {}
+    // Spacer + Box 두 자식을 Column 으로 감싸 호출자에서 1개로 카운트.
+    Column(modifier = GlanceModifier.fillMaxWidth()) {
+        Spacer(GlanceModifier.height(SECTION_GAP))
+        Box(
+            modifier = GlanceModifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(ColorProvider(ink.copy(alpha = ALPHA_FAINT_DIVIDER))),
+        ) {}
+    }
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -379,9 +392,12 @@ private fun HairlineDivider(ink: Color) {
 // ────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun ProgressList(progress: WidgetTodayProgress, isLight: Boolean, ink: Color) {
-    ProgressRow(PROGRESS_LABEL_AFFIRMATION, progress.affirmation, isLight, ink)
-    ProgressRow(PROGRESS_LABEL_ACTIONS, progress.actions, isLight, ink)
-    ProgressRow(PROGRESS_LABEL_WINS, progress.wins, isLight, ink)
+    // 3개 ProgressRow 를 Column 으로 감싼다 — 호출자에서 1개 자식.
+    Column(modifier = GlanceModifier.fillMaxWidth()) {
+        ProgressRow(PROGRESS_LABEL_AFFIRMATION, progress.affirmation, isLight, ink)
+        ProgressRow(PROGRESS_LABEL_ACTIONS, progress.actions, isLight, ink)
+        ProgressRow(PROGRESS_LABEL_WINS, progress.wins, isLight, ink)
+    }
 }
 
 @Composable
@@ -415,17 +431,20 @@ private fun ProgressIconsCompact(
     isLight: Boolean,
     ink: Color,
 ) {
-    Spacer(GlanceModifier.height(10.dp))
-    Row(
-        modifier = GlanceModifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        CheckIcon(progress.affirmation, isLight, ink)
-        Spacer(GlanceModifier.width(18.dp))
-        CheckIcon(progress.actions, isLight, ink)
-        Spacer(GlanceModifier.width(18.dp))
-        CheckIcon(progress.wins, isLight, ink)
+    // Spacer + Row 를 Column 으로 감싸 호출자에서 1개 자식 (Glance 회귀 방어).
+    Column(modifier = GlanceModifier.fillMaxWidth()) {
+        Spacer(GlanceModifier.height(10.dp))
+        Row(
+            modifier = GlanceModifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CheckIcon(progress.affirmation, isLight, ink)
+            Spacer(GlanceModifier.width(18.dp))
+            CheckIcon(progress.actions, isLight, ink)
+            Spacer(GlanceModifier.width(18.dp))
+            CheckIcon(progress.wins, isLight, ink)
+        }
     }
 }
 
@@ -506,24 +525,27 @@ private fun GoalRow(num: Int, title: String, accent: Color, ink: Color) {
 // ────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun FooterCta(allDone: Boolean, ink: Color, accent: Color) {
-    HairlineDivider(ink)
-    Spacer(GlanceModifier.height(10.dp))
-    Row(
-        modifier = GlanceModifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = if (allDone) FOOTER_CTA_DONE else FOOTER_CTA_DEFAULT,
-            style = TextStyle(
-                color = ColorProvider(if (allDone) accent else ink.copy(alpha = ALPHA_DIM)),
-                fontSize = FOOTER_SIZE,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Medium,
-                textAlign = TextAlign.End,
-            ),
-            maxLines = 1,
+    // HairlineDivider + Spacer + Row 세 자식 → Column 으로 1개로 묶는다.
+    Column(modifier = GlanceModifier.fillMaxWidth()) {
+        HairlineDivider(ink)
+        Spacer(GlanceModifier.height(10.dp))
+        Row(
             modifier = GlanceModifier.fillMaxWidth(),
-        )
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = if (allDone) FOOTER_CTA_DONE else FOOTER_CTA_DEFAULT,
+                style = TextStyle(
+                    color = ColorProvider(if (allDone) accent else ink.copy(alpha = ALPHA_DIM)),
+                    fontSize = FOOTER_SIZE,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.End,
+                ),
+                maxLines = 1,
+                modifier = GlanceModifier.fillMaxWidth(),
+            )
+        }
     }
 }
 
