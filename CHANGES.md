@@ -1,42 +1,65 @@
-# Motivator · Home Redesign Patch v1.1
+# Motivator · Home Redesign Patch v1.2
 
 > Anima 브랜드 시스템에 맞춰 `app/layout.tsx`, `app/globals.css`, `app/home/page.tsx`, `components/home/MotivationCard.tsx`, `components/affirmations/AffirmationCheckin.tsx` 다섯 파일을 재작성/패치한 패키지입니다. 비즈니스 로직(Firebase, i18n, qDate 핸드오프, TWA 위젯 브릿지)은 전부 보존됐고, **시각/인터랙션만** 바뀌었습니다.
 
-## v1.1 변경 (v1.0 → v1.1)
+## v1.2 변경 (v1.1 → v1.2)
 
-실기기 테스트에서 발견된 두 가지 큰 이슈를 수정했습니다.
+실기기·로컬 모두에서 인용문 한글 폰트가 시스템 명조(Batang 등)로 폴백돼 의도한 톤이 안 나는 문제 수정.
 
-### 1. Samsung Internet · 강제 다크 모드 차단
+### 인용문 한글 폰트 — Noto Serif KR 도입
 
-증상: 사용자 기기에서 cream 배경이 검은색으로 반전돼 렌더링.
-원인: Samsung Internet, 일부 Chrome의 "night mode" 기능이 페이지 색을 자동 반전.
+증상: Fraunces가 라틴 전용이라 한글 인용문이 시스템 명조(Mac: Apple SD Gothic Neo · Win: Malgun Gothic · Android: Noto Serif CJK)로 떨어져 디바이스마다 다른 톤.
+원인: `--font-display` 폴백 체인에 한글 글리프를 가진 디자인된 명조가 없었음.
 수정:
-- `app/layout.tsx` — `Viewport.themeColor`를 light 단일로, `colorScheme: "light"` 추가, `<meta name="color-scheme" content="only light" />` 헤드에 주입, `<html style={{ colorScheme: "light" }}>`
-- `app/globals.css` — `html, body { color-scheme: light; }` 추가
+- `app/layout.tsx` — `next/font/google`에서 `Noto_Serif_KR` 추가 (weight 300/400/500). `--font-noto-serif-kr` 변수 노출.
+- `app/globals.css` — `--font-display` 체인에 `var(--font-noto-serif-kr)`를 Fraunces 바로 뒤에 삽입. 결과: 라틴은 Fraunces, 한글은 Noto Serif KR로 깔끔하게 분리 렌더.
 
-### 2. 한글 italic / 와이드 tracking 제거
-
-증상: Fraunces가 라틴 전용이라 한글은 시스템 명조로 폴백 → italic이 강제 oblique로 적용돼 어색. mono+wide-tracking이 한글 음절을 떨어뜨려 보임.
-수정:
-- Fraunces italic → 라틴 숫자(01, 02)에만. 한글 본문(인용·페르소나·미션·다짐 타깃·placeholder)에서 `italic` 클래스 모두 제거.
-- 인용 강조: `font-light italic text-soul` → `font-medium text-soul` (색 + 굵기로만 강조).
-- 한글 라벨(`섹션 헤더`, `편집/취소/저장됨/추가` 등)에서 `font-mono uppercase tracking-[0.14~0.18em]` → `text-[12px] font-medium tracking-[-0.005em]` (Pretendard 자연 한글).
-- 라틴 메타(`5 · 24 · WEEK 21`, `STREAK 1`, `01`, `02`)는 mono + 적정 tracking 유지.
+이전 v1.1 변경(다크 모드 차단, italic·wide tracking 제거)은 그대로 유지.
 
 ---
 
-## 적용 방법
+## 적용 방법 — **반드시 순서대로**
 
-1. `patch/` 폴더 안의 파일들을 `my-successful-future/` 동일 경로에 덮어쓰세요:
+1. zip 압축 풀어서 `patch/` 안의 다섯 파일을 같은 경로에 덮어쓰기:
    - `patch/app/layout.tsx` → `app/layout.tsx`
    - `patch/app/globals.css` → `app/globals.css`
    - `patch/app/home/page.tsx` → `app/home/page.tsx`
    - `patch/components/home/MotivationCard.tsx` → `components/home/MotivationCard.tsx`
    - `patch/components/affirmations/AffirmationCheckin.tsx` → `components/affirmations/AffirmationCheckin.tsx`
-2. `npm run dev` 로 확인. 콘솔에 i18n key 미스 경고가 뜨면 아래 "i18n 추가 권장 키" 참조.
-3. **Samsung Internet에서 night mode를 ON으로 둔 채 테스트**해보세요 — 우리 페이지가 light 톤 그대로 나와야 정상.
 
-## 변경 요약 (파일별)
+2. dev 서버 멈추고 **캐시 초기화**:
+   ```bash
+   rm -rf .next .turbo node_modules/.cache
+   npm run dev
+   ```
+   Tailwind v4는 빌드 시점에 클래스명을 스캔합니다. `.next` 캐시가 오래되면 새 클래스(`tracking-[-0.005em]` 등)가 CSS에 안 들어갈 수 있어요.
+
+3. 브라우저 **하드 리프레시**:
+   - Chrome/Edge/Samsung Internet: Cmd/Ctrl + Shift + R
+   - DevTools 열어두고 Network 탭에서 "Disable cache" 체크 후 새로고침이면 더 확실.
+
+4. **TWA 앱에서 테스트하는 경우**:
+   - 로컬 변경은 TWA에 안 보입니다 (TWA는 배포된 URL을 로드).
+   - `npm run build && 배포` 먼저.
+   - 배포 후 안드로이드 폰: 설정 → 앱 → Anima → 저장공간 → 캐시 삭제. 안 되면 앱 삭제 후 재설치.
+
+5. **검증 — 다음 명령어 5개로 파일이 진짜 덮어써졌는지 확인**:
+   ```bash
+   grep -c "Noto_Serif_KR" app/layout.tsx              # → 1
+   grep -c "noto-serif-kr" app/globals.css             # → 1
+   grep -c "Anima Home — v2 redesign" app/home/page.tsx # → 1
+   grep -c "보라 그라데이션 배경 제거" components/home/MotivationCard.tsx  # → 1
+   grep -c "회색 박스(rounded-14" components/affirmations/AffirmationCheckin.tsx  # → 1
+   ```
+   다섯 줄 모두 `1`이 나와야 정상. 하나라도 `0`이면 그 파일이 안 덮어써진 거예요.
+
+6. 적용 확인 — 브라우저 DevTools → 인용문 우클릭 → 검사 → Computed 탭 → `font-family`:
+   - `__Fraunces_..., __Noto_Serif_KR_..., GT Sectra, ...` 이런 형태로 떠야 정상.
+   - `Times New Roman`이나 시스템 기본만 뜨면 → 2번 캐시 초기화 다시.
+
+---
+
+## 적용 후 변경 사항 요약
 
 ### `app/layout.tsx` (NEW)
 

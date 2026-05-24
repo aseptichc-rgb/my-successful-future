@@ -89,8 +89,9 @@
     -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
     "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-display:
-    var(--font-fraunces), "GT Sectra", "Tiempos Headline", Georgia,
-    "Times New Roman", serif;
+    var(--font-fraunces), var(--font-noto-serif-kr),
+    "GT Sectra", "Tiempos Headline", "Apple SD Gothic Neo",
+    "Noto Serif KR", Georgia, "Times New Roman", serif;
   --font-mono:
     var(--font-jetbrains), "JetBrains Mono", "SF Mono", "ABC Diatype Mono",
     "D2 Coding", ui-monospace, Menlo, Consolas, monospace;

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Fraunces, JetBrains_Mono, Noto_Sans_KR } from "next/font/google";
+import { Inter, Fraunces, JetBrains_Mono, Noto_Sans_KR, Noto_Serif_KR } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
 import LanguageBridge from "@/components/LanguageBridge";
 import KakaoScript from "@/components/KakaoScript";
@@ -18,6 +18,15 @@ const notoSansKR = Noto_Sans_KR({
   variable: "--font-noto-kr",
   subsets: ["latin"],
   weight: ["400", "500", "700"],
+  display: "swap",
+});
+
+// Korean display serif — Fraunces가 라틴 전용이라 한글 인용문은 Noto Serif KR로 렌더링.
+// font-display 체인에서 Fraunces 뒤에 놓이면 브라우저가 글리프 단위로 폴백한다.
+const notoSerifKR = Noto_Serif_KR({
+  variable: "--font-noto-serif-kr",
+  subsets: ["latin"],
+  weight: ["300", "400", "500"],
   display: "swap",
 });
 
@@ -66,7 +75,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const fontVars = `${inter.variable} ${notoSansKR.variable} ${fraunces.variable} ${jetbrainsMono.variable}`;
+  const fontVars = `${inter.variable} ${notoSansKR.variable} ${notoSerifKR.variable} ${fraunces.variable} ${jetbrainsMono.variable}`;
 
   return (
     <html lang="ko" className={`${fontVars} h-full antialiased`} style={{ colorScheme: "light" }}>
