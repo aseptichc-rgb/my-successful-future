@@ -221,6 +221,9 @@ const dict: Record<DictKey, string> = {
   "auth.signIn": "Sign in",
   "auth.signUp": "Sign up",
   "auth.signInWithGoogle": "Continue with Google",
+  "auth.continueWithGoogle": "Continue with Google",
+  "auth.or": "or",
+  "auth.noAccount": "First time here?",
   "auth.signingIn": "Signing in…",
   "auth.signingUp": "Creating account…",
   "auth.signIn.title": "Welcome back",
@@ -264,6 +267,24 @@ const dict: Record<DictKey, string> = {
   "billing.trialBanner": "{days} days left in trial",
   "billing.trialEnded": "Your free trial has ended.",
   "billing.upgrade": "Upgrade",
+
+  // Apple iOS redesign — settings/auth/legal/common additions
+  "auth.signOut": "Sign out",
+  "common.deleting": "Deleting…",
+  "common.empty": "Empty",
+  "common.none": "None",
+  "common.set": "Set",
+  "legal.privacy": "Privacy Policy",
+  "legal.terms": "Terms of Service",
+  "settings.profile.header": "Profile",
+  "settings.affirmations.header": "Daily affirmations",
+  "settings.quote.header": "Card",
+  "settings.quote.pinnedAuthor": "Pinned author",
+  "settings.language.header": "Language",
+  "settings.account.header": "Account",
+  "settings.account.deleteConfirm":
+    "All your data will be permanently deleted. Type \"DELETE\" below to confirm.",
+  "settings.streakLabel": "STREAK {count}",
 };
 
 export default dict;

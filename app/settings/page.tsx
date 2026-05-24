@@ -10,7 +10,6 @@ import {
   updateSuccessAffirmations,
   updateUserLanguage,
   MAX_USER_GOALS,
-  MAX_SUCCESS_AFFIRMATIONS,
 } from "@/lib/firebase";
 import { authedFetch } from "@/lib/authedFetch";
 import { getAllKnownAuthorsGrouped } from "@/lib/famousQuoteCatalog";
@@ -431,7 +430,7 @@ export default function SettingsPage() {
             color="#32ADE6"
             glyph={G.globe}
             title={t("settings.language.header") || "언어"}
-            detail={LOCALE_META[locale]?.label || locale}
+            detail={LOCALE_META[locale]?.nativeLabel || locale}
             onClick={() => {
               const next: Locale = locale === "ko" ? "en" : "ko";
               void handleChangeLanguage(next);
@@ -574,7 +573,6 @@ export default function SettingsPage() {
             <AffirmationsEditor
               value={affirmations}
               onChange={setAffirmations}
-              max={MAX_SUCCESS_AFFIRMATIONS}
             />
           </div>
           <div className="flex justify-end mt-3">

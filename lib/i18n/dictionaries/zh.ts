@@ -217,6 +217,9 @@ const dict: Record<DictKey, string> = {
   "auth.signIn": "登录",
   "auth.signUp": "注册",
   "auth.signInWithGoogle": "使用 Google 继续",
+  "auth.continueWithGoogle": "使用 Google 继续",
+  "auth.or": "或",
+  "auth.noAccount": "第一次来吗?",
   "auth.signingIn": "登录中…",
   "auth.signingUp": "创建账户中…",
   "auth.signIn.title": "欢迎回来",
@@ -258,6 +261,24 @@ const dict: Record<DictKey, string> = {
   "billing.trialBanner": "免费试用还剩 {days} 天",
   "billing.trialEnded": "免费试用已结束。",
   "billing.upgrade": "升级",
+
+  // Apple iOS redesign — settings/auth/legal/common additions
+  "auth.signOut": "退出登录",
+  "common.deleting": "删除中…",
+  "common.empty": "空",
+  "common.none": "无",
+  "common.set": "已设置",
+  "legal.privacy": "隐私政策",
+  "legal.terms": "服务条款",
+  "settings.profile.header": "个人资料",
+  "settings.affirmations.header": "每日肯定",
+  "settings.quote.header": "卡片",
+  "settings.quote.pinnedAuthor": "收藏作者",
+  "settings.language.header": "语言",
+  "settings.account.header": "账户",
+  "settings.account.deleteConfirm":
+    "您的所有数据将被永久删除。请在下方输入 \"删除\" 以确认。",
+  "settings.streakLabel": "连续 {count} 天",
 };
 
 export default dict;

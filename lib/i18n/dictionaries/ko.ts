@@ -207,6 +207,9 @@ const dict = {
   "auth.signIn": "로그인",
   "auth.signUp": "회원가입",
   "auth.signInWithGoogle": "Google로 로그인",
+  "auth.continueWithGoogle": "Google로 계속하기",
+  "auth.or": "또는",
+  "auth.noAccount": "처음이신가요?",
   "auth.signingIn": "로그인 중…",
   "auth.signingUp": "가입 중…",
   "auth.signIn.title": "다시 만나서 반가워요",
@@ -246,6 +249,24 @@ const dict = {
   "billing.trialBanner": "남은 무료 체험 {days}일",
   "billing.trialEnded": "무료 체험이 끝났어요.",
   "billing.upgrade": "업그레이드",
+
+  // ── Apple iOS 리디자인 추가 키 (settings/auth/legal/common 보강) ─────
+  "auth.signOut": "로그아웃",
+  "common.deleting": "삭제하는 중…",
+  "common.empty": "비어있음",
+  "common.none": "없음",
+  "common.set": "작성됨",
+  "legal.privacy": "개인정보처리방침",
+  "legal.terms": "이용약관",
+  "settings.profile.header": "프로필",
+  "settings.affirmations.header": "성공한 나의 모습 다짐",
+  "settings.quote.header": "카드",
+  "settings.quote.pinnedAuthor": "좋아하는 인물",
+  "settings.language.header": "언어",
+  "settings.account.header": "계정",
+  "settings.account.deleteConfirm":
+    "모든 데이터가 영구 삭제됩니다. 아래에 \"삭제\"를 입력해주세요.",
+  "settings.streakLabel": "연속 {count}일",
 } as const;
 
 export type DictKey = keyof typeof dict;

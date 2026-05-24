@@ -225,6 +225,9 @@ const dict: Record<DictKey, string> = {
   "auth.signIn": "Iniciar sesión",
   "auth.signUp": "Crear cuenta",
   "auth.signInWithGoogle": "Continuar con Google",
+  "auth.continueWithGoogle": "Continuar con Google",
+  "auth.or": "o",
+  "auth.noAccount": "¿Es tu primera vez?",
   "auth.signingIn": "Iniciando…",
   "auth.signingUp": "Creando cuenta…",
   "auth.signIn.title": "Bienvenido de nuevo",
@@ -269,6 +272,24 @@ const dict: Record<DictKey, string> = {
   "billing.trialBanner": "Te quedan {days} días de prueba",
   "billing.trialEnded": "Tu prueba gratuita terminó.",
   "billing.upgrade": "Mejorar",
+
+  // Apple iOS redesign — settings/auth/legal/common additions
+  "auth.signOut": "Cerrar sesión",
+  "common.deleting": "Eliminando…",
+  "common.empty": "Vacío",
+  "common.none": "Ninguno",
+  "common.set": "Configurado",
+  "legal.privacy": "Política de privacidad",
+  "legal.terms": "Términos de servicio",
+  "settings.profile.header": "Perfil",
+  "settings.affirmations.header": "Afirmaciones diarias",
+  "settings.quote.header": "Tarjeta",
+  "settings.quote.pinnedAuthor": "Autor favorito",
+  "settings.language.header": "Idioma",
+  "settings.account.header": "Cuenta",
+  "settings.account.deleteConfirm":
+    "Todos tus datos se eliminarán permanentemente. Escribe \"ELIMINAR\" abajo para confirmar.",
+  "settings.streakLabel": "RACHA {count}",
 };
 
 export default dict;
