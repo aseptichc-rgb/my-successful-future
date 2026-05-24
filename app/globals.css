@@ -42,62 +42,68 @@
   --g6: #F2F2F7;
 
   /* ────────────────────────────────────────────────
-   * Backgrounds / Labels (HIG semantic)
+   * Backgrounds / Labels — Anima 기존 톤 복귀.
+   *   배경은 cream 계열, 글씨는 indigo 계열로 모두 통일.
+   *   iOS HIG 의 의미론(grouped/system/label-2…4)은 유지하되 값만 교체 →
+   *   GroupedSection·SettingsRow·label-2/3 호출부는 코드 한 줄 안 바꿔도 톤만 바뀐다.
    * ──────────────────────────────────────────────── */
-  --bg-system:           #FFFFFF;
-  --bg-grouped:          #F2F2F7;   /* systemGroupedBackground — main page bg */
-  --bg-grouped-2:        #FFFFFF;   /* secondarySystemGroupedBackground — inset cards */
-  --bg-grouped-3:        #F2F2F7;
+  --bg-system:           #FBF8F2;   /* card cream surface */
+  --bg-grouped:          #F7F3EC;   /* cream — main page bg (구 --cream) */
+  --bg-grouped-2:        #FBF8F2;   /* inset 카드 — 살짝 더 밝은 cream surface */
+  --bg-grouped-3:        #F0EDE6;   /* alt bg (구 --mist-soft) */
 
-  --label:               rgba(0,0,0,1);
-  --label-2:             rgba(60,60,67,0.6);
-  --label-3:             rgba(60,60,67,0.3);
-  --label-4:             rgba(60,60,67,0.18);
+  /* 글씨 — indigo #1E1B4B 단일을 알파 단계로 위계 표현 (이전 디자인 시스템과 동일) */
+  --label:               #1E1B4B;
+  --label-2:             rgba(30,27,75,0.62);
+  --label-3:             rgba(30,27,75,0.36);
+  --label-4:             rgba(30,27,75,0.18);
 
-  --sep-opaque:          rgba(60,60,67,0.29);
-  --sep:                 rgba(60,60,67,0.12);
-  --hairline:            rgba(60,60,67,0.12);  /* alias for legacy code */
+  --sep-opaque:          rgba(30,27,75,0.18);
+  --sep:                 rgba(30,27,75,0.10);
+  --hairline:            rgba(30,27,75,0.10);  /* alias for legacy code */
 
   /* ────────────────────────────────────────────────
-   * Backwards-compat aliases — old Anima tokens map onto iOS now.
-   * 기존 컴포넌트의 bg-cream, text-indigo, bg-soul 등이 깨지지 않게.
+   * Anima 브랜드 토큰 (기존 톤 복귀) — cream/indigo/soul 코랄.
+   * iOS 구조 위에 Anima 톤을 입히는 한 쌍이라, 기존 코드의 bg-cream·text-indigo·
+   * bg-soul·border-mist 도 자동으로 같은 톤으로 그려진다.
    * ──────────────────────────────────────────────── */
-  --cream:          var(--bg-grouped);     /* old page bg → systemGroupedBackground */
-  --cream-soft:     var(--bg-grouped);
-  --mist:           var(--g5);
-  --mist-soft:      var(--bg-grouped);
-  --indigo-brand:   var(--indigo);
-  --soul:           var(--orange);         /* old accent coral → iOS orange (warm) */
-  --soul-press:     #E08600;
-  --soul-soft:      var(--orange-t);
+  --cream:          #F7F3EC;
+  --cream-soft:     #FBF8F2;
+  --mist:           #E8E6DF;
+  --mist-soft:      #F0EDE6;
+  --indigo-brand:   #1E1B4B;
+  --soul:           #D85A30;               /* coral warm — 기존 핵심 CTA·강조 */
+  --soul-press:     #BE4B26;
+  --soul-soft:      #F2C9B8;
   --charcoal:       #1A1A1A;
 
-  /* Anima 기존 indigo 스케일 — iOS blue/indigo 톤으로 흡수 */
+  /* Anima 기존 indigo 스케일 */
   --indigo-300:     #A6A3D1;
-  --indigo-500:     var(--indigo);
-  --indigo-700:     #3A3786;
+  --indigo-500:     #4F4BA8;
+  --indigo-700:     #2A2766;
 
   /* Semantic */
   --background:     var(--bg-grouped);
   --foreground:     var(--label);
   --surface:        var(--bg-grouped-2);
   --surface-2:      var(--bg-grouped);
-  --border-subtle:  rgba(60,60,67,0.10);
-  --border-soft:    rgba(60,60,67,0.06);
-  --focus-ring:     var(--blue);
+  --border-subtle:  rgba(30,27,75,0.10);
+  --border-soft:    rgba(30,27,75,0.06);
+  --focus-ring:     var(--soul);
 
   --text-secondary:  var(--label-2);
   --text-tertiary:   var(--label-2);
   --text-quaternary: var(--label-3);
 
-  --nav-bg:          rgba(242,242,247,0.78);
-  --nav-bg-dark:     rgba(28,28,30,0.84);
+  /* nav 반투명 배경 — cream 톤으로 맞춤. */
+  --nav-bg:          rgba(247,243,236,0.78);
+  --nav-bg-dark:     rgba(30,27,75,0.84);
 
-  /* iOS shadows — soft and minimal */
-  --shadow-card:        0 1px 2px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04);
-  --shadow-card-hover:  0 1px 2px rgba(0,0,0,0.06), 0 8px 20px rgba(0,0,0,0.08);
-  --shadow-product:     0 2px 4px rgba(0,0,0,0.06), 0 16px 32px rgba(0,0,0,0.10);
-  --shadow-tinted:      0 2px 14px rgba(255,149,0,0.16);  /* warm hero card */
+  /* shadows — Anima 톤에 맞춘 살짝 따뜻한 인디고 그림자 */
+  --shadow-card:        0 1px 2px rgba(30,27,75,0.04), 0 4px 12px rgba(30,27,75,0.04);
+  --shadow-card-hover:  0 1px 2px rgba(30,27,75,0.06), 0 8px 20px rgba(30,27,75,0.08);
+  --shadow-product:     0 2px 4px rgba(30,27,75,0.06), 0 16px 32px rgba(30,27,75,0.10);
+  --shadow-tinted:      0 2px 14px rgba(216,90,48,0.16);  /* soul coral hero glow */
 }
 
 @theme inline {

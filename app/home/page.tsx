@@ -305,7 +305,7 @@ export default function HomeDashboardPage() {
 
   if (loading || !firebaseUser) {
     return (
-      <div className="flex h-full items-center justify-center bg-[#F2F2F7]">
+      <div className="flex h-full items-center justify-center bg-[var(--bg-grouped)]">
         <div className="h-6 w-6 animate-spin rounded-full border-[1.5px] border-black/10 border-t-[#007AFF]" />
       </div>
     );
@@ -458,9 +458,9 @@ export default function HomeDashboardPage() {
   /* ───── render ───── */
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto bg-[#F2F2F7] pb-12">
+    <div className="flex h-full flex-col overflow-y-auto bg-[var(--bg-grouped)] pb-12">
       {/* ── Large Title bar — Apple iOS native pattern ── */}
-      <header className="bg-[#F2F2F7] pt-3 pb-2">
+      <header className="bg-[var(--bg-grouped)] pt-3 pb-2">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-2 min-h-[44px]">
           <div className="w-[44px]" />
           <div className="flex items-center gap-2">
@@ -479,7 +479,7 @@ export default function HomeDashboardPage() {
               type="button"
               onClick={() => router.push("/settings")}
               aria-label={t("home.settingsAria")}
-              className="w-11 h-11 flex items-center justify-center text-[#007AFF] hover:opacity-70 transition-opacity"
+              className="w-11 h-11 flex items-center justify-center text-[var(--soul)] hover:opacity-70 transition-opacity"
             >
               <IconGear />
             </button>
@@ -564,7 +564,7 @@ export default function HomeDashboardPage() {
                   <button
                     type="button"
                     onClick={() => setFutureEditing(true)}
-                    className="text-[15px] font-medium text-[#007AFF]"
+                    className="text-[15px] font-medium text-[var(--soul)]"
                   >
                     {futureText ? t("common.edit") : t("common.write")}
                   </button>
@@ -580,7 +580,7 @@ export default function HomeDashboardPage() {
                       rows={5}
                       maxLength={FUTURE_PERSONA_MAX}
                       placeholder={t("onboarding.step1.placeholder")}
-                      className="w-full resize-none bg-transparent text-[17px] leading-[24px] tracking-[-0.43px] text-black placeholder:text-[var(--label-3)] focus:outline-none"
+                      className="w-full resize-none bg-transparent text-[17px] leading-[24px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none"
                     />
                     <div className="mt-3 flex items-center justify-between">
                       <span className="text-[12px] text-[var(--label-3)] tabular-nums">
@@ -599,7 +599,7 @@ export default function HomeDashboardPage() {
                           type="button"
                           onClick={handleFutureSave}
                           disabled={futureSaving}
-                          className="text-[15px] font-semibold text-[#007AFF] disabled:opacity-40"
+                          className="text-[15px] font-semibold text-[var(--soul)] disabled:opacity-40"
                         >
                           {futureSaving ? t("common.saving") : t("home.future.saveAndRegen")}
                         </button>
@@ -607,7 +607,7 @@ export default function HomeDashboardPage() {
                     </div>
                   </>
                 ) : futureText ? (
-                  <p className="whitespace-pre-wrap text-[17px] leading-[24px] tracking-[-0.43px] text-black">
+                  <p className="whitespace-pre-wrap text-[17px] leading-[24px] tracking-[-0.43px] text-[var(--label)]">
                     {futureText}
                   </p>
                 ) : (
@@ -634,7 +634,7 @@ export default function HomeDashboardPage() {
                     <button
                       type="button"
                       onClick={() => setGoalsEditing((v) => !v)}
-                      className="text-[15px] font-medium text-[#007AFF]"
+                      className="text-[15px] font-medium text-[var(--soul)]"
                     >
                       {goalsEditing ? t("common.done") : t("common.edit")}
                     </button>
@@ -698,12 +698,12 @@ export default function HomeDashboardPage() {
                                 (e.currentTarget as HTMLInputElement).blur();
                               }
                             }}
-                            className="w-full bg-transparent text-[17px] leading-[22px] tracking-[-0.43px] text-black focus:outline-none border-b border-dashed border-[var(--sep)] focus:border-[var(--blue)]"
+                            className="w-full bg-transparent text-[17px] leading-[22px] tracking-[-0.43px] text-[var(--label)] focus:outline-none border-b border-dashed border-[var(--sep)] focus:border-[var(--blue)]"
                           />
                         ) : (
                           <div
                             className={`text-[17px] leading-[22px] tracking-[-0.43px] ${
-                              achieved ? "text-[var(--label-2)] line-through decoration-[var(--label-3)]" : "text-black"
+                              achieved ? "text-[var(--label-2)] line-through decoration-[var(--label-3)]" : "text-[var(--label)]"
                             }`}
                           >
                             {trimmed || (
@@ -761,7 +761,7 @@ export default function HomeDashboardPage() {
                       }
                     }}
                     placeholder={t("home.goals.placeholder")}
-                    className="flex-1 bg-transparent text-[17px] tracking-[-0.43px] text-black placeholder:text-[var(--label-3)] focus:outline-none py-2"
+                    className="flex-1 bg-transparent text-[17px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none py-2"
                   />
                   <button
                     type="button"
@@ -792,7 +792,7 @@ export default function HomeDashboardPage() {
                   <button
                     type="button"
                     onClick={() => router.push("/wins-history")}
-                    className="text-[15px] font-medium text-[#007AFF]"
+                    className="text-[15px] font-medium text-[var(--soul)]"
                   >
                     {t("home.wins.history")}
                   </button>
@@ -822,7 +822,7 @@ export default function HomeDashboardPage() {
                       maxLength={WIN_MAX}
                       onChange={(e) => handleChangeWin(idx, e.target.value)}
                       placeholder={placeholder}
-                      className="flex-1 min-h-[24px] resize-none bg-transparent text-[17px] leading-[24px] tracking-[-0.43px] text-black placeholder:text-[var(--label-3)] focus:outline-none py-2"
+                      className="flex-1 min-h-[24px] resize-none bg-transparent text-[17px] leading-[24px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none py-2"
                     />
                     {!isLast && (
                       <div
@@ -869,7 +869,7 @@ function GroupedSection({
           {trailing}
         </div>
       )}
-      <div className="mx-4 bg-white rounded-[12px] overflow-hidden">
+      <div className="mx-4 bg-[var(--bg-grouped-2)] rounded-[12px] overflow-hidden">
         {children}
       </div>
       {footer && (

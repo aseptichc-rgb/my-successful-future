@@ -50,7 +50,7 @@ function LogoLockup() {
         <AnimaMark size={56} color="#FFFFFF" />
       </div>
       <span
-        className="mt-5 text-[36px] font-light tracking-[-0.9px] leading-none text-black inline-flex items-baseline whitespace-nowrap"
+        className="mt-5 text-[36px] font-light tracking-[-0.9px] leading-none text-[var(--label)] inline-flex items-baseline whitespace-nowrap"
         style={{ fontFamily: "var(--font-display)" }}
       >
         an
@@ -165,11 +165,11 @@ export default function LoginPage() {
   /* ── Link pending state ── */
   if (pendingLink) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F2F2F7] p-6">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--bg-grouped)] p-6">
         <div className="w-full max-w-md">
           <div className="flex flex-col items-center text-center mb-8">
             <LogoLockup />
-            <h2 className="mt-6 text-[22px] font-bold tracking-[-0.45px] text-black">
+            <h2 className="mt-6 text-[22px] font-bold tracking-[-0.45px] text-[var(--label)]">
               {t("auth.link.title")}
             </h2>
             <p className="mt-2 text-[15px] leading-[20px] tracking-[-0.24px] text-[var(--label-2)]">
@@ -178,7 +178,7 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleConfirmLink} className="space-y-3">
-            <div className="bg-white rounded-[12px] overflow-hidden">
+            <div className="bg-[var(--bg-grouped-2)] rounded-[12px] overflow-hidden">
               <div className="px-4 py-3.5 flex items-center gap-3">
                 <span className="w-20 text-[15px] text-[var(--label-2)]">
                   {t("auth.password")}
@@ -189,7 +189,7 @@ export default function LoginPage() {
                   autoFocus
                   value={linkPassword}
                   onChange={(e) => setLinkPassword(e.target.value)}
-                  className="flex-1 bg-transparent text-[17px] tracking-[-0.43px] text-black placeholder:text-[var(--label-3)] focus:outline-none"
+                  className="flex-1 bg-transparent text-[17px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none"
                   placeholder={t("auth.password.placeholder")}
                 />
               </div>
@@ -200,7 +200,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading || !linkPassword}
-              className="w-full h-[50px] rounded-[12px] bg-[#007AFF] text-white text-[17px] font-semibold tracking-[-0.43px] disabled:opacity-40"
+              className="w-full h-[50px] rounded-[12px] bg-[var(--soul)] text-white text-[17px] font-semibold tracking-[-0.43px] disabled:opacity-40"
             >
               {loading ? t("auth.signingIn") : t("auth.link.submit")}
             </button>
@@ -208,7 +208,7 @@ export default function LoginPage() {
               type="button"
               onClick={handleCancelLink}
               disabled={loading}
-              className="w-full h-[50px] rounded-[12px] bg-white border border-[var(--sep)] text-black text-[17px] font-semibold tracking-[-0.43px] disabled:opacity-40"
+              className="w-full h-[50px] rounded-[12px] bg-[var(--bg-grouped-2)] border border-[var(--sep)] text-[var(--label)] text-[17px] font-semibold tracking-[-0.43px] disabled:opacity-40"
             >
               {t("auth.link.cancel")}
             </button>
@@ -220,7 +220,7 @@ export default function LoginPage() {
 
   /* ── Default login ── */
   return (
-    <div className="flex min-h-screen flex-col bg-[#F2F2F7]">
+    <div className="flex min-h-screen flex-col bg-[var(--bg-grouped)]">
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
           {/* Hero */}
@@ -233,7 +233,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-3">
             {/* Email + password — grouped inset card */}
-            <div className="bg-white rounded-[12px] overflow-hidden">
+            <div className="bg-[var(--bg-grouped-2)] rounded-[12px] overflow-hidden">
               <div className="relative flex items-center gap-3 px-4 py-3.5">
                 <span className="w-20 text-[15px] text-[var(--label-2)]">
                   {t("auth.email")}
@@ -244,7 +244,7 @@ export default function LoginPage() {
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="flex-1 bg-transparent text-[17px] tracking-[-0.43px] text-black placeholder:text-[var(--label-3)] focus:outline-none"
+                  className="flex-1 bg-transparent text-[17px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none"
                   placeholder="email@example.com"
                 />
                 <div className="absolute bottom-0 left-[100px] right-0 h-[0.5px] bg-[var(--sep)]" />
@@ -259,7 +259,7 @@ export default function LoginPage() {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="flex-1 bg-transparent text-[17px] tracking-[-0.43px] text-black placeholder:text-[var(--label-3)] focus:outline-none"
+                  className="flex-1 bg-transparent text-[17px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none"
                   placeholder={t("auth.password.placeholder")}
                 />
               </div>
@@ -270,7 +270,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-[50px] rounded-[12px] bg-[#007AFF] text-white text-[17px] font-semibold tracking-[-0.43px] disabled:opacity-40"
+              className="w-full h-[50px] rounded-[12px] bg-[var(--soul)] text-white text-[17px] font-semibold tracking-[-0.43px] disabled:opacity-40"
             >
               {loading ? t("auth.signingIn") : t("auth.signIn")}
             </button>
@@ -288,7 +288,7 @@ export default function LoginPage() {
             type="button"
             onClick={handleGoogle}
             disabled={loading}
-            className="w-full h-[50px] rounded-[12px] bg-white border border-[var(--sep)] text-black text-[17px] font-semibold tracking-[-0.43px] inline-flex items-center justify-center gap-2.5 disabled:opacity-40"
+            className="w-full h-[50px] rounded-[12px] bg-[var(--bg-grouped-2)] border border-[var(--sep)] text-[var(--label)] text-[17px] font-semibold tracking-[-0.43px] inline-flex items-center justify-center gap-2.5 disabled:opacity-40"
           >
             <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
               <path d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.13-.84 2.08-1.78 2.72v2.26h2.88c1.68-1.55 2.66-3.83 2.66-6.62z" fill="#4285F4" />
@@ -302,7 +302,7 @@ export default function LoginPage() {
           {/* Sign up link */}
           <div className="mt-8 text-center text-[15px] tracking-[-0.24px] text-[var(--label-2)]">
             {t("auth.noAccount") || "처음이신가요?"}{" "}
-            <Link href="/signup" className="text-[#007AFF] font-semibold">
+            <Link href="/signup" className="text-[var(--soul)] font-semibold">
               {t("auth.signUp") || "가입하기"}
             </Link>
           </div>

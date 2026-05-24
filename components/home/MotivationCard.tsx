@@ -326,7 +326,7 @@ export default function MotivationCard({
             </div>
           ) : motivation ? (
             <>
-              <p className="whitespace-pre-wrap text-[23px] leading-[30px] font-semibold tracking-[-0.4px] text-black">
+              <p className="whitespace-pre-wrap text-[23px] leading-[30px] font-semibold tracking-[-0.4px] text-[var(--label)]">
                 {renderedQuote}
               </p>
               {motivation.originalText && (
@@ -391,7 +391,7 @@ export default function MotivationCard({
         (!affirmations || affirmations.length === 0) &&
         motivation.mission &&
         onSubmitResponse && (
-          <div className="bg-white rounded-[12px] p-5">
+          <div className="bg-[var(--bg-grouped-2)] rounded-[12px] p-5">
             <div className="flex items-center gap-3">
               <span className="text-[13px] uppercase tracking-[-0.08px] text-[var(--label-2)] font-medium">
                 {t("motivation.missionLabel")}
@@ -400,7 +400,7 @@ export default function MotivationCard({
                 #{motivation.mission.identityTag}
               </span>
             </div>
-            <p className="mt-2 text-[17px] leading-[24px] font-semibold tracking-[-0.43px] text-black">
+            <p className="mt-2 text-[17px] leading-[24px] font-semibold tracking-[-0.43px] text-[var(--label)]">
               {motivation.mission.prompt}
             </p>
 
@@ -409,7 +409,7 @@ export default function MotivationCard({
                 className="mt-3 pl-4 border-l-[3px] rounded-l-[2px]"
                 style={{ borderColor: "#FF9500" }}
               >
-                <p className="whitespace-pre-wrap text-[15px] leading-[20px] tracking-[-0.24px] text-black">
+                <p className="whitespace-pre-wrap text-[15px] leading-[20px] tracking-[-0.24px] text-[var(--label)]">
                   {motivation.response.text}
                 </p>
                 <button
@@ -418,7 +418,7 @@ export default function MotivationCard({
                     setResponseDraft(motivation.response?.text || "");
                     setResponseEditing(true);
                   }}
-                  className="mt-2 text-[13px] font-medium text-[#007AFF]"
+                  className="mt-2 text-[13px] font-medium text-[var(--soul)]"
                 >
                   {t("motivation.editResponse")}
                 </button>
@@ -431,7 +431,7 @@ export default function MotivationCard({
                   rows={2}
                   maxLength={RESPONSE_MAX}
                   placeholder={t("motivation.responsePlaceholder")}
-                  className="w-full resize-none rounded-[10px] border border-[var(--sep)] bg-[#F2F2F7] px-3 py-2 text-[15px] leading-[20px] tracking-[-0.24px] text-black placeholder:text-[var(--label-3)] focus:outline-none focus:border-[#007AFF]"
+                  className="w-full resize-none rounded-[10px] border border-[var(--sep)] bg-[var(--bg-grouped)] px-3 py-2 text-[15px] leading-[20px] tracking-[-0.24px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none focus:border-[var(--soul)]"
                 />
                 <div className="mt-2 flex items-center justify-between">
                   <span className="text-[12px] text-[var(--label-3)] tabular-nums">
@@ -456,7 +456,7 @@ export default function MotivationCard({
                       type="button"
                       onClick={handleSubmitResponse}
                       disabled={responseSaving || !responseDraft.trim()}
-                      className="text-[15px] font-semibold text-[#007AFF] disabled:opacity-30"
+                      className="text-[15px] font-semibold text-[var(--soul)] disabled:opacity-30"
                     >
                       {responseSaving ? t("motivation.submitting") : t("motivation.submit")}
                     </button>

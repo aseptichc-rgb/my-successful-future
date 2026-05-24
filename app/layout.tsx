@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   // Force light theme — block forced dark mode injection by Samsung Internet etc.
-  themeColor: "#F2F2F7",
+  themeColor: "#F7F3EC",
   colorScheme: "light",
   width: "device-width",
   initialScale: 1,
@@ -46,7 +46,7 @@ export default function RootLayout({
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         />
       </head>
-      <body className="min-h-full flex flex-col font-sans bg-[#F2F2F7] text-black">
+      <body className="min-h-full flex flex-col font-sans bg-[var(--bg-grouped)] text-[var(--label)]">
         <KakaoScript />
         <AuthProvider>
           <LanguageBridge>{children}</LanguageBridge>

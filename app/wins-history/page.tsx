@@ -88,7 +88,7 @@ export default function WinsHistoryPage() {
 
   if (authLoading || !firebaseUser) {
     return (
-      <div className="flex h-full items-center justify-center bg-[#F2F2F7]">
+      <div className="flex h-full items-center justify-center bg-[var(--bg-grouped)]">
         <div className="h-6 w-6 animate-spin rounded-full border-[1.5px] border-black/10 border-t-[#007AFF]" />
       </div>
     );
@@ -98,17 +98,17 @@ export default function WinsHistoryPage() {
   const filledEntries = entries.filter((e) => e.wins.some((w) => (w || "").trim().length > 0));
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto bg-[#F2F2F7] pb-12">
-      <header className="pt-3 pb-2 bg-[#F2F2F7]">
+    <div className="flex h-full flex-col overflow-y-auto bg-[var(--bg-grouped)] pb-12">
+      <header className="pt-3 pb-2 bg-[var(--bg-grouped)]">
         <div className="mx-auto max-w-3xl px-2 min-h-[44px] flex items-center">
           <button
             type="button"
             onClick={() => router.push("/home")}
             aria-label={t("home.title")}
-            className="inline-flex items-center gap-1 text-[#007AFF] text-[17px] tracking-[-0.43px] px-1 py-2"
+            className="inline-flex items-center gap-1 text-[var(--soul)] text-[17px] tracking-[-0.43px] px-1 py-2"
           >
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-              <path d="M14 4l-7 7 7 7" stroke="#007AFF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M14 4l-7 7 7 7" stroke="#D85A30" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <span>{t("home.title")}</span>
           </button>
@@ -127,12 +127,12 @@ export default function WinsHistoryPage() {
         )}
 
         {!loading && error && (
-          <div className="mx-4 mt-4 rounded-[12px] bg-white p-4 text-[15px] text-[#FF3B30] flex items-center gap-3">
+          <div className="mx-4 mt-4 rounded-[12px] bg-[var(--bg-grouped-2)] p-4 text-[15px] text-[#FF3B30] flex items-center gap-3">
             <span className="flex-1">{error}</span>
             <button
               type="button"
               onClick={() => firebaseUser && load(firebaseUser.uid)}
-              className="text-[15px] font-semibold text-[#007AFF]"
+              className="text-[15px] font-semibold text-[var(--soul)]"
             >
               {t("common.retry")}
             </button>
@@ -172,7 +172,7 @@ export default function WinsHistoryPage() {
                   <div className="px-7 mb-1.5 text-[13px] uppercase tracking-[-0.08px] text-[var(--label-2)]">
                     {header}
                   </div>
-                  <div className="mx-4 bg-white rounded-[12px] overflow-hidden">
+                  <div className="mx-4 bg-[var(--bg-grouped-2)] rounded-[12px] overflow-hidden">
                     {filledWins.map((win, i) => {
                       const isLast = i === filledWins.length - 1;
                       return (
@@ -191,7 +191,7 @@ export default function WinsHistoryPage() {
                               {String(i + 1).padStart(2, "0")}
                             </span>
                           </div>
-                          <p className="flex-1 text-[17px] leading-[24px] tracking-[-0.43px] text-black whitespace-pre-wrap py-1">
+                          <p className="flex-1 text-[17px] leading-[24px] tracking-[-0.43px] text-[var(--label)] whitespace-pre-wrap py-1">
                             {win}
                           </p>
                           {!isLast && (

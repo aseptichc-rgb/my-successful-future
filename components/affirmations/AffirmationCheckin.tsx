@@ -119,10 +119,10 @@ export default function AffirmationCheckin({
   if (affirmations.length === 0) return null;
 
   return (
-    <div className="bg-white rounded-[12px] overflow-hidden">
+    <div className="bg-[var(--bg-grouped-2)] rounded-[12px] overflow-hidden">
       {/* Card header — Title + streak chip */}
       <div className="flex items-center justify-between px-5 pt-4 pb-2">
-        <span className="text-[17px] font-semibold tracking-[-0.43px] text-black">
+        <span className="text-[17px] font-semibold tracking-[-0.43px] text-[var(--label)]">
           {t("motivation.affirmations.title")}
         </span>
         <span
@@ -215,7 +215,7 @@ export default function AffirmationCheckin({
                   onBlur={() => handleBlur(idx)}
                   aria-label={`${idx + 1}번 다짐 — ${target}`}
                   aria-invalid={showHint || undefined}
-                  className="w-full bg-transparent border-b py-1 text-[17px] leading-[22px] tracking-[-0.43px] text-black placeholder:text-[var(--label-3)] focus:outline-none transition-colors"
+                  className="w-full bg-transparent border-b py-1 text-[17px] leading-[22px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none transition-colors"
                   style={{
                     borderColor,
                     borderStyle: showHint ? "dashed" : "solid",
@@ -251,7 +251,7 @@ export default function AffirmationCheckin({
             type="button"
             onClick={handleSubmit}
             disabled={submitting || !allFilled}
-            className="text-[15px] font-semibold text-[#007AFF] disabled:opacity-30"
+            className="text-[15px] font-semibold text-[var(--soul)] disabled:opacity-30"
           >
             {submitting
               ? t("motivation.affirmations.checkingIn")

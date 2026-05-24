@@ -100,7 +100,7 @@ function IconChevron() {
 function IconBack() {
   return (
     <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
-      <path d="M14 4l-7 7 7 7" stroke="#007AFF" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M14 4l-7 7 7 7" stroke="#D85A30" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -123,7 +123,7 @@ function GroupedSection({
           {header}
         </div>
       )}
-      <div className="mx-4 bg-white rounded-[12px] overflow-hidden">{children}</div>
+      <div className="mx-4 bg-[var(--bg-grouped-2)] rounded-[12px] overflow-hidden">{children}</div>
       {footer && (
         <p className="px-7 mt-1.5 text-[13px] tracking-[-0.08px] text-[var(--label-2)]">{footer}</p>
       )}
@@ -225,7 +225,7 @@ export default function SettingsPage() {
 
   if (authLoading || !firebaseUser) {
     return (
-      <div className="flex h-full items-center justify-center bg-[#F2F2F7]">
+      <div className="flex h-full items-center justify-center bg-[var(--bg-grouped)]">
         <div className="h-6 w-6 animate-spin rounded-full border-[1.5px] border-black/10 border-t-[#007AFF]" />
       </div>
     );
@@ -337,15 +337,15 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto bg-[#F2F2F7] pb-16">
+    <div className="flex h-full flex-col overflow-y-auto bg-[var(--bg-grouped)] pb-16">
       {/* Large Title nav */}
-      <header className="pt-3 pb-2 bg-[#F2F2F7]">
+      <header className="pt-3 pb-2 bg-[var(--bg-grouped)]">
         <div className="mx-auto max-w-3xl px-2 min-h-[44px] flex items-center">
           <button
             type="button"
             onClick={() => router.push("/home")}
             aria-label={t("home.title")}
-            className="inline-flex items-center gap-1 text-[#007AFF] text-[17px] tracking-[-0.43px] px-1 py-2"
+            className="inline-flex items-center gap-1 text-[var(--soul)] text-[17px] tracking-[-0.43px] px-1 py-2"
           >
             <IconBack />
             <span>{t("home.title")}</span>
@@ -357,7 +357,7 @@ export default function SettingsPage() {
       </header>
 
       {/* Profile hero card */}
-      <div className="mx-4 mt-4 bg-white rounded-[12px] p-4 flex items-center gap-4">
+      <div className="mx-4 mt-4 bg-[var(--bg-grouped-2)] rounded-[12px] p-4 flex items-center gap-4">
         <div
           className="w-14 h-14 rounded-full flex items-center justify-center text-white text-[22px] font-semibold tracking-[-0.5px]"
           style={{
@@ -369,7 +369,7 @@ export default function SettingsPage() {
           {userInitial}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[17px] font-semibold tracking-[-0.43px] text-black truncate">
+          <div className="text-[17px] font-semibold tracking-[-0.43px] text-[var(--label)] truncate">
             {userName}
           </div>
           <div className="text-[13px] tracking-[-0.08px] text-[var(--label-2)] truncate">
@@ -489,7 +489,7 @@ export default function SettingsPage() {
             rows={6}
             maxLength={FUTURE_PERSONA_MAX}
             placeholder={t("onboarding.step1.placeholder")}
-            className="w-full mt-2 resize-none rounded-[12px] border border-[var(--sep)] bg-white px-4 py-3 text-[17px] leading-[24px] tracking-[-0.43px] text-black placeholder:text-[var(--label-3)] focus:outline-none focus:border-[#007AFF]"
+            className="w-full mt-2 resize-none rounded-[12px] border border-[var(--sep)] bg-[var(--bg-grouped-2)] px-4 py-3 text-[17px] leading-[24px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none focus:border-[var(--soul)]"
           />
           <div className="flex justify-between mt-3">
             <span className="text-[12px] text-[var(--label-3)]">
@@ -499,7 +499,7 @@ export default function SettingsPage() {
               type="button"
               onClick={handleSaveFuture}
               disabled={futureSaving}
-              className="text-[17px] font-semibold text-[#007AFF] disabled:opacity-40"
+              className="text-[17px] font-semibold text-[var(--soul)] disabled:opacity-40"
             >
               {futureSaving ? t("common.saving") : t("common.save")}
             </button>
@@ -510,7 +510,7 @@ export default function SettingsPage() {
       {/* ── Goals sheet ── */}
       {goalsOpen && (
         <Sheet onClose={() => setGoalsOpen(false)} title={t("home.goals.title")}>
-          <div className="bg-white rounded-[12px] overflow-hidden mt-2">
+          <div className="bg-[var(--bg-grouped-2)] rounded-[12px] overflow-hidden mt-2">
             {goals.map((g, i) => {
               const isLast = i === goals.length - 1;
               return (
@@ -527,7 +527,7 @@ export default function SettingsPage() {
                     onChange={(e) =>
                       setGoals(goals.map((x, j) => (j === i ? e.target.value : x)))
                     }
-                    className="flex-1 bg-transparent text-[17px] tracking-[-0.43px] text-black focus:outline-none py-2"
+                    className="flex-1 bg-transparent text-[17px] tracking-[-0.43px] text-[var(--label)] focus:outline-none py-2"
                   />
                   <button
                     type="button"
@@ -556,7 +556,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={handleSaveGoals}
-              className="text-[17px] font-semibold text-[#007AFF]"
+              className="text-[17px] font-semibold text-[var(--soul)]"
             >
               {t("common.save")}
             </button>
@@ -582,7 +582,7 @@ export default function SettingsPage() {
               type="button"
               onClick={handleSaveAffirmations}
               disabled={affirmationsSaving}
-              className="text-[17px] font-semibold text-[#007AFF] disabled:opacity-40"
+              className="text-[17px] font-semibold text-[var(--soul)] disabled:opacity-40"
             >
               {affirmationsSaving ? t("common.saving") : t("common.save")}
             </button>
@@ -593,17 +593,17 @@ export default function SettingsPage() {
       {/* ── Author sheet ── */}
       {authorOpen && (
         <Sheet onClose={() => setAuthorOpen(false)} title={t("settings.quote.pinnedAuthor") || "좋아하는 인물"}>
-          <div className="mt-2 bg-white rounded-[12px] overflow-hidden">
+          <div className="mt-2 bg-[var(--bg-grouped-2)] rounded-[12px] overflow-hidden">
             <button
               type="button"
               onClick={() => setPinnedAuthor("")}
               className={`w-full px-4 py-3 text-left text-[17px] flex items-center justify-between ${
-                pinnedAuthor === "" ? "text-[#007AFF] font-semibold" : "text-black"
+                pinnedAuthor === "" ? "text-[var(--soul)] font-semibold" : "text-[var(--label)]"
               }`}
             >
               <span>{t("common.none") || "없음"}</span>
               {pinnedAuthor === "" && (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#007AFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D85A30" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M5 12l5 5L20 7" />
                 </svg>
               )}
@@ -617,12 +617,12 @@ export default function SettingsPage() {
                   type="button"
                   onClick={() => setPinnedAuthor(a)}
                   className={`w-full relative px-4 py-3 text-left text-[17px] flex items-center justify-between ${
-                    selected ? "text-[#007AFF] font-semibold" : "text-black"
+                    selected ? "text-[var(--soul)] font-semibold" : "text-[var(--label)]"
                   }`}
                 >
                   <span>{a}</span>
                   {selected && (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#007AFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D85A30" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M5 12l5 5L20 7" />
                     </svg>
                   )}
@@ -637,7 +637,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={handleSaveQuotePreference}
-              className="text-[17px] font-semibold text-[#007AFF]"
+              className="text-[17px] font-semibold text-[var(--soul)]"
             >
               {t("common.save")}
             </button>
@@ -655,7 +655,7 @@ export default function SettingsPage() {
             value={deleteConfirmText}
             onChange={(e) => setDeleteConfirmText(e.target.value)}
             placeholder="삭제"
-            className="w-full mt-3 rounded-[12px] border border-[var(--sep)] bg-white px-4 py-3 text-[17px] tracking-[-0.43px] text-black placeholder:text-[var(--label-3)] focus:outline-none focus:border-[#FF3B30]"
+            className="w-full mt-3 rounded-[12px] border border-[var(--sep)] bg-[var(--bg-grouped-2)] px-4 py-3 text-[17px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none focus:border-[#FF3B30]"
           />
           <button
             type="button"
@@ -692,7 +692,7 @@ function Sheet({
         aria-label="close"
         className="flex-1 bg-black/40"
       />
-      <div className="bg-[#F2F2F7] rounded-t-[14px] pb-8 safe-pb max-h-[90vh] overflow-y-auto">
+      <div className="bg-[var(--bg-grouped)] rounded-t-[14px] pb-8 safe-pb max-h-[90vh] overflow-y-auto">
         <div className="flex justify-center pt-2.5 pb-3">
           <div className="w-9 h-[5px] rounded-full bg-[#C7C7CC]" />
         </div>
@@ -700,11 +700,11 @@ function Sheet({
           <button
             type="button"
             onClick={onClose}
-            className="text-[17px] tracking-[-0.43px] text-[#007AFF]"
+            className="text-[17px] tracking-[-0.43px] text-[var(--soul)]"
           >
             취소
           </button>
-          <span className="text-[17px] font-semibold tracking-[-0.43px] text-black">{title}</span>
+          <span className="text-[17px] font-semibold tracking-[-0.43px] text-[var(--label)]">{title}</span>
           <div className="w-12" />
         </div>
         <div className="px-4">{children}</div>
