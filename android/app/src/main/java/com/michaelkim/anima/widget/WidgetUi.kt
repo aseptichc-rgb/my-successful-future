@@ -68,6 +68,10 @@ private val WIDE_THRESHOLD_DP = 220.dp
 // 두 번째·세 번째 행이 그대로 잘려 나가므로, 이 임계치 미만에서는 콤팩트 아이콘 행으로 폴백한다.
 private val TALL_THRESHOLD_DP = 200.dp
 
+// 사용자가 위젯을 "위아래로 크게" 늘렸을 때(QuoteWidget 의 250x320 변형) "나의 목표" 블록을
+// 체크리스트 아래에 추가로 노출. large(250x250) 까지는 기존 레이아웃 유지.
+private val EXTRA_TALL_THRESHOLD_DP = 280.dp
+
 // 매직 넘버 제거용 디자인 토큰.
 private const val ALPHA_QUOTE_GLYPH = 0.20f
 private const val ALPHA_SECONDARY = 0.55f
@@ -94,6 +98,14 @@ private val DIVIDER_SPACER = 10.dp
 private val PROGRESS_ROW_V_PADDING = 6.dp
 private val PROGRESS_ROW_GAP = 5.dp
 
+// "나의 목표" 블록 토큰 — 위젯이 매우 클 때만 노출.
+// 라벨은 lib/i18n/dictionaries/ko.ts 의 "motivation.wallpaper.goalsLabel" 와 동기화.
+private const val GOALS_LABEL = "나의 목표"
+private const val MAX_GOALS_ON_WIDGET = 3
+private const val ALPHA_GOAL_LABEL = 0.55f
+private const val ALPHA_GOAL_TEXT = 0.88f
+private val GOAL_ROW_GAP = 3.dp
+
 @Composable
 fun WidgetContent(slot: WidgetSlot?, progress: WidgetTodayProgress?, ymd: String?) {
     val context = LocalContext.current
@@ -101,6 +113,8 @@ fun WidgetContent(slot: WidgetSlot?, progress: WidgetTodayProgress?, ymd: String
     val isWide = size.width >= WIDE_THRESHOLD_DP
     // 라벨 리스트는 가로뿐 아니라 세로 공간도 충분해야 펼친다 — 그렇지 않으면 클립 발생.
     val isTall = size.height >= TALL_THRESHOLD_DP
+    // 사용자가 위젯을 위아래로 더 늘린 경우 "나의 목표" 블록까지 노출.
+    val isExtraTall = size.height >= EXTRA_TALL_THRESHOLD_DP
     val isLight = slot?.gradient?.tone == "light"
 
     val cardRes = if (isLight) R.drawable.widget_card_light else R.drawable.widget_card_dark
@@ -132,7 +146,7 @@ fun WidgetContent(slot: WidgetSlot?, progress: WidgetTodayProgress?, ymd: String
             EmptyState(textPrimary)
             return@Box
         }
-        LoadedContent(slot, progress, isWide, isTall, isLight, textPrimary)
+        LoadedContent(slot, progress, isWide, isTall, isExtraTall, isLight, textPrimary)
     }
 }
 
@@ -171,6 +185,7 @@ private fun LoadedContent(
     progress: WidgetTodayProgress?,
     isWide: Boolean,
     isTall: Boolean,
+    isExtraTall: Boolean,
     isLight: Boolean,
     textPrimary: Color,
 ) {
@@ -250,6 +265,51 @@ private fun LoadedContent(
             } else {
                 ProgressIconsCompact(progress, isLight, textPrimary)
             }
+        }
+        // 사용자가 위젯을 위아래로 크게 늘렸을 때만 "나의 목표" 블록을 추가 노출.
+        // 가로 폭도 충분해야 한 줄 텍스트가 클립 없이 들어간다.
+        if (isExtraTall && isWide && slot.goalsSnapshot.isNotEmpty()) {
+            Spacer(GlanceModifier.height(DIVIDER_SPACER))
+            Box(
+                modifier = GlanceModifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(ColorProvider(textPrimary.copy(alpha = ALPHA_DIVIDER))),
+            ) {}
+            Spacer(GlanceModifier.height(DIVIDER_SPACER))
+            GoalsBlock(slot.goalsSnapshot, textPrimary)
+        }
+    }
+}
+
+/**
+ * "나의 목표" 블록 — 위젯이 위아래로 크게 늘어났을 때만 노출.
+ * goalsSnapshot 은 최대 3개까지 안전히 슬라이스. 빈 입력은 호출 측에서 거른다.
+ */
+@Composable
+private fun GoalsBlock(goals: List<String>, textPrimary: Color) {
+    Column(modifier = GlanceModifier.fillMaxWidth()) {
+        Text(
+            text = GOALS_LABEL,
+            style = TextStyle(
+                color = ColorProvider(textPrimary.copy(alpha = ALPHA_GOAL_LABEL)),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Medium,
+            ),
+            maxLines = 1,
+        )
+        Spacer(GlanceModifier.height(4.dp))
+        goals.take(MAX_GOALS_ON_WIDGET).forEachIndexed { index, goal ->
+            if (index > 0) Spacer(GlanceModifier.height(GOAL_ROW_GAP))
+            Text(
+                text = "${index + 1}. $goal",
+                style = TextStyle(
+                    color = ColorProvider(textPrimary.copy(alpha = ALPHA_GOAL_TEXT)),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                ),
+                maxLines = 1,
+            )
         }
     }
 }

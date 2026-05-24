@@ -22,6 +22,9 @@ class QuoteWidget : GlanceAppWidget() {
             DpSize(120.dp, 120.dp), // small (2x2)
             DpSize(250.dp, 120.dp), // medium (4x2)
             DpSize(250.dp, 250.dp), // large (4x4)
+            // 사용자가 위젯을 위아래로 크게 늘렸을 때(약 4x5 이상) "나의 목표" 블록을
+            // 추가로 노출하기 위한 변형. WidgetUi 가 EXTRA_TALL_THRESHOLD_DP 로 판별.
+            DpSize(250.dp, 320.dp), // extra tall (4x5+)
         ),
     )
 
