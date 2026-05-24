@@ -18,11 +18,17 @@ export default function AffirmationsEditor({
   onChange,
   disabled = false,
   className = "",
+  max = MAX_SUCCESS_AFFIRMATIONS,
 }: {
   value: string[];
   onChange: (next: string[]) => void;
   disabled?: boolean;
   className?: string;
+  /**
+   * 최대 다짐 개수. 미지정 시 기본값은 `MAX_SUCCESS_AFFIRMATIONS`.
+   * 호출부가 명시적으로 다른 한도를 부여하고 싶을 때만 넘긴다.
+   */
+  max?: number;
 }) {
   const t = useT();
   const [newDraft, setNewDraft] = useState("");
@@ -30,7 +36,7 @@ export default function AffirmationsEditor({
   const addRow = () => {
     const text = newDraft.trim().slice(0, SUCCESS_AFFIRMATION_MAX_LEN);
     if (!text) return;
-    if (value.length >= MAX_SUCCESS_AFFIRMATIONS) return;
+    if (value.length >= max) return;
     onChange([...value, text]);
     setNewDraft("");
   };
@@ -112,7 +118,7 @@ export default function AffirmationsEditor({
         </ul>
       )}
 
-      {value.length < MAX_SUCCESS_AFFIRMATIONS && (
+      {value.length < max && (
         <div className="mt-3 flex items-center gap-2">
           <input
             value={newDraft}
@@ -140,7 +146,7 @@ export default function AffirmationsEditor({
       )}
 
       <p className="mt-2 text-right text-[11px] tracking-[-0.01em] text-black/40">
-        {value.length}/{MAX_SUCCESS_AFFIRMATIONS} · {t("affirmations.editor.maxNote", { max: MAX_SUCCESS_AFFIRMATIONS, len: SUCCESS_AFFIRMATION_MAX_LEN })}
+        {value.length}/{max} · {t("affirmations.editor.maxNote", { max, len: SUCCESS_AFFIRMATION_MAX_LEN })}
       </p>
     </div>
   );

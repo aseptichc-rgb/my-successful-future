@@ -23,6 +23,11 @@ export interface LocaleMeta {
   code: Locale;
   /** 자기 언어로 표기한 라벨 — 언어 선택 화면에서 사용. */
   nativeLabel: string;
+  /**
+   * `nativeLabel` 의 짧은 별칭. 설정 페이지 등 호출부 가독성 위해 같이 노출한다.
+   * 두 필드는 항상 동일한 값이어야 한다(아래 LOCALE_META 가 보장).
+   */
+  label: string;
   /** 영어 라벨 — 디버그/관리자 노출용. */
   englishLabel: string;
   /** 깃발 이모지(시각 단서). */
@@ -37,6 +42,7 @@ export const LOCALE_META: Readonly<Record<Locale, LocaleMeta>> = {
   ko: {
     code: "ko",
     nativeLabel: "한국어",
+    label: "한국어",
     englishLabel: "Korean",
     flag: "🇰🇷",
     geminiName: "Korean",
@@ -45,6 +51,7 @@ export const LOCALE_META: Readonly<Record<Locale, LocaleMeta>> = {
   en: {
     code: "en",
     nativeLabel: "English",
+    label: "English",
     englishLabel: "English",
     flag: "🇺🇸",
     geminiName: "English",
@@ -53,6 +60,7 @@ export const LOCALE_META: Readonly<Record<Locale, LocaleMeta>> = {
   es: {
     code: "es",
     nativeLabel: "Español",
+    label: "Español",
     englishLabel: "Spanish",
     flag: "🇪🇸",
     geminiName: "Spanish",
@@ -61,6 +69,7 @@ export const LOCALE_META: Readonly<Record<Locale, LocaleMeta>> = {
   zh: {
     code: "zh",
     nativeLabel: "中文",
+    label: "中文",
     englishLabel: "Chinese (Simplified)",
     flag: "🇨🇳",
     geminiName: "Simplified Chinese",
