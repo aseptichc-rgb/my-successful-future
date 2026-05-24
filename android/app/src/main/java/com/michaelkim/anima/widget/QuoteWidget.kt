@@ -7,8 +7,6 @@
 package com.michaelkim.anima.widget
 
 import android.content.Context
-import androidx.compose.ui.unit.DpSize
-import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
@@ -17,16 +15,12 @@ import com.michaelkim.anima.data.QuoteRepository
 
 class QuoteWidget : GlanceAppWidget() {
 
-    override val sizeMode = SizeMode.Responsive(
-        setOf(
-            DpSize(120.dp, 120.dp), // small (2x2)
-            DpSize(250.dp, 120.dp), // medium (4x2)
-            DpSize(250.dp, 250.dp), // large (4x4)
-            // 사용자가 위젯을 위아래로 크게 늘렸을 때(약 4x5 이상) "나의 목표" 블록을
-            // 추가로 노출하기 위한 변형. WidgetUi 가 EXTRA_TALL_THRESHOLD_DP 로 판별.
-            DpSize(250.dp, 320.dp), // extra tall (4x5+)
-        ),
-    )
+    // Responsive 는 미리 정의한 변형 중 하나를 호스트가 고르는데, 큰 화면에서도 320dp
+    // 변형이 안 골라지는 경우가 있어 "나의 목표" 블록이 트리거되지 않았다.
+    // Exact 모드로 바꿔 위젯이 차지한 실제 dp 를 그대로 받게 한다 — WidgetUi 의
+    // EXTRA_TALL_THRESHOLD_DP(280dp) 임계치가 실제 사이즈로 평가된다.
+    // 비용: 사이즈가 바뀔 때마다 provideGlance 재호출되지만 위젯 리사이즈 빈도가 낮아 부담 없음.
+    override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val cached = QuoteRepository.getCached(context)

@@ -102,9 +102,7 @@ private val PROGRESS_ROW_GAP = 5.dp
 // 라벨은 lib/i18n/dictionaries/ko.ts 의 "motivation.wallpaper.goalsLabel" 와 동기화.
 private const val GOALS_LABEL = "나의 목표"
 private const val MAX_GOALS_ON_WIDGET = 3
-private const val ALPHA_GOAL_LABEL = 0.55f
 private const val ALPHA_GOAL_TEXT = 0.88f
-private val GOAL_ROW_GAP = 3.dp
 
 @Composable
 fun WidgetContent(slot: WidgetSlot?, progress: WidgetTodayProgress?, ymd: String?) {
@@ -190,11 +188,12 @@ private fun LoadedContent(
     textPrimary: Color,
 ) {
     Column(modifier = GlanceModifier.fillMaxSize()) {
-        // 인용구 영역을 weight 로 묶어 "남는 공간"만 차지하게 한다.
-        // 이렇게 두면 체크리스트 3행이 항상 자연 크기로 먼저 자리를 잡고, 명언 본문/원문은
-        // 남는 만큼만 그려진 뒤 maxLines 로 말줄임된다 — 과거처럼 체크리스트 2·3행이
-        // 위젯 바깥으로 잘려 나가는 사고를 차단한다.
-        Column(modifier = GlanceModifier.fillMaxWidth().defaultWeight()) {
+        // 모든 자식을 자기 자연 크기로 위쪽 정렬해 쌓는다. defaultWeight() 를 쓰면
+        // AppWidgetManager 가 보고한 위젯 사이즈와 호스트(One UI 등)의 실제 가시 영역이
+        // 어긋날 때, weight 자식이 남는 공간을 다 차지하면서 그 아래 형제(체크리스트·
+        // 목표 블록)가 가시 영역 밖으로 잘려 나가는 사고가 났다. 자연 크기 + 위쪽 정렬은
+        // 아래에 빈 공간이 생길 수 있지만 잘림 위험은 0.
+        Column(modifier = GlanceModifier.fillMaxWidth()) {
             // 인용구 글리프 — 명언임을 직관적으로 인지시키는 그래픽 요소.
             Text(
                 text = "“",
@@ -268,47 +267,28 @@ private fun LoadedContent(
         }
         // 사용자가 위젯을 위아래로 크게 늘렸을 때만 "나의 목표" 블록을 추가 노출.
         // 가로 폭도 충분해야 한 줄 텍스트가 클립 없이 들어간다.
+        // 사용자가 위젯을 위아래로 크게 늘렸을 때만 "나의 목표" 블록 노출.
+        // 실측: Glance→RemoteViews 변환이 이 if 분기 안에 자식이 2개 이상이면 두 번째부터
+        // 통째로 누락한다(라벨 Text 는 보이지만 다음 Text 가 사라짐). 그래서 라벨 + 목표 1·2·3
+        // 을 단일 Text 의 여러 줄(\n) 로 합쳐 자식 1개로 구성한다 — 스타일 분리는 포기하되
+        // 사용자가 큰 위젯에서 목표를 확인할 수 있는 가시성을 100% 보장한다.
         if (isExtraTall && isWide && slot.goalsSnapshot.isNotEmpty()) {
-            Spacer(GlanceModifier.height(DIVIDER_SPACER))
-            Box(
-                modifier = GlanceModifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(ColorProvider(textPrimary.copy(alpha = ALPHA_DIVIDER))),
-            ) {}
-            Spacer(GlanceModifier.height(DIVIDER_SPACER))
-            GoalsBlock(slot.goalsSnapshot, textPrimary)
-        }
-    }
-}
-
-/**
- * "나의 목표" 블록 — 위젯이 위아래로 크게 늘어났을 때만 노출.
- * goalsSnapshot 은 최대 3개까지 안전히 슬라이스. 빈 입력은 호출 측에서 거른다.
- */
-@Composable
-private fun GoalsBlock(goals: List<String>, textPrimary: Color) {
-    Column(modifier = GlanceModifier.fillMaxWidth()) {
-        Text(
-            text = GOALS_LABEL,
-            style = TextStyle(
-                color = ColorProvider(textPrimary.copy(alpha = ALPHA_GOAL_LABEL)),
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Medium,
-            ),
-            maxLines = 1,
-        )
-        Spacer(GlanceModifier.height(4.dp))
-        goals.take(MAX_GOALS_ON_WIDGET).forEachIndexed { index, goal ->
-            if (index > 0) Spacer(GlanceModifier.height(GOAL_ROW_GAP))
+            val combined = buildString {
+                append(GOALS_LABEL)
+                slot.goalsSnapshot.take(MAX_GOALS_ON_WIDGET).forEachIndexed { i, g ->
+                    append('\n')
+                    append("${i + 1}. $g")
+                }
+            }
             Text(
-                text = "${index + 1}. $goal",
+                text = combined,
                 style = TextStyle(
                     color = ColorProvider(textPrimary.copy(alpha = ALPHA_GOAL_TEXT)),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                 ),
-                maxLines = 1,
+                // 라벨 1줄 + 목표 최대 3줄.
+                maxLines = 1 + MAX_GOALS_ON_WIDGET,
             )
         }
     }
