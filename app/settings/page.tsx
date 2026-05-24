@@ -162,7 +162,7 @@ function SettingsRow({
       </div>
       <div
         className="flex-1 py-[11px] text-[17px] leading-[22px] tracking-[-0.43px]"
-        style={{ color: destructive ? "#FF3B30" : "#000" }}
+        style={{ color: destructive ? "#FF3B30" : "var(--label)" }}
       >
         {title}
       </div>
@@ -226,7 +226,7 @@ export default function SettingsPage() {
   if (authLoading || !firebaseUser) {
     return (
       <div className="flex h-full items-center justify-center bg-[var(--bg-grouped)]">
-        <div className="h-6 w-6 animate-spin rounded-full border-[1.5px] border-black/10 border-t-[#007AFF]" />
+        <div className="h-6 w-6 animate-spin rounded-full border-[1.5px] border-black/10 border-t-[#D85A30]" />
       </div>
     );
   }
@@ -362,7 +362,7 @@ export default function SettingsPage() {
           className="w-14 h-14 rounded-full flex items-center justify-center text-white text-[22px] font-semibold tracking-[-0.5px]"
           style={{
             background:
-              "linear-gradient(135deg, #007AFF 0%, #5856D6 60%, #AF52DE 100%)",
+              "linear-gradient(135deg, #1E1B4B 0%, #2A2766 100%)",
             boxShadow: "0 4px 12px rgba(88,86,214,0.25)",
           }}
         >
@@ -380,10 +380,10 @@ export default function SettingsPage() {
               className="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
               style={{ background: "rgba(255,149,0,0.16)" }}
             >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="#FF9500" aria-hidden>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="#D85A30" aria-hidden>
                 <path d="M13 2L4.5 13.5h6L9 22l8.5-11.5h-6L13 2z" />
               </svg>
-              <span className="text-[12px] font-semibold tracking-[0.4px] text-[#FF9500]">
+              <span className="text-[12px] font-semibold tracking-[0.4px] text-[#D85A30]">
                 {t("settings.streakLabel", { count: streakCount }) || `STREAK ${streakCount}일`}
               </span>
             </div>
@@ -395,21 +395,21 @@ export default function SettingsPage() {
         {/* 프로필 */}
         <GroupedSection header={t("settings.profile.header") || "프로필"}>
           <SettingsRow
-            color="#5856D6"
+            color="#1E1B4B"
             glyph={G.user}
             title={t("home.future.title")}
             detail={user?.futurePersona ? t("common.set") || "작성됨" : t("common.empty") || "비어있음"}
             onClick={() => setFutureOpen(true)}
           />
           <SettingsRow
-            color="#34C759"
+            color="#D85A30"
             glyph={G.target}
             title={t("home.goals.title")}
             detail={`${goalCount}`}
             onClick={() => setGoalsOpen(true)}
           />
           <SettingsRow
-            color="#FF9500"
+            color="#D85A30"
             glyph={G.spark}
             title={t("settings.affirmations.header") || "성공한 나의 모습 다짐"}
             detail={`${affirmations.length}`}
@@ -421,14 +421,14 @@ export default function SettingsPage() {
         {/* 카드 환경설정 */}
         <GroupedSection header={t("settings.quote.header") || "카드"}>
           <SettingsRow
-            color="#AF52DE"
+            color="#1E1B4B"
             glyph={G.book}
             title={t("settings.quote.pinnedAuthor") || "좋아하는 인물"}
             detail={pinnedAuthor || t("common.none") || "없음"}
             onClick={() => setAuthorOpen(true)}
           />
           <SettingsRow
-            color="#32ADE6"
+            color="#1E1B4B"
             glyph={G.globe}
             title={t("settings.language.header") || "언어"}
             detail={LOCALE_META[locale]?.label || locale}
@@ -518,7 +518,7 @@ export default function SettingsPage() {
                   key={i}
                   className="relative flex items-center gap-3 px-4 min-h-[52px]"
                 >
-                  <span className="text-[15px] font-bold w-7 text-center text-[#5856D6]">
+                  <span className="text-[15px] font-bold w-7 text-center text-[#1E1B4B]">
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <input
@@ -546,7 +546,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={() => setGoals([...goals, ""])}
-                className="block w-full text-left px-4 py-3 text-[17px] text-[#34C759]"
+                className="block w-full text-left px-4 py-3 text-[17px] text-[#D85A30]"
               >
                 ＋ {t("common.add")}
               </button>

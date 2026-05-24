@@ -39,9 +39,8 @@ const WINS_AUTOSAVE_MS = 600;
 const WINS_SAVED_TOAST_MS = 1800;
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-// Three category colors for the 3 affirmations / 3 wins / 3 goals slots.
-// 다짐·작은 승리·목표 모두 같은 컬러 시퀀스를 써 시각 일관성 유지.
-const SLOT_COLORS = ["#5856D6", "#34C759", "#FF2D55"];
+// 3개 슬롯(다짐·작은 승리·목표) 배지는 모두 동일 indigo — 차분한 인상.
+const SLOT_COLORS = ["#1E1B4B", "#1E1B4B", "#1E1B4B"];
 
 function readQDateFromUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -306,7 +305,7 @@ export default function HomeDashboardPage() {
   if (loading || !firebaseUser) {
     return (
       <div className="flex h-full items-center justify-center bg-[var(--bg-grouped)]">
-        <div className="h-6 w-6 animate-spin rounded-full border-[1.5px] border-black/10 border-t-[#007AFF]" />
+        <div className="h-6 w-6 animate-spin rounded-full border-[1.5px] border-black/10 border-t-[#D85A30]" />
       </div>
     );
   }
@@ -467,10 +466,10 @@ export default function HomeDashboardPage() {
             {streakCount > 0 && (
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
                 style={{ background: "rgba(255,149,0,0.16)" }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="#FF9500" aria-hidden>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="#D85A30" aria-hidden>
                   <path d="M13 2L4.5 13.5h6L9 22l8.5-11.5h-6L13 2z" />
                 </svg>
-                <span className="text-[12px] font-semibold tracking-[0.4px] text-[#FF9500]">
+                <span className="text-[12px] font-semibold tracking-[0.4px] text-[#D85A30]">
                   {streakCount}
                 </span>
               </div>
@@ -698,7 +697,7 @@ export default function HomeDashboardPage() {
                                 (e.currentTarget as HTMLInputElement).blur();
                               }
                             }}
-                            className="w-full bg-transparent text-[17px] leading-[22px] tracking-[-0.43px] text-[var(--label)] focus:outline-none border-b border-dashed border-[var(--sep)] focus:border-[var(--blue)]"
+                            className="w-full bg-transparent text-[17px] leading-[22px] tracking-[-0.43px] text-[var(--label)] focus:outline-none border-b border-dashed border-[var(--sep)] focus:border-[#D85A30]"
                           />
                         ) : (
                           <div
@@ -748,7 +747,7 @@ export default function HomeDashboardPage() {
                 <div className="relative flex items-center gap-3 px-4 min-h-[52px]">
                   <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0"
                     style={{ background: "rgba(52,199,89,0.15)" }}>
-                    <span className="text-[20px] leading-none text-[#34C759]">＋</span>
+                    <span className="text-[20px] leading-none text-[#D85A30]">＋</span>
                   </div>
                   <input
                     value={goalDraft}
@@ -767,7 +766,7 @@ export default function HomeDashboardPage() {
                     type="button"
                     onClick={handleAddGoal}
                     disabled={!goalDraft.trim()}
-                    className="text-[15px] font-semibold text-[#34C759] disabled:opacity-30"
+                    className="text-[15px] font-semibold text-[#D85A30] disabled:opacity-30"
                   >
                     {t("common.add")}
                   </button>
@@ -783,7 +782,7 @@ export default function HomeDashboardPage() {
                   {winsError ? (
                     <span className="text-[13px] text-[#FF3B30]">{winsError}</span>
                   ) : winsJustSaved ? (
-                    <span className="text-[13px] font-medium text-[#34C759]">
+                    <span className="text-[13px] font-medium text-[#D85A30]">
                       {t("common.saved")}
                     </span>
                   ) : winsAutoSaving ? (

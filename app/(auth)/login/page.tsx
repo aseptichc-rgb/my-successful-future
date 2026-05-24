@@ -43,7 +43,7 @@ function LogoLockup() {
       <div
         className="w-24 h-24 rounded-[28px] flex items-center justify-center"
         style={{
-          background: "linear-gradient(135deg, #FF9500 0%, #FF2D55 50%, #AF52DE 100%)",
+          background: "linear-gradient(135deg, #D85A30 0%, #BE4B26 100%)",
           boxShadow: "0 12px 28px rgba(175,82,222,0.28)",
         }}
       >
@@ -65,7 +65,7 @@ function LogoLockup() {
               top: -2,
               width: 5,
               height: 5,
-              background: "#FF9500",
+              background: "#D85A30",
             }}
           />
         </span>

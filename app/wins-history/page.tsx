@@ -14,7 +14,7 @@ import { useLanguage } from "@/lib/i18n";
  * ───────────────────────────────────────────────────────────────── */
 
 // Day-of-week color rotation (iOS palette).
-const DAY_COLORS = ["#34C759", "#FF9500", "#FF2D55", "#AF52DE", "#32ADE6", "#5856D6", "#FFCC00"];
+const DAY_COLORS = ["#D85A30", "#D85A30", "#1E1B4B", "#1E1B4B", "#1E1B4B", "#1E1B4B", "#FFCC00"];
 
 function formatKstDate(ymd: string, locale: string): string {
   const [y, m, d] = ymd.split("-").map((s) => parseInt(s, 10));
@@ -89,7 +89,7 @@ export default function WinsHistoryPage() {
   if (authLoading || !firebaseUser) {
     return (
       <div className="flex h-full items-center justify-center bg-[var(--bg-grouped)]">
-        <div className="h-6 w-6 animate-spin rounded-full border-[1.5px] border-black/10 border-t-[#007AFF]" />
+        <div className="h-6 w-6 animate-spin rounded-full border-[1.5px] border-black/10 border-t-[#D85A30]" />
       </div>
     );
   }
@@ -122,7 +122,7 @@ export default function WinsHistoryPage() {
       <main className="mx-auto w-full max-w-3xl">
         {loading && (
           <div className="flex items-center justify-center py-12">
-            <div className="h-6 w-6 animate-spin rounded-full border-[1.5px] border-black/10 border-t-[#007AFF]" />
+            <div className="h-6 w-6 animate-spin rounded-full border-[1.5px] border-black/10 border-t-[#D85A30]" />
           </div>
         )}
 
@@ -144,8 +144,8 @@ export default function WinsHistoryPage() {
             <div
               className="mx-auto w-16 h-16 rounded-[18px] flex items-center justify-center mb-4"
               style={{
-                background: "linear-gradient(135deg, #34C759 0%, #00C7BE 100%)",
-                boxShadow: "0 6px 18px rgba(52,199,89,0.24)",
+                background: "linear-gradient(135deg, #1E1B4B 0%, #2A2766 100%)",
+                boxShadow: "0 6px 18px rgba(30,27,75,0.18)",
               }}
             >
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">

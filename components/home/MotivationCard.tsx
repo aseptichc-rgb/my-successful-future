@@ -283,7 +283,7 @@ export default function MotivationCard({
     return (
       <>
         {before}
-        <span className="text-[#FF9500] font-bold">{emphasis}</span>
+        <span className="text-[#D85A30] font-bold">{emphasis}</span>
         {after}
       </>
     );
@@ -291,22 +291,22 @@ export default function MotivationCard({
 
   return (
     <section className="flex flex-col gap-4" aria-label={t("motivation.headerTodayLabel")}>
-      {/* ── Warm gradient hero quote card ── */}
+      {/* ── 인용 hero card — cream tonal (Anima 차분한 톤) ── */}
       <div
-        className="relative overflow-hidden rounded-[18px]"
+        className="relative overflow-hidden rounded-[18px] border border-[var(--sep)]"
         style={{
-          background: "linear-gradient(135deg, #FFF5E8 0%, #FFE4D0 45%, #FFD1B8 100%)",
-          boxShadow: "0 2px 14px rgba(255,149,0,0.16)",
+          background: "linear-gradient(135deg, var(--cream-soft) 0%, var(--mist-soft) 100%)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
-        {/* Decorative quote glyph */}
+        {/* 장식용 따옴표 — soul 톤 12% 알파로 미세하게 */}
         <div
           aria-hidden
           className="absolute top-[-12px] right-[14px] pointer-events-none"
           style={{
             fontSize: 120,
             fontWeight: 700,
-            color: "rgba(255,149,0,0.18)",
+            color: "rgba(216,90,48,0.12)",
             lineHeight: 1,
             fontFamily: "var(--font-display)",
           }}
@@ -314,7 +314,7 @@ export default function MotivationCard({
           “
         </div>
         <div className="relative px-5 pt-5 pb-5">
-          <div className="text-[11px] font-semibold tracking-[1.6px] uppercase text-[#FF9500] mb-2.5">
+          <div className="text-[11px] font-semibold tracking-[1.6px] uppercase text-[#D85A30] mb-2.5">
             {t("motivation.headerTodayLabel")}
           </div>
 
@@ -349,7 +349,7 @@ export default function MotivationCard({
                     type="button"
                     onClick={handleDownload}
                     disabled={!motivation || downloading}
-                    className="text-[15px] font-semibold text-[#FF9500] disabled:opacity-40"
+                    className="text-[15px] font-semibold text-[#D85A30] disabled:opacity-40"
                   >
                     {downloading
                       ? t("motivation.wallpaper.downloading")
@@ -396,7 +396,7 @@ export default function MotivationCard({
               <span className="text-[13px] uppercase tracking-[-0.08px] text-[var(--label-2)] font-medium">
                 {t("motivation.missionLabel")}
               </span>
-              <span className="text-[11px] font-bold uppercase tracking-[1px] text-[#AF52DE]">
+              <span className="text-[11px] font-bold uppercase tracking-[1px] text-[#1E1B4B]">
                 #{motivation.mission.identityTag}
               </span>
             </div>
@@ -407,7 +407,7 @@ export default function MotivationCard({
             {motivation.response && !responseEditing ? (
               <div
                 className="mt-3 pl-4 border-l-[3px] rounded-l-[2px]"
-                style={{ borderColor: "#FF9500" }}
+                style={{ borderColor: "#D85A30" }}
               >
                 <p className="whitespace-pre-wrap text-[15px] leading-[20px] tracking-[-0.24px] text-[var(--label)]">
                   {motivation.response.text}
@@ -469,7 +469,7 @@ export default function MotivationCard({
             )}
 
             {submitFlash && (
-              <p role="status" className="mt-3 text-[13px] font-semibold text-[#34C759]">
+              <p role="status" className="mt-3 text-[13px] font-semibold text-[#D85A30]">
                 {submitFlash}
               </p>
             )}

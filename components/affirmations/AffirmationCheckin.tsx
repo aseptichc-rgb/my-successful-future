@@ -13,8 +13,8 @@ import { useT } from "@/lib/i18n";
 
 const AFFIRMATION_INPUT_MAX = 72;
 
-// Rotate through iOS system colors for the row badges.
-const ROW_COLORS = ["#5856D6", "#34C759", "#FF2D55", "#FF9500", "#32ADE6"];
+// 번호 배지는 단일 indigo 톤으로 통일 — 차분한 인상을 위해 무지개 색 분산을 없앤다.
+const ROW_COLORS = ["#1E1B4B", "#1E1B4B", "#1E1B4B", "#1E1B4B", "#1E1B4B"];
 
 function normalizeForCompare(s: string): string {
   return s.trim().replace(/\s+/g, " ").slice(0, AFFIRMATION_INPUT_MAX);
@@ -129,10 +129,10 @@ export default function AffirmationCheckin({
           className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
           style={{ background: "rgba(255,149,0,0.16)" }}
         >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="#FF9500" aria-hidden>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="#D85A30" aria-hidden>
             <path d="M13 2L4.5 13.5h6L9 22l8.5-11.5h-6L13 2z" />
           </svg>
-          <span className="text-[12px] font-semibold tracking-[0.4px] text-[#FF9500]">
+          <span className="text-[12px] font-semibold tracking-[0.4px] text-[#D85A30]">
             {t("motivation.affirmations.streak", { count: streakCount })}
           </span>
         </span>
@@ -263,7 +263,7 @@ export default function AffirmationCheckin({
       {flash && (
         <p
           role="status"
-          className="px-5 py-3 text-[13px] font-semibold text-[#34C759] border-t border-[var(--sep)]"
+          className="px-5 py-3 text-[13px] font-semibold text-[#D85A30] border-t border-[var(--sep)]"
         >
           ✓ {flash}
         </p>
