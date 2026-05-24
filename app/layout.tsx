@@ -1,25 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Noto_Sans_KR } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
 import LanguageBridge from "@/components/LanguageBridge";
 import KakaoScript from "@/components/KakaoScript";
 import "./globals.css";
 
-// SF Pro substitute on non-Apple platforms.
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
-
-// Korean UI fallback chain when Pretendard fails to load.
-const notoSansKR = Noto_Sans_KR({
-  variable: "--font-noto-kr",
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
-  display: "swap",
-});
+// 폰트는 Pretendard 단일 — globals.css 의 --font-* 체인이 CDN Pretendard 를 우선
+// 호출하고 실패 시 시스템 폰트로 폴백. Inter/Noto Sans KR 의 별도 next/font 임베드는
+// 더 이상 참조되지 않아 제거 (번들 크기 절감).
 
 export const metadata: Metadata = {
   title: "Anima — daily motivation",
@@ -43,17 +30,15 @@ export const viewport: Viewport = {
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const fontVars = `${inter.variable} ${notoSansKR.variable}`;
-
   return (
     <html
       lang="ko"
-      className={`${fontVars} h-full antialiased`}
+      className="h-full antialiased"
       style={{ colorScheme: "light" }}
     >
       <head>
         <meta name="color-scheme" content="only light" />
-        {/* Pretendard — Korean UI typeface (CDN). Used by font-sans for hangul glyphs */}
+        {/* Pretendard — 라틴·한글 통합 UI 타입페이스 (CDN). 모든 텍스트가 이 폰트로 렌더됨. */}
         <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="" />
         <link
           rel="stylesheet"

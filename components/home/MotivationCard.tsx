@@ -308,7 +308,7 @@ export default function MotivationCard({
             fontWeight: 700,
             color: "rgba(255,149,0,0.18)",
             lineHeight: 1,
-            fontFamily: "-apple-system, 'SF Pro Display', Georgia, serif",
+            fontFamily: "var(--font-display)",
           }}
         >
           “

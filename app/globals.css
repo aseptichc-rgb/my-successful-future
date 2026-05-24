@@ -153,16 +153,21 @@
   --color-hairline:          var(--sep);
   --color-border-subtle:     var(--border-subtle);
 
-  /* Typography — SF Pro for Latin, Pretendard for Korean */
+  /* Typography — Pretendard 단일 통일.
+   * 라틴·한글 모두 Pretendard 가 그린다. CDN 로드 실패 시에만 시스템 폰트로 폴백.
+   * mono 도 Pretendard 가 우선 — Pretendard 의 tnum (tabular-nums) 옵션은
+   * font-variant-numeric: tabular-nums 로 별도 켤 수 있다. 진짜 코드용 mono 가
+   * 필요한 곳은 monospace 폴백이 자동 처리. */
   --font-sans:
-    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro",
     "Pretendard Variable", "Pretendard",
-    system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -apple-system, BlinkMacSystemFont, system-ui,
+    "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-display:
-    -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro",
     "Pretendard Variable", "Pretendard",
-    system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -apple-system, BlinkMacSystemFont, system-ui,
+    "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-mono:
+    "Pretendard Variable", "Pretendard",
     ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas,
     "Liberation Mono", monospace;
 
