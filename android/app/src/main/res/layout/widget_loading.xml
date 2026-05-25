@@ -1,17 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!--
+  위젯 초기 로드 화면. Glance 가 RemoteViews 를 생성하기 전 잠깐 노출.
+  사용자가 어느 앱의 위젯인지 인식하도록 로고 + Anima 워드마크 + 로딩 텍스트.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_card_dark"
+    android:orientation="vertical"
     android:padding="22dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <ImageView
+            android:layout_width="14dp"
+            android:layout_height="14dp"
+            android:src="@drawable/ic_anima_aperture"
+            android:contentDescription="Anima" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="7dp"
+            android:fontFamily="serif"
+            android:textColor="@color/widget_ink"
+            android:textSize="13sp"
+            android:text="Anima" />
+    </LinearLayout>
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
+        android:layout_marginTop="20dp"
         android:textColor="@color/widget_ink"
-        android:textSize="13sp"
+        android:alpha="0.62"
+        android:textSize="12sp"
         android:fontFamily="monospace"
         android:letterSpacing="0.14"
         android:textAllCaps="true"
         android:text="@string/loading" />
-</FrameLayout>
+</LinearLayout>

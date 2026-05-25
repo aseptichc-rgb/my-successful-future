@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Anima aperture 마크 — 위젯 헤더용 미니 로고.
+  원본: anima_logo/anima-aperture-light.svg (viewBox 100x100).
+  cream 배경 rect 는 제외 — 위젯 카드 자체가 cream 톤이라 중복.
+  - 외곽 호: indigo(#1E1B4B) 1.5px stroke — 위젯 ink 와 동일.
+  - 중앙 점: soul orange(#D85A30) — 위젯 accent 와 동일.
+  높이 16dp 권장(헤더 행 시각 균형).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="16dp"
+    android:height="16dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <path
+        android:pathData="M 55.84527,8.408741 A 42,42 0 1 1 44.15473,8.408741"
+        android:strokeColor="#FF1E1B4B"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M 53.6,50 A 3.6,3.6 0 1 1 46.4,50 A 3.6,3.6 0 1 1 53.6,50"
+        android:fillColor="#FFD85A30" />
+</vector>

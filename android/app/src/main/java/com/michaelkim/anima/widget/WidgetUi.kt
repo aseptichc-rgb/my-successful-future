@@ -95,6 +95,8 @@ private val ROW_V_PADDING = 6.dp
 private val CHECK_ICON_SIZE = 18.dp
 private val CHECK_LABEL_GAP = 12.dp
 private val GOAL_NUM_WIDTH = 24.dp
+private val LOGO_SIZE = 14.dp
+private val BRAND_GAP = 7.dp
 
 // 타이포
 private val QUOTE_FONT_SIZE = 16.sp
@@ -104,6 +106,7 @@ private val ROW_LABEL_SIZE = 13.sp
 private val GOAL_NUM_SIZE = 18.sp
 private val META_SIZE = 11.sp
 private val FOOTER_SIZE = 10.sp
+private val BRAND_NAME_SIZE = 13.sp
 private const val QUOTE_MAX_LINES_TALL = 4
 private const val QUOTE_MAX_LINES_SHORT = 3
 
@@ -155,19 +158,24 @@ fun WidgetContent(slot: WidgetSlot?, progress: WidgetTodayProgress?, ymd: String
 
 @Composable
 private fun EmptyState(ink: Color) {
-    Box(
-        modifier = GlanceModifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = "Anima 앱에서 로그인 후 표시됩니다",
-            style = TextStyle(
-                color = ColorProvider(ink.copy(alpha = ALPHA_DIM)),
-                fontSize = META_SIZE,
-                fontFamily = FontFamily.Monospace,
-            ),
-            maxLines = 2,
-        )
+    // 로그인 전이라도 어느 앱의 위젯인지 알 수 있게 브랜드 로고+워드마크 노출.
+    // 메시지는 중앙 정렬 — 사용자가 0.5초 안에 "어느 앱 / 왜 비어있는지"를 모두 인식.
+    Column(modifier = GlanceModifier.fillMaxSize()) {
+        BrandRow(progress = null, doneCount = 0, accent = ACCENT_SOUL, ink = ink, showProgressCount = false)
+        Box(
+            modifier = GlanceModifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "Anima 앱에서 로그인 후 표시됩니다",
+                style = TextStyle(
+                    color = ColorProvider(ink.copy(alpha = ALPHA_DIM)),
+                    fontSize = META_SIZE,
+                    fontFamily = FontFamily.Monospace,
+                ),
+                maxLines = 2,
+            )
+        }
     }
 }
 
@@ -191,12 +199,12 @@ private fun LoadedContent(
     // 감싸 if 분기의 직접 자식을 1개로 유지한다. 마찬가지로 컴포저블 함수 호출(SectionHeader,
     // ProgressList 등)도 호출 시 다중 자식이 펼쳐지므로, 함수 내부에서도 Column 으로 래핑.
     Column(modifier = GlanceModifier.fillMaxSize()) {
-        // ── 1. 헤더 ────────────────────────────────────────────────────
-        if (isTall) {
-            Column(modifier = GlanceModifier.fillMaxWidth()) {
-                HeaderRow(ymd, progress, doneCount, accent, ink)
-                Spacer(GlanceModifier.height(SECTION_GAP))
-            }
+        // ── 1. 브랜드 헤더 ─────────────────────────────────────────────
+        // 항상 노출 — 로고 + Anima 워드마크. 진척도가 있고 키가 충분하면 같은 줄 우측에 카운트.
+        // 사용자 요청: 모든 사이즈에서 어느 앱의 위젯인지 즉시 인식되도록 브랜드 마크 상시 표시.
+        Column(modifier = GlanceModifier.fillMaxWidth()) {
+            BrandRow(progress, doneCount, accent, ink, showProgressCount = isTall && progress != null)
+            Spacer(GlanceModifier.height(SECTION_GAP))
         }
 
         // ── 2. 인용문 + 작가 ───────────────────────────────────────────
@@ -228,34 +236,40 @@ private fun LoadedContent(
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// 헤더
+// 브랜드 헤더 — 로고 + "Anima" 워드마크 (+ 옵션: 진척도 카운트)
 // ────────────────────────────────────────────────────────────────────────────
 @Composable
-private fun HeaderRow(
-    ymd: String?,
+private fun BrandRow(
     progress: WidgetTodayProgress?,
     doneCount: Int,
     accent: Color,
     ink: Color,
+    showProgressCount: Boolean,
 ) {
     Row(
         modifier = GlanceModifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // 좌: 날짜 — 없으면 빈 문자열(레이아웃 흔들림 방지)
+        Image(
+            provider = ImageProvider(R.drawable.ic_anima_aperture),
+            contentDescription = "Anima",
+            modifier = GlanceModifier.size(LOGO_SIZE),
+        )
+        Spacer(GlanceModifier.width(BRAND_GAP))
+        // "Anima" 워드마크 — serif 로 클래식한 브랜드 톤. italic 은 인용문 영역에서만 사용해
+        // 두 위계가 충돌하지 않도록 Normal 로 유지.
         Text(
-            text = formatDateHeader(ymd),
+            text = "Anima",
             style = TextStyle(
                 color = ColorProvider(ink),
-                fontSize = META_SIZE,
-                fontFamily = FontFamily.Monospace,
+                fontSize = BRAND_NAME_SIZE,
+                fontFamily = FontFamily.Serif,
                 fontWeight = FontWeight.Medium,
             ),
             maxLines = 1,
             modifier = GlanceModifier.defaultWeight(),
         )
-        // 우: 진척도 (progress 가 있을 때만 — 색은 완료 시 success swap)
-        if (progress != null) {
+        if (showProgressCount && progress != null) {
             Text(
                 text = "$doneCount / $TOTAL_DAILY_ACTIONS  OK",
                 style = TextStyle(
@@ -553,20 +567,6 @@ private fun FooterCta(allDone: Boolean, ink: Color, accent: Color) {
 // ────────────────────────────────────────────────────────────────────────────
 // 유틸
 // ────────────────────────────────────────────────────────────────────────────
-
-/** "YYYY-MM-DD" → "MM·DD". 잘못된 입력은 빈 문자열(레이아웃 안정성). */
-internal fun formatDateHeader(ymd: String?): String {
-    if (ymd.isNullOrBlank()) return ""
-    val parts = ymd.split("-")
-    if (parts.size < 3) return ""
-    return try {
-        val m = parts[1].toInt()
-        val d = parts[2].toInt()
-        "${m.toString().padStart(2, '0')} · ${d.toString().padStart(2, '0')}"
-    } catch (_: NumberFormatException) {
-        ""
-    }
-}
 
 private fun countDone(p: WidgetTodayProgress): Int {
     var n = 0
