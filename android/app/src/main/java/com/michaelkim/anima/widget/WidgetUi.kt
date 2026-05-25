@@ -107,11 +107,12 @@ private val FOOTER_SIZE = 10.sp
 private const val QUOTE_MAX_LINES_TALL = 4
 private const val QUOTE_MAX_LINES_SHORT = 3
 
-// 색 (Color 객체는 res/values/colors.xml 토큰과 동기화)
-private val INK = Color(0xFFF4F1E9)            // widget_ink
-private val INK_LIGHT = Color(0xFF1E1B4B)      // 라이트 톤 본문
+// 색 — 웹 앱과 동일한 cream + indigo + soul 팔레트.
+// (Color 객체는 res/values/colors.xml 토큰과 동기화)
+private val INK = Color(0xFF1E1B4B)            // widget_ink — indigo on cream
+private val INK_LIGHT = Color(0xFF1E1B4B)      // 동일 (호환 유지)
 private val ACCENT_SOUL = Color(0xFFD85A30)    // widget_accent_soul
-private val SUCCESS = Color(0xFF7CB377)        // widget_success
+private val SUCCESS = Color(0xFFD85A30)        // 웹과 동일하게 soul 단일 — 완료 시도 같은 톤
 
 @Composable
 fun WidgetContent(slot: WidgetSlot?, progress: WidgetTodayProgress?, ymd: String?) {

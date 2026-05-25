@@ -7,22 +7,22 @@
     <color name="black">#FF000000</color>
     <color name="widget_loading_bg">#1E1B4B</color>
 
-    <!-- 위젯 디자인 토큰 v2 — "신호판" 컨셉.
-         - 배경: 우주 배경 투과 X. 완전 불투명 딥 네이비 그라데이션으로 가독성 사수.
-         - 강조: 따뜻한 단일 액센트(soul orange) — 체크 완료·streak·번호·CTA 한 곳에만.
-         - 본문: cream ink(F4F1E9) 한 톤 + 알파 단계로만 위계 표현. -->
-    <color name="widget_bg_top">#FF1A1B24</color>             <!-- 상단 (gradient start) -->
-    <color name="widget_bg_bottom">#FF14151B</color>          <!-- 하단 (gradient end) -->
-    <color name="widget_bg_top_light">#FFF4F1EC</color>       <!-- 라이트 톤 상단 -->
-    <color name="widget_bg_bottom_light">#FFEDE9F6</color>    <!-- 라이트 톤 하단 -->
-    <color name="widget_hairline_dark">#14FFFFFF</color>      <!-- 8% 화이트 divider -->
-    <color name="widget_hairline_light">#141E1B4B</color>     <!-- 8% 잉크 divider -->
+    <!-- 위젯 디자인 토큰 v3 — 웹 앱과 동일한 cream + indigo + soul 톤.
+         웹의 차분한 3색 팔레트(cream 배경 · indigo 본문 · soul 단일 액센트)를
+         위젯에도 그대로 적용. tone="dark"/"light" 데이터가 와도 두 변형 모두 cream 으로
+         렌더해 일관성 유지. -->
+    <color name="widget_bg_top">#FFFBF8F2</color>             <!-- cream-soft (상단) -->
+    <color name="widget_bg_bottom">#FFF7F3EC</color>          <!-- cream (하단) -->
+    <color name="widget_bg_top_light">#FFFBF8F2</color>       <!-- 라이트 톤도 동일 cream -->
+    <color name="widget_bg_bottom_light">#FFF7F3EC</color>
+    <color name="widget_hairline_dark">#1A1E1B4B</color>      <!-- 10% indigo divider -->
+    <color name="widget_hairline_light">#1A1E1B4B</color>     <!-- 동일 -->
 
-    <color name="widget_ink">#FFF4F1E9</color>                <!-- 본문 100% (cream) -->
-    <color name="widget_accent_soul">#FFD85A30</color>        <!-- 단일 강조색 (terracotta) -->
-    <color name="widget_success">#FF7CB377</color>            <!-- 3/3 완료 시 액센트 swap -->
+    <color name="widget_ink">#FF1E1B4B</color>                <!-- 본문 100% (indigo) -->
+    <color name="widget_accent_soul">#FFD85A30</color>        <!-- 단일 강조색 (soul orange) -->
+    <color name="widget_success">#FFD85A30</color>            <!-- 3/3 완료 시 — 웹과 동일하게 soul 유지 -->
 
-    <!-- 글래스 시절 토큰 (호환용 — 위젯에서 더는 사용하지 않으나 외부 참조 잔존시 빌드 보호) -->
+    <!-- 호환용 (외부 참조 잔존시 빌드 보호) -->
     <color name="widget_accent">#FFD85A30</color>
-    <color name="widget_text_dark">#FFF4F1E9</color>
+    <color name="widget_text_dark">#FF1E1B4B</color>
 </resources>
