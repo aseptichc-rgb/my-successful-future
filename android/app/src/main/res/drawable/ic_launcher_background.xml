@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Anima 런처 아이콘 배경 — 로그인 화면 LogoLockup 사각형과 동일한 soul 오렌지 그라데이션.
+  · linear-gradient(135deg, #D85A30 0%, #BE4B26 100%)
+  · ShapeDrawable 의 gradient angle 은 좌측에서 시계방향이고 8 방향 단위라
+    135deg(좌상→우하 디자인) 와 시각적으로 동일하려면 angle=315 (좌상이 밝고 우하가 어두움).
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="315"
+        android:startColor="#D85A30"
+        android:endColor="#BE4B26" />
+</shape>

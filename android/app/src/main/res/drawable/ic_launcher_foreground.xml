@@ -1,11 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Anima 런처 아이콘 전경(foreground) — 로그인 화면 LogoLockup 의 AnimaMark 와 동일한 도형.
+  · 위쪽이 살짝 열린 원(aperture) + 가운데 점, 흰색 단일 톤.
+  · 108dp 뷰포트의 안전영역(중앙 72dp)에 맞춰 r=28 로 배치.
+  · gap=18° 라서 시작각=-81°, 끝각=261° → 극좌표로 도출한 시작/끝점:
+      ( 54 + 28·cos(-81°), 54 + 28·sin(-81°) ) ≈ (58.38, 26.34)
+      ( 54 + 28·cos(261°), 54 + 28·sin(261°) ) ≈ (49.62, 26.34)
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- 안전영역 중앙에 "A" — Anima 의 첫 글자. 아주 단순한 자리표시용 아이콘. -->
+
+    <!-- aperture 원호 (위쪽이 열려있음) -->
+    <path
+        android:pathData="M 58.38 26.34 A 28 28 0 1 1 49.62 26.34"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round" />
+
+    <!-- 중앙 점 -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,30 L42,80 L48,80 L51,68 L57,68 L60,80 L66,80 L54,30 Z M52.5,62 L55.5,62 L54,52 Z" />
+        android:pathData="M 54 51 a 3 3 0 1 0 0 6 a 3 3 0 1 0 0 -6 Z" />
 </vector>
