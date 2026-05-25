@@ -180,7 +180,7 @@ export default function LoginPage() {
           <form onSubmit={handleConfirmLink} className="space-y-3">
             <div className="bg-[var(--bg-grouped-2)] rounded-[12px] overflow-hidden">
               <div className="px-4 py-3.5 flex items-center gap-3">
-                <span className="w-20 text-[15px] text-[var(--label-2)]">
+                <span className="w-20 shrink-0 whitespace-nowrap text-[15px] text-[var(--label-2)]">
                   {t("auth.password")}
                 </span>
                 <input
@@ -189,7 +189,7 @@ export default function LoginPage() {
                   autoFocus
                   value={linkPassword}
                   onChange={(e) => setLinkPassword(e.target.value)}
-                  className="flex-1 bg-transparent text-[17px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none"
+                  className="flex-1 min-w-0 bg-transparent text-[17px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none"
                   placeholder={t("auth.password.placeholder")}
                 />
               </div>
@@ -235,7 +235,7 @@ export default function LoginPage() {
             {/* Email + password — grouped inset card */}
             <div className="bg-[var(--bg-grouped-2)] rounded-[12px] overflow-hidden">
               <div className="relative flex items-center gap-3 px-4 py-3.5">
-                <span className="w-20 text-[15px] text-[var(--label-2)]">
+                <span className="w-20 shrink-0 whitespace-nowrap text-[15px] text-[var(--label-2)]">
                   {t("auth.email")}
                 </span>
                 <input
@@ -244,13 +244,13 @@ export default function LoginPage() {
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="flex-1 bg-transparent text-[17px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none"
+                  className="flex-1 min-w-0 bg-transparent text-[17px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none"
                   placeholder="email@example.com"
                 />
                 <div className="absolute bottom-0 left-[100px] right-0 h-[0.5px] bg-[var(--sep)]" />
               </div>
               <div className="flex items-center gap-3 px-4 py-3.5">
-                <span className="w-20 text-[15px] text-[var(--label-2)]">
+                <span className="w-20 shrink-0 whitespace-nowrap text-[15px] text-[var(--label-2)]">
                   {t("auth.password")}
                 </span>
                 <input
@@ -259,7 +259,7 @@ export default function LoginPage() {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="flex-1 bg-transparent text-[17px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none"
+                  className="flex-1 min-w-0 bg-transparent text-[17px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none"
                   placeholder={t("auth.password.placeholder")}
                 />
               </div>
