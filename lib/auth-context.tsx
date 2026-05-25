@@ -126,11 +126,16 @@ function isInsideAndroidApp(): boolean {
  */
 async function bridgeToNativeIfNeeded(fbUser: FirebaseUser): Promise<void> {
   if (!isInsideAndroidApp()) return;
+  // 마커는 sessionStorage 에 둔다 — 이전엔 localStorage 였고 iframe 발화 *전*에 박혔어서,
+  // Chrome 의 user-gesture 정책으로 iframe intent 가 한 번 차단되면 같은 uid 로는 영구히
+  // 브릿지 재시도가 안 돼 위젯이 EmptyState 에서 못 빠져나오는 회귀가 있었다. sessionStorage 로
+  // 옮기면 이번 세션 안에서만 중복 발화를 막고, 다음 콜드부트 · TWA 재진입에선 자동 재시도된다.
+  // (네이티브 signInWithCustomToken 은 동일 uid 면 멱등이라 중복 호출 비용 없음.)
   let lastUid: string | null = null;
   try {
-    lastUid = window.localStorage.getItem(NATIVE_BRIDGE_LAST_UID_KEY);
+    lastUid = window.sessionStorage.getItem(NATIVE_BRIDGE_LAST_UID_KEY);
   } catch {
-    // localStorage 차단 — 매번 시도하더라도 idempotent 하므로 진행.
+    // sessionStorage 차단 — 매번 시도하더라도 idempotent 하므로 진행.
   }
   if (lastUid === fbUser.uid) return;
 
@@ -147,12 +152,6 @@ async function bridgeToNativeIfNeeded(fbUser: FirebaseUser): Promise<void> {
     const customToken = data.customToken;
     if (!customToken) return;
 
-    try {
-      window.localStorage.setItem(NATIVE_BRIDGE_LAST_UID_KEY, fbUser.uid);
-    } catch {
-      // 무시 — 다음 라우팅에서 또 한 번 쏘게 되지만 네이티브 쪽이 멱등.
-    }
-
     // intent:// 형식이면 Chrome 이 자체 핸들러로 처리. 패키지 지정해 우리 앱으로 라우팅 보장.
     const url =
       "intent://auth?token=" +
@@ -162,6 +161,16 @@ async function bridgeToNativeIfNeeded(fbUser: FirebaseUser): Promise<void> {
     iframe.style.display = "none";
     iframe.src = url;
     document.body.appendChild(iframe);
+
+    // 마커는 iframe 발화 *후* 에만 박는다 — 발화 전에 박으면 차단됐을 때도 마커가 남아
+    // 같은 세션 안에서 재시도가 막힌다. 발화 후 박으면 적어도 차단된 그 순간엔 마커가 없어
+    // (예외로 throw 가 일어나) 다음 cycle 이 한 번 더 쏘게 된다.
+    try {
+      window.sessionStorage.setItem(NATIVE_BRIDGE_LAST_UID_KEY, fbUser.uid);
+    } catch {
+      // 무시 — 다음 라우팅에서 또 한 번 쏘게 되지만 네이티브 쪽이 멱등.
+    }
+
     // intent 발화 후엔 iframe 제거 — DOM 깨끗하게 유지.
     window.setTimeout(() => {
       try {
@@ -217,9 +226,9 @@ async function tryConsumeNativeToken(): Promise<boolean> {
     // anima://auth 인텐트가 액티비티를 띄워 TWA 위에 빈 화면을 잠깐 노출시킨다 (정확히 사용자가
     // 보던 "로그인 후 흰 화면 멈춤"). 미리 lastUid 마커를 박아 bridge 를 no-op 으로 만든다.
     try {
-      window.localStorage.setItem(NATIVE_BRIDGE_LAST_UID_KEY, cred.user.uid);
+      window.sessionStorage.setItem(NATIVE_BRIDGE_LAST_UID_KEY, cred.user.uid);
     } catch {
-      // localStorage 차단 — 브릿지가 한 번 더 발화될 수는 있지만 B 픽스(NoDisplay 액티비티)가 가려준다.
+      // sessionStorage 차단 — 브릿지가 한 번 더 발화될 수는 있지만 NoDisplay 액티비티가 가려준다.
     }
     return true;
   } catch {
@@ -323,6 +332,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     restoreAttemptedRef.current = true;
     trialAttemptedRef.current.clear();
     // 네이티브 브릿지 마커를 비워 다음 로그인 때 새 uid 로 브릿지가 다시 쏘이도록 한다.
+    try {
+      window.sessionStorage.removeItem(NATIVE_BRIDGE_LAST_UID_KEY);
+    } catch {
+      // 무시
+    }
+    // 이전 버전에서 localStorage 에 박혀 있던 마커도 함께 정리 — 마이그레이션 잔재 제거.
     try {
       window.localStorage.removeItem(NATIVE_BRIDGE_LAST_UID_KEY);
     } catch {

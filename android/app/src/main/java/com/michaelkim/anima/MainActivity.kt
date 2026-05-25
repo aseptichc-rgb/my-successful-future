@@ -86,10 +86,14 @@ class MainActivity : ComponentActivity() {
                 onOpenAnima = { path -> openAnimaInTwa(path = path) },
             )
         }
-        // 최초 실행이면 자동으로 온보딩으로 보낸다 (멱등 — 이미 온보딩 끝낸 사용자는 웹쪽 onboarding 페이지가 /home 으로 리다이렉트).
-        if (consumeFirstLaunchFlag()) {
-            openAnimaInTwa(path = ONBOARDING_PATH)
-        }
+        // 첫 실행 플래그는 비워두기만 한다 — 자동으로 TWA /onboarding 을 띄우지 않는다.
+        // 왜: 웹 로그인 후 iframe 기반 native-bridge (intent://auth?token=...) 가
+        //     최신 Chrome 의 user-gesture 정책으로 차단되면 네이티브 FirebaseAuth 가
+        //     영구 미인증 상태로 갇히고 위젯이 EmptyState 에서 못 빠져나오는 회귀가 있었다.
+        // 픽스: 미로그인 진입자는 네이티브 HomeScreen 의 Credential Manager 로그인(신뢰성 100%)
+        //       으로 먼저 인증시키고, HomeScreen 의 LaunchedEffect 가 nativeToken 을 실어
+        //       TWA /onboarding · /home 으로 진입한다 — 웹 SSO 도 그 한 번에 보장.
+        consumeFirstLaunchFlag()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -109,7 +113,8 @@ class MainActivity : ComponentActivity() {
      * /home TWA 진입 직전, 위젯 로컬 캐시를 한번 동기로 갱신해 /home 과의 명언 불일치를 봉합.
      * 모든 진입 경로(위젯 탭 · 알림 탭 · 앱 아이콘) 가 이 함수를 거쳐 들어온다.
      *
-     * - 미로그인이면 갱신 의미가 없어 스킵하고 곧장 TWA 진입.
+     * - 미로그인이면 TWA 진입 대신 네이티브 HomeScreen 으로 떨어뜨린다 — iframe 기반
+     *   native-bridge 신뢰성 문제를 피하기 위함 (자세한 사유는 함수 안 주석 참고).
      * - 네트워크가 느리거나 실패해도 최대 [REFRESH_BEFORE_HOME_TIMEOUT_MS] 만 기다리고 진행 —
      *   잠시 stale 한 위젯을 한번 더 봐도, TWA 탭이 무한 대기하는 것보다 사용자 경험이 나음.
      * - 타임아웃/예외 시에는 비동기 Worker 를 폴백으로 큐잉해 다음 fetch 에서 봉합.
@@ -121,7 +126,16 @@ class MainActivity : ComponentActivity() {
             ?.takeIf { YMD_REGEX.matches(it) }
 
         if (!AuthRepository.isSignedIn) {
-            openAnimaInTwa(path = "/home", finishAfterLaunch = true, qDate = clickedYmd)
+            // 미로그인으로 위젯/알림 탭에서 진입한 케이스 — 곧장 TWA /home 을 띄우면
+            // 사용자는 웹 로그인 화면을 만나게 되고, 이후 iframe 기반 native-bridge 가
+            // 차단될 경우 네이티브 FirebaseAuth 미인증 → 위젯 영구 EmptyState 회귀.
+            // 픽스: 네이티브 HomeScreen 으로 떨어뜨려 Credential Manager 로그인을 먼저 받는다.
+            //       로그인 직후 HomeScreen 이 nativeToken 을 실어 자동으로 TWA 로 진입.
+            setContent {
+                HomeScreen(
+                    onOpenAnima = { path -> openAnimaInTwa(path = path) },
+                )
+            }
             return
         }
         lifecycleScope.launch {
