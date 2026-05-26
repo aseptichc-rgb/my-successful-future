@@ -63,3 +63,8 @@ mobile-view.png
 # 디자인 패치 원본 자료 (이미 코드에 적용됨 — 원본 zip·중복 파일은 로컬에만 보존)
 /motivator.zip
 /patch/
+/design.zip
+/design/
+
+# IDE 로컬 설정 — 개인 워크스페이스 상태, 커밋 대상 아님
+/.idea/
