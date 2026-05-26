@@ -22,16 +22,18 @@ class QuoteWidgetReceiver : GlanceAppWidgetReceiver() {
         appWidgetIds: IntArray,
     ) {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
-        // 위젯이 갱신될 때마다 OneTime Worker 1회 + Periodic 보장
+        // 위젯이 갱신될 때마다 OneTime Worker 1회 + Periodic + 자정 갱신 보장 (REPLACE 정책).
         WorkScheduler.scheduleOneTimeRefresh(context)
         WorkScheduler.schedulePeriodicRefresh(context)
+        WorkScheduler.scheduleDailyMidnightRefresh(context)
     }
 
     override fun onEnabled(context: Context) {
         super.onEnabled(context)
-        // 첫 위젯이 추가된 순간 — 최초 데이터 받기
+        // 첫 위젯이 추가된 순간 — 최초 데이터 받기 + 자정 자동 갱신 부트스트랩.
         WorkScheduler.scheduleOneTimeRefresh(context)
         WorkScheduler.schedulePeriodicRefresh(context)
+        WorkScheduler.scheduleDailyMidnightRefresh(context)
     }
 
     override fun onReceive(context: Context, intent: Intent) {

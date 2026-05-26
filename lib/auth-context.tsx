@@ -93,7 +93,12 @@ async function ensureTrialStarted(fbUser: FirebaseUser): Promise<boolean> {
  * 저장해두고 이후 라우팅 사이에도 유지한다. document.referrer (android-app://...) 도 보조로 본다.
  */
 const NATIVE_BRIDGE_LAST_UID_KEY = "anima.nativeBridge.lastUid";
+const NATIVE_BRIDGE_LAST_AT_KEY = "anima.nativeBridge.lastAt";
 const FROM_APP_FLAG_KEY = "anima.fromApp";
+// Chrome 의 intent:// iframe 차단 + 네트워크 변동성으로 브릿지가 한 번에 안 닿는 경우가 있다.
+// "마지막 발사 후 X ms 가 지나면 같은 uid 라도 한번 더 시도한다" 는 짧은 재시도 윈도우.
+// 사용자 입장에선 "위젯이 비어있다 → 새로고침 또는 페이지 이동 → 채워짐" 패턴으로 자가 봉합.
+const NATIVE_BRIDGE_RETRY_AFTER_MS = 60_000;
 
 function isInsideAndroidApp(): boolean {
   if (typeof window === "undefined") return false;
@@ -117,12 +122,16 @@ function isInsideAndroidApp(): boolean {
 /**
  * 웹 세션을 네이티브 FirebaseAuth 로 옮겨주는 단방향 브릿지.
  *
- * 동일 uid 로 이번 세션에 이미 브릿지를 쏜 적 있으면 no-op — 라우팅마다 재발화 방지.
- * 발화 방식: intent:// URL 을 hidden iframe 에 로드 — Chrome 이 Android intent 로 해석해
- * MainActivity 에 customToken 을 전달한다. top-level navigation 이 아니므로 TWA 가 그대로 살아있음.
+ * 동일 uid 로 이번 세션에 이미 브릿지를 쏜 적이 있고 [NATIVE_BRIDGE_RETRY_AFTER_MS] 가 지나지
+ * 않았으면 no-op. 그 윈도우가 지나면 다시 쏜다 — Chrome 이 intent 를 한 번 막더라도 두 번째
+ * 라우팅/포커스에서 자가 봉합되도록.
+ *
+ * 발화 방식: intent:// URL 을 두 가지 경로 (hidden iframe + 프로그래매틱 <a>.click) 로 시도해
+ * Chrome user-activation 정책의 차단 확률을 줄인다. top-level navigation 이 아니므로 TWA 가
+ * 그대로 살아있음.
  *
  * 보안: customToken 은 URL 쿼리에 실리지만, TWA → Android intent 경로는 OS 내부 IPC 로
- * 브라우저 히스토리/Referer 에 남지 않는다. 토큰의 짧은 수명도 추가 방어선.
+ * 브라우저 히스토리/Referer 에 남지 않는다. 토큰의 짧은 수명(약 1시간)도 추가 방어선.
  */
 async function bridgeToNativeIfNeeded(fbUser: FirebaseUser): Promise<void> {
   if (!isInsideAndroidApp()) return;
@@ -131,13 +140,18 @@ async function bridgeToNativeIfNeeded(fbUser: FirebaseUser): Promise<void> {
   // 브릿지 재시도가 안 돼 위젯이 EmptyState 에서 못 빠져나오는 회귀가 있었다. sessionStorage 로
   // 옮기면 이번 세션 안에서만 중복 발화를 막고, 다음 콜드부트 · TWA 재진입에선 자동 재시도된다.
   // (네이티브 signInWithCustomToken 은 동일 uid 면 멱등이라 중복 호출 비용 없음.)
+  // 추가: 같은 uid 라도 [NATIVE_BRIDGE_RETRY_AFTER_MS] 가 지나면 한 번 더 쏜다.
   let lastUid: string | null = null;
+  let lastAt = 0;
   try {
     lastUid = window.sessionStorage.getItem(NATIVE_BRIDGE_LAST_UID_KEY);
+    const rawAt = window.sessionStorage.getItem(NATIVE_BRIDGE_LAST_AT_KEY);
+    lastAt = rawAt ? parseInt(rawAt, 10) || 0 : 0;
   } catch {
     // sessionStorage 차단 — 매번 시도하더라도 idempotent 하므로 진행.
   }
-  if (lastUid === fbUser.uid) return;
+  const now = Date.now();
+  if (lastUid === fbUser.uid && now - lastAt < NATIVE_BRIDGE_RETRY_AFTER_MS) return;
 
   try {
     const idToken = await fbUser.getIdToken();
@@ -152,26 +166,39 @@ async function bridgeToNativeIfNeeded(fbUser: FirebaseUser): Promise<void> {
     const customToken = data.customToken;
     if (!customToken) return;
 
-    // intent:// 형식이면 Chrome 이 자체 핸들러로 처리. 패키지 지정해 우리 앱으로 라우팅 보장.
-    const url =
-      "intent://auth?token=" +
-      encodeURIComponent(customToken) +
-      "#Intent;scheme=anima;package=com.michaelkim.anima;end";
-    const iframe = document.createElement("iframe");
-    iframe.style.display = "none";
-    iframe.src = url;
-    document.body.appendChild(iframe);
+    fireAuthBridgeIntent(customToken);
 
-    // 마커는 iframe 발화 *후* 에만 박는다 — 발화 전에 박으면 차단됐을 때도 마커가 남아
-    // 같은 세션 안에서 재시도가 막힌다. 발화 후 박으면 적어도 차단된 그 순간엔 마커가 없어
-    // (예외로 throw 가 일어나) 다음 cycle 이 한 번 더 쏘게 된다.
+    // 마커는 발사 *후* 에만 박는다. iframe.appendChild 자체는 Chrome 의 정책으로 silent 차단
+    // 돼도 throw 가 없으므로 마커가 박힐 수 있지만, 우리는 [NATIVE_BRIDGE_RETRY_AFTER_MS]
+    // 윈도우로 재시도를 한 번 더 보장한다.
     try {
       window.sessionStorage.setItem(NATIVE_BRIDGE_LAST_UID_KEY, fbUser.uid);
+      window.sessionStorage.setItem(NATIVE_BRIDGE_LAST_AT_KEY, String(now));
     } catch {
       // 무시 — 다음 라우팅에서 또 한 번 쏘게 되지만 네이티브 쪽이 멱등.
     }
+  } catch {
+    // 네트워크/JSON 오류 — 다음 로그인 사이클에 다시 시도 (lastUid 기록 안 했으므로).
+  }
+}
 
-    // intent 발화 후엔 iframe 제거 — DOM 깨끗하게 유지.
+/**
+ * anima://auth?token=... 인텐트를 두 경로(iframe + <a>.click) 로 동시에 발사.
+ * Chrome user-activation 차단을 우회하기 위한 다중 시도.
+ */
+function fireAuthBridgeIntent(customToken: string): void {
+  const url =
+    "intent://auth?token=" +
+    encodeURIComponent(customToken) +
+    "#Intent;scheme=anima;package=com.michaelkim.anima;end";
+
+  // Path 1: hidden iframe — Chrome 의 정통 intent 라우팅 경로.
+  try {
+    const iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.setAttribute("aria-hidden", "true");
+    iframe.src = url;
+    document.body.appendChild(iframe);
     window.setTimeout(() => {
       try {
         iframe.remove();
@@ -180,7 +207,27 @@ async function bridgeToNativeIfNeeded(fbUser: FirebaseUser): Promise<void> {
       }
     }, 1000);
   } catch {
-    // 네트워크/JSON 오류 — 다음 로그인 사이클에 다시 시도 (lastUid 기록 안 했으므로).
+    // iframe 경로 실패 — 두 번째 경로로 계속
+  }
+
+  // Path 2: 프로그래매틱 <a>.click() — user gesture 컨텍스트에서 호출되면 iframe 보다 강하다.
+  try {
+    const a = document.createElement("a");
+    a.href = url;
+    a.rel = "noopener";
+    a.target = "_blank";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    window.setTimeout(() => {
+      try {
+        a.remove();
+      } catch {
+        // 무시
+      }
+    }, 1000);
+  } catch {
+    // 두 경로 모두 실패 — 다음 cycle 에서 자가 봉합 (재시도 윈도우)
   }
 }
 
@@ -334,6 +381,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // 네이티브 브릿지 마커를 비워 다음 로그인 때 새 uid 로 브릿지가 다시 쏘이도록 한다.
     try {
       window.sessionStorage.removeItem(NATIVE_BRIDGE_LAST_UID_KEY);
+      window.sessionStorage.removeItem(NATIVE_BRIDGE_LAST_AT_KEY);
     } catch {
       // 무시
     }

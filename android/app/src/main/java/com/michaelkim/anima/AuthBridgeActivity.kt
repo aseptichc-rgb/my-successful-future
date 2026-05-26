@@ -10,8 +10,11 @@
  *
  * 동작:
  *  - anima://auth?token=<customToken> 만 처리. token 누락/형식 오류면 finish().
- *  - signInWithCustomToken 으로 네이티브 FirebaseAuth 에 동일 uid 로그인 → 위젯 즉시 갱신.
- *  - 성공/실패와 무관하게 finally 에서 finish() — 액티비티가 백스택에 남지 않게.
+ *  - signInWithCustomToken 으로 네이티브 FirebaseAuth 에 동일 uid 로그인.
+ *  - 인증 직후 [QuoteRepository.refresh] 를 동기로 한 번 호출해 캐시를 즉시 채운다 —
+ *    Worker 가 비동기로 따라잡기를 기다리면 사용자가 그 사이 위젯을 보면 EmptyState 가
+ *    번쩍였다. [REFRESH_TIMEOUT_MS] 안에 끝나지 않으면 Worker 폴백으로 위임.
+ *  - 그 후 위젯 RemoteViews 재렌더 + 정주기 Worker 보장 + 성공/실패 무관 finally finish().
  *
  * 보안:
  *  - customToken 위변조는 Firebase 서명 검증으로 차단. 외부 앱이 임의 토큰을 쏘아도 거부됨.
@@ -26,11 +29,13 @@ import androidx.activity.ComponentActivity
 import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.lifecycleScope
 import com.google.firebase.auth.FirebaseAuth
+import com.michaelkim.anima.data.QuoteRepository
 import com.michaelkim.anima.data.local.QuoteCache
 import com.michaelkim.anima.widget.QuoteWidget
 import com.michaelkim.anima.work.WorkScheduler
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
 
 class AuthBridgeActivity : ComponentActivity() {
 
@@ -74,9 +79,31 @@ class AuthBridgeActivity : ComponentActivity() {
                         Log.w(TAG, "계정 전환 캐시 정리 실패", e)
                     }
                 }
-                Log.i(TAG, "네이티브 브릿지 로그인 성공 — 위젯 즉시 갱신")
-                // 새 토큰으로 즉시 위젯을 채워준다. 정주기 Worker 도 함께 보장.
-                WorkScheduler.scheduleOneTimeRefresh(applicationContext)
+                Log.i(TAG, "네이티브 브릿지 로그인 성공 — 캐시 즉시 채우기 시도")
+
+                // 인증 직후 동기 refresh — Worker 가 비동기로 따라잡기를 기다리지 않고 이 자리에서
+                // 한 번 fetch 해 위젯이 다음 자체 redraw 에서 EmptyState 가 아닌 콘텐츠를 갖도록.
+                // 타임아웃을 두어 슬로 네트워크에서도 finally 의 finish() 가 지연되지 않게 한다.
+                val refreshed = withTimeoutOrNull(REFRESH_TIMEOUT_MS) {
+                    try {
+                        QuoteRepository.refresh(applicationContext)
+                        true
+                    } catch (e: Exception) {
+                        Log.w(TAG, "동기 refresh 실패 — Worker 폴백으로 위임", e)
+                        false
+                    }
+                }
+                // 동기 refresh 성공 여부와 무관하게 한번 더 RemoteViews 재렌더 — 캐시가 비어 있으면
+                // EmptyState 로, 채워졌으면 콘텐츠로 자연스레 갱신된다.
+                try {
+                    QuoteWidget().updateAll(applicationContext)
+                } catch (e: Exception) {
+                    Log.w(TAG, "위젯 updateAll 실패 — 무시", e)
+                }
+                // 비동기 폴백 + 정주기 Worker 보장 (동기 refresh 가 실패/타임아웃 됐어도 안전망)
+                if (refreshed != true) {
+                    WorkScheduler.scheduleOneTimeRefresh(applicationContext)
+                }
                 WorkScheduler.schedulePeriodicRefresh(applicationContext)
             } catch (e: Exception) {
                 Log.w(TAG, "네이티브 브릿지 signInWithCustomToken 실패", e)
@@ -88,5 +115,8 @@ class AuthBridgeActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "AuthBridgeActivity"
+        // 동기 refresh 가 finally finish() 를 지연시키지 않게 짧게 제한.
+        // 평균 케이스 (Firestore 1 read) 는 200-500ms 라 보통 그 안에 끝난다.
+        private const val REFRESH_TIMEOUT_MS = 2_500L
     }
 }

@@ -3,7 +3,7 @@
  *
  * 동작:
  *   - 사용자가 홈 화면에서 다짐 따라쓰기 · 행동 체크 · 잘한 일 3가지를 저장한 직후,
- *     이 함수가 anima://widget-refresh 인텐트를 hidden iframe 으로 발화한다.
+ *     이 함수가 anima://widget-refresh 인텐트를 발화한다.
  *   - Chrome 이 OS intent 로 해석 → WidgetRefreshBridgeActivity (NoDisplay) 가 즉시 종료되며
  *     OneTime QuoteRefreshWorker 를 enqueue → 위젯 RemoteViews 가 새 진척도로 재렌더된다.
  *   - top-level navigation 이 아니므로 TWA 가 그대로 살아 있다(사용자 시각적 인터럽트 0).
@@ -15,6 +15,13 @@
  *   - 디바운스(소프트): 동일 인텐트를 너무 짧은 간격으로 연속 발화하면 OS/Chrome 이 한 번
  *     무시할 수 있다. 사용자 입력 속도 기준으론 거의 영향 없지만, 동일 프레임 내 중복 호출을
  *     막기 위해 [DEDUP_WINDOW_MS] 이내 호출은 합쳐 1회만 쏜다.
+ *
+ * Chrome user-activation 회귀:
+ *   - Chrome 86+ 의 intent:// iframe 정책: 최근 user gesture 가 없는 컨텍스트에서의
+ *     iframe-기반 intent 발화는 silent 하게 차단된다. setTimeout(디바운스) 또는 비동기
+ *     리스너 안에서 발사하면 종종 묻혀버린다.
+ *   - 회피: iframe 발사 + `<a>.click()` 발사 2단계로 시도해 한쪽이 막혀도 다른 쪽이 도달
+ *     가능성을 높인다. 더하여 발사 직후 user gesture 가 살아 있으면 즉시 한번 더 시도한다.
  *
  * 보안:
  *   - 이 브릿지는 어떤 사용자 데이터도 인텐트에 싣지 않는다. "갱신 트리거" 라는 사실만 전달.
@@ -57,17 +64,17 @@ function isInsideAndroidApp(): boolean {
 }
 
 /**
- * hidden iframe 으로 intent:// URL 발화. 모든 브릿지의 공통 구현.
- * @param key 디바운스 키 — 동일 키 호출은 [DEDUP_WINDOW_MS] 이내라면 1회로 합친다.
+ * intent:// URL 을 두 가지 경로로 발사한다.
+ *  1) hidden iframe.src — Chrome 이 OS intent 로 해석하는 정통 경로.
+ *  2) 프로그래매틱 `<a>.click()` — 호출이 user gesture 핸들러 안에서 실행됐다면
+ *     iframe 보다 user-activation 패스를 더 잘 통과한다.
+ *
+ * Chrome 의 intent 처리는 동기적으로 결정되므로 두 발사 모두 실패하더라도 throw 가 일어나지 않아
+ * 호출자 흐름에는 영향이 없다. 우리는 "둘 중 하나는 도달한다" 는 확률을 끌어올린다.
  */
-function fireIntent(intentUrl: string, key: string): void {
+function fireIntentMultiPath(intentUrl: string): void {
+  // Path 1: hidden iframe — TWA Chrome 이 이 패스를 가장 잘 인식한다.
   try {
-    if (!isInsideAndroidApp()) return;
-
-    const now = Date.now();
-    if (now - (lastFiredAt[key] ?? 0) < DEDUP_WINDOW_MS) return;
-    lastFiredAt[key] = now;
-
     const iframe = document.createElement("iframe");
     iframe.style.display = "none";
     iframe.setAttribute("aria-hidden", "true");
@@ -81,6 +88,48 @@ function fireIntent(intentUrl: string, key: string): void {
       }
     }, IFRAME_CLEANUP_MS);
   } catch {
+    // iframe 경로 실패 — 두 번째 경로로 계속.
+  }
+
+  // Path 2: programmatic <a>.click() — user-activation 컨텍스트에서 강력하다.
+  // iframe 과 둘 다 시도해도 Android 시스템이 단일 호출로 합쳐 처리하므로 중복 트리거 위험 낮음
+  // (WorkScheduler 가 REPLACE 정책이라 OneTime Worker 는 어차피 한 번만 큐잉됨).
+  try {
+    const a = document.createElement("a");
+    a.href = intentUrl;
+    a.rel = "noopener";
+    // a.target 를 _self 로 두면 navigation 이 발생할 수 있어 위험. 인텐트 URL 은 navigation 이
+    // 일어나도 Chrome 이 intent 로 가로채지만, 만약 가로채지 못하면 ERR_UNKNOWN_URL_SCHEME 페이지가
+    // 노출될 수 있다. _blank 로 두면 새 컨텍스트로 보내며 TWA 가 그대로 살아남는다.
+    a.target = "_blank";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    window.setTimeout(() => {
+      try {
+        a.remove();
+      } catch {
+        // 무시
+      }
+    }, IFRAME_CLEANUP_MS);
+  } catch {
+    // 두 경로 모두 실패 — 위젯은 다음 정주기 Worker (3시간) 또는 사용자 다음 인터랙션에서 봉합.
+  }
+}
+
+/**
+ * @param key 디바운스 키 — 동일 키 호출은 [DEDUP_WINDOW_MS] 이내라면 1회로 합친다.
+ */
+function fireIntent(intentUrl: string, key: string): void {
+  try {
+    if (!isInsideAndroidApp()) return;
+
+    const now = Date.now();
+    if (now - (lastFiredAt[key] ?? 0) < DEDUP_WINDOW_MS) return;
+    lastFiredAt[key] = now;
+
+    fireIntentMultiPath(intentUrl);
+  } catch {
     // intent 발화 실패는 호출자 흐름에 영향 주지 않는다 — 다음 동작 사이클에서 봉합.
   }
 }
@@ -89,6 +138,10 @@ function fireIntent(intentUrl: string, key: string): void {
  * 위젯 즉시 갱신 인텐트 발화. TWA 환경이 아니면 즉시 반환(no-op).
  * 어떤 예외도 호출자에게 전파하지 않는다 — "저장은 성공했는데 위젯만 못 깨운" 시나리오는
  * 다음 정주기 Worker 가 봉합하므로 사용자 흐름에 영향 0.
+ *
+ * 가능하면 user gesture 핸들러(클릭/탭 직후) 안에서 호출해야 Chrome user-activation 패스를
+ * 통과할 확률이 높다. 디바운스/setTimeout 안에서 호출하는 경로는 가능하면 user gesture 경로로
+ * 한 번 더 보완해 주는 것이 안전하다.
  */
 export function notifyAndroidWidgetRefresh(): void {
   fireIntent(REFRESH_INTENT_URL, "widget-refresh");

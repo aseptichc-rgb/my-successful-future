@@ -244,6 +244,9 @@ export default function HomeDashboardPage() {
       };
       if (!res.ok) throw new Error(data.error || "다시 받기에 실패했어요.");
       if (data.motivation) setMotivation(data.motivation);
+      // motivation 의 quote/author/goalsSnapshot 이 바뀌었으므로 위젯도 새 카드를 받아가야 한다.
+      // 안 호출하면 다음 정주기 Worker(3시간) 까지 위젯과 홈의 명언이 어긋난다.
+      notifyAndroidWidgetRefresh();
     } catch (err) {
       setMotivationError(err instanceof Error ? err.message : String(err));
     }
@@ -262,6 +265,8 @@ export default function HomeDashboardPage() {
         error?: string;
       };
       if (!res.ok || !data.ok) throw new Error(data.error || "응답을 저장하지 못했어요.");
+      // mission response 가 영구화되면 affirmation 진척도가 함께 갱신될 수 있어 위젯도 깨운다.
+      notifyAndroidWidgetRefresh();
       return { isFirst: Boolean(data.isFirst), identityTag: data.identityTag || "" };
     },
     [ymd],
@@ -320,6 +325,8 @@ export default function HomeDashboardPage() {
     try {
       await updateFuturePersona(uid, next);
       setFutureEditing(false);
+      // handleRegenerateMotivation 안에서 notifyAndroidWidgetRefresh 가 호출되므로 여기서
+      // 중복 호출하지 않는다 — DEDUP_WINDOW 가 흡수하지만 깔끔하게 단일 책임 유지.
       void handleRegenerateMotivation();
     } catch (err) {
       console.error("[home] 미래의 나 저장 실패:", err);
@@ -337,6 +344,9 @@ export default function HomeDashboardPage() {
   const persistGoals = async (next: string[]) => {
     try {
       await updateUserGoals(uid, next);
+      // 목표 목록이 바뀌면 위젯의 goalsSnapshot / "행동 체크" 평가 기준이 즉시 영향을 받는다.
+      // 안 호출하면 다음 정주기 Worker(3시간) 까지 위젯과 홈의 목표 표시가 어긋난다.
+      notifyAndroidWidgetRefresh();
     } catch (err) {
       console.error("[home] 목표 저장 실패:", err);
       window.alert(t("home.goals.saveFailed"));

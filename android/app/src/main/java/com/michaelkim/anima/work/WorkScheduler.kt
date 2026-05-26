@@ -28,11 +28,14 @@ object WorkScheduler {
     private const val ONE_TIME_NAME = "anima_quote_once"
     private const val WINS_REMINDER_NAME = "anima_wins_reminder_daily"
     private const val AFFIRMATIONS_REMINDER_NAME = "anima_affirmations_reminder_daily"
+    private const val MIDNIGHT_REFRESH_NAME = "anima_quote_midnight_daily"
     private const val PERIODIC_HOURS = 3L
 
     private val KST: ZoneId = ZoneId.of("Asia/Seoul")
     private val WINS_REMINDER_AT: LocalTime = LocalTime.of(21, 0)
     private val AFFIRMATIONS_REMINDER_AT: LocalTime = LocalTime.of(8, 0)
+    // 자정 정각이 아니라 +1 분 — 서버의 ymd 가 자정 0분에 갈리는 race 를 피한다.
+    private val MIDNIGHT_REFRESH_AT: LocalTime = LocalTime.of(0, 1)
 
     private fun networkConstraint() = Constraints.Builder()
         .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -93,6 +96,27 @@ object WorkScheduler {
             .build()
         WorkManager.getInstance(context).enqueueUniqueWork(
             AFFIRMATIONS_REMINDER_NAME,
+            ExistingWorkPolicy.REPLACE,
+            request,
+        )
+    }
+
+    /**
+     * 다음 00:01 KST 까지의 지연으로 위젯 자동 갱신 Worker 를 enqueue.
+     * - 자정 직후 새 ymd 로 todayProgress / streak / date 메타 / time-of-day CTA 가
+     *   곧장 위젯에 반영되도록.
+     * - REPLACE 정책 + Worker 의 자기 재예약: 항상 단 하나만 큐잉, 매일 한 번 발사.
+     * - 네트워크 제약 추가 — 갱신은 /api/widget/today 호출이 필요. 오프라인이면 다음
+     *   네트워크 복귀 시 시도.
+     */
+    fun scheduleDailyMidnightRefresh(context: Context) {
+        val delayMillis = computeMillisUntilNext(MIDNIGHT_REFRESH_AT)
+        val request = OneTimeWorkRequestBuilder<MidnightQuoteRefreshWorker>()
+            .setInitialDelay(delayMillis, TimeUnit.MILLISECONDS)
+            .setConstraints(networkConstraint())
+            .build()
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            MIDNIGHT_REFRESH_NAME,
             ExistingWorkPolicy.REPLACE,
             request,
         )

@@ -2,7 +2,10 @@
  * 위젯 콘텐츠 백그라운드 갱신 Worker.
  *
  * - 3시간 주기 (slot 단위) Periodic 또는 OneTime 으로 트리거.
- * - 인증되어 있지 않으면 silent skip — Result.success() 로 빠져나와 재시도 폭주 방지.
+ * - 인증되어 있지 않으면 한 차례 재시도 (Result.retry) — 웹 → 네이티브 브릿지가 약간 늦게
+ *   완료되는 짧은 윈도우 동안 위젯이 영구 EmptyState 로 굳는 회귀를 막는다. WorkManager 의
+ *   재시도 정책은 백오프이므로 폭주 없음. runAttemptCount 가 [MAX_AUTH_RETRY] 이상이면
+ *   조용히 success 로 빠져나와 다음 정주기까지 대기.
  * - 네트워크 오류는 Retry, 그 외는 success (캐시 보존).
  *
  * 작업 끝나면 Glance updateAll 로 위젯 RemoteViews 재렌더 트리거.
@@ -25,9 +28,13 @@ class QuoteRefreshWorker(
 
     override suspend fun doWork(): Result {
         if (!AuthRepository.isSignedIn) {
-            // 로그인 전엔 갱신 무의미. 위젯은 placeholder 노출.
+            // 로그인 전이라도 위젯을 한 번은 그려준다 (EmptyState 로).
             QuoteWidget().updateAll(applicationContext)
-            return Result.success()
+            // 웹 → 네이티브 브릿지가 onIdTokenChanged 비동기 콜백에서 발사되므로 첫 OneTime
+            // Worker 가 브릿지보다 먼저 실행되면 isSignedIn=false 로 판정되어 EmptyState 가
+            // 그대로 굳어버린다. 재시도 한 차례를 허용해 약 ~30초 안에 브릿지가 따라잡으면
+            // 자가 봉합되도록 한다. 무한 재시도는 배터리 부담이므로 횟수로 제한.
+            return if (runAttemptCount < MAX_AUTH_RETRY) Result.retry() else Result.success()
         }
         return try {
             QuoteRepository.refresh(applicationContext)
@@ -41,5 +48,11 @@ class QuoteRefreshWorker(
             // 캐시 그대로 두고 다음 주기 대기.
             Result.success()
         }
+    }
+
+    private companion object {
+        // WorkManager 기본 백오프 (10s exponential) 로 ~30s ~ 1분 안에 자가 봉합될 횟수.
+        // 더 큰 값은 배터리 부담만 키운다.
+        const val MAX_AUTH_RETRY = 3
     }
 }
