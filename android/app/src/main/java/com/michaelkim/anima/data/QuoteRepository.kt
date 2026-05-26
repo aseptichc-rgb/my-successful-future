@@ -21,9 +21,17 @@ object QuoteRepository {
 
     /**
      * @param lang null = 백엔드 기본 ("ko")
+     *
+     * 매 호출에 현재 시각을 `_t` 쿼리로 실어 CDN/Chrome 어떤 캐시 레이어에도 stale 응답이
+     * 묶이지 않도록 한다 — `/api/widget/today` 가 max-age=60 헤더를 돌려주지만 우리는
+     * "사용자가 막 저장한 직후" 에도 이 함수를 부르므로 항상 origin 도달이 필요하다.
      */
     suspend fun refresh(context: Context, lang: String? = null): WidgetTodayResponse {
-        val response = ApiClient.widgetApi.getToday(lang = lang)
+        val response = ApiClient.widgetApi.getToday(
+            lang = lang,
+            ymd = null,
+            ts = System.currentTimeMillis(),
+        )
         QuoteCache.save(context, response)
         return response
     }

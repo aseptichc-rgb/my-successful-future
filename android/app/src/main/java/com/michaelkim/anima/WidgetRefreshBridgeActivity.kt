@@ -91,7 +91,9 @@ class WidgetRefreshBridgeActivity : ComponentActivity() {
         private const val SCHEME = "anima"
         private const val HOST = "widget-refresh"
         // 사용자 입력 직후 호출되므로 너무 길면 다른 액션을 막을 수 있다.
-        // 정상 캐시 히트(Firestore 1회 read) 는 200-500ms.
-        private const val REFRESH_TIMEOUT_MS = 2_000L
+        // 정상 캐시 히트(Firestore 1회 read) 는 200-500ms 평균이지만 슬로 네트워크
+        // (모바일 데이터, 약한 Wi-Fi) 에서 2초로는 부족해 timeout 으로 빠지는 케이스가
+        // 적지 않아 4초로 확장. NoDisplay 액티비티라 사용자 UX 에 직접 영향 없음.
+        private const val REFRESH_TIMEOUT_MS = 4_000L
     }
 }

@@ -163,10 +163,19 @@ export async function GET(request: NextRequest) {
       streakCount,
     };
 
+    // 캐시 정책: `_t` 쿼리(클라 측 cache-buster) 가 실려 있거나 Cache-Control: no-cache
+    // 헤더가 있으면 절대 캐싱하지 않는다 — 사용자가 막 저장한 직후의 호출이 stale 응답을
+    // 받는 회귀를 차단. 그 외의 정주기 Worker 호출은 짧은 private 캐시(60초) 유지.
+    const hasCacheBust = url.searchParams.has("_t");
+    const reqCacheControl = (request.headers.get("cache-control") || "").toLowerCase();
+    const wantsFresh = hasCacheBust || reqCacheControl.includes("no-cache") || reqCacheControl.includes("no-store");
+    const cacheControl = wantsFresh
+      ? "private, no-store, no-cache, must-revalidate"
+      : "private, max-age=60";
+
     return NextResponse.json(body, {
       headers: {
-        // CDN 짧게 캐시(같은 uid 기준). 위젯은 매 호출 본인 토큰을 실어 보내므로 사용자 분리는 토큰 검증으로 보장.
-        "Cache-Control": "private, max-age=60",
+        "Cache-Control": cacheControl,
       },
     });
   } catch (err) {

@@ -290,6 +290,28 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * 사용자가 TWA 에서 뒤로가기로 우리 앱으로 돌아왔을 때(혹은 어떤 경로로든 MainActivity 가
+     * 다시 foreground 가 되었을 때) 위젯 캐시를 한 번 더 깨워준다.
+     *
+     * TWA 안에서 다짐 체크인 · 잘한 일 자동저장 · 행동 토글을 한 직후, 웹의 intent:// 발화가
+     * Chrome 의 user-activation 정책으로 차단되면 위젯이 stale 한 채 굳을 수 있다. 이때 사용자가
+     * TWA → 홈 화면 또는 우리 앱으로 돌아오는 순간이 가장 빠른 봉합 시점이다.
+     *
+     * 동기 refresh 가 아닌 OneTime Worker 큐잉만 — onResume 은 onCreate 와 달리 매번 짧은
+     * 사이클로 호출될 수 있어 사용자 인터랙션을 지연시키지 않도록 가벼운 작업만 한다.
+     */
+    override fun onResume() {
+        super.onResume()
+        if (AuthRepository.isSignedIn) {
+            try {
+                WorkScheduler.scheduleOneTimeRefresh(applicationContext)
+            } catch (e: Exception) {
+                Log.w(TAG, "onResume widget refresh enqueue 실패", e)
+            }
+        }
+    }
+
     override fun onDestroy() {
         // TwaLauncher 가 잡고 있는 CustomTabs 서비스 바인딩 해제.
         twaLauncher?.destroy()

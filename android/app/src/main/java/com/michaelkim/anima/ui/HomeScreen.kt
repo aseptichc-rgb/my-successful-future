@@ -50,6 +50,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.glance.appwidget.updateAll
 import com.michaelkim.anima.data.QuoteRepository
 import com.michaelkim.anima.data.WidgetSlot
 import com.michaelkim.anima.data.auth.AuthRepository
@@ -57,11 +58,17 @@ import com.michaelkim.anima.data.auth.OnboardingPrefs
 import com.michaelkim.anima.data.auth.OnboardingStatus
 import com.michaelkim.anima.data.auth.SignInOutcome
 import com.michaelkim.anima.data.local.QuoteCache
+import com.michaelkim.anima.widget.QuoteWidget
 import com.michaelkim.anima.widget.parseHex
 import com.michaelkim.anima.work.WorkScheduler
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 private const val ONBOARDING_PATH = "/onboarding"
+// 로그인 성공 직후 동기 refresh 대기 한도. Firestore 1회 read 는 200~500ms 평균이므로
+// 3초면 정상 네트워크에서 충분, 슬로 네트워크에서는 Worker 폴백이 인계받는다.
+private const val POST_LOGIN_REFRESH_TIMEOUT_MS = 3_000L
 
 /**
  * @param onOpenAnima Anima 웹앱을 Custom Tabs 로 연다. path=null 이면 루트(/), path="/onboarding" 등 지정 가능.
@@ -92,9 +99,29 @@ fun HomeScreen(onOpenAnima: (path: String?) -> Unit) {
     var resumeTick by remember { mutableStateOf(0) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { resumeTick++ }
 
-    // 로그인 직후 위젯/캐시 즉시 갱신
+    // 로그인 직후 위젯/캐시 즉시 갱신 — 동기 refresh + updateAll 로 "로그인하자마자 위젯에 콘텐츠"
+    // 보장. Worker 만 큐잉하면 스케줄링 지연 1~5초 동안 EmptyState 가 잠시 노출되는 회귀가 있었다.
+    //
+    // 코루틴은 GlobalScope.launch 로 띄운다 — HomeScreen 이 TWA 진입과 동시에 dispose 되어도
+    // refresh 가 끊기지 않게 한다 (rememberCoroutineScope 는 dispose 시 취소된다).
+    // 타임아웃(3초) + Worker 폴백으로 슬로 네트워크에서도 안전.
     LaunchedEffect(signedIn) {
-        if (signedIn) WorkScheduler.scheduleOneTimeRefresh(context)
+        if (!signedIn) return@LaunchedEffect
+        val appCtx = context.applicationContext
+        @Suppress("OPT_IN_USAGE")
+        GlobalScope.launch {
+            val ok = withTimeoutOrNull(POST_LOGIN_REFRESH_TIMEOUT_MS) {
+                try {
+                    QuoteRepository.refresh(appCtx)
+                    QuoteWidget().updateAll(appCtx)
+                    true
+                } catch (_: Exception) {
+                    false
+                }
+            }
+            // 동기 시도가 실패/타임아웃했다면 Worker 로 봉합.
+            if (ok != true) WorkScheduler.scheduleOneTimeRefresh(appCtx)
+        }
     }
 
     // signedIn / resumeTick 가 바뀔 때마다 서버에 진실값 문의.

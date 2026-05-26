@@ -72,6 +72,32 @@ function isInsideAndroidApp(): boolean {
  * Chrome 의 intent 처리는 동기적으로 결정되므로 두 발사 모두 실패하더라도 throw 가 일어나지 않아
  * 호출자 흐름에는 영향이 없다. 우리는 "둘 중 하나는 도달한다" 는 확률을 끌어올린다.
  */
+/**
+ * Chrome 의 "최근 user-activation" 윈도우는 ~5초. 직전 사용자 입력 시각을 기록해 두고,
+ * 발화 시점에 이 윈도우 안이면 location.href 같은 강한 패스도 시도한다.
+ *
+ * 클릭/터치 외에도 키보드 입력, 폼 submit 등이 user-activation 을 갱신하므로 광범위하게 감지.
+ */
+const USER_ACTIVATION_WINDOW_MS = 4_500;
+let lastUserGestureAt = 0;
+
+function installUserGestureTracker(): void {
+  if (typeof window === "undefined") return;
+  if ((window as unknown as { __animaUgInstalled?: boolean }).__animaUgInstalled) return;
+  (window as unknown as { __animaUgInstalled?: boolean }).__animaUgInstalled = true;
+  const mark = () => {
+    lastUserGestureAt = Date.now();
+  };
+  const opts: AddEventListenerOptions = { capture: true, passive: true };
+  document.addEventListener("pointerdown", mark, opts);
+  document.addEventListener("keydown", mark, opts);
+  document.addEventListener("touchstart", mark, opts);
+}
+
+function hasFreshUserGesture(): boolean {
+  return Date.now() - lastUserGestureAt < USER_ACTIVATION_WINDOW_MS;
+}
+
 function fireIntentMultiPath(intentUrl: string): void {
   // Path 1: hidden iframe — TWA Chrome 이 이 패스를 가장 잘 인식한다.
   try {
@@ -115,6 +141,30 @@ function fireIntentMultiPath(intentUrl: string): void {
   } catch {
     // 두 경로 모두 실패 — 위젯은 다음 정주기 Worker (3시간) 또는 사용자 다음 인터랙션에서 봉합.
   }
+
+  // Path 3: user-activation 이 살아 있을 때만 hidden <form target="_self" action=intent...> submit.
+  // Chrome 은 폼 submit 을 user-activation 으로 강하게 인정해 intent 가로채기 확률이 높다.
+  // window 가 _self 로 navigate 되면 Chrome 이 intent 로 가로채고 페이지는 그대로 유지된다.
+  // 가로채지 못하면 navigation 이 발생할 수 있으므로 hasFreshUserGesture() 일 때만 시도.
+  if (!hasFreshUserGesture()) return;
+  try {
+    const form = document.createElement("form");
+    form.action = intentUrl;
+    form.method = "GET";
+    form.target = "_self";
+    form.style.display = "none";
+    document.body.appendChild(form);
+    form.submit();
+    window.setTimeout(() => {
+      try {
+        form.remove();
+      } catch {
+        // 무시
+      }
+    }, IFRAME_CLEANUP_MS);
+  } catch {
+    // 무시 — 앞 두 경로 중 하나가 도달했을 것.
+  }
 }
 
 /**
@@ -123,6 +173,9 @@ function fireIntentMultiPath(intentUrl: string): void {
 function fireIntent(intentUrl: string, key: string): void {
   try {
     if (!isInsideAndroidApp()) return;
+    // 첫 호출 시 user-gesture tracker 를 lazy install — bundle 이 처음 로드된 직후엔 아직
+    // 사용자 입력이 없을 수 있으므로 이 시점에 등록해 두면 이후 인터랙션을 모두 catch.
+    installUserGestureTracker();
 
     const now = Date.now();
     if (now - (lastFiredAt[key] ?? 0) < DEDUP_WINDOW_MS) return;
