@@ -14,7 +14,23 @@ import { useT } from "@/lib/i18n";
  *  · System Blue primary CTA · Google OAuth secondary
  * ───────────────────────────────────────────────────────────────── */
 
-function AnimaMark({ size = 56, color = "#FFFFFF" }: { size?: number; color?: string }) {
+/**
+ * Anima Aperture 마크 — design/Anima Logo Directions.html 의 캐논 기하.
+ *  · viewBox 100×100, r=42, gap=18° 12시(=-90°).
+ *  · 중심: 외환(stroke color, r=4) + 내핵(coreColor, r=1.8) "이중 코어" —
+ *    런처 아이콘(ic_launcher_foreground.xml) 과 동일한 시각 무게.
+ *  · stroke 2 → 2.4 — design 폴더 기본 1.5 는 100vb 기준이고 큰 사이즈에선
+ *    가늘어서 ic_launcher 와 시각 굵기를 일치시키도록 살짝 증량.
+ */
+function AnimaMark({
+  size = 56,
+  color = "#FFFFFF",
+  coreColor = "#BE4B26",
+}: {
+  size?: number;
+  color?: string;
+  coreColor?: string;
+}) {
   const cx = 50, cy = 50, r = 42, gap = 18;
   const gapStart = -90 - gap / 2, gapEnd = -90 + gap / 2;
   const polar = (rr: number, deg: number) => {
@@ -29,10 +45,13 @@ function AnimaMark({ size = 56, color = "#FFFFFF" }: { size?: number; color?: st
         d={`M ${sx} ${sy} A ${r} ${r} 0 1 1 ${ex} ${ey}`}
         fill="none"
         stroke={color}
-        strokeWidth="2"
+        strokeWidth="2.4"
         strokeLinecap="round"
       />
+      {/* 외환 — stroke 색과 동색 */}
       <circle cx={cx} cy={cy} r="4" fill={color} />
+      {/* 내핵 — soul 진한 톤(core) 으로 깊이감 */}
+      <circle cx={cx} cy={cy} r="1.8" fill={coreColor} />
     </svg>
   );
 }

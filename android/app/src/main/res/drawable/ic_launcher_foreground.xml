@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Anima 런처 아이콘 전경(foreground) — 로그인 화면 LogoLockup 의 AnimaMark 와 동일한 도형.
-  · 위쪽이 살짝 열린 원(aperture) + 가운데 점, 흰색 단일 톤.
-  · 108dp 뷰포트의 안전영역(중앙 72dp)에 맞춰 r=28 로 배치.
-  · gap=18° 라서 시작각=-81°, 끝각=261° → 극좌표로 도출한 시작/끝점:
-      ( 54 + 28·cos(-81°), 54 + 28·sin(-81°) ) ≈ (58.38, 26.34)
-      ( 54 + 28·cos(261°), 54 + 28·sin(261°) ) ≈ (49.62, 26.34)
+  Anima 런처 아이콘 전경(foreground) — design/Anima Logo Directions.html 의
+  캐논 Aperture 기하 + Comet 권장 "이중 코어" 패턴 차용.
+  · 108dp 뷰포트의 안전영역(중앙 72dp)을 거의 채우도록 r=30 (이전 r=28).
+  · gap=18°, 중심각 -90° (12시) → 디자인 폴더 기본값과 동일.
+      시작각 gapEnd=-81° → ( 54+30·cos(-81°), 54+30·sin(-81°) ) ≈ (58.69, 24.36)
+      끝각  gapStart+360=261° → ( 54+30·cos(261°), 54+30·sin(261°) ) ≈ (49.31, 24.36)
+  · 중심: 흰 외환(r=4) + soul 내핵(r=1.8). 이중 코어는 design 폴더 CometMark
+    의 core 처리(white outer ring + accent inner)를 단일 마크에 응용한 것 —
+    작은 사이즈에서도 "타깃" 같은 시각 무게를 확보한다.
+  · stroke 2.5 → 2.8 — 36dp 이하에서 호가 가늘게 깨지는 현상 보강.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -13,15 +17,20 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- aperture 원호 (위쪽이 열려있음) -->
+    <!-- aperture 원호 (12시 방향이 살짝 열려있음) -->
     <path
-        android:pathData="M 58.38 26.34 A 28 28 0 1 1 49.62 26.34"
+        android:pathData="M 58.69 24.36 A 30 30 0 1 1 49.31 24.36"
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="2.5"
+        android:strokeWidth="2.8"
         android:strokeLineCap="round" />
 
-    <!-- 중앙 점 -->
+    <!-- 중심 코어 — 흰 외환 (r=4) -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M 54 51 a 3 3 0 1 0 0 6 a 3 3 0 1 0 0 -6 Z" />
+        android:pathData="M 54 50 a 4 4 0 1 0 0 8 a 4 4 0 1 0 0 -8 Z" />
+
+    <!-- 중심 코어 — soul 내핵 (r=1.8) — 흰 위에 진한 soul 점이 박혀 깊이감 -->
+    <path
+        android:fillColor="#BE4B26"
+        android:pathData="M 54 52.2 a 1.8 1.8 0 1 0 0 3.6 a 1.8 1.8 0 1 0 0 -3.6 Z" />
 </vector>

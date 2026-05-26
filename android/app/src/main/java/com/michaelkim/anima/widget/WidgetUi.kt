@@ -54,6 +54,9 @@ import com.michaelkim.anima.MainActivity
 import com.michaelkim.anima.R
 import com.michaelkim.anima.data.WidgetSlot
 import com.michaelkim.anima.data.WidgetTodayProgress
+import java.time.LocalDate
+import java.time.temporal.WeekFields
+import java.util.Locale
 
 // ────────────────────────────────────────────────────────────────────────────
 // 라벨 (홈 화면과 동기화 — lib/firebase.ts MAX_DAILY_WINS=3 / dictionaries/ko.ts)
@@ -67,6 +70,9 @@ private const val FOOTER_CTA_DEFAULT = "탭하여 열기  →"
 private const val FOOTER_CTA_DONE = "오늘 3 / 3 완료  →"
 private const val MAX_GOALS_ON_WIDGET = 3
 private const val TOTAL_DAILY_ACTIONS = 3
+
+// 요일 한글 라벨 — DayOfWeek.value 는 ISO(월=1 … 일=7).
+private val DOW_KO = listOf("월", "화", "수", "목", "금", "토", "일")
 
 // ────────────────────────────────────────────────────────────────────────────
 // 사이즈 임계치 — Exact sizeMode 라 실제 dp 로 평가된다.
@@ -160,8 +166,17 @@ fun WidgetContent(slot: WidgetSlot?, progress: WidgetTodayProgress?, ymd: String
 private fun EmptyState(ink: Color) {
     // 로그인 전이라도 어느 앱의 위젯인지 알 수 있게 브랜드 로고+워드마크 노출.
     // 메시지는 중앙 정렬 — 사용자가 0.5초 안에 "어느 앱 / 왜 비어있는지"를 모두 인식.
+    // 빈 상태에서는 ymd 가 없을 수 있으므로 날짜 메타도 자연스레 생략된다.
     Column(modifier = GlanceModifier.fillMaxSize()) {
-        BrandRow(progress = null, doneCount = 0, accent = ACCENT_SOUL, ink = ink, showProgressCount = false)
+        BrandRow(
+            progress = null,
+            doneCount = 0,
+            accent = ACCENT_SOUL,
+            ink = ink,
+            ymd = null,
+            showDateMeta = false,
+            showProgressCount = false,
+        )
         Box(
             modifier = GlanceModifier.fillMaxSize(),
             contentAlignment = Alignment.Center,
@@ -202,8 +217,17 @@ private fun LoadedContent(
         // ── 1. 브랜드 헤더 ─────────────────────────────────────────────
         // 항상 노출 — 로고 + Anima 워드마크. 진척도가 있고 키가 충분하면 같은 줄 우측에 카운트.
         // 사용자 요청: 모든 사이즈에서 어느 앱의 위젯인지 즉시 인식되도록 브랜드 마크 상시 표시.
+        // 키가 충분한 위젯에는 design/Widget Directive.md §3.4 의 날짜 메타 라인도 추가.
         Column(modifier = GlanceModifier.fillMaxWidth()) {
-            BrandRow(progress, doneCount, accent, ink, showProgressCount = isTall && progress != null)
+            BrandRow(
+                progress = progress,
+                doneCount = doneCount,
+                accent = accent,
+                ink = ink,
+                ymd = ymd,
+                showDateMeta = isTall,
+                showProgressCount = isTall && progress != null,
+            )
             Spacer(GlanceModifier.height(SECTION_GAP))
         }
 
@@ -236,7 +260,11 @@ private fun LoadedContent(
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// 브랜드 헤더 — 로고 + "Anima" 워드마크 (+ 옵션: 진척도 카운트)
+// 브랜드 헤더 — (옵션) 날짜 메타 한 줄 + 로고 + "Anima" 워드마크 + 진척도 카운트
+//
+// design/Widget Directive.md §3.4 의 "5 · 24  TUE · WEEK 21" 패턴을 한국어 톤에
+// 맞춰 "5 · 24 · 일 · WEEK 21" 로 적용. 키가 충분한 위젯에만 노출 — small 에서
+// 노출하면 가용 세로 공간을 잡아먹어 체크리스트가 가려진다.
 // ────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun BrandRow(
@@ -244,43 +272,83 @@ private fun BrandRow(
     doneCount: Int,
     accent: Color,
     ink: Color,
+    ymd: String?,
+    showDateMeta: Boolean,
     showProgressCount: Boolean,
 ) {
-    Row(
-        modifier = GlanceModifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Image(
-            provider = ImageProvider(R.drawable.ic_anima_aperture),
-            contentDescription = "Anima",
-            modifier = GlanceModifier.size(LOGO_SIZE),
-        )
-        Spacer(GlanceModifier.width(BRAND_GAP))
-        // "Anima" 워드마크 — serif 로 클래식한 브랜드 톤. italic 은 인용문 영역에서만 사용해
-        // 두 위계가 충돌하지 않도록 Normal 로 유지.
-        Text(
-            text = "Anima",
-            style = TextStyle(
-                color = ColorProvider(ink),
-                fontSize = BRAND_NAME_SIZE,
-                fontFamily = FontFamily.Serif,
-                fontWeight = FontWeight.Medium,
-            ),
-            maxLines = 1,
-            modifier = GlanceModifier.defaultWeight(),
-        )
-        if (showProgressCount && progress != null) {
+    Column(modifier = GlanceModifier.fillMaxWidth()) {
+        // 날짜·요일·주차 — mono, ink 36% 톤. ymd 가 잘못된 형식이면 통째로 생략(예외 안전).
+        val dateMeta = if (showDateMeta) formatDateMeta(ymd) else null
+        if (dateMeta != null) {
+            Column(modifier = GlanceModifier.fillMaxWidth()) {
+                Text(
+                    text = dateMeta,
+                    style = TextStyle(
+                        color = ColorProvider(ink.copy(alpha = ALPHA_META)),
+                        fontSize = META_SIZE,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Medium,
+                    ),
+                    maxLines = 1,
+                )
+                Spacer(GlanceModifier.height(6.dp))
+            }
+        }
+        Row(
+            modifier = GlanceModifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Image(
+                provider = ImageProvider(R.drawable.ic_anima_aperture),
+                contentDescription = "Anima",
+                modifier = GlanceModifier.size(LOGO_SIZE),
+            )
+            Spacer(GlanceModifier.width(BRAND_GAP))
+            // "Anima" 워드마크 — serif 로 클래식한 브랜드 톤. italic 은 인용문 영역에서만 사용해
+            // 두 위계가 충돌하지 않도록 Normal 로 유지.
             Text(
-                text = "$doneCount / $TOTAL_DAILY_ACTIONS  OK",
+                text = "Anima",
                 style = TextStyle(
-                    color = ColorProvider(accent),
-                    fontSize = META_SIZE,
-                    fontFamily = FontFamily.Monospace,
+                    color = ColorProvider(ink),
+                    fontSize = BRAND_NAME_SIZE,
+                    fontFamily = FontFamily.Serif,
                     fontWeight = FontWeight.Medium,
                 ),
                 maxLines = 1,
+                modifier = GlanceModifier.defaultWeight(),
             )
+            if (showProgressCount && progress != null) {
+                Text(
+                    text = "$doneCount / $TOTAL_DAILY_ACTIONS  OK",
+                    style = TextStyle(
+                        color = ColorProvider(accent),
+                        fontSize = META_SIZE,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Medium,
+                    ),
+                    maxLines = 1,
+                )
+            }
         }
+    }
+}
+
+/**
+ * "2026-05-24" → "5 · 24 · 일 · WEEK 21" 변환.
+ * design/Widget Directive.md §3.4 의 헤더 메타 라인 포맷.
+ * 입력이 ISO-8601 yyyy-MM-dd 가 아니거나 파싱 실패 시 null 반환 — 호출자는 라인을 생략한다.
+ */
+private fun formatDateMeta(ymd: String?): String? {
+    if (ymd.isNullOrBlank()) return null
+    return try {
+        val date = LocalDate.parse(ymd)
+        val dowIndex = (date.dayOfWeek.value - 1).coerceIn(0, DOW_KO.size - 1)
+        val dow = DOW_KO[dowIndex]
+        val week = date.get(WeekFields.of(Locale.KOREA).weekOfWeekBasedYear())
+        "${date.monthValue} · ${date.dayOfMonth} · $dow · WEEK $week"
+    } catch (_: Exception) {
+        // DateTimeParseException 등 모든 파싱 실패를 한 곳에서 잡고 null 로 폴백.
+        null
     }
 }
 
