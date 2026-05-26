@@ -218,4 +218,10 @@ export interface WidgetTodayResponse {
   slots: WidgetSlot[];
   nextRefreshAt: string;
   todayProgress: WidgetTodayProgress;
+  /**
+   * 다짐 따라쓰기 연속 일수(streak). 위젯 헤더 우상단 + 홈 헤더 우상단에 같은 값으로 표시.
+   * 출처: `users/{uid}.affirmationStreak.count` (lib/affirmationCheckin.ts 에서 갱신).
+   * 응답 호환성: 누락 시 위젯 측 0 폴백 — 옛 클라이언트도 동작.
+   */
+  streakCount?: number;
 }

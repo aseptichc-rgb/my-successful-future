@@ -117,16 +117,22 @@ export async function GET(request: NextRequest) {
     // 1) 오늘의 개인화 카드 보장 (없으면 생성)
     const { motivation } = await ensureMotivation({ uid: me.uid, ymd });
 
-    // 2) 진척도 수집. home 의 "오늘 행동 체크" 와 일치하도록 user.goals 를 실시간으로 읽는다.
+    // 2) 진척도 수집 + streak 동시 추출. home 의 "오늘 행동 체크" 와 일치하도록
+    //    user.goals 를 실시간으로 읽고, 같은 스냅샷에서 affirmationStreak.count 도 함께 뽑아
+    //    추가 라운드트립 없이 위젯 응답에 실어 보낸다.
     let userGoals: string[] | undefined;
+    let streakCount = 0;
     try {
       const userSnap = await getAdminDb().collection("users").doc(me.uid).get();
       const data = userSnap.data();
       if (data && Array.isArray(data.goals)) {
         userGoals = data.goals as string[];
       }
+      const rawStreak = (data?.affirmationStreak as { count?: unknown } | undefined)?.count;
+      const n = Number(rawStreak ?? 0);
+      streakCount = Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
     } catch (err) {
-      console.error("[widget/today] user.goals 조회 실패:", err);
+      console.error("[widget/today] user 문서 조회 실패:", err);
     }
     const todayProgress = await fetchTodayProgress(me.uid, ymd, userGoals);
 
@@ -154,6 +160,7 @@ export async function GET(request: NextRequest) {
       slots: [motivationSlot],
       nextRefreshAt: nextRefreshIso(now),
       todayProgress,
+      streakCount,
     };
 
     return NextResponse.json(body, {

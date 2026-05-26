@@ -55,6 +55,7 @@ import com.michaelkim.anima.R
 import com.michaelkim.anima.data.WidgetSlot
 import com.michaelkim.anima.data.WidgetTodayProgress
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.temporal.WeekFields
 import java.util.Locale
 
@@ -66,8 +67,16 @@ private const val PROGRESS_LABEL_ACTIONS = "목표를 이루기 위한 오늘의
 private const val PROGRESS_LABEL_WINS = "오늘 잘한 일 3가지"
 private const val SECTION_TODAY = "TODAY · 오늘의 행동"
 private const val SECTION_GOALS = "GOALS · 이번 달 목표"
-private const val FOOTER_CTA_DEFAULT = "탭하여 열기  →"
+// 시간대별 CTA — design/Widget Directive.md §5 morning/midday/evening 패턴.
+// 색 swap(soul→success #7CB377)은 사용자 팔레트 통일 결정에 따라 보류, 카피만 시간대화.
+private const val FOOTER_CTA_MORNING = "오늘 시작  →"
+private const val FOOTER_CTA_MIDDAY = "기록하기  →"
+private const val FOOTER_CTA_EVENING = "오늘 마무리  →"
 private const val FOOTER_CTA_DONE = "오늘 3 / 3 완료  →"
+
+// 시간대 컷오프 (KST 기기 시계 기준). 아침 끝/저녁 시작 시각.
+private const val HOUR_MORNING_END = 11   // 11시 전까지가 morning
+private const val HOUR_EVENING_START = 18 // 18시부터 evening
 private const val MAX_GOALS_ON_WIDGET = 3
 private const val TOTAL_DAILY_ACTIONS = 3
 
@@ -124,7 +133,12 @@ private val ACCENT_SOUL = Color(0xFFD85A30)    // widget_accent_soul
 private val SUCCESS = Color(0xFFD85A30)        // 웹과 동일하게 soul 단일 — 완료 시도 같은 톤
 
 @Composable
-fun WidgetContent(slot: WidgetSlot?, progress: WidgetTodayProgress?, ymd: String?) {
+fun WidgetContent(
+    slot: WidgetSlot?,
+    progress: WidgetTodayProgress?,
+    ymd: String?,
+    streakCount: Int = 0,
+) {
     val context = LocalContext.current
     val size = LocalSize.current
     val isWide = size.width >= WIDE_THRESHOLD_DP
@@ -158,7 +172,7 @@ fun WidgetContent(slot: WidgetSlot?, progress: WidgetTodayProgress?, ymd: String
             EmptyState(ink)
             return@Box
         }
-        LoadedContent(slot, progress, ymd, isWide, isTall, isExtraTall, isLight, ink)
+        LoadedContent(slot, progress, ymd, streakCount, isWide, isTall, isExtraTall, isLight, ink)
     }
 }
 
@@ -166,7 +180,7 @@ fun WidgetContent(slot: WidgetSlot?, progress: WidgetTodayProgress?, ymd: String
 private fun EmptyState(ink: Color) {
     // 로그인 전이라도 어느 앱의 위젯인지 알 수 있게 브랜드 로고+워드마크 노출.
     // 메시지는 중앙 정렬 — 사용자가 0.5초 안에 "어느 앱 / 왜 비어있는지"를 모두 인식.
-    // 빈 상태에서는 ymd 가 없을 수 있으므로 날짜 메타도 자연스레 생략된다.
+    // 빈 상태에서는 ymd/streak 모두 없으므로 날짜·streak 칩도 자연스레 생략된다.
     Column(modifier = GlanceModifier.fillMaxSize()) {
         BrandRow(
             progress = null,
@@ -174,6 +188,7 @@ private fun EmptyState(ink: Color) {
             accent = ACCENT_SOUL,
             ink = ink,
             ymd = null,
+            streakCount = 0,
             showDateMeta = false,
             showProgressCount = false,
         )
@@ -199,6 +214,7 @@ private fun LoadedContent(
     slot: WidgetSlot,
     progress: WidgetTodayProgress?,
     ymd: String?,
+    streakCount: Int,
     isWide: Boolean,
     isTall: Boolean,
     isExtraTall: Boolean,
@@ -225,6 +241,7 @@ private fun LoadedContent(
                 accent = accent,
                 ink = ink,
                 ymd = ymd,
+                streakCount = streakCount,
                 showDateMeta = isTall,
                 showProgressCount = isTall && progress != null,
             )
@@ -273,27 +290,54 @@ private fun BrandRow(
     accent: Color,
     ink: Color,
     ymd: String?,
+    streakCount: Int,
     showDateMeta: Boolean,
     showProgressCount: Boolean,
 ) {
     Column(modifier = GlanceModifier.fillMaxWidth()) {
-        // 날짜·요일·주차 — mono, ink 36% 톤. ymd 가 잘못된 형식이면 통째로 생략(예외 안전).
+        // ── 메타 라인 (좌: 날짜, 우: STREAK 칩) ─────────────────────────
+        // design/Widget Directive.md §3.4 의 헤더 패턴: 좌상단 날짜 메타 + 우상단 streak.
+        // 둘 다 키 충분한 위젯(showDateMeta)에서만 노출 — small 에서는 가용 공간이 부족.
+        // ymd 파싱 실패 또는 streak 0 인 경우 해당 자리는 자연스레 비워둔다.
         val dateMeta = if (showDateMeta) formatDateMeta(ymd) else null
-        if (dateMeta != null) {
+        val showStreak = showDateMeta && streakCount > 0
+        if (dateMeta != null || showStreak) {
             Column(modifier = GlanceModifier.fillMaxWidth()) {
-                Text(
-                    text = dateMeta,
-                    style = TextStyle(
-                        color = ColorProvider(ink.copy(alpha = ALPHA_META)),
-                        fontSize = META_SIZE,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Medium,
-                    ),
-                    maxLines = 1,
-                )
+                Row(
+                    modifier = GlanceModifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = dateMeta ?: "",
+                        style = TextStyle(
+                            color = ColorProvider(ink.copy(alpha = ALPHA_META)),
+                            fontSize = META_SIZE,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Medium,
+                        ),
+                        maxLines = 1,
+                        modifier = GlanceModifier.defaultWeight(),
+                    )
+                    if (showStreak) {
+                        // ● 글리프(원형 dot)는 accent 색의 같은 줄에 함께 — RemoteViews 가
+                        // box-shadow glow 미지원이라 dot+텍스트로 표현. accent 가 dot 색을
+                        // 그대로 가져가 살아있는 진척 신호로 읽힌다.
+                        Text(
+                            text = "●  STREAK $streakCount",
+                            style = TextStyle(
+                                color = ColorProvider(accent),
+                                fontSize = META_SIZE,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Medium,
+                            ),
+                            maxLines = 1,
+                        )
+                    }
+                }
                 Spacer(GlanceModifier.height(6.dp))
             }
         }
+        // ── 브랜드 라인 (좌: 로고+워드마크, 우: 오늘의 진척 카운트) ─────
         Row(
             modifier = GlanceModifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -609,6 +653,7 @@ private fun GoalRow(num: Int, title: String, accent: Color, ink: Color) {
 @Composable
 private fun FooterCta(allDone: Boolean, ink: Color, accent: Color) {
     // HairlineDivider + Spacer + Row 세 자식 → Column 으로 1개로 묶는다.
+    val cta = if (allDone) FOOTER_CTA_DONE else currentTimeOfDayCta()
     Column(modifier = GlanceModifier.fillMaxWidth()) {
         HairlineDivider(ink)
         Spacer(GlanceModifier.height(10.dp))
@@ -617,7 +662,7 @@ private fun FooterCta(allDone: Boolean, ink: Color, accent: Color) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = if (allDone) FOOTER_CTA_DONE else FOOTER_CTA_DEFAULT,
+                text = cta,
                 style = TextStyle(
                     color = ColorProvider(if (allDone) accent else ink.copy(alpha = ALPHA_DIM)),
                     fontSize = FOOTER_SIZE,
@@ -629,6 +674,25 @@ private fun FooterCta(allDone: Boolean, ink: Color, accent: Color) {
                 modifier = GlanceModifier.fillMaxWidth(),
             )
         }
+    }
+}
+
+/**
+ * 기기 시계 기준 morning/midday/evening 으로 CTA 카피 분기.
+ * 위젯은 WorkManager 주기와 사용자 탭에 의해서만 갱신되므로 다음 갱신까지 카피가 살짝 stale 할
+ * 수 있지만 시간대 "힌트" 수준이라 사용자 경험에 무해.
+ * LocalTime.now() 는 시스템 시계 손상 같은 극한 상황에서만 던지므로 catch-all 폴백.
+ */
+private fun currentTimeOfDayCta(): String {
+    return try {
+        val hour = LocalTime.now().hour
+        when {
+            hour < HOUR_MORNING_END -> FOOTER_CTA_MORNING
+            hour < HOUR_EVENING_START -> FOOTER_CTA_MIDDAY
+            else -> FOOTER_CTA_EVENING
+        }
+    } catch (_: Exception) {
+        FOOTER_CTA_MIDDAY
     }
 }
 

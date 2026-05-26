@@ -29,8 +29,10 @@ class QuoteWidget : GlanceAppWidget() {
         // 위젯이 "지금 그리고 있는" 카드가 속한 날짜(ymd). 탭 시 이 값을 /home 으로
         // 넘겨, 웹이 기기 시계로 다시 계산하지 않고 위젯과 같은 문서를 읽게 한다.
         val ymd = cached?.response?.ymd
+        // 다짐 streak — 옛 캐시는 0 으로 기본값 처리되어 자연스레 숨겨진다.
+        val streak = cached?.response?.streakCount ?: 0
         provideContent {
-            WidgetContent(slot, progress, ymd)
+            WidgetContent(slot, progress, ymd, streak)
         }
     }
 }

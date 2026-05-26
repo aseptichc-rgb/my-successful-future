@@ -49,6 +49,11 @@ data class WidgetTodayResponse(
     val slots: List<WidgetSlot>,
     val nextRefreshAt: String,
     val todayProgress: WidgetTodayProgress = WidgetTodayProgress(),
+    /**
+     * 다짐 따라쓰기 연속 일수. 신규 필드라 옛 캐시/옛 서버 응답엔 없을 수 있어 0 기본값.
+     * 출처: `users/{uid}.affirmationStreak.count` (lib/affirmationCheckin.ts).
+     */
+    val streakCount: Int = 0,
 )
 
 /** DataStore 캐시 직렬화용 — 마지막 응답 + 디스크 기록 시각. */
