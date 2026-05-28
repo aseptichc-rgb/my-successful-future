@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Anima 런처 아이콘 전경(foreground) — design/Anima Logo Directions.html 의
-  캐논 Aperture 기하 + Comet 권장 "이중 코어" 패턴 차용.
+  캐논 Aperture 기하 + Comet 권장 "이중 코어" 패턴.
   · 108dp 뷰포트의 안전영역(중앙 72dp)을 거의 채우도록 r=30.
-  · gap=18°, 중심각 -90° (12시) → 디자인 폴더 기본값과 동일.
-      시작각 gapEnd=-81° → ( 54+30·cos(-81°), 54+30·sin(-81°) ) ≈ (58.69, 24.36)
-      끝각  gapStart+360=261° → ( 54+30·cos(261°), 54+30·sin(261°) ) ≈ (49.31, 24.36)
-  · 중심: 흰 외환(r=4) + 더 진한 인디고 내핵(r=1.8). 인디고 배경(#1E1B4B → #15123A) 위에서
-    흰 외환이 떠 보이고, 그 안의 더 진한 인디고(#15123A) 점이 깊이감을 만든다.
-  · stroke 2.8 — 36dp 이하에서 호가 가늘게 깨지는 현상 보강.
+  · gap=18°, 중심각 -90° (12시)
+      시작각 gapEnd=-81° → (54+30·cos(-81°), 54+30·sin(-81°)) ≈ (58.69, 24.36)
+      끝각  gapStart+360=261° → (54+30·cos(261°), 54+30·sin(261°)) ≈ (49.31, 24.36)
+  · 중심 이중 코어: 흰 외환(r=4) + soul 오렌지 내핵(r=1.8).
+      웹 파비콘 / app/icon.svg / 로그인 LogoLockup 의 "indigo 호 + soul 오렌지 점"
+      과 동일한 무게로 통일 — 어디서 만나든 같은 마크임을 즉시 인지.
+  · stroke 2.8 — 36dp 이하 launcher 에서 호가 가늘게 깨지는 현상 보강.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -28,8 +29,9 @@
         android:fillColor="#FFFFFF"
         android:pathData="M 54 50 a 4 4 0 1 0 0 8 a 4 4 0 1 0 0 -8 Z" />
 
-    <!-- 중심 코어 — 더 진한 인디고 내핵 (r=1.8) — 흰 위에 진한 indigo 점이 박혀 깊이감 -->
+    <!-- 중심 코어 — soul 오렌지 내핵 (r=1.8) — 인디고 배경 + 흰 외환 위에서
+         따뜻한 soul 오렌지 점이 brand identity 의 "심장" 역할. -->
     <path
-        android:fillColor="#15123A"
+        android:fillColor="#D85A30"
         android:pathData="M 54 52.2 a 1.8 1.8 0 1 0 0 3.6 a 1.8 1.8 0 1 0 0 -3.6 Z" />
 </vector>

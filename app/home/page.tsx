@@ -18,6 +18,7 @@ import {
 import { authedFetch } from "@/lib/authedFetch";
 import { notifyAndroidWidgetRefresh } from "@/lib/widgetBridge";
 import MotivationCard from "@/components/home/MotivationCard";
+import Logo from "@/components/ui/Logo";
 import { useLanguage } from "@/lib/i18n";
 import type { DailyEntry, DailyMotivation } from "@/types";
 
@@ -470,6 +471,12 @@ export default function HomeDashboardPage() {
     <div className="flex h-full flex-col overflow-y-auto bg-[var(--bg-grouped)] pb-12">
       {/* ── Large Title bar — Apple iOS native pattern ── */}
       <header className="bg-[var(--bg-grouped)] pt-3 pb-2">
+        {/* 상단 브랜드 로고 — 앱 진입 직후 가장 먼저 보이는 brand identity.
+            indigo Aperture + soul 오렌지 코어 + "anima" 워드마크. lockup SVG 의
+            기본 비율(100:30)에 맞춰 height 22 → width 73px 자동 산출. */}
+        <div className="mx-auto flex max-w-3xl items-center justify-center px-5 pt-1 pb-2">
+          <Logo variant="lockup" tone="light" size={22} alt="Anima" priority />
+        </div>
         <div className="mx-auto flex max-w-3xl items-center justify-between px-2 min-h-[44px]">
           <div className="w-[44px]" />
           <div className="flex items-center gap-2">
