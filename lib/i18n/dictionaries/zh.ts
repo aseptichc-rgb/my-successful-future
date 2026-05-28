@@ -218,6 +218,7 @@ const dict: Record<DictKey, string> = {
   "auth.signUp": "注册",
   "auth.signInWithGoogle": "使用 Google 继续",
   "auth.continueWithGoogle": "使用 Google 继续",
+  "auth.continueWithApple": "使用 Apple 继续",
   "auth.or": "或",
   "auth.noAccount": "第一次来吗?",
   "auth.signingIn": "登录中…",
@@ -240,6 +241,8 @@ const dict: Record<DictKey, string> = {
   "auth.link.submit": "关联并登录",
   "auth.link.cancel": "取消",
   "auth.link.failed": "关联失败,请检查密码。",
+  "auth.link.apple.title": "关联 Apple 账户",
+  "auth.link.apple.description": "{email} 已使用邮箱/密码注册。请输入密码以关联此 Apple 账户,之后两种方式都可以登录。",
   "auth.password.placeholder": "至少 6 个字符",
   "auth.displayName.placeholder": "显示名称",
 

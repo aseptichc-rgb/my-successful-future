@@ -128,14 +128,45 @@ export type GoogleSignInResult =
     };
 
 /**
- * Apple OAuth 로그인. iOS WebView 안에서는 Firebase 의 signInWithPopup 이 popup 차단으로
- * 실패할 수 있어 호출부가 try/catch 로 받고 사용자에게 다시 시도시킨다.
- *
- * Capacitor 의 SignInWithApple plugin 을 쓰면 popup 없이 네이티브 ASAuthorizationController
- * 가 뜨는데, 그건 Mac 작업 단계에서 추가한다(현재는 웹 표준 OAuth 경로만 노출).
+ * Apple OAuth 결과. Google 과 동일한 needsLink 디스패치 — 같은 이메일이 이미
+ * 이메일/비밀번호 계정에 묶여 있으면 호출자가 비밀번호로 본인 인증 후
+ * [linkAppleCredentialToEmailAccount] 로 두 provider 를 한 uid 에 합친다.
  */
-export async function signInWithApple(): Promise<void> {
-  await signInWithPopup(getAuthInstance(), appleProvider);
+export type AppleSignInResult =
+  | { kind: "ok" }
+  | {
+      kind: "needsLink";
+      email: string;
+      pendingCredential: AuthCredential;
+      existingMethods: string[];
+    };
+
+/**
+ * Apple OAuth 로그인 (웹 popup 경로). iOS WebView 안에서는 popup 차단으로 실패할 수 있어
+ * 호출부가 try/catch 로 받고 사용자에게 다시 시도시킨다. Capacitor 의 SignInWithApple
+ * 플러그인을 쓰면 popup 없이 네이티브 ASAuthorizationController 가 뜨는데, 그건 Mac 작업
+ * 단계에서 추가한다(현재는 웹 표준 OAuth 경로만 노출).
+ *
+ * needsLink 분기: 동일 이메일이 이미 이메일/비밀번호로 가입돼 있으면 Firebase 가
+ * account-exists-with-different-credential 을 던진다. pending Apple credential 을 보존해
+ * 호출자가 비밀번호 입력 → [linkAppleCredentialToEmailAccount] 로 합치게 한다.
+ */
+export async function signInWithApple(): Promise<AppleSignInResult> {
+  try {
+    await signInWithPopup(getAuthInstance(), appleProvider);
+    return { kind: "ok" };
+  } catch (err) {
+    if (err instanceof FirebaseError && err.code === "auth/account-exists-with-different-credential") {
+      const pendingCredential = OAuthProvider.credentialFromError(err);
+      const email = (err.customData?.email as string | undefined) ?? "";
+      if (!pendingCredential || !email) throw err;
+      const existingMethods = await fetchSignInMethodsForEmail(getAuthInstance(), email).catch(
+        () => [] as string[],
+      );
+      return { kind: "needsLink", email, pendingCredential, existingMethods };
+    }
+    throw err;
+  }
 }
 
 export async function signInWithGoogle(): Promise<GoogleSignInResult> {
@@ -164,6 +195,20 @@ export async function signInWithGoogle(): Promise<GoogleSignInResult> {
  * 다음번부터는 두 방식 어느 쪽으로도 같은 uid 에 로그인할 수 있다.
  */
 export async function linkGoogleCredentialToEmailAccount(
+  email: string,
+  password: string,
+  pendingCredential: AuthCredential,
+) {
+  const cred = await signInWithEmailAndPassword(getAuthInstance(), email, password);
+  await linkWithCredential(cred.user, pendingCredential);
+  return cred;
+}
+
+/**
+ * 기존 이메일/비밀번호 계정에 보류된 Apple credential 을 연결.
+ * Google 흐름과 동일 — provider 만 다르다.
+ */
+export async function linkAppleCredentialToEmailAccount(
   email: string,
   password: string,
   pendingCredential: AuthCredential,

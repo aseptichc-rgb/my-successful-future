@@ -6,13 +6,16 @@ import {
   onIdTokenChanged,
   signInWithEmail,
   signInWithGoogle,
+  signInWithApple,
   linkGoogleCredentialToEmailAccount,
+  linkAppleCredentialToEmailAccount,
   signInWithCustomTokenClient,
   signUp as firebaseSignUp,
   signOut as firebaseSignOut,
   getUserProfile,
   type FirebaseUser,
   type GoogleSignInResult,
+  type AppleSignInResult,
 } from "@/lib/firebase";
 import type { AuthCredential } from "firebase/auth";
 import { shouldStartTrial } from "@/lib/entitlement";
@@ -26,7 +29,13 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signInGoogle: () => Promise<GoogleSignInResult>;
+  signInApple: () => Promise<AppleSignInResult>;
   linkGoogleToEmailPassword: (
+    email: string,
+    password: string,
+    pendingCredential: AuthCredential,
+  ) => Promise<void>;
+  linkAppleToEmailPassword: (
     email: string,
     password: string,
     pendingCredential: AuthCredential,
@@ -364,12 +373,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return signInWithGoogle();
   };
 
+  const signInApple = async (): Promise<AppleSignInResult> => {
+    return signInWithApple();
+  };
+
   const linkGoogleToEmailPassword = async (
     email: string,
     password: string,
     pendingCredential: AuthCredential,
   ) => {
     await linkGoogleCredentialToEmailAccount(email, password, pendingCredential);
+  };
+
+  const linkAppleToEmailPassword = async (
+    email: string,
+    password: string,
+    pendingCredential: AuthCredential,
+  ) => {
+    await linkAppleCredentialToEmailAccount(email, password, pendingCredential);
   };
 
   const signOut = async () => {
@@ -415,7 +436,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signIn,
         signUp,
         signInGoogle,
+        signInApple,
         linkGoogleToEmailPassword,
+        linkAppleToEmailPassword,
         signOut,
         refreshUser,
       }}

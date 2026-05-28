@@ -222,6 +222,7 @@ const dict: Record<DictKey, string> = {
   "auth.signUp": "Sign up",
   "auth.signInWithGoogle": "Continue with Google",
   "auth.continueWithGoogle": "Continue with Google",
+  "auth.continueWithApple": "Continue with Apple",
   "auth.or": "or",
   "auth.noAccount": "First time here?",
   "auth.signingIn": "Signing in…",
@@ -244,6 +245,8 @@ const dict: Record<DictKey, string> = {
   "auth.link.submit": "Link and sign in",
   "auth.link.cancel": "Cancel",
   "auth.link.failed": "Couldn't link the account. Please check your password.",
+  "auth.link.apple.title": "Link Apple account",
+  "auth.link.apple.description": "{email} is already registered with email/password. Enter your password to link this Apple account so you can use either method from now on.",
   "auth.password.placeholder": "At least 6 characters",
   "auth.displayName.placeholder": "Display name",
 

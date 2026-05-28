@@ -12,9 +12,9 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-const LAST_UPDATED = "2026-05-13";
+const LAST_UPDATED = "2026-05-28";
 const CONTACT_EMAIL =
-  process.env.NEXT_PUBLIC_PRIVACY_CONTACT_EMAIL || "kjykjj04@gmail.com";
+  process.env.NEXT_PUBLIC_PRIVACY_CONTACT_EMAIL || "aseptichc@gmail.com";
 
 export default function TermsPage() {
   return (
@@ -54,17 +54,22 @@ export default function TermsPage() {
         </Section>
 
         <Section title="3. 계정과 보안">
-          서비스 이용을 위해 Google 계정 로그인이 필요합니다. 계정에서 발생하는 모든
-          활동에 대한 책임은 사용자에게 있으며, 비정상적인 사용이 감지될 경우 서비스
-          이용이 제한될 수 있습니다.
+          서비스 이용을 위해 <b>Google 계정</b> 또는 <b>Apple 계정(Sign in with
+          Apple)</b> 로그인이 필요합니다. 계정에서 발생하는 모든 활동에 대한
+          책임은 사용자에게 있으며, 비정상적인 사용이 감지될 경우 서비스 이용이
+          제한될 수 있습니다.
         </Section>
 
         <Section title="4. 결제와 환불">
-          <ul className="list-disc space-y-2 pl-5">
-            <li>
-              유료 기능 결제는 <b>Google Play 인앱 결제</b> 를 통해서만 이루어집니다.
-              결제수단 정보는 Google Play 가 처리하며 서비스는 보관하지 않습니다.
-            </li>
+          <p className="mb-2">
+            유료 기능 결제는 사용자의 플랫폼에 따라 <b>Google Play 인앱 결제</b>{" "}
+            또는 <b>Apple App Store 인앱 결제(StoreKit)</b> 를 통해 이루어집니다.
+            결제수단 정보는 각 플랫폼 사업자가 직접 처리하며 서비스는 보관하지
+            않습니다.
+          </p>
+
+          <p className="mt-3 font-semibold text-[#1E1B4B]">Android · Google Play</p>
+          <ul className="mt-1 list-disc space-y-2 pl-5">
             <li>
               환불은 Google Play 의 환불 정책에 따릅니다. Play 콘솔 또는{" "}
               <a
@@ -75,13 +80,46 @@ export default function TermsPage() {
               >
                 Google 환불 도움말
               </a>{" "}
-              을 통해 직접 요청할 수 있습니다. 한국 사용자의 경우 결제 후 7일 이내,
-              콘텐츠가 실질적으로 제공되지 않은 경우 청약철회가 가능합니다.
+              을 통해 직접 요청할 수 있습니다.
             </li>
             <li>
-              구매한 권한은 동일 Google 계정으로 로그인한 모든 기기에서 자동 복원됩니다.
+              구매한 권한은 동일 Google 계정으로 로그인한 모든 기기에서 자동
+              복원됩니다.
             </li>
           </ul>
+
+          <p className="mt-4 font-semibold text-[#1E1B4B]">iOS · Apple App Store</p>
+          <ul className="mt-1 list-disc space-y-2 pl-5">
+            <li>
+              환불은 Apple 의 환불 정책에 따릅니다.{" "}
+              <a
+                href="https://reportaproblem.apple.com"
+                className="font-semibold text-[#1E1B4B] underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                reportaproblem.apple.com
+              </a>{" "}
+              에서 직접 환불을 요청하거나, 정기 구독의 경우{" "}
+              <Code>설정 → Apple ID → 구독</Code> 에서 갱신 해지를 할 수 있습니다.
+            </li>
+            <li>
+              구매한 권한은 동일 Apple ID 로 로그인한 모든 기기에서 자동
+              복원됩니다(설정 화면의 “구매 복원” 사용 가능).
+            </li>
+            <li>
+              정기 구독은 현재 결제 기간 종료 24시간 전까지 해지하지 않으면 자동
+              갱신되며, 갱신 결제는 Apple ID 로 청구됩니다.
+            </li>
+          </ul>
+
+          <p className="mt-4">
+            한국 사용자의 경우 전자상거래법에 따라 결제 후 7일 이내, 콘텐츠가
+            실질적으로 제공되지 않은 경우 청약철회가 가능합니다. EU/EEA 사용자는
+            소비자 권리 지침(Consumer Rights Directive) 에 따른 14일 청약철회권을
+            가지며, 디지털 콘텐츠를 즉시 제공받는 것에 동의한 경우 해당 권리가
+            소멸될 수 있습니다.
+          </p>
         </Section>
 
         <Section title="5. 사용자의 의무">
@@ -152,5 +190,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
         {children}
       </div>
     </section>
+  );
+}
+
+function Code({ children }: { children: React.ReactNode }) {
+  return (
+    <code className="rounded-[6px] bg-black/[0.04] px-1.5 py-0.5 text-[12px] tracking-[-0.005em] text-[#1E1B4B]">
+      {children}
+    </code>
   );
 }

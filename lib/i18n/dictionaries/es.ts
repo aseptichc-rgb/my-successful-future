@@ -226,6 +226,7 @@ const dict: Record<DictKey, string> = {
   "auth.signUp": "Crear cuenta",
   "auth.signInWithGoogle": "Continuar con Google",
   "auth.continueWithGoogle": "Continuar con Google",
+  "auth.continueWithApple": "Continuar con Apple",
   "auth.or": "o",
   "auth.noAccount": "¿Es tu primera vez?",
   "auth.signingIn": "Iniciando…",
@@ -249,6 +250,8 @@ const dict: Record<DictKey, string> = {
   "auth.link.submit": "Vincular e iniciar sesión",
   "auth.link.cancel": "Cancelar",
   "auth.link.failed": "No se pudo vincular la cuenta. Verifica tu contraseña.",
+  "auth.link.apple.title": "Vincular cuenta de Apple",
+  "auth.link.apple.description": "{email} ya está registrado con correo y contraseña. Escribe tu contraseña para vincular esta cuenta de Apple y usar cualquiera de los dos métodos.",
   "auth.password.placeholder": "Mínimo 6 caracteres",
   "auth.displayName.placeholder": "Nombre para mostrar",
 

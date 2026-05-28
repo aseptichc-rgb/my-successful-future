@@ -1,24 +1,27 @@
 /**
- * /privacy — 개인정보 처리방침.
+ * /privacy — Privacy Policy.
  *
- * Google Play Console 의 "개인정보처리방침 URL" 칸에 그대로 입력할 수 있는 공개 페이지.
- * 인증 없이 접근 가능해야 한다 (Play 심사자가 비로그인으로 확인).
+ * Public page that can be pasted directly into the "Privacy Policy URL" field
+ * of Google Play Console and App Store Connect. Must be accessible without
+ * authentication (reviewers verify while signed out).
  *
- * 변경 시 페이지 하단 "최종 업데이트" 날짜를 함께 갱신할 것.
- * Data Safety 폼 답변(scripts/play-data-safety.md) 과 내용이 일치해야 한다.
+ * When updating, bump the LAST_UPDATED date at the bottom of the page.
+ * Contents must stay consistent with the Data Safety form answers in
+ * scripts/play-data-safety.md.
  */
 import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "개인정보 처리방침 · Anima",
-  description: "Anima 가 수집·이용·보관하는 정보와 사용자 권리에 대한 안내.",
+  title: "Privacy Policy · Anima",
+  description:
+    "How Anima collects, uses, stores, and deletes your information, and the rights you have over it.",
   robots: { index: true, follow: true },
 };
 
-const LAST_UPDATED = "2026-05-13";
+const LAST_UPDATED = "2026-05-28";
 const CONTACT_EMAIL =
-  process.env.NEXT_PUBLIC_PRIVACY_CONTACT_EMAIL || "kjykjj04@gmail.com";
+  process.env.NEXT_PUBLIC_PRIVACY_CONTACT_EMAIL || "aseptichc@gmail.com";
 
 export default function PrivacyPolicyPage() {
   return (
@@ -34,119 +37,141 @@ export default function PrivacyPolicyPage() {
           href="/terms"
           className="text-[12px] tracking-[-0.01em] text-black/56 hover:text-[#1E1B4B]"
         >
-          이용약관
+          Terms of Service
         </Link>
       </header>
 
       <main className="mx-auto max-w-3xl px-5 pb-20 pt-4 sm:px-8">
         <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.02em] text-[#1E1B4B] sm:text-[36px]">
-          개인정보 처리방침
+          Privacy Policy
         </h1>
         <p className="mt-3 text-[12px] tracking-[-0.01em] text-black/48">
-          최종 업데이트: {LAST_UPDATED}
+          Last updated: {LAST_UPDATED}
         </p>
 
-        <Section title="1. 우리가 누구인지">
-          Anima(이하 “서비스”)는 “10년 후의 나”의 시점에서 매일 한 마디의 동기부여
-          카드와 큐레이션된 인용을 안드로이드 위젯/잠금화면에 제공하는 개인용
-          애플리케이션입니다. 본 처리방침은 서비스가 사용자의 개인정보를 어떻게
-          수집·이용·보관·삭제하는지 설명합니다.
+        <Section title="1. Who we are">
+          Anima (the &ldquo;Service&rdquo;) is a personal application that
+          delivers a daily one-line motivation card and a curated quote — written
+          from the perspective of &ldquo;the you of ten years from now&rdquo; —
+          to your Android widget and lock screen. This policy explains how the
+          Service collects, uses, stores, and deletes your personal information.
         </Section>
 
-        <Section title="2. 수집하는 정보와 목적">
-          <p>다음의 정보를 수집·처리합니다.</p>
+        <Section title="2. Information we collect and why">
+          <p>We collect and process the following information.</p>
           <ul className="mt-2 list-disc space-y-2 pl-5">
             <li>
-              <b>계정 정보(필수):</b> Google 계정의 이메일·표시 이름·고유 ID(uid).
-              회원 식별과 데이터 동기화에만 사용합니다.
+              <b>Account information (required):</b> the email address, display
+              name, and unique ID (uid) associated with your Google or Apple
+              account. Used solely to identify your account and synchronize your
+              data across devices.
             </li>
             <li>
-              <b>프로필·목표(필수):</b> 사용자가 직접 입력하는 “10년 후의 나” 서술문,
-              하루 목표, 매일 새기는 다짐, 잘한 일 기록 등 텍스트.
-              매일의 동기부여 카드를 생성하는 데에만 사용합니다.
+              <b>Profile and goals (required):</b> text you enter yourself —
+              your &ldquo;ten-years-from-now&rdquo; description, daily goals,
+              affirmations you want to internalize, and records of things you
+              did well. Used only to generate your daily motivation card.
             </li>
             <li>
-              <b>위젯·알림 사용 기록:</b> 일별 동기부여 카드, 명언 노출/회전, 알림 탭
-              이벤트 등 서비스 동작에 필요한 최소한의 기록.
+              <b>Widget and notification activity:</b> the minimum operational
+              records needed to run the Service, such as which daily card and
+              quote were shown, rotation history, and notification tap events.
             </li>
             <li>
-              <b>결제 영수증(해당 시):</b> Google Play 인앱 결제 시 Play 가
-              발급하는 영수증(purchaseToken, productId, purchaseTime). 결제 권한
-              확인 외 다른 목적에 사용하지 않습니다. 카드 번호 등 결제수단 정보는
-              저장하지 않습니다(Google Play 가 직접 처리).
+              <b>Purchase receipts (when applicable):</b> receipts issued by
+              Google Play or the Apple App Store when you make an in-app
+              purchase (purchaseToken / transactionId, productId, purchase
+              time). Used only to verify your entitlement. We do not store
+              payment instrument details such as card numbers — those are
+              handled directly by Google Play or Apple.
             </li>
             <li>
-              <b>이상 행위·무결성:</b> Google Play Integrity 응답값. 영수증 위조 차단
-              목적이며 별도 보관하지 않습니다.
+              <b>Integrity and anti-abuse:</b> Google Play Integrity responses
+              and Apple App Store Server API verifications, used solely to
+              prevent receipt forgery. Not retained separately.
             </li>
             <li>
-              <b>LLM 사용 기록:</b> 동기부여 카드 생성을 위한 모델 호출 시,
-              비용·품질 관리 목적의 토큰 사용량 기록. 사용자가 입력한 자유 텍스트는
-              모델 응답 생성을 위해 일시적으로 전송되며 별도 학습 목적으로 보관하지
-              않습니다.
+              <b>LLM usage records:</b> token usage metrics for cost and quality
+              management when we call language models to generate motivation
+              cards. The free-text you enter is transmitted transiently only to
+              produce the model&rsquo;s response and is not retained for model
+              training.
             </li>
           </ul>
           <p className="mt-3">
-            위치 정보, 연락처, 사진, 통화 기록, 마이크/카메라, 신체·건강 데이터 등은{" "}
-            <b>일체 수집하지 않습니다.</b>
+            We do <b>not</b> collect location data, contacts, photos, call logs,
+            microphone or camera input, or health and fitness data of any kind.
           </p>
         </Section>
 
-        <Section title="3. 보관과 처리 위치">
-          사용자의 데이터는 Google 의 Firebase(Authentication, Cloud Firestore)에
-          저장됩니다. 모델 호출은 Google Generative AI 서비스를 사용합니다. 데이터는
-          전송 구간(TLS) 과 저장 구간 모두 암호화됩니다.
+        <Section title="3. Where your data is stored and processed">
+          Your data is stored in Google Firebase (Firebase Authentication and
+          Cloud Firestore). Language model calls are made through Google
+          Generative AI. Data is encrypted in transit (TLS) and at rest.
         </Section>
 
-        <Section title="4. 제3자 공유">
-          서비스는 사용자의 개인정보를 제3자에게 판매·임대하지 않습니다. 다음의 처리
-          파트너에 한해 서비스 운영 목적의 위탁 처리가 이루어집니다.
+        <Section title="4. Third-party sharing">
+          We do not sell or rent your personal information to any third party.
+          We only entrust your data to the following processing partners for
+          the purpose of operating the Service:
           <ul className="mt-2 list-disc space-y-1 pl-5">
-            <li>Google Firebase(인증·데이터 저장·서버리스 호스팅)</li>
-            <li>Google Generative AI(모델 호출 — 카드 생성)</li>
-            <li>Google Play Billing(인앱 결제)</li>
-            <li>Vercel(웹 호스팅 및 서버리스 함수 실행)</li>
+            <li>Google Firebase (authentication, data storage, serverless hosting)</li>
+            <li>Google Generative AI (model inference for card generation)</li>
+            <li>Google Play Billing (in-app purchases on Android)</li>
+            <li>Apple App Store / StoreKit (in-app purchases on iOS)</li>
+            <li>Vercel (web hosting and serverless function execution)</li>
           </ul>
-          법령에 따른 수사·재판·감독 기관의 적법한 요청이 있을 경우 최소 범위에서
-          제공할 수 있습니다.
+          We may disclose information to the minimum extent required when
+          compelled by a lawful request from a competent investigative,
+          judicial, or regulatory authority.
         </Section>
 
-        <Section title="5. 보관 기간">
-          서비스가 제공되는 동안 사용자의 데이터를 보관하며, 사용자가 계정을 삭제하면
-          개인 식별 정보·프로필·일별 기록·결제 영수증 캐시를 모두 영구 삭제합니다.
-          전자상거래법 등 관계 법령상 보관 의무가 있는 거래 회계 기록(개인을 식별할 수
-          없도록 처리된 토큰 사용량 등)은 법정 보관 기간 동안 별도 보관됩니다.
+        <Section title="5. Retention">
+          We retain your data for as long as you use the Service. When you
+          delete your account, we permanently delete your identifying
+          information, profile, daily records, and cached purchase receipts.
+          Transaction accounting records that we are legally required to keep
+          (such as anonymized token usage metrics under applicable e-commerce
+          laws) are stored separately for the statutory retention period.
         </Section>
 
-        <Section title="6. 사용자 권리">
+        <Section title="6. Your rights">
           <ul className="list-disc space-y-1 pl-5">
-            <li>본인 정보 열람·정정(앱 내 설정 화면)</li>
+            <li>Access and correct your own information from within the app&rsquo;s settings screen.</li>
             <li>
-              <b>계정·데이터의 영구 삭제</b> — 앱 또는 웹의 <Code>설정 → 계정 → 계정
-              삭제</Code> 메뉴에서 즉시 실행할 수 있습니다.
+              <b>Permanently delete your account and data</b> — you can do this
+              immediately from <Code>Settings → Account → Delete account</Code>{" "}
+              in the app or on the web.
             </li>
-            <li>처리 정지·동의 철회 요청은 본 페이지 하단의 이메일로 보낼 수 있습니다.</li>
+            <li>
+              Requests to stop processing or withdraw consent can be sent to the
+              email address listed at the bottom of this page.
+            </li>
           </ul>
         </Section>
 
-        <Section title="7. 광고·추적">
-          서비스는 광고를 게시하지 않으며, 광고용 식별자(AdID) 를 수집·전송하지
-          않습니다. 제3자 분석 SDK 도 사용하지 않습니다.
+        <Section title="7. Advertising and tracking">
+          The Service does not display ads, does not collect or transmit
+          advertising identifiers (AdID / IDFA), and does not use any
+          third-party analytics SDKs.
         </Section>
 
-        <Section title="8. 어린이 보호">
-          서비스는 만 14세 미만 아동을 의도된 사용자로 하지 않습니다. 만 14세 미만이
-          가입한 사실이 확인되면 즉시 해당 계정을 삭제합니다.
+        <Section title="8. Children">
+          The Service is not intended for children under the age of 14. If we
+          learn that a user under 14 has signed up, we will delete that account
+          promptly.
         </Section>
 
-        <Section title="9. 본 방침의 변경">
-          본 방침은 법령 또는 서비스 변경에 따라 갱신될 수 있으며, 변경 시 본 페이지
-          상단의 “최종 업데이트” 날짜를 갱신하고 중요한 변경은 앱 내 공지로
-          안내합니다.
+        <Section title="9. Changes to this policy">
+          We may update this policy to reflect changes in law or in the
+          Service. When we do, we will update the &ldquo;Last updated&rdquo;
+          date at the top of this page, and we will notify you in-app of any
+          material changes.
         </Section>
 
-        <Section title="10. 연락처">
-          개인정보 처리와 관련된 문의는 다음 이메일로 보내주세요.
+        <Section title="10. Contact">
+          For any questions about how your personal information is handled,
+          please email us:
           <p className="mt-2">
             <a
               href={`mailto:${CONTACT_EMAIL}`}

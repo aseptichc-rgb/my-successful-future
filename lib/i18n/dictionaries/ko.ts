@@ -208,6 +208,7 @@ const dict = {
   "auth.signUp": "회원가입",
   "auth.signInWithGoogle": "Google로 로그인",
   "auth.continueWithGoogle": "Google로 계속하기",
+  "auth.continueWithApple": "Apple로 계속하기",
   "auth.or": "또는",
   "auth.noAccount": "처음이신가요?",
   "auth.signingIn": "로그인 중…",
@@ -229,6 +230,8 @@ const dict = {
   "auth.link.submit": "연결하고 로그인",
   "auth.link.cancel": "취소",
   "auth.link.failed": "연결에 실패했어요. 비밀번호를 확인해주세요.",
+  "auth.link.apple.title": "Apple 계정 연결",
+  "auth.link.apple.description": "{email} 은(는) 이미 이메일/비밀번호로 가입돼 있어요. 비밀번호를 입력하면 Apple 계정과 연결돼 다음부턴 두 방식 모두 사용할 수 있어요.",
   "auth.password.placeholder": "최소 6자",
   "auth.displayName.placeholder": "표시 이름",
 
