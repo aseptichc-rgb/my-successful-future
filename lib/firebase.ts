@@ -9,6 +9,7 @@ import {
   signInWithPopup,
   signInWithCustomToken,
   GoogleAuthProvider,
+  OAuthProvider,
   fetchSignInMethodsForEmail,
   linkWithCredential,
   signOut as firebaseSignOut,
@@ -91,6 +92,21 @@ export { getAuthInstance as getAuth_, getDbInstance as getDb_ };
 // ── Auth 헬퍼 ─────────────────────────────────────────
 const googleProvider = new GoogleAuthProvider();
 
+/**
+ * Sign in with Apple — Apple App Store Guideline 5.1.1(v) 의무 대응.
+ *
+ * 정책: 앱이 제3자 로그인(Google, Facebook 등) 을 제공하면 동등하게 Apple 로그인도
+ * 제공해야 한다. iOS 빌드(Capacitor WebView) 에서는 반드시 노출되어야 하고, 안드로이드/
+ * 일반 웹에서는 선택사항이지만 일관된 UX 를 위해 동일 진입점을 둔다.
+ *
+ * Firebase Console > Authentication > Sign-in method > Apple 활성화 + Apple Developer
+ * 의 Service ID / Key ID / Team ID 를 등록해야 동작한다. 자세한 설정은
+ * [README-IOS.md](../README-IOS.md) 의 "Firebase Apple Provider" 절 참고.
+ */
+const appleProvider = new OAuthProvider("apple.com");
+appleProvider.addScope("email");
+appleProvider.addScope("name");
+
 export async function signInWithEmail(email: string, password: string) {
   return signInWithEmailAndPassword(getAuthInstance(), email, password);
 }
@@ -110,6 +126,17 @@ export type GoogleSignInResult =
       pendingCredential: AuthCredential;
       existingMethods: string[];
     };
+
+/**
+ * Apple OAuth 로그인. iOS WebView 안에서는 Firebase 의 signInWithPopup 이 popup 차단으로
+ * 실패할 수 있어 호출부가 try/catch 로 받고 사용자에게 다시 시도시킨다.
+ *
+ * Capacitor 의 SignInWithApple plugin 을 쓰면 popup 없이 네이티브 ASAuthorizationController
+ * 가 뜨는데, 그건 Mac 작업 단계에서 추가한다(현재는 웹 표준 OAuth 경로만 노출).
+ */
+export async function signInWithApple(): Promise<void> {
+  await signInWithPopup(getAuthInstance(), appleProvider);
+}
 
 export async function signInWithGoogle(): Promise<GoogleSignInResult> {
   try {

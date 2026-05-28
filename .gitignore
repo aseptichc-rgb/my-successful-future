@@ -68,3 +68,14 @@ mobile-view.png
 
 # IDE 로컬 설정 — 개인 워크스페이스 상태, 커밋 대상 아님
 /.idea/
+
+# Capacitor iOS 프로젝트 — Mac 에서 `npx cap add ios` 시 생성된다.
+# capacitor.config.ts / ios-templates/ 만 저장소에 두고 ios/ 자체는 무시.
+# (Pod, Xcode 사용자 설정 등 잡파일이 많아 commit 가치 낮음)
+/ios/
+
+# DerivedData / 빌드 산출물
+/ios/build
+/ios/App/build
+/ios/App/Pods
+DerivedData/

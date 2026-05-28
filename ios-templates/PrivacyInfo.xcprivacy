@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Privacy Manifest (Apple 2024 의무) — 우리 앱과 의존 SDK 가 어떤 데이터·API 를 어떻게
+  사용하는지 선언한다. App Store Connect 의 "App Privacy" 화면과 양립해야 하며, 불일치는
+  심사 거절 사유다.
+
+  Anima 의 현재 데이터 수집은:
+    · 이메일 (계정 식별)
+    · 사용자 콘텐츠 (다짐, 목표, 잘한 일 — 모두 본인만 열람)
+    · 분석용 식별자 없음 (Firebase Analytics 도 ID 만 사용, 광고 ID 없음)
+    · 위치 / 카메라 / 마이크 / 연락처 / 헬스킷 모두 사용 안 함
+
+  Required Reason API: Apple 이 "표준 API 라도 사용 이유를 선언" 하라고 정한 API 군.
+    · FileTimestamp / SystemBootTime / DiskSpace / UserDefaults — 정상 동작에 필요
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- 광고/마케팅 목적 데이터 추적 일체 없음. -->
+    <key>NSPrivacyTracking</key>
+    <false/>
+    <key>NSPrivacyTrackingDomains</key>
+    <array/>
+
+    <!-- 수집하는 데이터 카테고리 — App Store Connect 의 App Privacy 와 1:1 매핑. -->
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array>
+        <!-- 이메일 — Firebase Auth (Google / Apple Sign-In) 가 자동 수집. -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeEmailAddress</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <!-- 계정 인증 + 앱 기능 -->
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+        <!-- 사용자 콘텐츠 (다짐 / 목표 / 잘한 일) — 본인 전용 저장. -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeOtherUserContent</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+        <!-- 사용자 ID — Firebase uid. 광고 식별자가 아니라 앱 기능용. -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeUserID</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+                <string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
+            </array>
+        </dict>
+    </array>
+
+    <!-- Required Reason API — 정상 동작에 필요한 표준 API 사용 이유 선언. -->
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array>
+        <!-- UserDefaults — Capacitor / 위젯 익스텐션이 캐시 저장에 사용. -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <!-- CA92.1 — 같은 앱 그룹 안에서만 사용. -->
+                <string>CA92.1</string>
+            </array>
+        </dict>
+        <!-- 파일 타임스탬프 — Capacitor 의 캐시 파일 만료 판단에 사용. -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <!-- C617.1 — 자신 컨테이너 안의 파일만 접근. -->
+                <string>C617.1</string>
+            </array>
+        </dict>
+        <!-- 디스크 공간 — Firebase Crashlytics 가 사용 (포함된 경우). -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryDiskSpace</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <!-- E174.1 — 자신 앱 동작 보장. -->
+                <string>E174.1</string>
+            </array>
+        </dict>
+        <!-- 시스템 부팅 시각 — Firebase SDK 가 사용. -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategorySystemBootTime</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <!-- 35F9.1 — 시계 정확성 확인용. -->
+                <string>35F9.1</string>
+            </array>
+        </dict>
+    </array>
+</dict>
+</plist>

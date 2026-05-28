@@ -14,9 +14,22 @@
  *        trialEndsAt }
  */
 
+/**
+ * 결제 플랫폼 구분 — entitlement 자체는 플랫폼 무관하게 동작하지만, 영수증 재검증/환불
+ * 처리 시점에 어느 스토어 API 를 호출해야 하는지 결정한다. 미지정/legacy 토큰은 'android'
+ * 로 안전 폴백 (현재 운영 사용자 전부 안드로이드).
+ */
+export type EntitlementPlatform = "android" | "ios";
+
 export type Entitlement =
-  | { kind: "lifetime"; productId: string; grantedAt: number }
-  | { kind: "subscription"; productId: string; grantedAt: number; expiresAt: number }
+  | { kind: "lifetime"; productId: string; grantedAt: number; platform: EntitlementPlatform }
+  | {
+      kind: "subscription";
+      productId: string;
+      grantedAt: number;
+      expiresAt: number;
+      platform: EntitlementPlatform;
+    }
   | { kind: "trial"; trialEndsAt: number }
   | { kind: "free" };
 
@@ -29,20 +42,26 @@ interface EntClaim {
   productId?: unknown;
   grantedAt?: unknown;
   expiresAt?: unknown;
+  platform?: unknown;
+}
+
+function readPlatform(raw: unknown): EntitlementPlatform {
+  return raw === "ios" ? "ios" : "android";
 }
 
 function readObjectClaim(ent: EntClaim, now: number): Entitlement | null {
   const productId = typeof ent.productId === "string" ? ent.productId : null;
   if (!productId) return null;
   const grantedAt = isPositiveNumber(ent.grantedAt) ? ent.grantedAt : 0;
+  const platform = readPlatform(ent.platform);
 
   if (ent.kind === "lifetime") {
-    return { kind: "lifetime", productId, grantedAt };
+    return { kind: "lifetime", productId, grantedAt, platform };
   }
   if (ent.kind === "subscription") {
     if (!isPositiveNumber(ent.expiresAt)) return null;
     if (ent.expiresAt <= now) return null;
-    return { kind: "subscription", productId, grantedAt, expiresAt: ent.expiresAt };
+    return { kind: "subscription", productId, grantedAt, expiresAt: ent.expiresAt, platform };
   }
   return null;
 }
@@ -68,7 +87,9 @@ export function readEntitlement(
         ? claims.productId
         : "legacy_lifetime";
     const grantedAt = isPositiveNumber(claims.purchaseTime) ? claims.purchaseTime : 0;
-    return { kind: "lifetime", productId, grantedAt };
+    // 평면 claim 시기엔 운영 사용자 전부 안드로이드였다. 새 iOS 영수증 검증 라우트는
+    // 객체 ent claim 으로 박을 예정이므로 이 경로엔 절대 도달하지 않는다.
+    return { kind: "lifetime", productId, grantedAt, platform: "android" };
   }
 
   if (isPositiveNumber(claims.trialEndsAt) && claims.trialEndsAt > now) {

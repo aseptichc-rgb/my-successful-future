@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  iOS Info.plist 추가 키 모음 — Mac 에서 `npx cap add ios` 한 뒤 ios/App/App/Info.plist 에
+  병합한다(전부 덮어쓰는 게 아니라 키별로 머지).
+
+  Apple 의 거절 사유 중 가장 흔한 것:
+   1) Usage description 누락 → 권한 다이얼로그 호출 시 즉시 크래시 / 심사 자동 거절
+   2) ATT (App Tracking Transparency) 다이얼로그 없이 IDFA 접근 → Privacy Manifest 위배
+   3) Sign in with Apple Capability 누락 → Guideline 5.1.1(v) 위반
+
+  따라서 이 템플릿은 "Anima 가 실제로 사용하는 권한 최소 집합" 만 담는다.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- ============ 푸시 알림 — UNUserNotificationCenter 권한 다이얼로그 메시지 ============ -->
+    <!-- 사용자가 거부해도 앱 동작에 치명적이지 않게 설계 — 아침 다짐 / 저녁 잘한 일 알림이 안 올 뿐. -->
+    <!-- Apple 은 NSUserNotificationsUsageDescription 키를 더 이상 요구하지 않지만,
+         첫 등록 화면에서 보여줄 권한 설명은 코드 단에서 직접 한국어로 노출한다. -->
+
+    <!-- ============ Sign in with Apple — Entitlement (자동 추가됨, 여기는 reference) ============ -->
+    <!-- Xcode > Signing & Capabilities 에서 "Sign in with Apple" 체크 시 자동으로
+         App.entitlements 에 com.apple.developer.applesignin 가 추가된다. -->
+
+    <!-- ============ App Group — 위젯 익스텐션과 메인 앱 사이의 NSUserDefaults 공유 ============ -->
+    <!-- 이 키는 Info.plist 가 아니라 .entitlements 에 들어간다. README-IOS.md "App Group" 절 참고.
+         group.com.michaelkim.anima 를 Apple Developer > Identifiers 에서 만든 뒤
+         메인 앱 / 위젯 익스텐션 양쪽 Capabilities 에 등록한다. -->
+
+    <!-- ============ ATS (App Transport Security) — production 은 모두 HTTPS ============ -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <false/>
+    </dict>
+
+    <!-- ============ URL 스킴 — anima:// deep link 처리 ============ -->
+    <!-- 안드로이드의 anima://auth, anima://widget-refresh, anima://signout 와 동일한 패턴.
+         iOS 에서는 SceneDelegate 또는 AppDelegate 의 application(_:open:options:) 가 받는다.
+         자세한 핸들러 구현은 Mac 작업 단계에서 작성. -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.michaelkim.anima.deeplink</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>anima</string>
+            </array>
+        </dict>
+    </array>
+
+    <!-- ============ 디스플레이 이름 — App Store / 홈 화면에 표시되는 짧은 이름 ============ -->
+    <key>CFBundleDisplayName</key>
+    <string>Anima</string>
+
+    <!-- ============ 화면 회전 — iPhone 은 세로 고정, iPad 는 모든 방향 ============ -->
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+
+    <!-- ============ 다크 모드 — 현재는 라이트만 지원 (위젯 카드 톤과 일치) ============ -->
+    <!-- 추후 다크 모드 추가 시 이 키를 제거하면 시스템 설정을 따라간다. -->
+    <key>UIUserInterfaceStyle</key>
+    <string>Light</string>
+
+    <!-- ============ 추적 권한 — Anima 는 IDFA 사용 안 함 ============ -->
+    <!-- ATT 다이얼로그를 띄우지 않으므로 NSUserTrackingUsageDescription 키도 넣지 않는다. -->
+</dict>
+</plist>

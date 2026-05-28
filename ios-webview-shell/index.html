@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>Anima</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <style>
+      body {
+        margin: 0;
+        background: #f0ede6;
+        color: #1e1b4b;
+        font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+      }
+      .dot {
+        width: 24px;
+        height: 24px;
+        border: 2px solid rgba(30, 27, 75, 0.2);
+        border-top-color: #1e1b4b;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+      Capacitor 는 server.url 이 지정돼 있으면 WKWebView 가 그 URL 을 직접 로드한다.
+      이 파일은 실제로 거의 표시되지 않지만, server.url 도달 실패 시 또는 오프라인 첫
+      부팅에서 짧게 노출된다 — 우리 베이지 배경 + 인디고 스피너로 자연스럽게 보이도록.
+    -->
+    <div class="dot" aria-hidden="true"></div>
+  </body>
+</html>

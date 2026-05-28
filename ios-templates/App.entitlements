@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  iOS Entitlements — Capabilities 를 활성화하면 Xcode 가 자동으로 추가하는 키들이지만,
+  CI / 다른 Mac 에서 빌드할 때 동일 상태를 보장하기 위해 명시적으로 둔다.
+
+  Apple Developer 콘솔에서 다음 항목을 동일 App ID 에 등록해야 한다:
+   · Sign in with Apple        (Guideline 5.1.1(v) 의무)
+   · App Groups (group.com.michaelkim.anima)  (메인 앱 ↔ 위젯 익스텐션 공유)
+   · Push Notifications        (선택 — FCM 도입 시)
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.developer.applesignin</key>
+    <array>
+        <string>Default</string>
+    </array>
+    <key>com.apple.security.application-groups</key>
+    <array>
+        <string>group.com.michaelkim.anima</string>
+    </array>
+    <!-- 푸시 알림 — FCM 통합 시점에 'production' 으로 바꾼다. 출시 직전엔 보통 'development'. -->
+    <key>aps-environment</key>
+    <string>development</string>
+</dict>
+</plist>
