@@ -171,12 +171,13 @@ export default function HomeDashboardPage() {
 
   useEffect(() => {
     if (!user) return;
-    setFutureDraft(user.futurePersona || "");
+    // 편집 중에는 draft 를 덮어쓰지 않는다 — refreshUser() 로 user 가 갱신돼도 진행 중인 입력 보호.
+    if (!futureEditing) setFutureDraft(user.futurePersona || "");
     if (!goalsHydratedRef.current) {
       setGoals(user.goals && user.goals.length > 0 ? [...user.goals] : []);
       goalsHydratedRef.current = true;
     }
-  }, [user]);
+  }, [user, futureEditing]);
 
   useEffect(() => {
     if (!firebaseUser) return;
@@ -326,6 +327,9 @@ export default function HomeDashboardPage() {
     try {
       await updateFuturePersona(uid, next);
       setFutureEditing(false);
+      // 저장 직후 컨텍스트 user 를 동기화하지 않으면 화면이 stale 한 user.futurePersona 로
+      // 되돌아가 "저장이 안 된 것처럼" 보인다 (설정 페이지와 동일한 컨벤션).
+      await refreshUser().catch(() => {});
       // handleRegenerateMotivation 안에서 notifyAndroidWidgetRefresh 가 호출되므로 여기서
       // 중복 호출하지 않는다 — DEDUP_WINDOW 가 흡수하지만 깔끔하게 단일 책임 유지.
       void handleRegenerateMotivation();
@@ -345,13 +349,20 @@ export default function HomeDashboardPage() {
   const persistGoals = async (next: string[]) => {
     try {
       await updateUserGoals(uid, next);
-      // 목표 목록이 바뀌면 위젯의 goalsSnapshot / "행동 체크" 평가 기준이 즉시 영향을 받는다.
-      // 안 호출하면 다음 정주기 Worker(3시간) 까지 위젯과 홈의 목표 표시가 어긋난다.
-      notifyAndroidWidgetRefresh();
     } catch (err) {
       console.error("[home] 목표 저장 실패:", err);
       window.alert(t("home.goals.saveFailed"));
+      return;
     }
+    // ── 저장 성공 후 부수효과 — 실패해도 저장 자체엔 영향 없으므로 따로 묶어 삼킨다. ──
+    // 1) 컨텍스트 user 동기화: 안 하면 재마운트(설정↔홈 이동·앱 재진입) 시 stale 한 user.goals
+    //    로 되돌아가 방금 추가/삭제한 목표가 사라진다("저장이 안 됨"의 근본 원인).
+    await refreshUser().catch((err) =>
+      console.warn("[home] 목표 저장 후 user 동기화 실패:", err),
+    );
+    // 2) 목표 목록이 바뀌면 위젯의 goalsSnapshot / "행동 체크" 평가 기준이 즉시 영향을 받는다.
+    //    안 호출하면 다음 정주기 Worker(3시간) 까지 위젯과 홈의 목표 표시가 어긋난다.
+    notifyAndroidWidgetRefresh();
   };
 
   const handleToggleGoalAchieved = async (goalText: string) => {
@@ -646,15 +657,19 @@ export default function HomeDashboardPage() {
                   <span className="text-[13px] text-[var(--label-2)] tabular-nums">
                     {goalsDone} / {goals.length}
                   </span>
-                  {goals.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setGoalsEditing((v) => !v)}
-                      className="text-[15px] font-medium text-[var(--soul)]"
-                    >
-                      {goalsEditing ? t("common.done") : t("common.edit")}
-                    </button>
-                  )}
+                  {/* 목표가 0개여도 편집 진입/완료 버튼을 항상 노출 — 빈 상태에서 첫 목표를
+                      추가하거나 마지막 목표를 지운 뒤 편집을 빠져나갈 수단이 사라지지 않도록. */}
+                  <button
+                    type="button"
+                    onClick={() => setGoalsEditing((v) => !v)}
+                    className="text-[15px] font-medium text-[var(--soul)]"
+                  >
+                    {goalsEditing
+                      ? t("common.done")
+                      : goals.length > 0
+                        ? t("common.edit")
+                        : t("common.add")}
+                  </button>
                 </div>
               }
             >
@@ -750,7 +765,7 @@ export default function HomeDashboardPage() {
                     </div>
                   );
                 })
-              ) : (
+              ) : goalsEditing ? null : (
                 <button
                   type="button"
                   onClick={() => setGoalsEditing(true)}
