@@ -118,7 +118,7 @@ const dict: Record<DictKey, string> = {
 
   "home.goals.title": "Acciones de hoy hacia tus metas",
   "home.goals.subtitle":
-    "Una pequeña acción que te acerca a tu yo futuro. Las 3 primeras también aparecen en la pantalla de bloqueo.",
+    "Una pequeña acción que te acerca a tu yo futuro.",
   "home.goals.todayProgress": "Hoy {done}/{total}",
   "home.goals.placeholder": "Ej.: Leer 30 minutos cada día",
   "home.goals.maxAlert": "Puedes añadir hasta {max} metas.",
@@ -192,7 +192,7 @@ const dict: Record<DictKey, string> = {
     "Aparece en gris claro sobre cada tarjeta diaria. Copia cada línea exactamente para sumar +1 a tu racha.",
   "settings.goals.title": "Acciones de hoy hacia tus metas",
   "settings.goals.subtitle":
-    "Una pequeña acción que te acerca a tu yo futuro. Las 3 primeras también aparecen en la pantalla de bloqueo.",
+    "Una pequeña acción que te acerca a tu yo futuro.",
   "settings.goals.empty":
     "Añade metas desde Inicio y podrás editarlas aquí.",
   "settings.quote.title": "Curaduría de citas",

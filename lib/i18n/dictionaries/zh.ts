@@ -113,7 +113,7 @@ const dict: Record<DictKey, string> = {
 
   "home.goals.title": "通往目标的今日行动",
   "home.goals.subtitle":
-    "向未来的你迈出的一小步。前 3 项也会显示在锁屏上。",
+    "向未来的你迈出的一小步。",
   "home.goals.todayProgress": "今日 {done}/{total}",
   "home.goals.placeholder": "例:每天读书 30 分钟",
   "home.goals.maxAlert": "最多可添加 {max} 个目标。",
@@ -184,7 +184,7 @@ const dict: Record<DictKey, string> = {
     "每张日卡上方以浅色显示。完全一致地抄写,连续天数 +1。",
   "settings.goals.title": "通往目标的今日行动",
   "settings.goals.subtitle":
-    "向未来的你迈出的一小步。前 3 项也会显示在锁屏上。",
+    "向未来的你迈出的一小步。",
   "settings.goals.empty":
     "先在主页添加目标,这里就可以编辑。",
   "settings.quote.title": "名言策展",

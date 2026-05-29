@@ -777,18 +777,28 @@ export default function HomeDashboardPage() {
 
               {goalsEditing && goals.length < MAX_USER_GOALS && (
                 <div className="relative flex items-center gap-3 px-4 min-h-[52px]">
-                  <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0"
-                    style={{ background: "rgba(52,199,89,0.15)" }}>
+                  {/* "+" 박스 자체를 추가 버튼으로 — 가장 직관적인 탭 타깃이 살아있도록.
+                      (이전엔 장식용 div 라 눌러도 반응이 없었다.) */}
+                  <button
+                    type="button"
+                    onClick={handleAddGoal}
+                    disabled={!goalDraft.trim()}
+                    aria-label={t("common.add")}
+                    className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0 disabled:opacity-40"
+                    style={{ background: "rgba(52,199,89,0.15)" }}
+                  >
                     <span className="text-[20px] leading-none text-[#D85A30]">＋</span>
-                  </div>
+                  </button>
                   <input
                     value={goalDraft}
                     maxLength={GOAL_MAX}
+                    enterKeyHint="done"
                     onChange={(e) => setGoalDraft(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") {
+                      // 한글 IME 조합 중 Enter 는 조합 확정용이므로 무시하고, 확정된 Enter 에서만 추가.
+                      if (e.key === "Enter" && !e.nativeEvent.isComposing) {
                         e.preventDefault();
-                        handleAddGoal();
+                        void handleAddGoal();
                       }
                     }}
                     placeholder={t("home.goals.placeholder")}

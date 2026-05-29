@@ -110,7 +110,7 @@ const dict = {
 
   "home.goals.title": "목표를 이루기 위한 오늘의 행동",
   "home.goals.subtitle":
-    "성공한 나의 모습으로 다가가기 위해 오늘 옮겨볼 한 가지 행동. 앞 3개가 잠금화면 이미지에도 함께 표시돼요.",
+    "성공한 나의 모습으로 다가가기 위해 오늘 옮겨볼 한 가지 행동.",
   "home.goals.todayProgress": "오늘 {done}/{total}",
   "home.goals.placeholder": "예: 매일 30분 책 읽기",
   "home.goals.maxAlert": "목표는 최대 {max}개까지 추가할 수 있어요.",
@@ -175,7 +175,7 @@ const dict = {
     "매일 카드 위쪽에 흐린 글씨로 미리 보여드려요. 그 위에 똑같이 따라 적으면 연속일이 +1 됩니다.",
   "settings.goals.title": "목표를 이루기 위한 오늘의 행동",
   "settings.goals.subtitle":
-    "성공한 나의 모습으로 다가가기 위해 오늘 옮겨볼 한 가지 행동. 앞 3개가 잠금화면에도 함께 표시돼요.",
+    "성공한 나의 모습으로 다가가기 위해 오늘 옮겨볼 한 가지 행동.",
   "settings.goals.empty": "홈 화면에서 목표를 추가하면 여기서도 편집할 수 있어요.",
   "settings.quote.title": "오늘의 명언 큐레이션",
   "settings.quote.subtitle":
