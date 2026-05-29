@@ -40,6 +40,9 @@ yarn-error.log*
 # Firebase service account key
 *-firebase-adminsdk-*.json
 
+# Firebase 클라이언트 설정 (API 키·OAuth 클라이언트 정보 포함 — VCS 제외)
+google-services.json
+
 # vercel
 .vercel
 
