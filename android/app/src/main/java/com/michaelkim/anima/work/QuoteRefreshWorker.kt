@@ -37,14 +37,16 @@ class QuoteRefreshWorker(
             return if (runAttemptCount < MAX_AUTH_RETRY) Result.retry() else Result.success()
         }
         return try {
-            QuoteRepository.refresh(applicationContext)
+            // refreshWithEntitlementRecovery: 신규 가입 직후 trialEndsAt claim 미반영(402) /
+            // 만료 임박 토큰(401) 을 1회 구제 후 재시도한다 — 로그인했는데도 위젯이 영영 비던 회귀 차단.
+            QuoteRepository.refreshWithEntitlementRecovery(applicationContext)
             QuoteWidget().updateAll(applicationContext)
             Result.success()
         } catch (e: IOException) {
             // 네트워크 일시 장애 — 재시도
             Result.retry()
         } catch (e: Exception) {
-            // 401/403 등 인증 만료 — 재시도해도 의미 없음.
+            // 구제 재시도 후에도 실패(영구 401/403 등) — 재시도해도 의미 없음.
             // 캐시 그대로 두고 다음 주기 대기.
             Result.success()
         }

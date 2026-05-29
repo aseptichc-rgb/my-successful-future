@@ -112,7 +112,9 @@ fun HomeScreen(onOpenAnima: (path: String?) -> Unit) {
         GlobalScope.launch {
             val ok = withTimeoutOrNull(POST_LOGIN_REFRESH_TIMEOUT_MS) {
                 try {
-                    QuoteRepository.refresh(appCtx)
+                    // 로그인 직후 첫 호출 — 신규 가입자는 trialEndsAt claim 이 토큰에 아직 안 박혀
+                    // 402 가 날 수 있다. 구제 버전이 ensureTrialStarted + 토큰 강제 갱신으로 1회 재시도.
+                    QuoteRepository.refreshWithEntitlementRecovery(appCtx)
                     QuoteWidget().updateAll(appCtx)
                     true
                 } catch (_: Exception) {

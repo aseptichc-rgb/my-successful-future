@@ -76,6 +76,15 @@ private const val FOOTER_CTA_MIDDAY = "기록하기  →"
 private const val FOOTER_CTA_EVENING = "오늘 마무리  →"
 private const val FOOTER_CTA_DONE = "오늘 3 / 3 완료  →"
 
+// EmptyState 카피 — 네이티브 로그인 여부로 분기.
+// - 미로그인: 위젯을 탭하면 MainActivity 가 네이티브 로그인 화면을 띄워 "연동" 시킨다.
+//   (이전엔 로그인 여부와 무관하게 "로그인 후 표시됩니다" 만 떠, 이미 로그인한 사용자에게도
+//    거짓 안내가 나가는 핵심 UX 버그가 있었다.)
+// - 로그인됨: 자가 복구 fetch 가 진행 중/직후 — "불러오는 중" 으로 안내.
+private const val EMPTY_MSG_SIGN_IN = "탭하여 로그인하고\n위젯을 연동하세요"
+private const val EMPTY_MSG_LOADING = "오늘의 카드를\n불러오는 중…"
+private const val EMPTY_CTA_CONNECT = "연동하기  →"
+
 // 시간대 컷오프 (KST 기기 시계 기준). 아침 끝/저녁 시작 시각.
 private const val HOUR_MORNING_END = 11   // 11시 전까지가 morning
 private const val HOUR_EVENING_START = 18 // 18시부터 evening
@@ -105,6 +114,7 @@ private const val ALPHA_DIM = 0.62f          // 보조 본문
 private const val ALPHA_FAINT_DIVIDER = 0.08f // hairline
 private const val ALPHA_CHECK_TODO = 0.28f   // 미완료 체크박스 stroke
 private const val ALPHA_LABEL_DONE = 0.36f   // 완료된 라벨 (strike-through 와 함께)
+private const val ALPHA_CTA_BG = 0.12f       // EmptyState "연동하기" CTA pill 배경 틴트
 
 // 사이즈
 private val CARD_RADIUS = 28.dp
@@ -145,6 +155,9 @@ fun WidgetContent(
     ymd: String?,
     streakCount: Int = 0,
     affirmations: List<String> = emptyList(),
+    // 네이티브 로그인 여부 — EmptyState 가 "로그인 안내" 와 "불러오는 중" 을 구분하는 데 쓴다.
+    // 기본 false 로 두어 옛 호출부(테스트/프리뷰) 호환.
+    isSignedIn: Boolean = false,
 ) {
     val context = LocalContext.current
     val size = LocalSize.current
@@ -176,7 +189,7 @@ fun WidgetContent(
         contentAlignment = Alignment.TopStart,
     ) {
         if (slot == null) {
-            EmptyState(ink)
+            EmptyState(ink, isSignedIn)
             return@Box
         }
         LoadedContent(slot, progress, ymd, streakCount, affirmations, isWide, isTall, isExtraTall, isLight, ink)
@@ -184,10 +197,14 @@ fun WidgetContent(
 }
 
 @Composable
-private fun EmptyState(ink: Color) {
+private fun EmptyState(ink: Color, isSignedIn: Boolean) {
     // 로그인 전이라도 어느 앱의 위젯인지 알 수 있게 브랜드 로고+워드마크 노출.
     // 메시지는 중앙 정렬 — 사용자가 0.5초 안에 "어느 앱 / 왜 비어있는지"를 모두 인식.
     // 빈 상태에서는 ymd/streak 모두 없으므로 날짜·streak 칩도 자연스레 생략된다.
+    //
+    // 위젯 전체가 이미 clickable(→ MainActivity) 이다. 미로그인 사용자가 탭하면 네이티브
+    // 로그인 화면이 뜨고, 로그인 직후 캐시가 채워지며 위젯이 자연히 콘텐츠로 전환된다.
+    // "연동하기" pill 은 그 동작을 알리는 시각적 affordance.
     Column(modifier = GlanceModifier.fillMaxSize()) {
         BrandRow(
             progress = null,
@@ -203,15 +220,47 @@ private fun EmptyState(ink: Color) {
             modifier = GlanceModifier.fillMaxSize(),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = "Anima 앱에서 로그인 후 표시됩니다",
-                style = TextStyle(
-                    color = ColorProvider(ink.copy(alpha = ALPHA_DIM)),
-                    fontSize = META_SIZE,
-                    fontFamily = FontFamily.Monospace,
-                ),
-                maxLines = 2,
-            )
+            // Glance if-branch 누락 회귀 방어를 위해 중앙 콘텐츠를 단일 Column 으로 감싼다.
+            Column(
+                modifier = GlanceModifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = if (isSignedIn) EMPTY_MSG_LOADING else EMPTY_MSG_SIGN_IN,
+                    style = TextStyle(
+                        color = ColorProvider(ink.copy(alpha = ALPHA_DIM)),
+                        fontSize = META_SIZE,
+                        fontFamily = FontFamily.Monospace,
+                        textAlign = TextAlign.Center,
+                    ),
+                    maxLines = 2,
+                )
+                // 미로그인일 때만 "연동하기" CTA pill 을 덧붙인다 — 로그인 사용자에겐
+                // 곧 콘텐츠가 뜨므로 군더더기 없이 "불러오는 중" 만 보인다.
+                if (!isSignedIn) {
+                    Column(
+                        modifier = GlanceModifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Spacer(GlanceModifier.height(12.dp))
+                        Text(
+                            text = EMPTY_CTA_CONNECT,
+                            style = TextStyle(
+                                color = ColorProvider(ACCENT_SOUL),
+                                fontSize = ROW_LABEL_SIZE,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Medium,
+                                textAlign = TextAlign.Center,
+                            ),
+                            maxLines = 1,
+                            modifier = GlanceModifier
+                                .background(ColorProvider(ACCENT_SOUL.copy(alpha = ALPHA_CTA_BG)))
+                                .cornerRadius(CARD_RADIUS)
+                                .padding(horizontal = 18.dp, vertical = 9.dp),
+                        )
+                    }
+                }
+            }
         }
     }
 }

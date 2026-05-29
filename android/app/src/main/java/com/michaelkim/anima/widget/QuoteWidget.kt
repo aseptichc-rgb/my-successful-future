@@ -12,6 +12,9 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.provideContent
 import com.michaelkim.anima.data.QuoteRepository
+import com.michaelkim.anima.data.auth.AuthRepository
+import com.michaelkim.anima.work.WorkScheduler
+import kotlinx.coroutines.withTimeoutOrNull
 
 class QuoteWidget : GlanceAppWidget() {
 
@@ -23,7 +26,38 @@ class QuoteWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val cached = QuoteRepository.getCached(context)
+        var cached = QuoteRepository.getCached(context)
+
+        // ── 자가 복구(self-heal) ────────────────────────────────────────────
+        // 캐시가 비어 있는데 네이티브 로그인 상태라면, 워커/웹 브릿지가 따라잡기를 기다리지
+        // 않고 이 자리에서 직접 한 번 받아온다. provideGlance 는 위젯이 그려질 때마다(추가·리사이즈·
+        // 호스트 갱신) 호출되므로, 로그인만 돼 있으면 다음 redraw 에서 자연히 채워진다.
+        //
+        // 이것이 "처음 로그인 후에도 위젯이 계속 '로그인 후 표시됩니다' 에 갇히던" 회귀의 근본 차단:
+        // 기존엔 위젯이 캐시를 읽기만 해, 워커 인증 타이밍이 어긋나면 EmptyState 가 영영 굳었다.
+        // 미로그인 시엔 네트워크를 건드리지 않고 곧장 EmptyState(연동 CTA) 로 떨어진다.
+        if (cached == null && AuthRepository.isSignedIn) {
+            val healed = withTimeoutOrNull(SELF_HEAL_TIMEOUT_MS) {
+                try {
+                    QuoteRepository.refreshWithEntitlementRecovery(context)
+                    true
+                } catch (_: Exception) {
+                    // 네트워크/서버/인증 만료 — 아래에서 워커 백오프 재시도에 위임.
+                    false
+                }
+            }
+            if (healed == true) {
+                cached = QuoteRepository.getCached(context)
+            } else {
+                // 동기 시도 실패/타임아웃 — 백오프 재시도를 워커에 위임(REPLACE 정책이라 중복 없음).
+                try {
+                    WorkScheduler.scheduleOneTimeRefresh(context)
+                } catch (_: Exception) {
+                    // enqueue 실패는 다음 정주기 워커가 봉합.
+                }
+            }
+        }
+
         val slot = QuoteRepository.currentSlot(cached)
         val progress = cached?.response?.todayProgress
         // 위젯이 "지금 그리고 있는" 카드가 속한 날짜(ymd). 탭 시 이 값을 /home 으로
@@ -33,8 +67,18 @@ class QuoteWidget : GlanceAppWidget() {
         val streak = cached?.response?.streakCount ?: 0
         // "성공한 나에게 한 발 더" 다짐 본문 — 옛 캐시엔 없어 빈 리스트로 폴백된다.
         val affirmations = cached?.response?.affirmations ?: emptyList()
+        // EmptyState 가 "로그인 안내" 와 "불러오는 중" 을 구분하도록 인증 상태를 함께 넘긴다.
+        // (로그인했는데도 "로그인 후 표시됩니다" 라고 거짓 안내하던 UX 버그 제거.)
+        val signedIn = AuthRepository.isSignedIn
         provideContent {
-            WidgetContent(slot, progress, ymd, streak, affirmations)
+            WidgetContent(slot, progress, ymd, streak, affirmations, signedIn)
         }
+    }
+
+    private companion object {
+        // 자가 복구 동기 fetch 대기 한도. 위젯 redraw 중 백그라운드 코루틴에서 실행되므로
+        // 사용자 메인 스레드를 막지 않는다. 정상 캐시 히트(Firestore 1회 read)는 200-500ms,
+        // 슬로 네트워크 여유까지 고려해 4초. 초과 시 워커 폴백이 인계.
+        const val SELF_HEAL_TIMEOUT_MS = 4_000L
     }
 }

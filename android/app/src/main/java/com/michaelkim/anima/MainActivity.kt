@@ -141,7 +141,9 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             val completed = try {
                 withTimeoutOrNull(REFRESH_BEFORE_HOME_TIMEOUT_MS) {
-                    QuoteRepository.refresh(this@MainActivity)
+                    // 구제 버전 — 신규 가입자 trialEndsAt claim 미반영(402)/만료 임박 토큰(401)을
+                    // 1회 구제 후 재시도해, 앱 진입 시점에 위젯 캐시가 비어버리는 회귀를 막는다.
+                    QuoteRepository.refreshWithEntitlementRecovery(this@MainActivity)
                     QuoteWidget().updateAll(this@MainActivity)
                     true
                 }
