@@ -31,8 +31,10 @@ class QuoteWidget : GlanceAppWidget() {
         val ymd = cached?.response?.ymd
         // 다짐 streak — 옛 캐시는 0 으로 기본값 처리되어 자연스레 숨겨진다.
         val streak = cached?.response?.streakCount ?: 0
+        // "성공한 나에게 한 발 더" 다짐 본문 — 옛 캐시엔 없어 빈 리스트로 폴백된다.
+        val affirmations = cached?.response?.affirmations ?: emptyList()
         provideContent {
-            WidgetContent(slot, progress, ymd, streak)
+            WidgetContent(slot, progress, ymd, streak, affirmations)
         }
     }
 }

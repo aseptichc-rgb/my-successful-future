@@ -32,6 +32,9 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 const REQUIRED_WINS = 3;
+// 위젯에 실어 보낼 다짐 최대 개수 — lib/firebase.ts MAX_SUCCESS_AFFIRMATIONS 와 동기화.
+// (저장 시점에 이미 컷되지만, 옛 문서 방어를 위해 응답에서도 한 번 더 제한)
+const MAX_WIDGET_AFFIRMATIONS = 10;
 
 /**
  * 홈에서 사용자가 오늘 이행한 3가지 작업의 완료 여부를 모아 반환.
@@ -122,6 +125,7 @@ export async function GET(request: NextRequest) {
     //    추가 라운드트립 없이 위젯 응답에 실어 보낸다.
     let userGoals: string[] | undefined;
     let streakCount = 0;
+    let affirmations: string[] = [];
     try {
       const userSnap = await getAdminDb().collection("users").doc(me.uid).get();
       const data = userSnap.data();
@@ -131,6 +135,13 @@ export async function GET(request: NextRequest) {
       const rawStreak = (data?.affirmationStreak as { count?: unknown } | undefined)?.count;
       const n = Number(rawStreak ?? 0);
       streakCount = Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+      // "성공한 나에게 한 발 더" 다짐 본문 — 위젯이 매일 결심을 다잡도록 그대로 노출.
+      if (data && Array.isArray(data.successAffirmations)) {
+        affirmations = (data.successAffirmations as unknown[])
+          .map((a) => (typeof a === "string" ? a.trim() : ""))
+          .filter((a) => a.length > 0)
+          .slice(0, MAX_WIDGET_AFFIRMATIONS);
+      }
     } catch (err) {
       console.error("[widget/today] user 문서 조회 실패:", err);
     }
@@ -161,6 +172,7 @@ export async function GET(request: NextRequest) {
       nextRefreshAt: nextRefreshIso(now),
       todayProgress,
       streakCount,
+      affirmations,
     };
 
     // 캐시 정책: `_t` 쿼리(클라 측 cache-buster) 가 실려 있거나 Cache-Control: no-cache

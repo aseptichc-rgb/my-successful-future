@@ -54,6 +54,11 @@ data class WidgetTodayResponse(
      * 출처: `users/{uid}.affirmationStreak.count` (lib/affirmationCheckin.ts).
      */
     val streakCount: Int = 0,
+    /**
+     * "성공한 나에게 한 발 더" 다짐 본문 목록. 신규 필드라 옛 캐시/옛 서버 응답엔
+     * 없을 수 있어 빈 리스트 기본값. 출처: `users/{uid}.successAffirmations`.
+     */
+    val affirmations: List<String> = emptyList(),
 )
 
 /** DataStore 캐시 직렬화용 — 마지막 응답 + 디스크 기록 시각. */

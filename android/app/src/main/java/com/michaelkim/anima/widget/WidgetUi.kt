@@ -67,6 +67,8 @@ private const val PROGRESS_LABEL_ACTIONS = "목표를 이루기 위한 오늘의
 private const val PROGRESS_LABEL_WINS = "오늘 잘한 일 3가지"
 private const val SECTION_TODAY = "TODAY · 오늘의 행동"
 private const val SECTION_GOALS = "GOALS · 이번 달 목표"
+// "성공한 나에게 한 발 더" 다짐 본문 섹션 — 매일 결심을 다잡도록 vow 를 그대로 노출.
+private const val SECTION_AFFIRMATIONS = "VOW · 성공한 나의 다짐"
 // 시간대별 CTA — design/Widget Directive.md §5 morning/midday/evening 패턴.
 // 색 swap(soul→success #7CB377)은 사용자 팔레트 통일 결정에 따라 보류, 카피만 시간대화.
 private const val FOOTER_CTA_MORNING = "오늘 시작  →"
@@ -79,6 +81,10 @@ private const val HOUR_MORNING_END = 11   // 11시 전까지가 morning
 private const val HOUR_EVENING_START = 18 // 18시부터 evening
 private const val MAX_GOALS_ON_WIDGET = 3
 private const val TOTAL_DAILY_ACTIONS = 3
+// 다짐 본문 노출 개수 — 키 충분한(extra-tall) 위젯은 더 많이, 그 외엔 컴팩트하게.
+// 넘치는 항목은 "+N 더" 힌트로 알려 무음 절단(silent cap)을 피한다.
+private const val MAX_AFFIRMATIONS_ON_WIDGET = 4
+private const val MAX_AFFIRMATIONS_COMPACT = 2
 
 // 요일 한글 라벨 — DayOfWeek.value 는 ISO(월=1 … 일=7).
 private val DOW_KO = listOf("월", "화", "수", "목", "금", "토", "일")
@@ -138,6 +144,7 @@ fun WidgetContent(
     progress: WidgetTodayProgress?,
     ymd: String?,
     streakCount: Int = 0,
+    affirmations: List<String> = emptyList(),
 ) {
     val context = LocalContext.current
     val size = LocalSize.current
@@ -172,7 +179,7 @@ fun WidgetContent(
             EmptyState(ink)
             return@Box
         }
-        LoadedContent(slot, progress, ymd, streakCount, isWide, isTall, isExtraTall, isLight, ink)
+        LoadedContent(slot, progress, ymd, streakCount, affirmations, isWide, isTall, isExtraTall, isLight, ink)
     }
 }
 
@@ -215,6 +222,7 @@ private fun LoadedContent(
     progress: WidgetTodayProgress?,
     ymd: String?,
     streakCount: Int,
+    affirmations: List<String>,
     isWide: Boolean,
     isTall: Boolean,
     isExtraTall: Boolean,
@@ -262,6 +270,14 @@ private fun LoadedContent(
                     ProgressIconsCompact(progress, isLight, ink)
                 }
             }
+        }
+
+        // ── 4. 성공한 나의 다짐 (한 발 더) ─────────────────────────────
+        // 매일 결심을 다잡도록 다짐 본문을 그대로 노출. 키·폭이 충분할 때만 — 좁은 위젯은
+        // 체크 신호만으로 충분하고, 본문을 욱여넣으면 신호판 가독성이 깨진다.
+        if (isWide && isTall && affirmations.isNotEmpty()) {
+            val maxRows = if (isExtraTall) MAX_AFFIRMATIONS_ON_WIDGET else MAX_AFFIRMATIONS_COMPACT
+            AffirmationsSection(affirmations, maxRows, accent, ink)
         }
 
         // ── 5. 이번 달 목표 ────────────────────────────────────────────
@@ -643,6 +659,82 @@ private fun GoalRow(num: Int, title: String, accent: Color, ink: Color) {
                 fontWeight = FontWeight.Normal,
             ),
             maxLines = 1,
+        )
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// "성공한 나에게 한 발 더" 다짐 본문 섹션
+// — 위 진척도 체크리스트의 "성공한 나에게 한 발 더" 항목이 "오늘 했나?" 라면,
+//   이 섹션은 "무엇을 다짐했나" 의 본문을 보여줘 매일 결심을 다잡게 한다.
+// — Glance 회귀 방지: if 분기의 직접 자식은 이 Column 하나로 유지.
+// ────────────────────────────────────────────────────────────────────────────
+@Composable
+private fun AffirmationsSection(
+    affirmations: List<String>,
+    maxRows: Int,
+    accent: Color,
+    ink: Color,
+) {
+    Column(modifier = GlanceModifier.fillMaxWidth()) {
+        HairlineDivider(ink)
+        SectionHeader(SECTION_AFFIRMATIONS, null, accent, ink)
+        val shown = affirmations.take(maxRows)
+        shown.forEach { AffirmationRow(it, accent, ink) }
+        // 넘치는 다짐은 무음 절단 대신 "+N 더" 로 명시 — 사용자가 본문 일부만 보임을 인지.
+        val remaining = affirmations.size - shown.size
+        if (remaining > 0) {
+            Column(modifier = GlanceModifier.fillMaxWidth()) {
+                Spacer(GlanceModifier.height(2.dp))
+                Text(
+                    text = "+$remaining 더",
+                    style = TextStyle(
+                        color = ColorProvider(ink.copy(alpha = ALPHA_META)),
+                        fontSize = META_SIZE,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Medium,
+                    ),
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AffirmationRow(text: String, accent: Color, ink: Color) {
+    Row(
+        modifier = GlanceModifier
+            .fillMaxWidth()
+            .padding(vertical = ROW_V_PADDING),
+        verticalAlignment = Alignment.Top,
+    ) {
+        // 마커 — accent dash. 목표(serif 번호)와 구분되는 "다짐" 신호.
+        Box(
+            modifier = GlanceModifier.width(GOAL_NUM_WIDTH),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Text(
+                text = "—",
+                style = TextStyle(
+                    color = ColorProvider(accent),
+                    fontSize = ROW_LABEL_SIZE,
+                    fontFamily = FontFamily.Serif,
+                ),
+                maxLines = 1,
+            )
+        }
+        // 다짐 본문 — serif italic 으로 "나의 맹세" 톤. 한 줄을 넘으면 2줄까지 허용.
+        Text(
+            text = text,
+            style = TextStyle(
+                color = ColorProvider(ink),
+                fontSize = ROW_LABEL_SIZE,
+                fontFamily = FontFamily.Serif,
+                fontStyle = FontStyle.Italic,
+                fontWeight = FontWeight.Normal,
+            ),
+            maxLines = 2,
         )
     }
 }

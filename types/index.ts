@@ -224,4 +224,10 @@ export interface WidgetTodayResponse {
    * 응답 호환성: 누락 시 위젯 측 0 폴백 — 옛 클라이언트도 동작.
    */
   streakCount?: number;
+  /**
+   * "성공한 나에게 한 발 더" 다짐 본문 목록. 위젯이 매일 결심을 다잡도록 그대로 노출.
+   * 출처: `users/{uid}.successAffirmations` (lib/firebase.ts updateSuccessAffirmations).
+   * 응답 호환성: 누락 시 위젯 측 빈 배열 폴백 — 옛 클라이언트도 동작.
+   */
+  affirmations?: string[];
 }
