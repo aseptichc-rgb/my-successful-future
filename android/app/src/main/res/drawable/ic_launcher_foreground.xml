@@ -6,9 +6,12 @@
   · gap=18°, 중심각 -90° (12시)
       시작각 gapEnd=-81° → (54+30·cos(-81°), 54+30·sin(-81°)) ≈ (58.69, 24.36)
       끝각  gapStart+360=261° → (54+30·cos(261°), 54+30·sin(261°)) ≈ (49.31, 24.36)
-  · 중심 이중 코어: 흰 외환(r=4) + soul 오렌지 내핵(r=1.8).
-      웹 파비콘 / app/icon.svg / 로그인 LogoLockup 의 "indigo 호 + soul 오렌지 점"
-      과 동일한 무게로 통일 — 어디서 만나든 같은 마크임을 즉시 인지.
+  · 중심 코어: soul 오렌지 단일 점(r=3) — 흰 외환을 제거하고 위젯 로고
+      (ic_anima_aperture) / 웹 파비콘 / app/icon.svg 와 똑같이 "호 + 주황 점"
+      으로 통일. 기존 이중 코어는 홈 화면 작게 볼 때 흰 점처럼 보여 주황이
+      드러나지 않던 문제를 해결 — 어디서 만나든 같은 마크임을 즉시 인지.
+      (canonical 비례: 위젯 r=3.6 @arc 42 → launcher arc 30 → r≈2.6, 어두운
+       indigo 배경 + 작은 런처 크기 가독성 위해 r=3 으로 소폭 키움.)
   · stroke 2.8 — 36dp 이하 launcher 에서 호가 가늘게 깨지는 현상 보강.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
@@ -24,14 +27,9 @@
         android:strokeWidth="2.8"
         android:strokeLineCap="round" />
 
-    <!-- 중심 코어 — 흰 외환 (r=4) -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M 54 50 a 4 4 0 1 0 0 8 a 4 4 0 1 0 0 -8 Z" />
-
-    <!-- 중심 코어 — soul 오렌지 내핵 (r=1.8) — 인디고 배경 + 흰 외환 위에서
-         따뜻한 soul 오렌지 점이 brand identity 의 "심장" 역할. -->
+    <!-- 중심 코어 — soul 오렌지 단일 점 (r=3) — 위젯/파비콘과 동일한 "심장".
+         indigo 배경 위 따뜻한 soul 오렌지가 brand identity 의 핵심. -->
     <path
         android:fillColor="#D85A30"
-        android:pathData="M 54 52.2 a 1.8 1.8 0 1 0 0 3.6 a 1.8 1.8 0 1 0 0 -3.6 Z" />
+        android:pathData="M 54 51 a 3 3 0 1 0 0 6 a 3 3 0 1 0 0 -6 Z" />
 </vector>
