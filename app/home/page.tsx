@@ -1,18 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
-  updateFuturePersona,
-  updateUserGoals,
   onDailyEntrySnapshot,
   onDailyMotivationSnapshot,
   onAffirmationCheckinSnapshot,
   saveDailyWins,
   saveDailyAchievedGoals,
   getKstYmd,
-  MAX_USER_GOALS,
   MAX_DAILY_WINS,
 } from "@/lib/firebase";
 import { authedFetch } from "@/lib/authedFetch";
@@ -33,8 +30,6 @@ import type { DailyEntry, DailyMotivation } from "@/types";
  *  · Goal edit mode hides ×/inputs by default
  * ────────────────────────────────────────────────────────────────── */
 
-const FUTURE_PERSONA_MAX = 500;
-const GOAL_MAX = 80;
 const WIN_MAX = 140;
 const WINS_AUTOSAVE_MS = 600;
 const WINS_SAVED_TOAST_MS = 1800;
@@ -125,14 +120,9 @@ export default function HomeDashboardPage() {
   const { user, firebaseUser, loading, refreshUser } = useAuth();
   const { t, locale } = useLanguage();
 
-  const [futureDraft, setFutureDraft] = useState("");
-  const [futureEditing, setFutureEditing] = useState(false);
-  const [futureSaving, setFutureSaving] = useState(false);
-
-  const [goals, setGoals] = useState<string[]>([]);
-  const [goalDraft, setGoalDraft] = useState("");
-  const [goalsEditing, setGoalsEditing] = useState(false);
-  const goalsHydratedRef = useRef(false);
+  // 미래의 나·목표는 홈에서 읽기 전용 — 수정은 /settings 에서. 항상 user 의 최신 값을 반영하도록
+  // 별도 state 없이 user 에서 직접 파생한다(설정 화면에서 수정 후 돌아왔을 때 즉시 동기화).
+  const goals = user?.goals ?? [];
 
   const ymd = useResolvedYmd();
   const [wins, setWins] = useState<string[]>(["", "", ""]);
@@ -168,16 +158,6 @@ export default function HomeDashboardPage() {
     }
     if (user && !user.onboardedAt) router.replace("/onboarding");
   }, [firebaseUser, loading, router, user]);
-
-  useEffect(() => {
-    if (!user) return;
-    // 편집 중에는 draft 를 덮어쓰지 않는다 — refreshUser() 로 user 가 갱신돼도 진행 중인 입력 보호.
-    if (!futureEditing) setFutureDraft(user.futurePersona || "");
-    if (!goalsHydratedRef.current) {
-      setGoals(user.goals && user.goals.length > 0 ? [...user.goals] : []);
-      goalsHydratedRef.current = true;
-    }
-  }, [user, futureEditing]);
 
   useEffect(() => {
     if (!firebaseUser) return;
@@ -321,50 +301,6 @@ export default function HomeDashboardPage() {
 
   /* ───── handlers ───── */
 
-  const handleFutureSave = async () => {
-    const next = futureDraft.trim().slice(0, FUTURE_PERSONA_MAX);
-    setFutureSaving(true);
-    try {
-      await updateFuturePersona(uid, next);
-      setFutureEditing(false);
-      // 저장 직후 컨텍스트 user 를 동기화하지 않으면 화면이 stale 한 user.futurePersona 로
-      // 되돌아가 "저장이 안 된 것처럼" 보인다 (설정 페이지와 동일한 컨벤션).
-      await refreshUser().catch(() => {});
-      // handleRegenerateMotivation 안에서 notifyAndroidWidgetRefresh 가 호출되므로 여기서
-      // 중복 호출하지 않는다 — DEDUP_WINDOW 가 흡수하지만 깔끔하게 단일 책임 유지.
-      void handleRegenerateMotivation();
-    } catch (err) {
-      console.error("[home] 미래의 나 저장 실패:", err);
-      window.alert(`${t("common.saveFailed")} ${t("common.tryAgainLater")}`);
-    } finally {
-      setFutureSaving(false);
-    }
-  };
-
-  const handleFutureCancel = () => {
-    setFutureDraft(user?.futurePersona || "");
-    setFutureEditing(false);
-  };
-
-  const persistGoals = async (next: string[]) => {
-    try {
-      await updateUserGoals(uid, next);
-    } catch (err) {
-      console.error("[home] 목표 저장 실패:", err);
-      window.alert(t("home.goals.saveFailed"));
-      return;
-    }
-    // ── 저장 성공 후 부수효과 — 실패해도 저장 자체엔 영향 없으므로 따로 묶어 삼킨다. ──
-    // 1) 컨텍스트 user 동기화: 안 하면 재마운트(설정↔홈 이동·앱 재진입) 시 stale 한 user.goals
-    //    로 되돌아가 방금 추가/삭제한 목표가 사라진다("저장이 안 됨"의 근본 원인).
-    await refreshUser().catch((err) =>
-      console.warn("[home] 목표 저장 후 user 동기화 실패:", err),
-    );
-    // 2) 목표 목록이 바뀌면 위젯의 goalsSnapshot / "행동 체크" 평가 기준이 즉시 영향을 받는다.
-    //    안 호출하면 다음 정주기 Worker(3시간) 까지 위젯과 홈의 목표 표시가 어긋난다.
-    notifyAndroidWidgetRefresh();
-  };
-
   const handleToggleGoalAchieved = async (goalText: string) => {
     const trimmed = goalText.trim();
     if (!trimmed) return;
@@ -381,58 +317,6 @@ export default function HomeDashboardPage() {
       setAchievedGoals(achievedGoals);
       window.alert(t("common.saveFailed"));
     }
-  };
-
-  const pruneAchievedGoals = async (currentGoals: string[]) => {
-    const valid = new Set(currentGoals.map((g) => g.trim()).filter((g) => g.length > 0));
-    const pruned = achievedGoals.filter((g) => valid.has(g));
-    if (pruned.length === achievedGoals.length) return;
-    setAchievedGoals(pruned);
-    try {
-      await saveDailyAchievedGoals(uid, ymd, pruned);
-      notifyAndroidWidgetRefresh();
-    } catch (err) {
-      console.error("달성 목표 정리 실패:", err);
-    }
-  };
-
-  const handleAddGoal = async () => {
-    const text = goalDraft.trim().slice(0, GOAL_MAX);
-    if (!text) return;
-    if (goals.length >= MAX_USER_GOALS) {
-      window.alert(t("home.goals.maxAlert", { max: MAX_USER_GOALS }));
-      return;
-    }
-    const next = [...goals, text];
-    setGoals(next);
-    setGoalDraft("");
-    await persistGoals(next);
-  };
-
-  const handleUpdateGoal = (idx: number, value: string) => {
-    setGoals(goals.map((g, i) => (i === idx ? value.slice(0, GOAL_MAX) : g)));
-  };
-
-  const handleCommitGoal = async (idx: number) => {
-    const trimmed = (goals[idx] || "").trim();
-    if (!trimmed) {
-      const next = goals.filter((_, i) => i !== idx);
-      setGoals(next);
-      await persistGoals(next);
-      await pruneAchievedGoals(next);
-      return;
-    }
-    const next = goals.map((g, i) => (i === idx ? trimmed : g));
-    setGoals(next);
-    await persistGoals(next);
-    await pruneAchievedGoals(next);
-  };
-
-  const handleRemoveGoal = async (idx: number) => {
-    const next = goals.filter((_, i) => i !== idx);
-    setGoals(next);
-    await persistGoals(next);
-    await pruneAchievedGoals(next);
   };
 
   const handleChangeWin = (idx: number, value: string) => {
@@ -583,64 +467,17 @@ export default function HomeDashboardPage() {
         {/* ─── Tab · 나의 행동 (actions) ─── */}
         {activeTab === "actions" && (
           <>
-            {/* ── 10년 후의 나 ── */}
-            <GroupedSection
-              header={t("home.future.title")}
-              trailing={
-                !futureEditing && (
-                  <button
-                    type="button"
-                    onClick={() => setFutureEditing(true)}
-                    className="text-[15px] font-medium text-[var(--soul)]"
-                  >
-                    {futureText ? t("common.edit") : t("common.write")}
-                  </button>
-                )
-              }
-            >
+            {/* ── 10년 후의 나 (읽기 전용 — 수정은 /settings) ── */}
+            <GroupedSection header={t("home.future.title")}>
               <div className="px-5 py-4">
-                {futureEditing ? (
-                  <>
-                    <textarea
-                      value={futureDraft}
-                      onChange={(e) => setFutureDraft(e.target.value)}
-                      rows={5}
-                      maxLength={FUTURE_PERSONA_MAX}
-                      placeholder={t("onboarding.step1.placeholder")}
-                      className="w-full resize-none bg-transparent text-[17px] leading-[24px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none"
-                    />
-                    <div className="mt-3 flex items-center justify-between">
-                      <span className="text-[12px] text-[var(--label-3)] tabular-nums">
-                        {futureDraft.length}/{FUTURE_PERSONA_MAX}
-                      </span>
-                      <div className="flex gap-4">
-                        <button
-                          type="button"
-                          onClick={handleFutureCancel}
-                          disabled={futureSaving}
-                          className="text-[15px] text-[var(--label-2)] disabled:opacity-40"
-                        >
-                          {t("common.cancel")}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleFutureSave}
-                          disabled={futureSaving}
-                          className="text-[15px] font-semibold text-[var(--soul)] disabled:opacity-40"
-                        >
-                          {futureSaving ? t("common.saving") : t("home.future.saveAndRegen")}
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                ) : futureText ? (
+                {futureText ? (
                   <p className="whitespace-pre-wrap text-[17px] leading-[24px] tracking-[-0.43px] text-[var(--label)]">
                     {futureText}
                   </p>
                 ) : (
                   <button
                     type="button"
-                    onClick={() => setFutureEditing(true)}
+                    onClick={() => router.push("/settings")}
                     className="block w-full text-left text-[17px] leading-[24px] text-[var(--label-3)]"
                   >
                     {t("home.future.empty")}
@@ -649,28 +486,15 @@ export default function HomeDashboardPage() {
               </div>
             </GroupedSection>
 
-            {/* ── 이번 달 목표 ── */}
+            {/* ── 이번 달 목표 (읽기·달성 토글 전용 — 추가/삭제는 /settings) ── */}
             <GroupedSection
               header={t("home.goals.title")}
               trailing={
-                <div className="flex items-center gap-4">
+                goals.length > 0 ? (
                   <span className="text-[13px] text-[var(--label-2)] tabular-nums">
                     {goalsDone} / {goals.length}
                   </span>
-                  {/* 목표가 0개여도 편집 진입/완료 버튼을 항상 노출 — 빈 상태에서 첫 목표를
-                      추가하거나 마지막 목표를 지운 뒤 편집을 빠져나갈 수단이 사라지지 않도록. */}
-                  <button
-                    type="button"
-                    onClick={() => setGoalsEditing((v) => !v)}
-                    className="text-[15px] font-medium text-[var(--soul)]"
-                  >
-                    {goalsEditing
-                      ? t("common.done")
-                      : goals.length > 0
-                        ? t("common.edit")
-                        : t("common.add")}
-                  </button>
-                </div>
+                ) : null
               }
             >
               {goals.length > 0 ? (
@@ -717,45 +541,16 @@ export default function HomeDashboardPage() {
                         )}
                       </button>
                       <div className="flex-1 min-w-0 py-2">
-                        {goalsEditing ? (
-                          <input
-                            value={goal}
-                            maxLength={GOAL_MAX}
-                            onChange={(e) => handleUpdateGoal(idx, e.target.value)}
-                            onBlur={() => handleCommitGoal(idx)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                (e.currentTarget as HTMLInputElement).blur();
-                              }
-                            }}
-                            className="w-full bg-transparent text-[17px] leading-[22px] tracking-[-0.43px] text-[var(--label)] focus:outline-none border-b border-dashed border-[var(--sep)] focus:border-[#D85A30]"
-                          />
-                        ) : (
-                          <div
-                            className={`text-[17px] leading-[22px] tracking-[-0.43px] ${
-                              achieved ? "text-[var(--label-2)] line-through decoration-[var(--label-3)]" : "text-[var(--label)]"
-                            }`}
-                          >
-                            {trimmed || (
-                              <span className="text-[var(--label-3)]">{t("home.goals.placeholder")}</span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      {goalsEditing ? (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveGoal(idx)}
-                          aria-label={t("home.goals.deleteAria")}
-                          className="w-8 h-8 flex items-center justify-center text-[#FF3B30] flex-shrink-0"
+                        <div
+                          className={`text-[17px] leading-[22px] tracking-[-0.43px] ${
+                            achieved ? "text-[var(--label-2)] line-through decoration-[var(--label-3)]" : "text-[var(--label)]"
+                          }`}
                         >
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                            <circle cx="12" cy="12" r="11" />
-                            <path d="M8 12h8" stroke="white" strokeWidth="2.2" strokeLinecap="round" />
-                          </svg>
-                        </button>
-                      ) : null}
+                          {trimmed || (
+                            <span className="text-[var(--label-3)]">{t("home.goals.placeholder")}</span>
+                          )}
+                        </div>
+                      </div>
                       {!isLast && (
                         <div
                           className="absolute bottom-0 right-0 h-[0.5px]"
@@ -765,54 +560,14 @@ export default function HomeDashboardPage() {
                     </div>
                   );
                 })
-              ) : goalsEditing ? null : (
+              ) : (
                 <button
                   type="button"
-                  onClick={() => setGoalsEditing(true)}
+                  onClick={() => router.push("/settings")}
                   className="block w-full px-5 py-4 text-left text-[17px] text-[var(--label-3)]"
                 >
                   {t("home.goals.subtitle")}
                 </button>
-              )}
-
-              {goalsEditing && goals.length < MAX_USER_GOALS && (
-                <div className="relative flex items-center gap-3 px-4 min-h-[52px]">
-                  {/* "+" 박스 자체를 추가 버튼으로 — 가장 직관적인 탭 타깃이 살아있도록.
-                      (이전엔 장식용 div 라 눌러도 반응이 없었다.) */}
-                  <button
-                    type="button"
-                    onClick={handleAddGoal}
-                    disabled={!goalDraft.trim()}
-                    aria-label={t("common.add")}
-                    className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0 disabled:opacity-40"
-                    style={{ background: "rgba(52,199,89,0.15)" }}
-                  >
-                    <span className="text-[20px] leading-none text-[#D85A30]">＋</span>
-                  </button>
-                  <input
-                    value={goalDraft}
-                    maxLength={GOAL_MAX}
-                    enterKeyHint="done"
-                    onChange={(e) => setGoalDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      // 한글 IME 조합 중 Enter 는 조합 확정용이므로 무시하고, 확정된 Enter 에서만 추가.
-                      if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                        e.preventDefault();
-                        void handleAddGoal();
-                      }
-                    }}
-                    placeholder={t("home.goals.placeholder")}
-                    className="flex-1 bg-transparent text-[17px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none py-2"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddGoal}
-                    disabled={!goalDraft.trim()}
-                    className="text-[15px] font-semibold text-[#D85A30] disabled:opacity-30"
-                  >
-                    {t("common.add")}
-                  </button>
-                </div>
               )}
             </GroupedSection>
 

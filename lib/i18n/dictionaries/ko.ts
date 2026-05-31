@@ -104,7 +104,7 @@ const dict = {
 
   "home.future.title": "10년 후의 나의 모습",
   "home.future.subtitle": "되고 싶은 모습이 구체적일수록, 매일 도착하는 한 마디도 더 명확해져요.",
-  "home.future.empty": "아직 적어둔 모습이 없어요. 눌러서 작성해 보세요.",
+  "home.future.empty": "아직 적어둔 모습이 없어요. 설정에서 작성할 수 있어요.",
   "home.future.saveAndRegen": "저장하고 카드 다시 받기",
   "home.future.saveFailed": "미래의 나 저장 실패",
 

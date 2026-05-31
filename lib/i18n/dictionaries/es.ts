@@ -112,7 +112,7 @@ const dict: Record<DictKey, string> = {
   "home.future.title": "Tú, dentro de 10 años",
   "home.future.subtitle":
     "Cuanto más concreto sea tu yo futuro, más nítida será la frase diaria que recibas.",
-  "home.future.empty": "Aún no has escrito nada. Toca para escribir.",
+  "home.future.empty": "Aún no has escrito nada. Puedes hacerlo en Ajustes.",
   "home.future.saveAndRegen": "Guardar y regenerar la tarjeta de hoy",
   "home.future.saveFailed": "No se pudo guardar tu yo futuro",
 

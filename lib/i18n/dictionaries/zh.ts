@@ -107,7 +107,7 @@ const dict: Record<DictKey, string> = {
   "home.future.title": "10 年后的你",
   "home.future.subtitle":
     "未来的你越具体,每天送达的一句话就越清晰。",
-  "home.future.empty": "还没有写。点击撰写。",
+  "home.future.empty": "还没有写。可以在「设置」中撰写。",
   "home.future.saveAndRegen": "保存并重新生成今日卡片",
   "home.future.saveFailed": "未能保存「未来的你」",
 

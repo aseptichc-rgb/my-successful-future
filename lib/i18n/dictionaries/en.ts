@@ -109,7 +109,7 @@ const dict: Record<DictKey, string> = {
   "home.future.title": "You, 10 years from now",
   "home.future.subtitle":
     "The more specific the future you, the sharper the daily line you'll receive.",
-  "home.future.empty": "Nothing written yet. Tap to write.",
+  "home.future.empty": "Nothing written yet. You can write it in Settings.",
   "home.future.saveAndRegen": "Save and regenerate today's card",
   "home.future.saveFailed": "Failed to save your future self",
 
