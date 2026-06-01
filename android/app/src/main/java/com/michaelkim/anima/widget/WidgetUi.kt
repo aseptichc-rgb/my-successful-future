@@ -90,10 +90,11 @@ private const val HOUR_MORNING_END = 11   // 11시 전까지가 morning
 private const val HOUR_EVENING_START = 18 // 18시부터 evening
 private const val MAX_GOALS_ON_WIDGET = 3
 private const val TOTAL_DAILY_ACTIONS = 3
-// 다짐 본문 노출 개수 — 키 충분한(extra-tall) 위젯은 더 많이, 그 외엔 컴팩트하게.
-// 넘치는 항목은 "+N 더" 힌트로 알려 무음 절단(silent cap)을 피한다.
-private const val MAX_AFFIRMATIONS_ON_WIDGET = 4
-private const val MAX_AFFIRMATIONS_COMPACT = 2
+// 다짐 본문 노출 개수 — "오늘의 명언" 다음으로 중요한 콘텐츠라 모든 사이즈에서 노출하되,
+// 가용 높이에 맞춰 행 수를 조절한다. 넘치는 항목은 "+N 더" 로 무음 절단(silent cap)을 피한다.
+private const val MAX_AFFIRMATIONS_ON_WIDGET = 4   // extra-tall (>=280dp)
+private const val MAX_AFFIRMATIONS_TALL = 3        // tall (>=200dp)
+private const val MAX_AFFIRMATIONS_COMPACT = 2     // 그 외(컴팩트)
 
 // 요일 한글 라벨 — DayOfWeek.value 는 ISO(월=1 … 일=7).
 private val DOW_KO = listOf("월", "화", "수", "목", "금", "토", "일")
@@ -308,6 +309,18 @@ private fun LoadedContent(
         // ── 2. 인용문 + 작가 ───────────────────────────────────────────
         QuoteBlock(slot, isWide, isTall, ink)
 
+        // ── 3. 성공한 나의 다짐 (한 발 더) ─────────────────────────────
+        // "오늘의 명언" 다음으로 중요한 콘텐츠 — 명언 바로 아래에 배치해 매일 눈에 띄게 한다.
+        // 모든 사이즈에서 노출하되, 가용 높이에 맞춰 행 수와 머리말 표시를 조절한다.
+        if (affirmations.isNotEmpty()) {
+            val maxRows = when {
+                isExtraTall -> MAX_AFFIRMATIONS_ON_WIDGET
+                isTall -> MAX_AFFIRMATIONS_TALL
+                else -> MAX_AFFIRMATIONS_COMPACT
+            }
+            AffirmationsSection(affirmations, maxRows, expanded = isTall, accent = accent, ink = ink)
+        }
+
         if (progress != null) {
             Column(modifier = GlanceModifier.fillMaxWidth()) {
                 HairlineDivider(ink)
@@ -319,14 +332,6 @@ private fun LoadedContent(
                     ProgressIconsCompact(progress, isLight, ink)
                 }
             }
-        }
-
-        // ── 4. 성공한 나의 다짐 (한 발 더) ─────────────────────────────
-        // 매일 결심을 다잡도록 다짐 본문을 그대로 노출. 키·폭이 충분할 때만 — 좁은 위젯은
-        // 체크 신호만으로 충분하고, 본문을 욱여넣으면 신호판 가독성이 깨진다.
-        if (isWide && isTall && affirmations.isNotEmpty()) {
-            val maxRows = if (isExtraTall) MAX_AFFIRMATIONS_ON_WIDGET else MAX_AFFIRMATIONS_COMPACT
-            AffirmationsSection(affirmations, maxRows, accent, ink)
         }
 
         // ── 5. 이번 달 목표 ────────────────────────────────────────────
@@ -722,14 +727,23 @@ private fun GoalRow(num: Int, title: String, accent: Color, ink: Color) {
 private fun AffirmationsSection(
     affirmations: List<String>,
     maxRows: Int,
+    expanded: Boolean,
     accent: Color,
     ink: Color,
 ) {
     Column(modifier = GlanceModifier.fillMaxWidth()) {
-        HairlineDivider(ink)
-        SectionHeader(SECTION_AFFIRMATIONS, null, accent, ink)
+        // 키 충분한 위젯: hairline + 머리말로 정식 섹션. 컴팩트: 머리말을 생략하고 간격만 둬
+        // 명언과 자연스레 이어지게 한다(좁은 화면에서 머리말이 본문 자리를 잡아먹지 않도록).
+        if (expanded) {
+            Column(modifier = GlanceModifier.fillMaxWidth()) {
+                HairlineDivider(ink)
+                SectionHeader(SECTION_AFFIRMATIONS, null, accent, ink)
+            }
+        } else {
+            Spacer(GlanceModifier.height(SECTION_GAP))
+        }
         val shown = affirmations.take(maxRows)
-        shown.forEach { AffirmationRow(it, accent, ink) }
+        shown.forEach { AffirmationRow(it, expanded, accent, ink) }
         // 넘치는 다짐은 무음 절단 대신 "+N 더" 로 명시 — 사용자가 본문 일부만 보임을 인지.
         val remaining = affirmations.size - shown.size
         if (remaining > 0) {
@@ -751,7 +765,7 @@ private fun AffirmationsSection(
 }
 
 @Composable
-private fun AffirmationRow(text: String, accent: Color, ink: Color) {
+private fun AffirmationRow(text: String, expanded: Boolean, accent: Color, ink: Color) {
     Row(
         modifier = GlanceModifier
             .fillMaxWidth()
@@ -773,7 +787,7 @@ private fun AffirmationRow(text: String, accent: Color, ink: Color) {
                 maxLines = 1,
             )
         }
-        // 다짐 본문 — serif italic 으로 "나의 맹세" 톤. 한 줄을 넘으면 2줄까지 허용.
+        // 다짐 본문 — serif italic 으로 "나의 맹세" 톤. 키 충분하면 2줄, 컴팩트는 1줄로 절약.
         Text(
             text = text,
             style = TextStyle(
@@ -783,7 +797,7 @@ private fun AffirmationRow(text: String, accent: Color, ink: Color) {
                 fontStyle = FontStyle.Italic,
                 fontWeight = FontWeight.Normal,
             ),
-            maxLines = 2,
+            maxLines = if (expanded) 2 else 1,
         )
     }
 }
