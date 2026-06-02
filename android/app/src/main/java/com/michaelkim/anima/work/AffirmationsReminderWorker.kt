@@ -23,6 +23,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.michaelkim.anima.MainActivity
 import com.michaelkim.anima.R
+import com.michaelkim.anima.util.CrashReporter
 
 class AffirmationsReminderWorker(
     appContext: Context,
@@ -40,6 +41,7 @@ class AffirmationsReminderWorker(
             WorkScheduler.scheduleDailyAffirmationsReminder(ctx)
             return Result.success()
         } catch (e: Exception) {
+            CrashReporter.record(TAG, "다짐 알림 처리 실패 — 재예약만 시도", e)
             try { WorkScheduler.scheduleDailyAffirmationsReminder(ctx) } catch (_: Exception) {}
             return Result.success()
         }
@@ -93,5 +95,6 @@ class AffirmationsReminderWorker(
         const val CHANNEL_ID = "affirmations_reminder"
         const val NOTIFICATION_ID = 2003
         const val REQUEST_CODE_TAP = 2004
+        private const val TAG = "AffirmationsReminder"
     }
 }

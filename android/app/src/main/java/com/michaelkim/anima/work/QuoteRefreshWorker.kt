@@ -18,6 +18,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.michaelkim.anima.data.QuoteRepository
 import com.michaelkim.anima.data.auth.AuthRepository
+import com.michaelkim.anima.util.CrashReporter
 import com.michaelkim.anima.widget.QuoteWidget
 import java.io.IOException
 
@@ -47,7 +48,8 @@ class QuoteRefreshWorker(
             Result.retry()
         } catch (e: Exception) {
             // 구제 재시도 후에도 실패(영구 401/403 등) — 재시도해도 의미 없음.
-            // 캐시 그대로 두고 다음 주기 대기.
+            // "로그인했는데 위젯이 영영 비는" 회귀의 단서이므로 비치명적으로 보고. 캐시 그대로 두고 다음 주기 대기.
+            CrashReporter.record(TAG, "위젯 refresh 구제 후에도 실패", e)
             Result.success()
         }
     }
@@ -56,5 +58,6 @@ class QuoteRefreshWorker(
         // WorkManager 기본 백오프 (10s exponential) 로 ~30s ~ 1분 안에 자가 봉합될 횟수.
         // 더 큰 값은 배터리 부담만 키운다.
         const val MAX_AUTH_RETRY = 3
+        const val TAG = "QuoteRefreshWorker"
     }
 }

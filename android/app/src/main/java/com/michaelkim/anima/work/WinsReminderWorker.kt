@@ -24,6 +24,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.michaelkim.anima.MainActivity
 import com.michaelkim.anima.R
+import com.michaelkim.anima.util.CrashReporter
 
 class WinsReminderWorker(
     appContext: Context,
@@ -42,6 +43,7 @@ class WinsReminderWorker(
             return Result.success()
         } catch (e: Exception) {
             // 알림 게시 실패해도 재예약은 시도. 그래도 실패하면 다음 앱 실행 시 부트스트랩에서 복구.
+            CrashReporter.record(TAG, "잘한 일 알림 처리 실패 — 재예약만 시도", e)
             try { WorkScheduler.scheduleDailyWinsReminder(ctx) } catch (_: Exception) {}
             return Result.success()
         }
@@ -95,5 +97,6 @@ class WinsReminderWorker(
         const val CHANNEL_ID = "wins_reminder"
         const val NOTIFICATION_ID = 2001
         const val REQUEST_CODE_TAP = 2002
+        private const val TAG = "WinsReminder"
     }
 }
