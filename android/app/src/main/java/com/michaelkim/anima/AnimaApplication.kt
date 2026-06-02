@@ -11,16 +11,19 @@
 package com.michaelkim.anima
 
 import android.app.Application
-import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.michaelkim.anima.data.auth.AuthRepository
+import com.michaelkim.anima.util.CrashReporter
 import com.michaelkim.anima.work.WorkScheduler
 
 class AnimaApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        // 디버그 빌드는 Crashlytics 전송 끔 — 릴리스에서만 수집(개발 중 테스트 크래시로 대시보드 오염 방지).
+        FirebaseCrashlytics.getInstance().isCrashlyticsCollectionEnabled = !BuildConfig.DEBUG
         // 위젯 추가 전에라도 캐시는 미리 받아둠 — 첫 위젯 추가 시 즉시 콘텐츠 노출.
         WorkScheduler.schedulePeriodicRefresh(this)
         WorkScheduler.scheduleOneTimeRefresh(this)
@@ -53,7 +56,7 @@ private class ForegroundWidgetRefresher(
         try {
             WorkScheduler.scheduleOneTimeRefresh(app)
         } catch (e: Exception) {
-            Log.w(TAG, "ON_START widget refresh enqueue 실패", e)
+            CrashReporter.record(TAG, "ON_START widget refresh enqueue 실패", e)
         }
     }
 
