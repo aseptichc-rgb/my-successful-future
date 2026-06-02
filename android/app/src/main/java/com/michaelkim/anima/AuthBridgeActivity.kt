@@ -31,6 +31,7 @@ import androidx.lifecycle.lifecycleScope
 import com.google.firebase.auth.FirebaseAuth
 import com.michaelkim.anima.data.QuoteRepository
 import com.michaelkim.anima.data.local.QuoteCache
+import com.michaelkim.anima.util.CrashReporter
 import com.michaelkim.anima.widget.QuoteWidget
 import com.michaelkim.anima.work.WorkScheduler
 import kotlinx.coroutines.launch
@@ -106,7 +107,7 @@ class AuthBridgeActivity : ComponentActivity() {
                 }
                 WorkScheduler.schedulePeriodicRefresh(applicationContext)
             } catch (e: Exception) {
-                Log.w(TAG, "네이티브 브릿지 signInWithCustomToken 실패", e)
+                CrashReporter.record(TAG, "네이티브 브릿지 signInWithCustomToken 실패", e)
             } finally {
                 finish()
             }

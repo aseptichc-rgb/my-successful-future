@@ -25,6 +25,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import com.michaelkim.anima.data.auth.AuthRepository
+import com.michaelkim.anima.util.CrashReporter
 import kotlinx.coroutines.launch
 
 class SignOutBridgeActivity : ComponentActivity() {
@@ -53,7 +54,7 @@ class SignOutBridgeActivity : ComponentActivity() {
                 AuthRepository.signOut(applicationContext)
                 Log.i(TAG, "웹 로그아웃 브릿지 처리 완료 — 위젯 캐시 정리 + 재렌더")
             } catch (e: Exception) {
-                Log.w(TAG, "웹 로그아웃 브릿지 처리 실패", e)
+                CrashReporter.record(TAG, "웹 로그아웃 브릿지 처리 실패", e)
             } finally {
                 finish()
             }

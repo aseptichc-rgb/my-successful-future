@@ -29,6 +29,7 @@ import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.lifecycleScope
 import com.michaelkim.anima.data.QuoteRepository
 import com.michaelkim.anima.data.auth.AuthRepository
+import com.michaelkim.anima.util.CrashReporter
 import com.michaelkim.anima.widget.QuoteWidget
 import com.michaelkim.anima.work.WorkScheduler
 import kotlinx.coroutines.launch
@@ -58,7 +59,7 @@ class WidgetRefreshBridgeActivity : ComponentActivity() {
         try {
             WorkScheduler.scheduleOneTimeRefresh(applicationContext)
         } catch (e: Exception) {
-            Log.w(TAG, "OneTime Worker enqueue 실패 — 동기 시도만 진행", e)
+            CrashReporter.record(TAG, "OneTime Worker enqueue 실패 — 동기 시도만 진행", e)
         }
 
         // 동기 refresh — 사용자가 막 저장 → 다음 viewport 에서 위젯을 보면 새 진척도가 즉시

@@ -42,6 +42,7 @@ import com.michaelkim.anima.data.QuoteRepository
 import com.michaelkim.anima.data.api.ApiClient
 import com.michaelkim.anima.data.auth.AuthRepository
 import com.michaelkim.anima.ui.HomeScreen
+import com.michaelkim.anima.util.CrashReporter
 import com.michaelkim.anima.widget.QuoteWidget
 import com.michaelkim.anima.work.WinsReminderWorker
 import com.michaelkim.anima.work.WorkScheduler
@@ -309,7 +310,7 @@ class MainActivity : ComponentActivity() {
             try {
                 WorkScheduler.scheduleOneTimeRefresh(applicationContext)
             } catch (e: Exception) {
-                Log.w(TAG, "onResume widget refresh enqueue 실패", e)
+                CrashReporter.record(TAG, "onResume widget refresh enqueue 실패", e)
             }
         }
     }
