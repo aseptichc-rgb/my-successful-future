@@ -131,14 +131,14 @@ private val LOGO_SIZE = 14.dp
 private val BRAND_GAP = 7.dp
 
 // 타이포
-private val QUOTE_FONT_SIZE = 16.sp
-private val ATTRIBUTION_FONT_SIZE = 10.sp
-private val SECTION_HEADER_SIZE = 10.sp
-private val ROW_LABEL_SIZE = 13.sp
-private val GOAL_NUM_SIZE = 18.sp
-private val META_SIZE = 11.sp
-private val FOOTER_SIZE = 10.sp
-private val BRAND_NAME_SIZE = 13.sp
+private val QUOTE_FONT_SIZE = 18.sp
+private val ATTRIBUTION_FONT_SIZE = 12.sp
+private val SECTION_HEADER_SIZE = 12.sp
+private val ROW_LABEL_SIZE = 15.sp
+private val GOAL_NUM_SIZE = 20.sp
+private val META_SIZE = 13.sp
+private val FOOTER_SIZE = 12.sp
+private val BRAND_NAME_SIZE = 15.sp
 private const val QUOTE_MAX_LINES_TALL = 4
 private const val QUOTE_MAX_LINES_SHORT = 3
 
@@ -495,7 +495,7 @@ private fun QuoteBlock(slot: WidgetSlot, isWide: Boolean, isTall: Boolean, ink: 
                     text = originalText,
                     style = TextStyle(
                         color = ColorProvider(ink.copy(alpha = ALPHA_DIM)),
-                        fontSize = 11.sp,
+                        fontSize = 13.sp,
                         fontFamily = FontFamily.Serif,
                         fontStyle = FontStyle.Italic,
                     ),
