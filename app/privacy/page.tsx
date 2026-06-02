@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-const LAST_UPDATED = "2026-05-28";
+const LAST_UPDATED = "2026-06-02";
 const CONTACT_EMAIL =
   process.env.NEXT_PUBLIC_PRIVACY_CONTACT_EMAIL || "aseptichc@gmail.com";
 
@@ -97,6 +97,14 @@ export default function PrivacyPolicyPage() {
               produce the model&rsquo;s response and is not retained for model
               training.
             </li>
+            <li>
+              <b>Crash &amp; diagnostics:</b> when the app crashes or hits an
+              unexpected error, technical diagnostics (stack trace, device model,
+              OS and app version) are sent to Firebase Crashlytics so we can fix
+              bugs. These reports are not linked to your identity and never
+              include your profile, goals, affirmations, or other content you
+              entered.
+            </li>
           </ul>
           <p className="mt-3">
             We do <b>not</b> collect location data, contacts, photos, call logs,
@@ -116,6 +124,7 @@ export default function PrivacyPolicyPage() {
           the purpose of operating the Service:
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>Google Firebase (authentication, data storage, serverless hosting)</li>
+            <li>Firebase Crashlytics (crash &amp; error diagnostics)</li>
             <li>Google Generative AI (model inference for card generation)</li>
             <li>Google Play Billing (in-app purchases on Android)</li>
             <li>Apple App Store / StoreKit (in-app purchases on iOS)</li>

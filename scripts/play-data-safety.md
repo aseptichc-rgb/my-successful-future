@@ -64,7 +64,7 @@
 
 | Data type | Collected? | Shared? | Purposes |
 |---|---|---|---|
-| Crash logs (Firebase Crashlytics 도입 시) | (미수집) | — | — |
+| Crash logs (Firebase Crashlytics) | ✅ | ❌ | App functionality (안정성 진단·버그 수정). 신원 비연결, 사용자 본문 미포함 |
 | Diagnostics (Play Integrity 응답) | ✅ (일시적, 저장 안 함) | ❌ | Fraud prevention, security & compliance |
 | Other app performance data | ❌ | — | — |
 
