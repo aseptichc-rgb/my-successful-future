@@ -42,6 +42,26 @@ fi
 
 mkdir -p "${BUILD_DIR}"
 
+# ---- API 키가 있으면 xcodebuild 클라우드 서명 인증 인자를 구성 ----
+#   (Xcode GUI 로그인 없이 인증서/프로파일을 자동 생성·갱신할 수 있게 한다)
+AUTH_ARGS=()
+HAVE_API_KEY=false
+if [[ -n "${ASC_API_KEY_ID:-}" && -n "${ASC_API_ISSUER_ID:-}" && -n "${ASC_API_KEY_PATH:-}" ]]; then
+  if [[ ! -f "${ASC_API_KEY_PATH}" ]]; then
+    echo "REJECT: ASC_API_KEY_PATH 파일을 찾을 수 없습니다: ${ASC_API_KEY_PATH}" >&2
+    exit 1
+  fi
+  HAVE_API_KEY=true
+  AUTH_ARGS=(
+    -authenticationKeyPath "${ASC_API_KEY_PATH}"
+    -authenticationKeyID "${ASC_API_KEY_ID}"
+    -authenticationKeyIssuerID "${ASC_API_ISSUER_ID}"
+  )
+  # altool 이 Key ID 로 .p8 를 찾는 표준 디렉터리에 키를 배치
+  mkdir -p "${HOME}/.appstoreconnect/private_keys"
+  cp -f "${ASC_API_KEY_PATH}" "${HOME}/.appstoreconnect/private_keys/AuthKey_${ASC_API_KEY_ID}.p8"
+fi
+
 # ---- ExportOptions.plist 동적 생성 (Team ID 주입) ----
 cat > "${EXPORT_OPTIONS}" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -73,6 +93,7 @@ xcodebuild -scheme "${SCHEME}" \
   DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" \
   CODE_SIGN_STYLE=Automatic \
   -allowProvisioningUpdates \
+  ${AUTH_ARGS[@]+"${AUTH_ARGS[@]}"} \
   archive
 
 echo "==> [2/3] Export IPA"
@@ -80,7 +101,8 @@ xcodebuild -exportArchive \
   -archivePath "${ARCHIVE_PATH}" \
   -exportPath "${EXPORT_DIR}" \
   -exportOptionsPlist "${EXPORT_OPTIONS}" \
-  -allowProvisioningUpdates
+  -allowProvisioningUpdates \
+  ${AUTH_ARGS[@]+"${AUTH_ARGS[@]}"}
 
 IPA_PATH="$(/usr/bin/find "${EXPORT_DIR}" -maxdepth 1 -name '*.ipa' | head -1)"
 echo "    IPA: ${IPA_PATH}"
