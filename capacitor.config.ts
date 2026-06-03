@@ -22,9 +22,12 @@
  */
 import type { CapacitorConfig } from "@capacitor/cli";
 
-// 운영 URL — 안드로이드 TWA 와 동일한 도메인을 사용한다 (assetlinks/세션 호환).
-// 빌드 시점에 IOS_SERVER_URL 환경변수로 덮어쓸 수 있다 (스테이징/PR 프리뷰 등).
-const SERVER_URL = process.env.IOS_SERVER_URL || "https://www.successfulfuture.app";
+// 운영 URL — 안드로이드와 동일한 호스트를 사용한다 (assetlinks/세션 호환).
+//   android/app/src/main/res/values/asset_statements.xml 의 정식 호스트와 일치시킨다.
+//   커스텀 도메인(successfulfuture.app)은 DNS 미등록 상태(NXDOMAIN)라 라이브 Vercel
+//   배포 URL 을 기본값으로 둔다. 커스텀 도메인 등록 후에는 이 기본값을 바꾸거나
+//   빌드 시 IOS_SERVER_URL 환경변수로 덮어쓰면 된다 (스테이징/PR 프리뷰 등).
+const SERVER_URL = process.env.IOS_SERVER_URL || "https://my-successful-future.vercel.app";
 
 const config: CapacitorConfig = {
   appId: "com.michaelkim.anima",
