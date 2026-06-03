@@ -166,16 +166,17 @@ export default function LoginPage() {
   };
 
   /**
-   * Apple OAuth (웹 popup). 사용자가 popup 을 닫거나 iOS WebView 가 차단하면 throw
-   * → 에러 메시지로 안내한다. 동일 이메일이 이메일/비밀번호 계정에 묶여 있으면 Google 과
-   * 동일하게 needsLink 분기 — 비밀번호 입력 화면으로 전환된다 (Apple App Store
-   * Guideline 5.1.1(v) 요구사항 충족).
+   * Apple 로그인. iOS 네이티브에선 ASAuthorizationController, 그 외엔 웹 popup 으로 자동 분기된다
+   * ([signInWithApple]). 동일 이메일이 이메일/비밀번호 계정에 묶여 있으면 Google 과 동일하게
+   * needsLink 분기 — 비밀번호 입력 화면으로 전환된다 (Apple App Store Guideline 5.1.1(v) 충족).
+   * 사용자가 네이티브 시트를 닫으면 cancelled — 에러 없이 로그인 화면을 그대로 둔다.
    */
   const handleApple = async () => {
     setError("");
     setLoading(true);
     try {
       const result = await signInApple();
+      if (result.kind === "cancelled") return;
       if (result.kind === "needsLink") {
         setPendingLink({
           provider: "apple",

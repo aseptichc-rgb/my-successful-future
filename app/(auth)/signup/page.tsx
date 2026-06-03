@@ -30,6 +30,7 @@ export default function SignupPage() {
     setLoading(true);
     try {
       const result = await signInApple();
+      if (result.kind === "cancelled") return;
       if (result.kind === "needsLink") {
         router.push("/login");
         return;

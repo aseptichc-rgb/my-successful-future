@@ -141,19 +141,39 @@ pod install
 
 ## 3. Sign in with Apple (네이티브)
 
-iOS WebView 의 Firebase `signInWithPopup(apple)` 은 popup 차단으로 자주 실패한다.
-네이티브 ASAuthorizationController 가 뜨도록 Capacitor 플러그인을 쓴다.
+iOS WebView 의 Firebase `signInWithPopup(apple)` 은 핸들러 페이지(`<project>.firebaseapp.com`)
+와 앱 오리진이 달라 WKWebView storage 파티셔닝으로 깨진다("missing initial state"). 그래서
+네이티브 ASAuthorizationController 로 idToken/nonce 만 받아 Firebase **JS** SDK 의
+`signInWithCredential` 로 세션을 만든다.
+
+### 3-1. JS 배선 — 이미 완료(Windows 단계)
+
+- 의존성: `@capacitor-firebase/authentication` 이 `package.json` 에 추가돼 있다.
+- 분기 코드: [lib/nativeAuth.ts](lib/nativeAuth.ts) 의 `signInWithAppleNative()` 가 네이티브
+  로그인 + JS SDK `signInWithCredential` 을 수행하고, [lib/firebase.ts](lib/firebase.ts) 의
+  `signInWithApple()` 가 `isIosNative()` 로 iOS=네이티브 / 그 외=웹 popup 을 자동 분기한다.
+- 플러그인 설정: [capacitor.config.ts](capacitor.config.ts) 에 `FirebaseAuthentication`
+  (`skipNativeAuth: true`, `providers: ["apple.com"]`) 가 들어 있다.
+
+### 3-2. Mac 에서 남은 일
 
 ```bash
-npm install --save @capacitor-firebase/authentication
-npx cap sync ios
+npm install          # package.json 에 이미 명시 → 플러그인 설치
+npx cap sync ios     # 플러그인 네이티브 코드 + capacitor.config 동기화
+cd ios/App && pod install && cd ../..
 ```
 
-`lib/firebase.ts` 에 이미 `signInWithApple()` 헬퍼가 있다(웹 fallback). 네이티브 진입점은
-별도로 만들고, iOS 환경 감지(`Capacitor.getPlatform() === "ios"`) 시점에 갈아끼운다.
+그다음 Xcode 에서:
 
-자세한 코드는 Capacitor 공식 문서 참고:
-https://capawesome.io/plugins/firebase/authentication/
+- **Signing & Capabilities → "Sign in with Apple"** 추가(§0-1 의 App ID Capability 와 일치).
+- `GoogleService-Info.plist` 가 타깃에 포함돼 있는지 확인(§2-1) — 플러그인이 iOS FirebaseApp
+  을 초기화하므로 필수.
+- Firebase Console 의 Apple Provider(§2-2) 가 활성화돼 있어야 토큰 검증이 통과한다.
+
+> 검증 포인트: TestFlight 빌드에서 Apple 버튼 → 네이티브 시트가 뜨고(웹 페이지로 안 넘어감),
+> 로그인 후 홈으로 진입하면 성공. 시트를 닫으면 에러 없이 로그인 화면 유지(cancelled 처리).
+
+자세한 플러그인 API: https://capawesome.io/plugins/firebase/authentication/
 
 ---
 

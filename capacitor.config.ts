@@ -44,6 +44,16 @@ const config: CapacitorConfig = {
     // iOS WKWebView 가 self-signed 인증서를 허용할지 — 운영은 false.
     cleartext: false,
   },
+  plugins: {
+    // @capacitor-firebase/authentication — 네이티브 Sign in with Apple.
+    // skipNativeAuth: 네이티브 Firebase SDK 로그인은 건너뛰고 credential(idToken/nonce) 만 받는다.
+    // WebView 의 Firebase JS SDK 가 signInWithCredential 로 권위 세션을 만들기 때문 — 이중 인증/
+    // 세션 분기를 막는다. 자세한 이유는 [lib/nativeAuth.ts] 주석 참고.
+    FirebaseAuthentication: {
+      skipNativeAuth: true,
+      providers: ["apple.com"],
+    },
+  },
   ios: {
     // 백 버튼 동작: WebView 가 history.back 가능하면 history.back, 아니면 시스템 기본.
     // iOS 는 백 버튼이 없지만 swipe back 제스처를 위해 이 옵션을 명시.

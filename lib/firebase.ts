@@ -35,6 +35,7 @@ import {
   type Firestore,
   type Unsubscribe,
 } from "firebase/firestore";
+import { isIosNative, isAppleSignInCancelled, signInWithAppleNative } from "@/lib/nativeAuth";
 import type {
   User,
   DailyEntry,
@@ -134,6 +135,8 @@ export type GoogleSignInResult =
  */
 export type AppleSignInResult =
   | { kind: "ok" }
+  // 네이티브 Apple 시트를 사용자가 닫음 — 실패 아님. 호출부는 에러 없이 화면을 유지한다.
+  | { kind: "cancelled" }
   | {
       kind: "needsLink";
       email: string;
@@ -142,20 +145,29 @@ export type AppleSignInResult =
     };
 
 /**
- * Apple OAuth 로그인 (웹 popup 경로). iOS WebView 안에서는 popup 차단으로 실패할 수 있어
- * 호출부가 try/catch 로 받고 사용자에게 다시 시도시킨다. Capacitor 의 SignInWithApple
- * 플러그인을 쓰면 popup 없이 네이티브 ASAuthorizationController 가 뜨는데, 그건 Mac 작업
- * 단계에서 추가한다(현재는 웹 표준 OAuth 경로만 노출).
+ * Apple 로그인 — 플랫폼에 따라 경로가 갈린다.
+ *  · iOS 네이티브(Capacitor WKWebView): [signInWithAppleNative] 가 네이티브 ASAuthorizationController
+ *    를 띄워 idToken/nonce 를 받고 JS SDK 의 signInWithCredential 로 세션을 만든다. 웹 popup 의
+ *    크로스오리진 sessionStorage("missing initial state") 문제를 원천 차단한다.
+ *  · 웹/안드로이드: 기존 `signInWithPopup` 경로. (WebView 가 아니라 popup 이 정상 동작.)
  *
  * needsLink 분기: 동일 이메일이 이미 이메일/비밀번호로 가입돼 있으면 Firebase 가
- * account-exists-with-different-credential 을 던진다. pending Apple credential 을 보존해
- * 호출자가 비밀번호 입력 → [linkAppleCredentialToEmailAccount] 로 합치게 한다.
+ * account-exists-with-different-credential 을 던진다(popup·credential 경로 공통). pending Apple
+ * credential 을 보존해 호출자가 비밀번호 입력 → [linkAppleCredentialToEmailAccount] 로 합치게 한다.
+ *
+ * cancelled 분기: 네이티브 시트를 사용자가 닫으면 [isAppleSignInCancelled] 가 true → 실패가 아닌
+ * 취소로 보고한다(호출부가 에러 토스트 없이 로그인 화면 유지).
  */
 export async function signInWithApple(): Promise<AppleSignInResult> {
   try {
-    await signInWithPopup(getAuthInstance(), appleProvider);
+    if (isIosNative()) {
+      await signInWithAppleNative(getAuthInstance());
+    } else {
+      await signInWithPopup(getAuthInstance(), appleProvider);
+    }
     return { kind: "ok" };
   } catch (err) {
+    if (isAppleSignInCancelled(err)) return { kind: "cancelled" };
     if (err instanceof FirebaseError && err.code === "auth/account-exists-with-different-credential") {
       const pendingCredential = OAuthProvider.credentialFromError(err);
       const email = (err.customData?.email as string | undefined) ?? "";
