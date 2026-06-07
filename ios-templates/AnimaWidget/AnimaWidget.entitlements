@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  위젯 익스텐션 Entitlements — 메인 앱과 같은 App Group 으로 데이터를 공유한다.
+  Apple Developer 콘솔에서 widget App ID(com.michaelkim.anima.widget)에 App Groups 를
+  등록하고 group.com.michaelkim.anima 를 체크해야 한다.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.application-groups</key>
+    <array>
+        <string>group.com.michaelkim.anima</string>
+    </array>
+</dict>
+</plist>

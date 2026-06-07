@@ -14,6 +14,7 @@ import {
 } from "@/lib/firebase";
 import { authedFetch } from "@/lib/authedFetch";
 import { notifyAndroidWidgetRefresh } from "@/lib/widgetBridge";
+import { refreshIosWidget } from "@/lib/iosWidget";
 import MotivationCard from "@/components/home/MotivationCard";
 import Logo from "@/components/ui/Logo";
 import { useLanguage } from "@/lib/i18n";
@@ -229,6 +230,7 @@ export default function HomeDashboardPage() {
       // motivation 의 quote/author/goalsSnapshot 이 바뀌었으므로 위젯도 새 카드를 받아가야 한다.
       // 안 호출하면 다음 정주기 Worker(3시간) 까지 위젯과 홈의 명언이 어긋난다.
       notifyAndroidWidgetRefresh();
+      void refreshIosWidget();
     } catch (err) {
       setMotivationError(err instanceof Error ? err.message : String(err));
     }
@@ -249,6 +251,7 @@ export default function HomeDashboardPage() {
       if (!res.ok || !data.ok) throw new Error(data.error || "응답을 저장하지 못했어요.");
       // mission response 가 영구화되면 affirmation 진척도가 함께 갱신될 수 있어 위젯도 깨운다.
       notifyAndroidWidgetRefresh();
+      void refreshIosWidget();
       return { isFirst: Boolean(data.isFirst), identityTag: data.identityTag || "" };
     },
     [ymd],
@@ -260,6 +263,13 @@ export default function HomeDashboardPage() {
       setAlreadyCheckedInToday(checked);
     });
     return unsub;
+  }, [firebaseUser, ymd]);
+
+  // iOS 홈/잠금화면 위젯: 홈 진입 시 오늘 카드를 한 번 받아 위젯 공유 캐시에 공급한다.
+  // 위젯 익스텐션은 스스로 인증 호출을 못 하므로 앱이 데이터를 밀어 넣는다. 웹/안드로이드는 no-op.
+  useEffect(() => {
+    if (!firebaseUser) return;
+    void refreshIosWidget();
   }, [firebaseUser, ymd]);
 
   const handleAffirmationCheckin = useCallback(
@@ -279,6 +289,7 @@ export default function HomeDashboardPage() {
       if (data.matched) {
         await refreshUser().catch(() => {});
         notifyAndroidWidgetRefresh();
+        void refreshIosWidget();
       }
       return {
         matched: Boolean(data.matched),
@@ -312,6 +323,7 @@ export default function HomeDashboardPage() {
     try {
       await saveDailyAchievedGoals(uid, ymd, next);
       notifyAndroidWidgetRefresh();
+      void refreshIosWidget();
     } catch (err) {
       console.error("[home] 목표 달성 저장 실패:", err);
       setAchievedGoals(achievedGoals);
@@ -342,6 +354,7 @@ export default function HomeDashboardPage() {
       setSavedWins(snapshot);
       setWinsJustSaved(true);
       notifyAndroidWidgetRefresh();
+      void refreshIosWidget();
       if (winsSavedToastTimerRef.current) clearTimeout(winsSavedToastTimerRef.current);
       winsSavedToastTimerRef.current = setTimeout(
         () => setWinsJustSaved(false),

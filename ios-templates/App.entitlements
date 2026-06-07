@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  iOS Entitlements — Capabilities 를 활성화하면 Xcode 가 자동으로 추가하는 키들이지만,
-  CI / 다른 Mac 에서 빌드할 때 동일 상태를 보장하기 위해 명시적으로 둔다.
+  iOS Entitlements — TestFlight/App Store 배포 빌드 기준.
 
-  Apple Developer 콘솔에서 다음 항목을 동일 App ID 에 등록해야 한다:
-   · Sign in with Apple        (Guideline 5.1.1(v) 의무)
-   · App Groups (group.com.michaelkim.anima)  (메인 앱 ↔ 위젯 익스텐션 공유)
-   · Push Notifications        (선택 — FCM 도입 시)
+  현재 빌드에 실제로 쓰는 capability 만 활성화한다. 미사용 capability 를 켜두면
+  자동 서명이 App ID 에 해당 기능 등록을 요구해 배포 프로파일 생성이 막힌다.
+
+  · Sign in with Apple   — 네이티브 Apple 로그인(Guideline 5.1.1(v)).
+  · App Groups           — 메인 앱 ↔ AnimaWidget 익스텐션 데이터 공유(위젯 캐시).
+                           Apple Developer 콘솔에서 App ID 에 App Groups 등록 +
+                           group.com.michaelkim.anima 체크 → 배포 프로파일 재발급 필요.
+
+  [추후] aps-environment(production) — FCM 푸시 통합 시. 배포 빌드는 반드시 'production'.
 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -19,8 +23,5 @@
     <array>
         <string>group.com.michaelkim.anima</string>
     </array>
-    <!-- 푸시 알림 — FCM 통합 시점에 'production' 으로 바꾼다. 출시 직전엔 보통 'development'. -->
-    <key>aps-environment</key>
-    <string>development</string>
 </dict>
 </plist>
