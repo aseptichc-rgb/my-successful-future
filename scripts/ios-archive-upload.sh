@@ -84,6 +84,24 @@ cat > "${EXPORT_OPTIONS}" <<PLIST
 </plist>
 PLIST
 
+# ---- [0/3] 앱 아이콘/스플래시 생성 (assets/icon-only.png → AppIcon.appiconset) ----
+#   왜 필요한가: `npx cap add ios` 는 Capacitor 기본 placeholder 아이콘만 넣는다.
+#   이 단계를 건너뛰면 빌드/홈 화면에 Anima 아이콘이 안 보이고 기본 아이콘만 뜬다.
+#   거절 위험: 아이콘 누락/투명 알파는 App Store 심사에서 즉시 거절(아이콘 검정 렌더).
+#   capacitor-assets 는 iOS 아이콘을 알파 없이 평탄화해 생성하므로 안전하다.
+echo "==> [0/3] 앱 아이콘/스플래시 생성"
+readonly ICON_SOURCE="${PROJECT_DIR}/assets/icon-only.png"
+readonly CAP_ASSETS_BIN="${PROJECT_DIR}/node_modules/.bin/capacitor-assets"
+if [[ ! -f "${ICON_SOURCE}" ]]; then
+  echo "REJECT: 아이콘 소스가 없습니다: ${ICON_SOURCE} (1024x1024 PNG, 알파 없음)" >&2
+  exit 1
+fi
+if [[ ! -x "${CAP_ASSETS_BIN}" ]]; then
+  echo "REJECT: @capacitor/assets 미설치 — 먼저 'npm install' 을 실행하세요." >&2
+  exit 1
+fi
+( cd "${PROJECT_DIR}" && "${CAP_ASSETS_BIN}" generate --ios )
+
 echo "==> [1/3] Archive (Release, 자동 서명)"
 xcodebuild -scheme "${SCHEME}" \
   -project "${IOS_APP_DIR}/App.xcodeproj" \

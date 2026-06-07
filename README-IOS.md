@@ -23,6 +23,10 @@ sudo gem install cocoapods   # 이미 있으면 생략
 # 3. Capacitor 가 iOS 프로젝트를 생성
 npx cap add ios
 
+# 3-1. 앱 아이콘/스플래시 생성 (assets/icon-only.png → AppIcon.appiconset)
+#      이걸 건너뛰면 홈 화면에 Anima 아이콘이 안 뜨고 Capacitor 기본 아이콘만 보인다.
+npm run ios:assets
+
 # 4. Pod 설치 + Xcode workspace 열기
 cd ios/App && pod install && cd ../..
 open ios/App/App.xcworkspace
@@ -262,12 +266,24 @@ trigger = UNCalendarNotificationTrigger(dateMatching: DateComponents(hour: 21), 
 
 ## 7. 앱 아이콘 / 스플래시 / 스크린샷
 
-### 7-1. 아이콘
+### 7-1. 아이콘 — **자동 생성됨 (수동 작업 불필요)**
 
-`android/app/src/main/res/mipmap-*/` 에 있는 아이콘을 iOS 사이즈로 재생성한다.
+원본은 `assets/icon-only.png` (1024x1024, **알파 없는** RGB — iOS 필수 조건) 한 장이다.
+`@capacitor/assets` 가 이 한 장에서 모든 iOS 아이콘 사이즈를 생성해
+`ios/App/App/Assets.xcassets/AppIcon.appiconset/` 에 넣는다.
 
-- 원본 1024x1024 PNG 한 장 → `https://www.appicon.co/` 또는 `npx @capacitor/assets` 로 일괄 생성
-- 결과를 `ios/App/App/Assets.xcassets/AppIcon.appiconset/` 에 넣는다.
+```bash
+npx cap add ios        # ios/ 가 아직 없다면 먼저 (있으면 생략)
+npm run ios:assets     # = capacitor-assets generate --ios
+```
+
+- `npm run ios:sync` 와 `scripts/ios-archive-upload.sh` 도 이 생성을 자동으로 수행하므로,
+  보통은 위 명령을 따로 칠 필요 없이 빌드 흐름에 포함된다.
+- ⚠️ **왜 안 보였나(회귀 방지)**: 예전엔 이 단계가 배선돼 있지 않아 `cap add ios` 의
+  Capacitor 기본 placeholder 아이콘이 그대로 빌드에 들어갔다 → 홈 화면에 Anima 아이콘이
+  안 떴다. 소스(`assets/icon-only.png`)만 바꾸면 다음 빌드에 자동 반영된다.
+- ⚠️ iOS 아이콘은 **투명 알파가 있으면 검게 렌더되어 심사 거절**된다. 소스는 반드시
+  알파 없는 불투명 PNG 로 유지할 것 (`capacitor-assets` 가 평탄화하지만 소스부터 지킨다).
 
 ### 7-2. 스크린샷 (App Store Connect 업로드용 필수)
 
