@@ -110,12 +110,20 @@ export async function GET(request: NextRequest) {
     // 개발/베타에서는 통과시키되 user.paid 로 다운그레이드 응답을 줄 수 있다(현재는 동일 응답).
     const me = await requirePaidUser(request);
 
-    // 일별 호출 한도 (KST 자정 기준 widgetRefresh 카운트). 초과 시 429.
-    await enforceQuota(me.uid, "widgetRefresh");
-
     const url = new URL(request.url);
     const ymdParam = url.searchParams.get("ymd");
     const ymd = ymdParam && isValidYmd(ymdParam) ? ymdParam : todayKst();
+
+    // 일별 호출 한도(KST 자정 기준)는 "카드 생성"(=Gemini 호출, 비용 발생) 에만 건다.
+    // 이미 만들어진 오늘 카드를 위젯이 다시 읽는 건 값싼 Firestore read 이므로 카운트하지 않는다.
+    // 과거엔 단순 조회까지 widgetRefresh 한도(48)에 합산돼, 위젯이 하루 48번 폴링하면 그 뒤로
+    // 종일 429 가 떨어져 다짐 본문/진척도가 위젯에서 사라지는 회귀가 있었다.
+    const motivationRef = getAdminDb().doc(`users/${me.uid}/dailyMotivations/${ymd}`);
+    const motivationExists = (await motivationRef.get()).exists;
+    if (!motivationExists) {
+      // 새 카드 생성만 한도로 게이팅 — 초과 시 429.
+      await enforceQuota(me.uid, "widgetRefresh");
+    }
 
     // 1) 오늘의 개인화 카드 보장 (없으면 생성)
     const { motivation } = await ensureMotivation({ uid: me.uid, ymd });
