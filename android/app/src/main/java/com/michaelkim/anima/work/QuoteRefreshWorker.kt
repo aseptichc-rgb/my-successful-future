@@ -38,9 +38,12 @@ class QuoteRefreshWorker(
             return if (runAttemptCount < MAX_AUTH_RETRY) Result.retry() else Result.success()
         }
         return try {
-            // refreshWithEntitlementRecovery: 신규 가입 직후 trialEndsAt claim 미반영(402) /
-            // 만료 임박 토큰(401) 을 1회 구제 후 재시도한다 — 로그인했는데도 위젯이 영영 비던 회귀 차단.
-            QuoteRepository.refreshWithEntitlementRecovery(applicationContext)
+            // refreshIfStale: 직전 90초 내 갱신됐으면 네트워크 생략. onResume·포그라운드 진입·
+            // OneTime/Periodic 트리거가 같은 윈도우에 겹쳐 /api/widget/today 를 연타하던 것을 막아
+            // 일일 widgetRefresh 쿼터(48회) 소진을 방지한다.
+            // 내부의 refreshWithEntitlementRecovery 가 신규 가입 402 / 만료 토큰 401 을 1회 구제하므로
+            // "로그인했는데도 위젯이 영영 비던" 회귀 차단은 그대로 유지된다.
+            QuoteRepository.refreshIfStale(applicationContext)
             QuoteWidget().updateAll(applicationContext)
             Result.success()
         } catch (e: IOException) {

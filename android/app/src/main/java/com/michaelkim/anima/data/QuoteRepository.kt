@@ -16,10 +16,30 @@ import android.util.Log
 import com.michaelkim.anima.data.api.ApiClient
 import com.michaelkim.anima.data.auth.AuthRepository
 import com.michaelkim.anima.data.local.QuoteCache
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 object QuoteRepository {
 
     private const val TAG = "QuoteRepository"
+
+    /**
+     * 짧은 시간 안에 여러 진입점이 동시에 위젯을 갱신하려 할 때 네트워크 연타를 막는 최소 간격.
+     * 앱 콜드스타트의 동기 prefetch + onResume + 포그라운드 옵저버 + OneTime/Periodic Worker 가
+     * 실행마다 /api/widget/today 를 6~10회 연타해 서버의 일일 widgetRefresh 쿼터(48회)를
+     * 빠르게 소진하던 문제를 막는다. 이 창 안에 이미 갱신된 캐시가 있으면 네트워크를 생략한다.
+     */
+    private const val DEFAULT_MIN_REFRESH_INTERVAL_MS = 90_000L
+
+    // [refreshIfStale] 의 throttle 더블체크를 직렬화해, 거의 동시에 들어온 호출들이
+    // 캐시 갱신 전에 모두 네트워크로 빠져나가는 레이스를 막는다 (모든 트리거가 같은 프로세스).
+    private val refreshGate = Mutex()
+
+    // 마지막으로 실제 네트워크 refresh 를 "시도"한 시각(성공·실패 무관, 프로세스 메모리).
+    // 성공-캐시 기반 throttle 은 200 으로 캐시가 갱신돼야 동작하므로, 429/네트워크 오류로
+    // 캐시가 안 써지는 동안에도 연타가 나는 구멍이 있다. 이 시각으로 실패 시에도 collapse 한다.
+    @Volatile
+    private var lastAttemptAtMs = 0L
 
     suspend fun getCached(context: Context): CachedWidgetState? = QuoteCache.read(context)
 
@@ -80,6 +100,67 @@ object QuoteRepository {
             }
             // 재시도 — 여기서도 실패하면 예외를 호출부로 전파(백오프 재시도/EmptyState 유지).
             refresh(context, lang)
+        }
+    }
+
+    /**
+     * 캐시가 [minIntervalMs] 이내에 갱신됐으면 그 응답을, 아니면 null 을 반환.
+     * 캐시 읽기 자체가 실패해도 throttle 이 refresh 를 막아선 안 되므로 null 로 떨어뜨려 네트워크로 위임.
+     */
+    private suspend fun cachedResponseIfFreshWithin(
+        context: Context,
+        minIntervalMs: Long,
+    ): WidgetTodayResponse? {
+        val cached = try {
+            QuoteCache.read(context)
+        } catch (e: Exception) {
+            Log.w(TAG, "throttle 캐시 읽기 실패 — 네트워크로 진행", e)
+            return null
+        }
+        val response = cached?.response ?: return null
+        val ageMs = System.currentTimeMillis() - cached.cachedAtEpochMs
+        return if (ageMs in 0 until minIntervalMs) response else null
+    }
+
+    /**
+     * 캐시가 충분히 최신이면 네트워크를 생략하고 캐시를, 아니면 [refreshWithEntitlementRecovery] 를 친다.
+     *
+     * 앱 실행 시 동시다발로 일어나는 위젯 갱신(동기 prefetch · onResume · 포그라운드 진입 · Worker)이
+     * /api/widget/today 를 연타해 일일 쿼터(widgetRefresh 48회)를 소진하던 문제를 collapse 한다.
+     * 사용자가 막 저장한 직후처럼 반드시 최신이 필요한 경로(위젯 브릿지·자정 갱신·로그인 직후)는
+     * 이 함수 대신 [refresh]/[refreshWithEntitlementRecovery] 를 직접 호출해 throttle 을 우회한다.
+     *
+     * @return 네트워크를 실제로 쳤으면 그 응답, throttle 로 생략했으면 캐시의 응답.
+     */
+    suspend fun refreshIfStale(
+        context: Context,
+        lang: String? = null,
+        minIntervalMs: Long = DEFAULT_MIN_REFRESH_INTERVAL_MS,
+    ): WidgetTodayResponse {
+        cachedResponseIfFreshWithin(context, minIntervalMs)?.let { fresh ->
+            Log.i(TAG, "위젯 refresh throttled — 캐시가 ${minIntervalMs}ms 내 갱신됨, 네트워크 생략")
+            return fresh
+        }
+        // 락 안에서 더블체크 — 대기 중 다른 호출이 막 갱신/시도했으면 그 결과를 그대로 쓴다.
+        return refreshGate.withLock {
+            // (a) 그 사이 누군가 성공시켜 캐시가 최신이 됐으면 네트워크 생략.
+            cachedResponseIfFreshWithin(context, minIntervalMs)?.let { rechecked ->
+                Log.i(TAG, "위젯 refresh throttled(락 내 재확인) — 네트워크 생략")
+                return@withLock rechecked
+            }
+            // (b) 직전 [minIntervalMs] 안에 이미 시도가 있었으면(성공/실패 무관) 중복 시도를 접고
+            //     가진 캐시를 쓴다 — 429/오류 연타까지 collapse. 단 캐시가 아예 없으면(첫 진입) 시도한다.
+            val sinceAttemptMs = System.currentTimeMillis() - lastAttemptAtMs
+            if (sinceAttemptMs in 0 until minIntervalMs) {
+                val anyCached = getCached(context)?.response
+                if (anyCached != null) {
+                    Log.i(TAG, "위젯 refresh throttled — ${sinceAttemptMs}ms 전 시도 있음, 네트워크 생략")
+                    return@withLock anyCached
+                }
+            }
+            // (c) 실제 네트워크 시도. 시각을 먼저 찍어, 이 호출이 던지더라도 후속 연타가 collapse 되게 한다.
+            lastAttemptAtMs = System.currentTimeMillis()
+            refreshWithEntitlementRecovery(context, lang)
         }
     }
 

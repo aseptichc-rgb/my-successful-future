@@ -144,7 +144,10 @@ class MainActivity : ComponentActivity() {
                 withTimeoutOrNull(REFRESH_BEFORE_HOME_TIMEOUT_MS) {
                     // 구제 버전 — 신규 가입자 trialEndsAt claim 미반영(402)/만료 임박 토큰(401)을
                     // 1회 구제 후 재시도해, 앱 진입 시점에 위젯 캐시가 비어버리는 회귀를 막는다.
-                    QuoteRepository.refreshWithEntitlementRecovery(this@MainActivity)
+                    // refreshIfStale: 직전 90초 내 갱신됐으면 네트워크를 생략하고 캐시를 쓴다 —
+                    // 매 진입마다 onResume·포그라운드·Worker 와 겹쳐 /api/widget/today 를 연타,
+                    // 일일 쿼터를 소진하던 문제 차단. (저장 직후 최신화는 위젯 브릿지가 별도 담당.)
+                    QuoteRepository.refreshIfStale(this@MainActivity)
                     QuoteWidget().updateAll(this@MainActivity)
                     true
                 }
