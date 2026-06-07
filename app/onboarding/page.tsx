@@ -341,7 +341,9 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {step === 2 && (
+          {/* 표시 순서: 다짐(step===2) → 행동(이 블록 step===3). i18n 키 이름의 숫자는
+              콘텐츠 식별자일 뿐 표시 순서와 무관 — 다짐을 먼저 적고 그 다음 행동을 적게 한다. */}
+          {step === 3 && (
             <div>
               <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.003em] text-[#1E1B4B] sm:text-[32px]">
                 {t("onboarding.step2.title")}
@@ -391,7 +393,7 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {step === 3 && (
+          {step === 2 && (
             <div>
               <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.003em] text-[#1E1B4B] sm:text-[32px]">
                 {t("onboarding.step3.title")}

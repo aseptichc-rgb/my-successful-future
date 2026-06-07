@@ -48,7 +48,7 @@ const dict: Record<DictKey, string> = {
   "onboarding.step1.example3":
     "7 年后,与家人相处的时间是第一位。每天工作 5 小时,周末完全留给自己。",
 
-  "onboarding.step2.title": "你正朝着哪些目标前进?",
+  "onboarding.step2.title": "写下实现目标所需的具体行动",
   "onboarding.step2.subtitle":
     "前 3 个目标会显示在每日卡片与锁屏上,按优先级排列。",
   "onboarding.step2.placeholder": "例:每天读书 30 分钟",

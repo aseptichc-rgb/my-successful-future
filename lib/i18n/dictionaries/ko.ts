@@ -48,7 +48,7 @@ const dict = {
   "onboarding.step1.example3":
     "7년 뒤 가족과 보내는 시간이 최우선인 삶을 살고 있다. 일은 하루 5시간만 하고, 주말은 무조건 비워둔다.",
 
-  "onboarding.step2.title": "지금 향하고 있는 목표를 적어주세요",
+  "onboarding.step2.title": "목표를 이루기 위해 필요한 구체적인 행동을 적어주세요",
   "onboarding.step2.subtitle":
     "앞 3개 목표가 매일 동기부여 카드와 잠금화면에 함께 표시돼요. 우선순위대로.",
   "onboarding.step2.placeholder": "예: 매일 30분 책 읽기",

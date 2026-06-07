@@ -50,7 +50,7 @@ const dict: Record<DictKey, string> = {
   "onboarding.step1.example3":
     "In 7 years time with my family is the highest priority. Work caps at 5 hours a day; weekends are mine.",
 
-  "onboarding.step2.title": "What goals are you walking toward?",
+  "onboarding.step2.title": "Write the concrete actions you need to reach your goals",
   "onboarding.step2.subtitle":
     "Your top 3 goals appear on the daily card and on the lock screen — listed in order of priority.",
   "onboarding.step2.placeholder": "e.g., Read for 30 minutes every day",

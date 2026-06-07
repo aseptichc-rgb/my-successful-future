@@ -50,7 +50,7 @@ const dict: Record<DictKey, string> = {
   "onboarding.step1.example3":
     "Dentro de 7 años el tiempo con mi familia es lo primero. Trabajo cinco horas al día; los fines de semana son míos.",
 
-  "onboarding.step2.title": "¿Hacia qué metas vas ahora?",
+  "onboarding.step2.title": "Escribe las acciones concretas que necesitas para alcanzar tus metas",
   "onboarding.step2.subtitle":
     "Tus 3 metas principales aparecen en la tarjeta diaria y en la pantalla de bloqueo, en orden de prioridad.",
   "onboarding.step2.placeholder": "Ej.: Leer 30 minutos cada día",
