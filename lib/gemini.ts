@@ -15,11 +15,10 @@ const MODEL = "gemini-2.5-flash-lite";
  */
 const PER_ATTEMPT_TIMEOUT_MS = 6000;
 /**
- * 429(레이트리밋) 짧은 재시도 횟수.
+ * 429(레이트리밋) 1회 재시도 사이 대기.
  * 일일 쿼터 소진형 429 는 같은 요청 안에서 재시도해도 회복되지 않으므로 길게 기다리지 않는다.
  * 순간적 RPM 초과만 1회 짧게 흡수하고, 그래도 막히면 즉시 폴백.
  */
-const MAX_RETRIES = 1;
 const RETRY_DELAY_MS = 800;
 
 export interface GeminiUsage {
@@ -36,8 +35,6 @@ export class GeminiTimeoutError extends Error {
   }
 }
 
-const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
-
 /** 429 / Resource exhausted 계열인지 판별 — 이때만 짧게 재시도한다. */
 function isRateLimit(error: unknown): boolean {
   const msg = error instanceof Error ? error.message : String(error);
@@ -45,34 +42,12 @@ function isRateLimit(error: unknown): boolean {
 }
 
 /**
- * 429 Rate Limit 에러만 짧게 1회 재시도하는 헬퍼. 그 외(타임아웃·키/모델 오류 등)는
- * 즉시 throw 해 호출부가 폴백하도록 한다.
- *
- * NOTE: 과거에는 최대 5회·지수 백오프(2→4→8→16→32s, 합 62s)였으나, 이 누적 대기가
- * 클라/서버 타임아웃을 넘겨 "오늘의 한 마디 = Failed to fetch" 회귀를 만들었다.
- * 폴백 명언은 Gemini 없이도 즉시 만들 수 있으므로, 오래 기다리기보다 빨리 폴백하는 게 낫다.
- */
-export async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
-  let lastError: unknown;
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      return await fn();
-    } catch (error: unknown) {
-      lastError = error;
-      if (attempt < MAX_RETRIES && isRateLimit(error)) {
-        await sleep(RETRY_DELAY_MS);
-        continue;
-      }
-      throw error;
-    }
-  }
-  throw lastError;
-}
-
-/**
  * 한 번의 Gemini 호출을 호출당 타임아웃과 함께 실행.
- * AbortController 로 실제 요청을 취소하고(SDK 가 signal 을 지원), 별도 타이머로도
- * 데드라인을 강제해 SDK 가 signal 을 무시하더라도 호출부가 매달리지 않게 한다.
+ *
+ * 타임아웃 메커니즘은 단일 setTimeout → Promise.race 패턴 하나로 통일했다(과거엔
+ * AbortController·SDK timeout·별도 deadline race 가 모두 걸려 있어 정상 응답 후에도
+ * sleep 타이머가 6초 동안 살아 unhandled rejection 으로 떨어지는 누수가 있었다).
+ * 데드라인 만료 시 GeminiTimeoutError 로 throw, 정상 응답 시 clearTimeout 으로 정리.
  */
 async function generateOnce(prompt: string, maxTokens: number): Promise<string> {
   const model = genAI.getGenerativeModel({
@@ -83,21 +58,18 @@ async function generateOnce(prompt: string, maxTokens: number): Promise<string> 
     },
   });
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), PER_ATTEMPT_TIMEOUT_MS);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new GeminiTimeoutError(PER_ATTEMPT_TIMEOUT_MS)),
+      PER_ATTEMPT_TIMEOUT_MS,
+    );
+  });
   try {
-    const request = model.generateContent(prompt, {
-      signal: controller.signal,
-      timeout: PER_ATTEMPT_TIMEOUT_MS,
-    });
-    // signal 취소가 SDK 에서 늦게 전파되는 경우까지 막는 안전망 데드라인.
-    const deadline = sleep(PER_ATTEMPT_TIMEOUT_MS).then(() => {
-      throw new GeminiTimeoutError(PER_ATTEMPT_TIMEOUT_MS);
-    });
-    const result = await Promise.race([request, deadline]);
+    const result = await Promise.race([model.generateContent(prompt), deadline]);
     return result.response.text();
   } finally {
-    clearTimeout(timer);
+    if (timer) clearTimeout(timer);
   }
 }
 
@@ -105,10 +77,20 @@ async function generateOnce(prompt: string, maxTokens: number): Promise<string> 
  * 단발성 텍스트 응답 — 동기부여 카드의 명언 큐레이션처럼
  * 짧은 분석/선택 작업용. 스트리밍/도구 사용 없음.
  *
- * 항상 [PER_ATTEMPT_TIMEOUT_MS] 안에(429 재시도 포함 시 +[RETRY_DELAY_MS]) 결과 또는
- * 에러를 반환한다. 모든 호출부는 try-catch 로 결정론적 폴백을 갖추고 있어,
- * 여기서 throw 되면 카드/라벨/추천이 폴백으로 안전하게 떨어진다.
+ * 정책: 429(Rate Limit) 만 [RETRY_DELAY_MS] 후 1회 짧게 재시도하고, 그 외 에러는 즉시 throw.
+ * 모든 호출부는 try-catch 로 결정론적 폴백을 갖추고 있어, 여기서 throw 되면 카드/라벨/추천이
+ * 폴백으로 안전하게 떨어진다.
+ *
+ * NOTE: 과거에는 최대 5회·지수 백오프(2→4→8→16→32s, 합 62s)였으나, 이 누적 대기가
+ * 클라/서버 타임아웃을 넘겨 "오늘의 한 마디 = Failed to fetch" 회귀를 만들었다.
+ * 폴백 명언은 Gemini 없이도 즉시 만들 수 있으므로, 오래 기다리기보다 빨리 폴백하는 게 낫다.
  */
 export async function generateText(prompt: string, maxTokens: number = 800): Promise<string> {
-  return withRetry(() => generateOnce(prompt, maxTokens));
+  try {
+    return await generateOnce(prompt, maxTokens);
+  } catch (err) {
+    if (!isRateLimit(err)) throw err;
+    await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+    return generateOnce(prompt, maxTokens);
+  }
 }

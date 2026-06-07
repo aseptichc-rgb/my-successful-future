@@ -118,6 +118,10 @@ export async function GET(request: NextRequest) {
     // 이미 만들어진 오늘 카드를 위젯이 다시 읽는 건 값싼 Firestore read 이므로 카운트하지 않는다.
     // 과거엔 단순 조회까지 widgetRefresh 한도(48)에 합산돼, 위젯이 하루 48번 폴링하면 그 뒤로
     // 종일 429 가 떨어져 다짐 본문/진척도가 위젯에서 사라지는 회귀가 있었다.
+    //
+    // 순서가 중요: 반드시 enforceQuota → ensureMotivation 이어야 한다.
+    // (생성 후 쿼터 체크로 바꾸면 쿼터 초과 시에도 Gemini 비용이 발생하고, 사용자는
+    //  "카드는 생성됐지만 429" 라는 모순된 응답을 받는다.)
     const motivationRef = getAdminDb().doc(`users/${me.uid}/dailyMotivations/${ymd}`);
     const motivationExists = (await motivationRef.get()).exists;
     if (!motivationExists) {
