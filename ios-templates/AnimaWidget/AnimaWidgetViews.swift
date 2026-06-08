@@ -21,6 +21,10 @@ struct AnimaWidgetEntryView: View {
             SmallHomeView(entry: entry)
         case .systemMedium:
             MediumHomeView(entry: entry)
+        case .systemLarge:
+            LargeHomeView(entry: entry)
+        case .systemExtraLarge:
+            LargeHomeView(entry: entry)
         case .accessoryRectangular:
             LockRectangularView(entry: entry)
         case .accessoryInline:
@@ -190,6 +194,83 @@ private struct MediumHomeView: View {
                         .font(.system(.caption2, design: .monospaced))
                         .foregroundColor(WidgetTheme.ink.opacity(WidgetTheme.metaOpacity))
                         .lineLimit(1)
+                    Spacer(minLength: 0)
+                    Divider().background(WidgetTheme.ink.opacity(0.08))
+                    ProgressRow(progress: p)
+                }
+            } else {
+                EmptyContent(compact: false)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .containerBackgroundCream()
+    }
+}
+
+// MARK: - 홈 위젯 (systemLarge 4x4 / systemExtraLarge 8x4)
+
+/// 섹션 라벨 — 강조색 모노스페이스 소제목.
+private struct SectionLabel: View {
+    let text: String
+    var body: some View {
+        Text(text.uppercased())
+            .font(.system(.caption2, design: .monospaced))
+            .fontWeight(.semibold)
+            .foregroundColor(WidgetTheme.accent)
+    }
+}
+
+/// 다짐 한 줄 — 불릿 + serif 본문.
+private struct AffirmationLine: View {
+    let text: String
+    var body: some View {
+        HStack(alignment: .top, spacing: 6) {
+            Circle()
+                .fill(WidgetTheme.accent.opacity(0.7))
+                .frame(width: 4, height: 4)
+                .padding(.top, 6)
+            Text(text)
+                .font(.system(.footnote, design: .serif))
+                .foregroundColor(WidgetTheme.ink.opacity(WidgetTheme.dimOpacity))
+                .lineLimit(1)
+        }
+    }
+}
+
+private struct LargeHomeView: View {
+    let entry: AnimaEntry
+
+    /// 큰 위젯에서 노출할 다짐 최대 줄 수(레이아웃 넘침 방지).
+    private static let maxAffirmations = 3
+
+    var body: some View {
+        Group {
+            if let slot = entry.today?.primarySlot {
+                let p = entry.today?.progress ?? .init(affirmation: false, actions: false, wins: false)
+                let affirmations = entry.today?.affirmations ?? []
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Wordmark()
+                        Spacer()
+                        StreakChip(streak: entry.today?.streak ?? 0)
+                        ProgressBadge(progress: p)
+                    }
+                    QuoteText(text: slot.text, lineLimit: 5, size: .title3)
+                    Text(slot.author.uppercased())
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundColor(WidgetTheme.ink.opacity(WidgetTheme.metaOpacity))
+                        .lineLimit(1)
+
+                    if !affirmations.isEmpty {
+                        Divider().background(WidgetTheme.ink.opacity(0.08))
+                        SectionLabel(text: "오늘의 다짐")
+                        VStack(alignment: .leading, spacing: 5) {
+                            ForEach(Array(affirmations.prefix(Self.maxAffirmations).enumerated()), id: \.offset) { _, line in
+                                AffirmationLine(text: line)
+                            }
+                        }
+                    }
+
                     Spacer(minLength: 0)
                     Divider().background(WidgetTheme.ink.opacity(0.08))
                     ProgressRow(progress: p)

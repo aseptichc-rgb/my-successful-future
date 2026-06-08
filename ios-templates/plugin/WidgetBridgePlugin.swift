@@ -34,9 +34,10 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
             call.reject("json 파라미터가 필요합니다.")
             return
         }
-        guard let defaults = UserDefaults(suiteName: Self.appGroupId) else {
-            // App Group 미구성(entitlement/포털 누락) — 조용히 실패시키되 사유를 알린다.
-            call.reject("App Group(\(Self.appGroupId)) 에 접근할 수 없습니다.")
+        guard let defaults = Self.sharedDefaults() else {
+            // App Group 미구성(App 타깃 entitlement/포털 등록/프로비저닝 누락) — 조용히
+            // 비공유 저장소로 떨어지면 위젯이 영영 빈 상태가 되므로, 명확한 사유로 reject 한다.
+            call.reject(Self.appGroupErrorMessage)
             return
         }
         defaults.set(json, forKey: Self.todayKey)
@@ -46,11 +47,27 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
 
     /// 로그아웃 등으로 캐시를 비우고 위젯을 빈 상태로 갱신한다.
     @objc func clearWidgetData(_ call: CAPPluginCall) {
-        if let defaults = UserDefaults(suiteName: Self.appGroupId) {
-            defaults.removeObject(forKey: Self.todayKey)
-        }
+        Self.sharedDefaults()?.removeObject(forKey: Self.todayKey)
         Self.reloadWidgets()
         call.resolve()
+    }
+
+    /// App Group 접근 불가 시 JS(Safari Web Inspector 콘솔)에 노출할 진단 메시지.
+    private static let appGroupErrorMessage =
+        "App Group(\(appGroupId)) 에 접근할 수 없습니다. " +
+        "App 타깃에 App Groups capability 가 켜져 있고(Xcode > Signing & Capabilities), " +
+        "Apple Developer 포털 App ID 에 등록돼 프로비저닝 프로파일에 포함됐는지 확인하세요."
+
+    /// App Group 공유 UserDefaults. 컨테이너가 실제로 이 프로세스에 프로비저닝됐을 때만 반환.
+    ///
+    /// entitlement 가 빠지면 UserDefaults(suiteName:) 은 non-nil 이지만 위젯과 공유되지 않는
+    /// 앱 전용 저장소로 떨어진다(침묵 실패). containerURL 은 entitlement/프로비저닝이 없으면
+    /// nil 을 주므로, 이를 먼저 검사해 "공유 가능한 경우에만" 저장소를 반환한다.
+    private static func sharedDefaults() -> UserDefaults? {
+        guard FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: appGroupId) != nil
+        else { return nil }
+        return UserDefaults(suiteName: appGroupId)
     }
 
     private static func reloadWidgets() {
