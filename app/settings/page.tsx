@@ -13,6 +13,14 @@ import {
   MAX_SUCCESS_AFFIRMATIONS,
 } from "@/lib/firebase";
 import { authedFetch } from "@/lib/authedFetch";
+import {
+  isIosPurchaseAvailable,
+  getIosProPrice,
+  purchaseIosPro,
+  restoreIosPro,
+  initIosPurchaseListener,
+} from "@/lib/iosPurchase";
+import { readEntitlement } from "@/lib/entitlement";
 import { getAllKnownAuthorsGrouped } from "@/lib/famousQuoteCatalog";
 import AffirmationsEditor from "@/components/affirmations/AffirmationsEditor";
 import { useLanguage, LOCALE_META, SUPPORTED_LOCALES, type Locale } from "@/lib/i18n";
@@ -202,10 +210,40 @@ export default function SettingsPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
 
+  // Anima Pro(iOS 인앱결제) — 네이티브 플러그인이 있는 iOS 빌드에서만 노출.
+  const [showPro, setShowPro] = useState(false);
+  const [proActive, setProActive] = useState(false);
+  const [proPrice, setProPrice] = useState<string | null>(null);
+  const [purchasing, setPurchasing] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+
   useEffect(() => {
     if (authLoading) return;
     if (!firebaseUser) router.replace("/login");
   }, [authLoading, firebaseUser, router]);
+
+  // iOS 결제 가용 시: 섹션 노출 + 가격/권한 상태 로드 + 외부 트랜잭션 리스너 등록.
+  useEffect(() => {
+    if (!isIosPurchaseAvailable()) return;
+    setShowPro(true);
+    initIosPurchaseListener();
+    let cancelled = false;
+    void (async () => {
+      const price = await getIosProPrice();
+      if (!cancelled && price) setProPrice(price);
+      if (!firebaseUser) return;
+      try {
+        const tokenResult = await firebaseUser.getIdTokenResult();
+        const ent = readEntitlement(tokenResult.claims as Record<string, unknown>);
+        if (!cancelled) setProActive(ent.kind === "lifetime" || ent.kind === "subscription");
+      } catch {
+        // 권한 조회 실패 — 구매 버튼은 그대로 노출(복원/구매로 봉합 가능).
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [firebaseUser]);
 
   useEffect(() => {
     if (!user) return;
@@ -303,6 +341,39 @@ export default function SettingsPage() {
     } catch (err) {
       console.error("[settings] 인물 저장 실패:", err);
       window.alert(t("common.saveFailed"));
+    }
+  };
+
+  const handlePurchasePro = async () => {
+    setPurchasing(true);
+    try {
+      const outcome = await purchaseIosPro();
+      if (outcome.status === "success") {
+        setProActive(true);
+        window.alert("Anima Pro 구매가 완료되었습니다. 감사합니다!");
+      } else if (outcome.status === "pending") {
+        window.alert("결제가 승인 대기 중입니다. 승인되면 자동으로 적용됩니다.");
+      } else if (outcome.status === "error") {
+        window.alert(outcome.message || "결제에 실패했습니다.");
+      }
+      // cancelled 는 사용자의 정상 취소 — 안내 없이 조용히 종료.
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
+  const handleRestorePro = async () => {
+    setRestoring(true);
+    try {
+      const outcome = await restoreIosPro();
+      if (outcome.status === "success") {
+        setProActive(true);
+        window.alert("구매를 복원했습니다.");
+      } else if (outcome.status === "error") {
+        window.alert(outcome.message || "복원할 구매 내역이 없습니다.");
+      }
+    } finally {
+      setRestoring(false);
     }
   };
 
@@ -439,6 +510,77 @@ export default function SettingsPage() {
             isLast
           />
         </GroupedSection>
+
+        {/* Anima Pro — iOS 인앱결제 (네이티브 플러그인이 있는 iOS 빌드에서만 노출) */}
+        {showPro && (
+          <GroupedSection
+            header="ANIMA PRO"
+            footer={
+              proActive
+                ? "모든 기능이 활성화되어 있습니다."
+                : "1회 결제로 평생 사용 · 광고 없음"
+            }
+          >
+            {proActive ? (
+              <div className="relative flex items-center gap-3 px-4 min-h-[44px]">
+                <div
+                  className="w-[30px] h-[30px] rounded-[7px] flex items-center justify-center flex-shrink-0"
+                  style={{ background: "#D85A30" }}
+                >
+                  {G.spark}
+                </div>
+                <div className="flex-1 py-[11px] text-[17px] leading-[22px] tracking-[-0.43px] text-[var(--label)]">
+                  Anima Pro 이용 중
+                </div>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34C759" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M5 12l5 5L20 7" />
+                </svg>
+                <div className="absolute bottom-0 right-0 h-[0.5px]" style={{ left: 58, background: "var(--sep)" }} />
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handlePurchasePro}
+                disabled={purchasing}
+                className="w-full relative flex items-center gap-3 px-4 min-h-[44px] text-left disabled:opacity-50"
+              >
+                <div
+                  className="w-[30px] h-[30px] rounded-[7px] flex items-center justify-center flex-shrink-0"
+                  style={{ background: "#D85A30" }}
+                >
+                  {G.spark}
+                </div>
+                <div className="flex-1 py-[11px] text-[17px] leading-[22px] tracking-[-0.43px] text-[var(--soul)] font-semibold">
+                  {purchasing ? "처리 중..." : "평생 이용권 구매"}
+                </div>
+                {proPrice && !purchasing && (
+                  <span className="text-[17px] tracking-[-0.43px] text-[var(--label-2)]">{proPrice}</span>
+                )}
+                <div className="absolute bottom-0 right-0 h-[0.5px]" style={{ left: 58, background: "var(--sep)" }} />
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={handleRestorePro}
+              disabled={restoring}
+              className="w-full flex items-center gap-3 px-4 min-h-[44px] text-left disabled:opacity-50"
+            >
+              <div
+                className="w-[30px] h-[30px] rounded-[7px] flex items-center justify-center flex-shrink-0"
+                style={{ background: "#8E8E93" }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+                  <path d="M3 4v4h4" />
+                </svg>
+              </div>
+              <div className="flex-1 py-[11px] text-[17px] leading-[22px] tracking-[-0.43px] text-[var(--label)]">
+                {restoring ? "복원 중..." : "구매 복원"}
+              </div>
+            </button>
+          </GroupedSection>
+        )}
 
         {/* 계정 */}
         <GroupedSection header={t("settings.account.header") || "계정"}>

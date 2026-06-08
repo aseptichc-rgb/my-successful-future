@@ -42,11 +42,19 @@ FileUtils.mkdir_p(widget_dst)
 Dir.glob(File.join(repo_root, "ios-templates/#{WIDGET_TARGET_NAME}", "*")).each do |f|
   FileUtils.cp(f, widget_dst)
 end
-FileUtils.cp(
-  File.join(repo_root, "ios-templates/plugin/WidgetBridgePlugin.swift"),
-  File.join(app_src_dir, "WidgetBridgePlugin.swift"),
-)
-puts "==> 소스 복사 완료: #{widget_dst}, App/WidgetBridgePlugin.swift"
+# 플러그인 Swift 들(WidgetBridge, StoreKitBridge 등)을 App 타깃 소스 디렉터리로 복사.
+# 새 플러그인을 추가할 때 이 스크립트를 고칠 필요가 없도록 ios-templates/plugin/*.swift 전체를 훑는다.
+plugin_files = Dir.glob(File.join(repo_root, "ios-templates/plugin", "*.swift"))
+                  .map { |f| File.basename(f) }
+                  .sort
+abort("REJECT: ios-templates/plugin 에 .swift 플러그인이 없습니다.") if plugin_files.empty?
+plugin_files.each do |name|
+  FileUtils.cp(
+    File.join(repo_root, "ios-templates/plugin", name),
+    File.join(app_src_dir, name),
+  )
+end
+puts "==> 소스 복사 완료: #{widget_dst}, App/{#{plugin_files.join(', ')}}"
 
 project = Xcodeproj::Project.open(project_path)
 app_target = project.targets.find { |t| t.name == "App" }
@@ -66,20 +74,21 @@ app_target.copy_files_build_phases.select { |p| p.name == "Embed App Extensions"
 if (g = project.main_group[WIDGET_TARGET_NAME])
   g.remove_from_project
 end
-# 기존 플러그인 컴파일 참조 제거(중복 컴파일 방지)
+# 기존 플러그인 컴파일 참조 제거(중복 컴파일 방지) — 모든 플러그인 파일 대상.
 app_target.source_build_phase.files.dup.each do |bf|
-  next unless bf.file_ref.respond_to?(:path) && bf.file_ref.path.to_s.end_with?("WidgetBridgePlugin.swift")
+  ref = bf.file_ref
+  next unless ref.respond_to?(:path) && plugin_files.include?(File.basename(ref.path.to_s))
   bf.remove_from_project
 end
 (project.main_group["App"] || project.main_group).files.dup.each do |fr|
-  fr.remove_from_project if fr.path.to_s.end_with?("WidgetBridgePlugin.swift")
+  fr.remove_from_project if fr.respond_to?(:path) && plugin_files.include?(File.basename(fr.path.to_s))
 end
 
-# ---- 2) 플러그인 Swift 를 App 타깃 소스에 추가 ----
+# ---- 2) 플러그인 Swift 들을 App 타깃 소스에 추가 ----
 app_group = project.main_group["App"] || project.main_group
-plugin_ref = app_group.new_reference("WidgetBridgePlugin.swift")
-app_target.add_file_references([plugin_ref])
-puts "==> App 타깃에 WidgetBridgePlugin.swift 추가"
+plugin_refs = plugin_files.map { |name| app_group.new_reference(name) }
+app_target.add_file_references(plugin_refs)
+puts "==> App 타깃에 플러그인 추가: #{plugin_files.join(', ')}"
 
 # ---- 3) AnimaWidget app-extension 타깃 생성 ----
 # Project#new_target(type, name, platform, deployment_target, build_configuration_list=nil, language=:objc)
