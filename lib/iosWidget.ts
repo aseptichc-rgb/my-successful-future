@@ -17,15 +17,36 @@ interface WidgetBridgePlugin {
 
 const WidgetBridge = registerPlugin<WidgetBridgePlugin>("WidgetBridge");
 
-/** iOS 네이티브에서 WidgetBridge 플러그인을 쓸 수 있는지. SSR/웹/안드로이드에선 false. */
+/** registerPlugin 으로 만든 JS 프록시 이름 — isPluginAvailable 진단 로그에서 참조. */
+const PLUGIN_NAME = "WidgetBridge";
+
+/**
+ * iOS 네이티브에서 위젯 브릿지를 시도할지 여부. SSR/웹/안드로이드에선 false.
+ *
+ * 주의: 과거엔 `Capacitor.isPluginAvailable("WidgetBridge")` 까지 AND 했으나, 이 앱은
+ * server.url(원격 웹) 모드라 원격 페이지가 네이티브 브릿지의 PluginHeaders 주입보다 먼저
+ * 평가되면 isPluginAvailable 이 false 를 반환해 위젯 갱신이 영구 no-op 으로 떨어지는
+ * 회귀가 있었다(위젯이 늘 빈 상태). 플러그인은 바이너리에 분명히 포함돼 있으므로,
+ * 게이트는 플랫폼만 보고 실제 호출 실패는 각 함수의 try-catch 가 안전하게 흡수한다.
+ */
 export function isIosWidgetAvailable(): boolean {
   try {
-    return (
-      Capacitor.getPlatform() === "ios" &&
-      Capacitor.isPluginAvailable("WidgetBridge")
-    );
+    return Capacitor.getPlatform() === "ios";
   } catch {
     return false;
+  }
+}
+
+/**
+ * 위젯 브릿지 진단 한 줄 — Safari Web Inspector 콘솔에서 원인 추적용.
+ * PluginHeaders 에 플러그인이 안 보이는데도 호출을 시도하는지(원격 모드 회귀)를 드러낸다.
+ */
+function widgetBridgeDiagnostics(): string {
+  try {
+    const headerVisible = Capacitor.isPluginAvailable(PLUGIN_NAME);
+    return `platform=${Capacitor.getPlatform()} pluginHeaderVisible=${headerVisible}`;
+  } catch (err) {
+    return `진단 수집 실패: ${err instanceof Error ? err.message : String(err)}`;
   }
 }
 
@@ -37,8 +58,11 @@ export async function pushWidgetData(data: unknown): Promise<void> {
   if (!isIosWidgetAvailable()) return;
   try {
     await WidgetBridge.setWidgetData({ json: JSON.stringify(data) });
+    console.info("[iosWidget] 위젯 데이터 전달 성공", `(${widgetBridgeDiagnostics()})`);
   } catch (err) {
-    console.warn("[iosWidget] 위젯 데이터 전달 실패:", err);
+    // 여기서 reject 되면 둘 중 하나다: (1) 네이티브 플러그인 미등록(원격 모드 PluginHeaders 누락),
+    // (2) App Group 접근 불가(WidgetBridgePlugin 의 명시적 reject). 진단 문자열로 구분한다.
+    console.warn("[iosWidget] 위젯 데이터 전달 실패:", err, `(${widgetBridgeDiagnostics()})`);
   }
 }
 
