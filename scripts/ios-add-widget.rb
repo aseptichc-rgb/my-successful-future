@@ -19,6 +19,7 @@
 
 require "xcodeproj"
 require "fileutils"
+require "json"
 
 # ---- 상수 ----
 TEAM_ID = "6Z995494HZ"
@@ -55,6 +56,26 @@ plugin_files.each do |name|
   )
 end
 puts "==> 소스 복사 완료: #{widget_dst}, App/{#{plugin_files.join(', ')}}"
+
+# ---- 1b) capacitor.config.json packageClassList 에 커스텀 플러그인 클래스 등록 ----
+# Capacitor 8(SPM) 의 CapacitorBridge.registerPlugins() 는 packageClassList 에 적힌 클래스만
+# NSClassFromString 으로 등록한다 — ObjC 런타임 자동 탐색이 없다. 따라서 App 타깃에 직접 넣은
+# 커스텀 플러그인(WidgetBridge/StoreKit)을 여기에 명시하지 않으면 런타임에 등록되지 않아
+# isPluginAvailable=false 가 되고 브릿지 호출이 전부 실패한다(위젯 빈 상태/IAP 무력화).
+# `cap sync` 가 이 파일을 매번 재생성하므로, 이 스크립트가 멱등하게 다시 주입한다.
+# 클래스명은 파일명(=@objc 명, 컨벤션상 일치)에서 도출: WidgetBridgePlugin.swift → "WidgetBridgePlugin".
+cap_config_path = File.join(app_src_dir, "capacitor.config.json")
+plugin_class_names = plugin_files.map { |f| File.basename(f, ".swift") }
+if File.file?(cap_config_path)
+  cfg = JSON.parse(File.read(cap_config_path))
+  list = cfg["packageClassList"] || []
+  added = plugin_class_names.reject { |cls| list.include?(cls) }
+  cfg["packageClassList"] = list + added
+  File.write(cap_config_path, JSON.pretty_generate(cfg) + "\n")
+  puts "==> packageClassList 갱신: #{added.empty? ? '이미 최신' : added.join(', ') + ' 추가'}"
+else
+  puts "⚠️  capacitor.config.json 없음(#{cap_config_path}) — `npx cap sync ios` 먼저 필요. packageClassList 패치 건너뜀."
+end
 
 project = Xcodeproj::Project.open(project_path)
 app_target = project.targets.find { |t| t.name == "App" }
