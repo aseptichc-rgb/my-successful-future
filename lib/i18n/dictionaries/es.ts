@@ -180,6 +180,17 @@ const dict: Record<DictKey, string> = {
   "motivation.affirmations.empty":
     "Añade afirmaciones en Ajustes para copiarlas a diario y construir una racha.",
 
+  // ── Visión del día futuro (un día viviendo el sueño) ──
+  "futureVision.headerLabel": "Hoy, un día viviendo ese sueño",
+  "futureVision.loading": "Pintando tu día futuro…",
+  "futureVision.error": "No se pudo pintar tu día futuro.",
+  "futureVision.regenerate": "Ver otro día",
+  "futureVision.regenerating": "Pintando otro día…",
+  "futureVision.empty.title": "Primero, imagina tu yo futuro",
+  "futureVision.empty.body":
+    "Escribe un párrafo sobre quién quieres llegar a ser en 10 años, y cada día pintaré ante tus ojos ese día de sueño cumplido.",
+  "futureVision.empty.cta": "Escribir mi yo futuro",
+
   // Settings
   "settings.title": "Ajustes",
   "settings.subtitle":

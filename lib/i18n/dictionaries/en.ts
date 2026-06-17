@@ -176,6 +176,17 @@ const dict: Record<DictKey, string> = {
   "motivation.affirmations.empty":
     "Add affirmations in Settings to copy them daily and build a streak.",
 
+  // ── Future daily vision (a day living the dream) ──
+  "futureVision.headerLabel": "Today, a day living that dream",
+  "futureVision.loading": "Painting your future day…",
+  "futureVision.error": "Couldn't paint your future day.",
+  "futureVision.regenerate": "See another day",
+  "futureVision.regenerating": "Painting another day…",
+  "futureVision.empty.title": "First, picture your future self",
+  "futureVision.empty.body":
+    "Write a paragraph about who you want to become in 10 years, and each day I'll paint that dream-come-true day before your eyes.",
+  "futureVision.empty.cta": "Write your future self",
+
   // Settings
   "settings.title": "Settings",
   "settings.subtitle":

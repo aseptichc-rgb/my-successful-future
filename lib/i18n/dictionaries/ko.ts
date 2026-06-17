@@ -165,6 +165,17 @@ const dict = {
   "motivation.affirmations.empty":
     "설정에서 “성공한 나의 모습” 다짐을 적어두면 매일 따라 적으며 연속일을 쌓을 수 있어요.",
 
+  // ── 미래 일상 비전 (꿈이 실현된 하루) ────────────
+  "futureVision.headerLabel": "오늘, 그 꿈을 사는 하루",
+  "futureVision.loading": "당신의 미래 하루를 그리고 있어요…",
+  "futureVision.error": "미래 일상을 그리지 못했어요.",
+  "futureVision.regenerate": "또 다른 하루 보기",
+  "futureVision.regenerating": "다른 하루를 그리는 중…",
+  "futureVision.empty.title": "먼저 ‘미래의 나’를 그려주세요",
+  "futureVision.empty.body":
+    "10년 후 되고 싶은 모습을 한 단락 적으면, 매일 그 꿈이 실현된 하루를 눈앞에 그려 드릴게요.",
+  "futureVision.empty.cta": "미래의 나 적기",
+
   // ── 설정 ─────────────────────────────────────────
   "settings.title": "설정",
   "settings.subtitle": "미래의 모습 · 매일 다짐 · 오늘의 행동 · 명언 큐레이션을 한곳에서 관리해요.",

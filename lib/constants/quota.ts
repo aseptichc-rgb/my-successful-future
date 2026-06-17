@@ -14,6 +14,11 @@ export const DAILY_QUOTA = {
    * 첫 카드 자동 생성과 단순 캐시 조회는 카운트하지 않는다.
    */
   motivationRegenerate: 5,
+  /**
+   * "또 다른 하루 보기" — 미래 일상 비전 재생성(force=true) 호출.
+   * 첫 비전 자동 생성과 단순 캐시 조회는 카운트하지 않는다(동기부여 카드와 동일 정책).
+   */
+  futureVisionRegenerate: 5,
   /** 위젯 새로고침 호출 (안드로이드 위젯의 폴링 + 수동 새로고침 모두 합산). */
   widgetRefresh: 48,
   /** 명언 작가 자유 발화 추천 (LLM 호출 1건 = 1카운트). */

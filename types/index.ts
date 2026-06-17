@@ -142,6 +142,38 @@ export interface MotivationResponse {
   edits?: number;
 }
 
+// ── 매일 바뀌는 "미래 일상" 비전 (꿈이 실현된 하루) ───
+/**
+ * 미래 일상 비전의 한 장면 — 하루의 한 순간.
+ * - moment: 시간대 라벨 ("아침"/"정오"/"저녁" 등, 사용자 언어).
+ * - text: 그 순간을 1인칭 현재형으로 묘사한 한 단락.
+ */
+export interface FutureVisionScene {
+  moment: string;
+  text: string;
+}
+
+/**
+ * 사용자가 적은 futurePersona/goals 가 이미 실현된 "어느 하루"를 1인칭 현재형으로
+ * 생생하게 그린 비전. `users/{uid}/futureVisions/{ymd}` 에 하루 1건 저장(동기부여 카드와 동일 컨벤션).
+ * 서버(Admin SDK)에서만 생성·갱신하고, 클라이언트는 onSnapshot 으로 read 만 한다.
+ */
+export interface FutureVision {
+  ymd: string;
+  /** 그 하루를 요약하는 짧고 강렬한 한 줄. */
+  title: string;
+  /** 2~4개 시간대별 장면. */
+  scenes: FutureVisionScene[];
+  /** 하루를 닫는 1인칭 현재형 한 문장(없을 수 있음). */
+  closing?: string;
+  /** 생성 시점 futurePersona 스냅샷(본인 서브컬렉션 전용, 트렁케이트). */
+  futurePersonaSnapshot?: string;
+  goalsSnapshot: string[];
+  /** 동기부여 카드와 동일한 그라데이션 타입(시드만 달라 색이 겹치지 않음). */
+  gradient: MotivationGradient;
+  createdAt: Timestamp;
+}
+
 /**
  * 사용자별 정체성 라벨 누적 진행도. 라벨당 문서 1개.
  * - 문서 ID = identityTag(라벨 문자열, 한국어 그대로 사용 가능).

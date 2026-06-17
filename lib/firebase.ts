@@ -41,6 +41,7 @@ import type {
   DailyEntry,
   DailyTodo,
   DailyMotivation,
+  FutureVision,
   IdentityProgress,
   QuotePreference,
   UserLanguage,
@@ -459,6 +460,27 @@ export function onDailyMotivationSnapshot(
       return;
     }
     callback(snap.data() as DailyMotivation);
+  });
+}
+
+// ── 미래 일상 비전 구독 ───────────────────────────
+/**
+ * users/{uid}/futureVisions/{ymd} 문서를 구독한다.
+ * 서버(Admin SDK, /api/future-vision)가 문서를 만들거나 갱신하면 즉시 콜백으로 흘려보낸다.
+ * 동기부여 카드(onDailyMotivationSnapshot)와 동일한 패턴.
+ */
+export function onFutureVisionSnapshot(
+  uid: string,
+  ymd: string,
+  callback: (v: FutureVision | null) => void,
+): Unsubscribe {
+  const db = getDbInstance();
+  return onSnapshot(doc(db, "users", uid, "futureVisions", ymd), (snap) => {
+    if (!snap.exists()) {
+      callback(null);
+      return;
+    }
+    callback(snap.data() as FutureVision);
   });
 }
 

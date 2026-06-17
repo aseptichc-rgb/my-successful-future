@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import {
   onDailyEntrySnapshot,
   onDailyMotivationSnapshot,
+  onFutureVisionSnapshot,
   onAffirmationCheckinSnapshot,
   saveDailyWins,
   saveDailyAchievedGoals,
@@ -16,9 +17,10 @@ import { authedFetch } from "@/lib/authedFetch";
 import { notifyAndroidWidgetRefresh } from "@/lib/widgetBridge";
 import { refreshIosWidget } from "@/lib/iosWidget";
 import MotivationCard from "@/components/home/MotivationCard";
+import FutureVisionCard from "@/components/home/FutureVisionCard";
 import Logo from "@/components/ui/Logo";
 import { useLanguage } from "@/lib/i18n";
-import type { DailyEntry, DailyMotivation } from "@/types";
+import type { DailyEntry, DailyMotivation, FutureVision } from "@/types";
 
 /* ─────────────────────────────────────────────────────────────────
  * Anima Home — Apple iOS native redesign
@@ -149,6 +151,11 @@ export default function HomeDashboardPage() {
   const ensureRequestedYmdRef = useRef<string | null>(null);
   const [alreadyCheckedInToday, setAlreadyCheckedInToday] = useState(false);
 
+  const [vision, setVision] = useState<FutureVision | null>(null);
+  const [visionLoading, setVisionLoading] = useState(true);
+  const [visionError, setVisionError] = useState<string | null>(null);
+  const ensureRequestedVisionYmdRef = useRef<string | null>(null);
+
   const [activeTab, setActiveTab] = useState<"future" | "actions">("future");
 
   useEffect(() => {
@@ -233,6 +240,59 @@ export default function HomeDashboardPage() {
       void refreshIosWidget();
     } catch (err) {
       setMotivationError(err instanceof Error ? err.message : String(err));
+    }
+  }, [ymd]);
+
+  // ── 미래 일상 비전: 구독 + 캐시 미스 시 자동 생성 (동기부여 카드와 동일 패턴) ──
+  // futurePersona 가 비어 있으면 빈 비전을 만들지 않고 CTA 만 보여준다(서버 호출 생략).
+  useEffect(() => {
+    if (!firebaseUser) return;
+    const personaWritten = Boolean((user?.futurePersona ?? "").trim());
+    setVisionLoading(true);
+    let cancelled = false;
+    const unsub = onFutureVisionSnapshot(firebaseUser.uid, ymd, (v) => {
+      if (cancelled) return;
+      setVision(v);
+      setVisionLoading(false);
+      if (!v && personaWritten && ensureRequestedVisionYmdRef.current !== ymd) {
+        ensureRequestedVisionYmdRef.current = ymd;
+        authedFetch("/api/future-vision", {
+          method: "POST",
+          body: JSON.stringify({ ymd }),
+        })
+          .then(async (res) => {
+            if (!res.ok) {
+              const data = await res.json().catch(() => ({}));
+              throw new Error((data as { error?: string }).error || "미래 일상을 만들지 못했어요.");
+            }
+          })
+          .catch((err) => {
+            if (cancelled) return;
+            setVisionError(err instanceof Error ? err.message : String(err));
+          });
+      }
+    });
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, [firebaseUser, ymd, user?.futurePersona]);
+
+  const handleRegenerateFutureVision = useCallback(async () => {
+    setVisionError(null);
+    try {
+      const res = await authedFetch("/api/future-vision", {
+        method: "POST",
+        body: JSON.stringify({ ymd, force: true }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        vision?: FutureVision;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data.error || "또 다른 하루를 그리지 못했어요.");
+      if (data.vision) setVision(data.vision);
+    } catch (err) {
+      setVisionError(err instanceof Error ? err.message : String(err));
     }
   }, [ymd]);
 
@@ -457,6 +517,16 @@ export default function HomeDashboardPage() {
         {/* ─── Tab · 오늘 (future) ─── */}
         {activeTab === "future" && (
           <>
+            <div className="px-4 pt-5">
+              <FutureVisionCard
+                vision={vision}
+                loading={visionLoading}
+                errorMessage={visionError}
+                onRegenerate={handleRegenerateFutureVision}
+                hasFuturePersona={futureText.trim().length > 0}
+                onWriteFuturePersona={() => router.push("/settings")}
+              />
+            </div>
             <div className="px-4 pt-5">
               <MotivationCard
                 motivation={motivation}

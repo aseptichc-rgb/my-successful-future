@@ -19,6 +19,7 @@ import { generateText } from "@/lib/gemini";
 import { type FamousQuoteSeed } from "@/lib/famousQuotesSeed";
 import { getQuoteSeedPool } from "@/lib/famousQuoteCatalog";
 import { ensureIdentities } from "@/lib/identities";
+import { geminiLanguageName, normalizeLanguage } from "@/lib/llmLang";
 import type {
   DailyMotivation,
   MotivationGradient,
@@ -26,24 +27,6 @@ import type {
   QuotePreference,
   UserLanguage,
 } from "@/types";
-
-/**
- * 사용자 language → Gemini 프롬프트 출력 언어 안내 문자열.
- * 알 수 없는 코드는 ko 로 폴백 (레거시 사용자).
- */
-function geminiLanguageName(lang: UserLanguage | undefined): string {
-  switch (lang) {
-    case "en": return "English";
-    case "es": return "Spanish";
-    case "zh": return "Simplified Chinese";
-    case "ko":
-    default: return "Korean";
-  }
-}
-
-function normalizeLanguage(raw: unknown): UserLanguage {
-  return raw === "en" || raw === "es" || raw === "zh" || raw === "ko" ? raw : "ko";
-}
 
 export const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 const FUTURE_PERSONA_TRUNC = 280;

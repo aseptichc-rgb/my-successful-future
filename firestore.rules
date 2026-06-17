@@ -40,6 +40,14 @@ service cloud.firestore {
         allow write: if false;
       }
 
+      // 본인 "미래 일상" 비전 (꿈이 실현된 하루, 문서 ID = YYYY-MM-DD KST).
+      // 동기부여 카드와 동일하게 서버(Admin SDK, /api/future-vision)에서만 생성·갱신하고
+      // 클라이언트는 onSnapshot 으로 즉시 구독할 수 있도록 본인 read 만 허용.
+      match /futureVisions/{ymd} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+
       // 본인 일별 호출 한도 카운터 (server-only write).
       // 클라이언트가 카운터를 조작하지 못하도록 write 는 차단하고 read 만 허용.
       match /usage/{ymd} {
