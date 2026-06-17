@@ -15,7 +15,7 @@ import { Timestamp } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { generateText } from "@/lib/gemini";
 import { geminiLanguageName, normalizeLanguage } from "@/lib/llmLang";
-import { pickGradient } from "@/lib/dailyMotivation";
+import { pickGradient, hash32 } from "@/lib/dailyMotivation";
 import type {
   FutureVision,
   FutureVisionScene,
@@ -34,12 +34,40 @@ const MIN_SCENES = 2;
 const MAX_SCENES = 4;
 /** 출력 길이 클램프 — UI 가 깨지지 않도록 서버에서 잘라 둔다. */
 const TITLE_MAX = 40;
-const MOMENT_MAX = 14;
+/** "오후 3시, 사무실" 처럼 시간+장소 라벨을 허용하려 기존 14 → 20 으로 넓힘. */
+const MOMENT_MAX = 20;
 const SCENE_TEXT_MAX = 220;
 const CLOSING_MAX = 120;
 /** 폴백 장면에 끼워넣을 persona/goal 발췌 길이. */
 const PERSONA_EXCERPT = 90;
 const GOAL_EXCERPT = 36;
+
+/**
+ * 매일 다른 "하루의 결"을 강제하기 위한 결정론적 렌즈 풀.
+ * Gemini 가 "아침에 눈을 떠 햇살을 느낀다" 류의 클리셰로 수렴하는 걸 막는 핵심 장치.
+ * uid+ymd 해시로 매일 하나가 선택돼, 같은 미래라도 날마다 다른 각도의 하루가 그려진다.
+ * (프롬프트는 영어, 출력만 사용자 언어 — 동기부여 카드와 동일한 방식.)
+ */
+const VISION_LENSES: ReadonlyArray<string> = [
+  "Zoom in on a SINGLE vivid moment where this person is recognized or trusted for the very thing they once only dreamed of — a glance, a handshake, words someone says about them.",
+  "Show the dream as utterly ORDINARY routine — the success is no longer thrilling, it's just an ordinary day. The power is in how normal, unhurried, and safe it now feels.",
+  "Center a moment with PEOPLE — someone who knew them 'before' sees how far they've come, or someone they now lead, mentor, or provide for.",
+  "Drop them into a HIGH-STAKES moment (a decision, a stage, a deadline) that they handle with calm mastery — the ease itself is the evidence of how far they've grown.",
+  "A QUIET private victory only they can feel — a number on a screen, a key turning in a door, a body that no longer aches with worry. No audience.",
+  "Foreground the PLACE — the room, city, view, or workspace they now inhabit. Let the environment itself prove the life they built.",
+  "A moment of GIVING BACK — they finally have enough to lift someone else, and feel the full weight of their journey through that single act.",
+  "A sensory moment of EARNED REST — good food, movement, sunlight, time that is finally, fully their own.",
+];
+
+/** 하루의 진입 시점을 매일 바꿔 '아침 기상' 고정 패턴을 깬다. */
+const DAY_WINDOWS: ReadonlyArray<string> = [
+  "begin in the late morning, already mid-flow (do NOT start by waking up)",
+  "begin at high noon",
+  "begin in the slow middle of the afternoon",
+  "begin at golden hour, near dusk",
+  "begin late in the evening, the day winding down",
+  "begin in the very early hours, before the rest of the world is awake",
+];
 
 interface VisionContext {
   displayName: string;
@@ -68,8 +96,12 @@ function buildVisionPrompt(opts: {
   ctx: VisionContext;
   ymd: string;
   varietySalt: string;
+  /** 오늘 하루의 각도(매일 회전) — 클리셰 수렴 방지. */
+  lens: string;
+  /** 하루의 진입 시점(매일 회전) — '아침 기상' 고정 패턴 차단. */
+  dayWindow: string;
 }): string {
-  const { ctx, ymd, varietySalt } = opts;
+  const { ctx, ymd, varietySalt, lens, dayWindow } = opts;
   const langName = geminiLanguageName(ctx.language);
   const goalsBlock =
     ctx.goals.length > 0
@@ -78,7 +110,7 @@ function buildVisionPrompt(opts: {
 
   return `You are a vivid scene writer who helps a person FEEL their future as if it is already real.
 
-Write a short, cinematic "a day in the life" of this person AFTER their future self has fully come true. Render it in present tense, first person ("I am ..."), as if they are living that ordinary day right now and can see, hear, and feel it.
+Write a short, cinematic "a day in the life" of this person AFTER their future self has fully come true. Render it in present tense, first person ("I am ..."), as if they are living that day right now and can see, hear, smell, and feel it.
 
 ## The person's future self (already achieved)
 ${ctx.futurePersona || "(they have not written their future self yet)"}
@@ -86,20 +118,28 @@ ${ctx.futurePersona || "(they have not written their future self yet)"}
 ## Goals they were walking toward (now part of this life)
 ${goalsBlock}
 
-## Today: ${ymd} (KST). Variety seed: ${varietySalt} — when this changes, imagine a DIFFERENT ordinary day (different small details, weather, order of moments) for the same future self.
+## Today's lens — OBEY THIS. It is what makes today feel different from every other day:
+${lens}
+
+## Where to enter the day
+For today, ${dayWindow}, then move naturally from there. Do NOT narrate a full sunrise-to-night arc — stay close to this window and the lens above.
+
+## Today: ${ymd} (KST). Variety seed: ${varietySalt} — when this changes, change the concrete details (objects, weather, who is present, the exact place).
 
 ## Writing rules
 - Output language: EVERY human-readable string (title, moment, text, closing) MUST be written in ${langName}.
-- First person, present tense, immersive. Concrete sensory detail (a smell, a sound, a texture, a glance) — never abstract pep talk.
-- Ground the scenes in the future self and goals above. Make it feel earned and specific, not generic luxury.
-- ${MIN_SCENES}-${MAX_SCENES} scenes that move across one day (e.g. morning, midday, evening). Each "moment" is a short time-of-day label.
-- Each scene "text": 1-3 sentences, warm and grounded.
-- "title": a short evocative line for this day (max ~20 chars in ${langName}).
+- First person, present tense, fully immersive. At least one CONCRETE sensory detail per scene (a smell, a sound, a texture, a temperature, a specific named object) — never abstract pep talk.
+- SHOW the success through specific evidence (what they see, do, hold, or are told). NEVER name the emotion directly ("proud", "happy", "grateful") — let the scene make the reader feel it.
+- Obey today's lens and entry point above. Do NOT default to "I wake up to morning light / coffee / stretching" unless the lens truly calls for it.
+- Ground every scene in the future self and goals above — earned and specific, NOT generic luxury (no stock clichés like sports cars, yachts, or champagne unless they appear in the persona).
+- ${MIN_SCENES}-${MAX_SCENES} scenes. Each "moment" is a short, specific time+place label (e.g. "3 PM, my studio" — not just "afternoon").
+- Each scene "text": 1-3 sentences, warm, grounded, concrete.
+- "title": a short evocative line for THIS particular day reflecting today's lens (max ~20 chars in ${langName}) — not a generic title reusable on any other day.
 - "closing": one present-tense first-person line that lands the feeling ("this is my life now").
 - If the future self is empty above, gently invite them (in the scenes) to write who they want to become — do NOT invent a fake life.
 
 ## Output (a single JSON object on one line, NO other text, NO markdown fences)
-{"title":"<one line>","scenes":[{"moment":"<time label>","text":"<1-3 sentences>"}],"closing":"<one line>"}`;
+{"title":"<one line>","scenes":[{"moment":"<time+place label>","text":"<1-3 sentences>"}],"closing":"<one line>"}`;
 }
 
 function clampText(value: unknown, max: number): string {
@@ -252,6 +292,14 @@ export async function ensureFutureVision(opts: {
     ? `regen-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     : ymd;
 
+  // 매일 다른 "하루의 각도(렌즈)"와 "진입 시점"을 결정론적으로 고른다.
+  //   · 비-force: uid+ymd 시드 → 같은 날엔 항상 같은 하루, 다음 날엔 다른 하루.
+  //   · force(다시 보기): 가변 시드 → 같은 날에도 매번 새로운 각도가 나온다.
+  // 두 축(렌즈·진입시점)을 서로 다른 비트에서 뽑아 조합 수를 늘린다(8×6=48가지).
+  const rotationSeed = hash32(force ? varietySalt : `${uid}:${ymd}:vision-lens`);
+  const lens = VISION_LENSES[rotationSeed % VISION_LENSES.length];
+  const dayWindow = DAY_WINDOWS[(rotationSeed >>> 8) % DAY_WINDOWS.length];
+
   let built: { title: string; scenes: FutureVisionScene[]; closing?: string };
   if (!ctx.futurePersona) {
     // futurePersona 미작성 → Gemini 호출 없이 작성 유도 비전(폴백)을 반환.
@@ -259,7 +307,7 @@ export async function ensureFutureVision(opts: {
   } else {
     try {
       const raw = await generateText(
-        buildVisionPrompt({ ctx, ymd, varietySalt }),
+        buildVisionPrompt({ ctx, ymd, varietySalt, lens, dayWindow }),
         VISION_MODEL_TOKENS,
       );
       built = parseVision(raw) ?? buildFallbackVision(ctx);

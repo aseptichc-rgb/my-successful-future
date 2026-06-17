@@ -250,7 +250,10 @@ export default function HomeDashboardPage() {
     const personaWritten = Boolean((user?.futurePersona ?? "").trim());
     setVisionLoading(true);
     let cancelled = false;
-    const unsub = onFutureVisionSnapshot(firebaseUser.uid, ymd, (v) => {
+    const unsub = onFutureVisionSnapshot(
+      firebaseUser.uid,
+      ymd,
+      (v) => {
       if (cancelled) return;
       setVision(v);
       setVisionLoading(false);
@@ -271,12 +274,20 @@ export default function HomeDashboardPage() {
             setVisionError(err instanceof Error ? err.message : String(err));
           });
       }
-    });
+      },
+      (err) => {
+        // 구독 자체가 실패(예: 규칙 미배포로 read 거부)하면 스켈레톤에 갇히지 않도록
+        // 로딩을 풀고 오류 문구를 노출한다.
+        if (cancelled) return;
+        setVisionLoading(false);
+        setVisionError(err instanceof Error ? err.message : t("futureVision.error"));
+      },
+    );
     return () => {
       cancelled = true;
       unsub();
     };
-  }, [firebaseUser, ymd, user?.futurePersona]);
+  }, [firebaseUser, ymd, user?.futurePersona, t]);
 
   const handleRegenerateFutureVision = useCallback(async () => {
     setVisionError(null);

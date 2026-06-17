@@ -473,15 +473,25 @@ export function onFutureVisionSnapshot(
   uid: string,
   ymd: string,
   callback: (v: FutureVision | null) => void,
+  onError?: (err: Error) => void,
 ): Unsubscribe {
   const db = getDbInstance();
-  return onSnapshot(doc(db, "users", uid, "futureVisions", ymd), (snap) => {
-    if (!snap.exists()) {
-      callback(null);
-      return;
-    }
-    callback(snap.data() as FutureVision);
-  });
+  return onSnapshot(
+    doc(db, "users", uid, "futureVisions", ymd),
+    (snap) => {
+      if (!snap.exists()) {
+        callback(null);
+        return;
+      }
+      callback(snap.data() as FutureVision);
+    },
+    // 권한/네트워크 오류 시 onSnapshot 은 성공 콜백을 영영 호출하지 않는다.
+    // 핸들러가 없으면 구독자가 로딩 상태에 갇혀 카드가 스켈레톤으로 멈춘다 → 반드시 신호한다.
+    (err) => {
+      console.error("[onFutureVisionSnapshot] 구독 실패:", err);
+      onError?.(err);
+    },
+  );
 }
 
 // ── 다짐 따라쓰기 오늘 체크인 여부 구독 ───────────
