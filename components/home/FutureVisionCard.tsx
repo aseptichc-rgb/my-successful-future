@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { FutureVision } from "@/types";
 import { useLanguage } from "@/lib/i18n";
 
@@ -38,12 +38,23 @@ export default function FutureVisionCard({
 }: FutureVisionCardProps) {
   const { t } = useLanguage();
   const [regenerating, setRegenerating] = useState(false);
+  // 점진적 공개: 기본은 접힘(호기심 hook 한 줄) → 탭하면 하루 전체가 펼쳐진다.
+  const [expanded, setExpanded] = useState(false);
+
+  // 새 하루(ymd 변경)가 오면 다시 접어 호기심 갭을 살린다.
+  //   재생성("또 다른 하루")은 ymd 가 그대로라 펼친 상태를 유지한다.
+  const ymd = vision?.ymd;
+  useEffect(() => {
+    setExpanded(false);
+  }, [ymd]);
 
   const handleRegenerate = useCallback(async () => {
     if (regenerating || loading) return;
     setRegenerating(true);
     try {
       await onRegenerate();
+      // 재생성한 새 하루는 바로 보여준다(다시 접지 않음).
+      setExpanded(true);
     } finally {
       setRegenerating(false);
     }
@@ -112,6 +123,27 @@ export default function FutureVisionCard({
               <div className="h-4 w-4/5 animate-pulse rounded-full bg-white/15" />
               <div className="h-4 w-5/6 animate-pulse rounded-full bg-white/15" />
             </div>
+          ) : vision && !expanded ? (
+            // ── 접힘: 호기심 한 줄(hook) + 펼쳐보기 affordance ──
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              className="block w-full text-left"
+              aria-expanded={false}
+            >
+              <p
+                className="text-[20px] font-bold leading-[28px] tracking-[-0.4px] whitespace-pre-wrap"
+                style={{ color: labelColor }}
+              >
+                {vision.hook || vision.title}
+              </p>
+              <span
+                className="mt-4 inline-flex items-center gap-1 text-[14px] font-semibold"
+                style={{ color: accentColor }}
+              >
+                {t("futureVision.reveal")} →
+              </span>
+            </button>
           ) : vision ? (
             <>
               <h3

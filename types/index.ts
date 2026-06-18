@@ -160,6 +160,8 @@ export interface FutureVisionScene {
  */
 export interface FutureVision {
   ymd: string;
+  /** 접힌 카드에 보이는 호기심 한 줄(teaser) — 결정적 장면을 암시하되 결말은 감춘다. 없을 수 있음. */
+  hook?: string;
   /** 그 하루를 요약하는 짧고 강렬한 한 줄. */
   title: string;
   /** 2~4개 시간대별 장면. */
@@ -243,6 +245,20 @@ export interface WidgetTodayProgress {
   wins: boolean;
 }
 
+/**
+ * 위젯에 띄우는 "그 꿈을 사는 하루"(미래 일상 비전) 티저.
+ * 위젯은 공간 제약이 커 전체 비전(여러 장면 + closing)을 다 담지 못하므로,
+ * "더 보고 싶게" 만드는 최소 발췌만 싣는다 — 제목 + 첫 장면 한 토막.
+ * 출처: `users/{uid}/futureVisions/{ymd}` (lib/futureVision.ts ensureFutureVision).
+ * 응답 호환성: 비전 미생성/실패 시 필드 자체를 생략 — 옛/신 클라이언트 모두 안전 폴백.
+ */
+export interface WidgetFutureVision {
+  /** 그 하루를 요약하는 짧고 강렬한 한 줄(비전 title). */
+  title: string;
+  /** 첫 장면 본문을 위젯 폭에 맞춰 트렁케이트한 한 토막(맛보기). */
+  teaser: string;
+}
+
 export interface WidgetTodayResponse {
   generatedAt: string;
   ymd: string;
@@ -262,4 +278,16 @@ export interface WidgetTodayResponse {
    * 응답 호환성: 누락 시 위젯 측 빈 배열 폴백 — 옛 클라이언트도 동작.
    */
   affirmations?: string[];
+  /**
+   * "그 꿈을 사는 하루" 비전 티저. 비전 미생성/생성 실패 시 생략된다(위젯은 해당 섹션 자연 생략).
+   */
+  futureVision?: WidgetFutureVision;
+  /**
+   * "이번 달 목표" 진척을 위젯에서 한 줄 카운트로 줄여 보여주기 위한 값.
+   * goalsAchievedCount: 오늘 `achievedGoals` 에 포함돼 달성 처리된 목표 수.
+   * goalsTotalCount: 사용자가 설정한 전체 목표 수.
+   * 응답 호환성: 누락 시 위젯이 goalsSnapshot 길이로 폴백하거나 섹션을 생략.
+   */
+  goalsAchievedCount?: number;
+  goalsTotalCount?: number;
 }

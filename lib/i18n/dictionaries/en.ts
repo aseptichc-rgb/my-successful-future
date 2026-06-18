@@ -182,6 +182,7 @@ const dict: Record<DictKey, string> = {
   "futureVision.error": "Couldn't paint your future day.",
   "futureVision.regenerate": "See another day",
   "futureVision.regenerating": "Painting another day…",
+  "futureVision.reveal": "Unfold today",
   "futureVision.empty.title": "First, picture your future self",
   "futureVision.empty.body":
     "Write a paragraph about who you want to become in 10 years, and each day I'll paint that dream-come-true day before your eyes.",

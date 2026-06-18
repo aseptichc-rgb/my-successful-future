@@ -171,6 +171,7 @@ const dict = {
   "futureVision.error": "미래 일상을 그리지 못했어요.",
   "futureVision.regenerate": "또 다른 하루 보기",
   "futureVision.regenerating": "다른 하루를 그리는 중…",
+  "futureVision.reveal": "오늘의 하루 펼쳐보기",
   "futureVision.empty.title": "먼저 ‘미래의 나’를 그려주세요",
   "futureVision.empty.body":
     "10년 후 되고 싶은 모습을 한 단락 적으면, 매일 그 꿈이 실현된 하루를 눈앞에 그려 드릴게요.",

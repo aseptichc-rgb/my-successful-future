@@ -179,6 +179,7 @@ const dict: Record<DictKey, string> = {
   "futureVision.error": "未能描绘你的未来一天。",
   "futureVision.regenerate": "看看另一天",
   "futureVision.regenerating": "正在描绘另一天…",
+  "futureVision.reveal": "展开今天的一天",
   "futureVision.empty.title": "先描绘未来的自己",
   "futureVision.empty.body":
     "写下你十年后想成为的样子,我会每天把那个梦想成真的一天描绘在你眼前。",
