@@ -270,6 +270,9 @@ export default function HomeDashboardPage() {
               const data = await res.json().catch(() => ({}));
               throw new Error((data as { error?: string }).error || "미래 일상을 만들지 못했어요.");
             }
+            // 첫 생성으로 오늘 비전 문서가 생겼으니 위젯도 같은 하루를 받도록 깨운다.
+            notifyAndroidWidgetRefresh();
+            void refreshIosWidget();
           })
           .catch((err) => {
             if (cancelled) return;
@@ -304,6 +307,10 @@ export default function HomeDashboardPage() {
       };
       if (!res.ok) throw new Error(data.error || "또 다른 하루를 그리지 못했어요.");
       if (data.vision) setVision(data.vision);
+      // 재생성으로 오늘 비전 문서가 바뀌었으니 위젯도 깨워 같은 하루를 보게 한다
+      //  (동기부여 카드 재생성과 동일 — 안 하면 위젯이 옛 비전을 들고 있어 앱과 불일치).
+      notifyAndroidWidgetRefresh();
+      void refreshIosWidget();
     } catch (err) {
       setVisionError(err instanceof Error ? err.message : String(err));
     }
