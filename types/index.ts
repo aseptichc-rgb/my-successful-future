@@ -174,6 +174,11 @@ export interface FutureVision {
   /** 동기부여 카드와 동일한 그라데이션 타입(시드만 달라 색이 겹치지 않음). */
   gradient: MotivationGradient;
   createdAt: Timestamp;
+  /**
+   * 같은 날 "또 다른 하루 보기"로 직전에 생성된 비전 제목들(최근 N개, 본인 전용).
+   * 다음 재생성 프롬프트에 "이건 피하라"로 주입해 이전 하루들과 확연히 다른 하루를 만든다.
+   */
+  recentTitles?: string[];
 }
 
 /**

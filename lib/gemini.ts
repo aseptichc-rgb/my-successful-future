@@ -20,6 +20,8 @@ const PER_ATTEMPT_TIMEOUT_MS = 6000;
  * 순간적 RPM 초과만 1회 짧게 흡수하고, 그래도 막히면 즉시 폴백.
  */
 const RETRY_DELAY_MS = 800;
+/** 기본 생성 온도 — 분석/선택형(명언 큐레이션 등) 결정적 작업용. 창작 경로는 인자로 높여 넘긴다. */
+const DEFAULT_TEMPERATURE = 0.3;
 
 export interface GeminiUsage {
   model: string;
@@ -49,12 +51,16 @@ function isRateLimit(error: unknown): boolean {
  * sleep 타이머가 6초 동안 살아 unhandled rejection 으로 떨어지는 누수가 있었다).
  * 데드라인 만료 시 GeminiTimeoutError 로 throw, 정상 응답 시 clearTimeout 으로 정리.
  */
-async function generateOnce(prompt: string, maxTokens: number): Promise<string> {
+async function generateOnce(
+  prompt: string,
+  maxTokens: number,
+  temperature: number,
+): Promise<string> {
   const model = genAI.getGenerativeModel({
     model: MODEL,
     generationConfig: {
       maxOutputTokens: maxTokens,
-      temperature: 0.3,
+      temperature,
     },
   });
 
@@ -85,12 +91,16 @@ async function generateOnce(prompt: string, maxTokens: number): Promise<string> 
  * 클라/서버 타임아웃을 넘겨 "오늘의 한 마디 = Failed to fetch" 회귀를 만들었다.
  * 폴백 명언은 Gemini 없이도 즉시 만들 수 있으므로, 오래 기다리기보다 빨리 폴백하는 게 낫다.
  */
-export async function generateText(prompt: string, maxTokens: number = 800): Promise<string> {
+export async function generateText(
+  prompt: string,
+  maxTokens: number = 800,
+  temperature: number = DEFAULT_TEMPERATURE,
+): Promise<string> {
   try {
-    return await generateOnce(prompt, maxTokens);
+    return await generateOnce(prompt, maxTokens, temperature);
   } catch (err) {
     if (!isRateLimit(err)) throw err;
     await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
-    return generateOnce(prompt, maxTokens);
+    return generateOnce(prompt, maxTokens, temperature);
   }
 }

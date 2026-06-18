@@ -35,6 +35,13 @@ const MAX_GOALS_FOR_VISION = 6;
  * (flash-lite 는 빠르므로 이 길이도 호출당 6s 타임아웃 안에 들어온다.)
  */
 const VISION_MODEL_TOKENS = 1400;
+/**
+ * 미래 비전은 "매번 확연히 다른 하루"가 핵심이라 창의 온도를 높게 잡는다(분석형 0.3 과 대비).
+ * 1.0 안팎이면 같은 persona/goals 라도 장면·소재·전개가 회마다 크게 갈린다(JSON 형식은 프롬프트가 강제).
+ */
+const VISION_TEMPERATURE = 1.0;
+/** 같은 날 직전 재생성들의 제목을 몇 개까지 "피하라" 컨텍스트로 들고 갈지(사용자 언급 "지난 5번"). */
+const RECENT_TITLES_MAX = 6;
 /** 하루를 이루는 장면 개수 범위. 너무 적으면 단조롭고 많으면 카드가 길어진다. */
 const MIN_SCENES = 2;
 const MAX_SCENES = 4;
@@ -121,6 +128,23 @@ const CAST: ReadonlyArray<string> = [
 ];
 
 /**
+ * 오늘이 어떤 "종류의 날"인가 — 가장 큰 다채로움 레버. 평범한 근무일에만 머물지 않고
+ * 휴가·창업/런칭·파티·새로운 도전 같은 대담한 장면까지 회전시킨다(사용자 요청).
+ * 단, 무슨 occasion 이든 반드시 persona/goals 의 "그 미래" 안에서 벌어지는 일이어야 한다
+ * (전혀 다른 사람의 삶을 지어내지 않도록 프롬프트 규칙으로 못 박는다).
+ */
+const OCCASIONS: ReadonlyArray<string> = [
+  "an ORDINARY working day — the dream as plain, unremarkable routine.",
+  "a VACATION / a day away — they can now afford to step out of the routine: a trip, a beach, a mountain trail, a foreign hotel window, a slow morning somewhere far from home.",
+  "a LAUNCH / FOUNDING day — they start or ship something of their very own (a venture, a studio, a product, a project, a company), the electric nerves of a new beginning built on who they've become.",
+  "a CELEBRATION — a party, a gathering, an award night, a milestone marked with people; music, a toast, a room that came together because of them.",
+  "a BOLD NEW CHALLENGE — they try something they once thought impossible or off-limits (a big stage, an unfamiliar field, a real risk) and meet it as the person they've grown into.",
+  "a day of TRAVEL FOR WORK OR WONDER — somewhere far, a different city or country they now move through with ease, the texture of an unfamiliar place.",
+  "a fully RESTORATIVE day — unhurried, time entirely their own, doing something purely for joy with nothing to prove.",
+  "a day of GIVING / LEADING — they use what they've built to lift someone else: fund something, mentor, hire, or open a door for another.",
+];
+
+/**
  * 가끔(약 4일 중 1일) 장면 대신 다른 서술 포맷으로 하루를 그려 신선함을 준다.
  * 출력 JSON 스키마(title/scenes[moment,text]/closing)는 동일하게 유지 — voice 만 바뀐다.
  * 인덱스 0("scenes")은 기본 시네마틱 장면이므로 별도 지시문 없음.
@@ -176,8 +200,12 @@ function buildVisionPrompt(opts: {
   cast: string;
   /** 비기본 서술 포맷 지시문(가끔만) — 없으면 기본 시네마틱 장면. */
   formatDirective: string | null;
+  /** 오늘이 "어떤 종류의 날"인가(회마다 회전) — 휴가·창업·파티 등 큰 틀의 변주. */
+  occasion: string;
+  /** 같은 날 직전 재생성들의 제목 — 모델에 "이건 피하라"로 줘 이전 하루와 겹치지 않게. */
+  avoidTitles: string[];
 }): string {
-  const { ctx, ymd, varietySalt, lens, dayWindow, domain, horizon, seasonWeather, cast, formatDirective } = opts;
+  const { ctx, ymd, varietySalt, lens, dayWindow, domain, horizon, seasonWeather, cast, formatDirective, occasion, avoidTitles } = opts;
   const langName = geminiLanguageName(ctx.language);
   const goalsBlock =
     ctx.goals.length > 0
@@ -186,6 +214,12 @@ function buildVisionPrompt(opts: {
   const formatBlock = formatDirective
     ? `\n## Today's FORMAT — OBEY THIS instead of plain narration:\n${formatDirective}\n`
     : "";
+  const avoidBlock =
+    avoidTitles.length > 0
+      ? `\n## AVOID repeating these — they were ALREADY generated for this person recently:\n${avoidTitles
+          .map((tt) => `- ${tt}`)
+          .join("\n")}\nMake TODAY clearly different from every one above: a different occasion, setting, activity, and people. Do NOT reuse their phrasing, titles, or signature objects.\n`
+      : "";
 
   return `You are a vivid scene writer who helps a person FEEL their future as if it is already real.
 
@@ -200,7 +234,11 @@ ${goalsBlock}
 ## Today's lens — OBEY THIS. It is what makes today feel different from every other day:
 ${lens}
 
-## Today's domain — anchor the whole day in THIS slice of life:
+## Today's occasion — the overall SHAPE of this day. LET THIS LEAD:
+${occasion}
+Whatever the occasion, it must plausibly belong to the life in the future self & goals above — bend the occasion to fit THAT life. NEVER invent a different person's life or a success unrelated to their stated future.
+
+## Today's emphasis — the thread to foreground within today's occasion:
 ${domain}
 
 ## Today's horizon — WHEN in the future this day sits:
@@ -214,14 +252,14 @@ ${cast}
 
 ## Where to enter the day
 For today, ${dayWindow}, then move naturally from there. Do NOT narrate a full sunrise-to-night arc — stay close to this window and the lens above.
-${formatBlock}
-## Today: ${ymd} (KST). Variety seed: ${varietySalt} — when this changes, change the concrete details (objects, weather, who is present, the exact place).
+${formatBlock}${avoidBlock}
+## Today: ${ymd} (KST). Variety seed: ${varietySalt} — when this changes, change EVERYTHING concrete: the occasion, the place, the activity, the people present, the objects, the weather.
 
 ## Writing rules
 - Output language: EVERY human-readable string (hook, title, moment, text, closing) MUST be written in ${langName}.
 - First person, present tense, fully immersive. At least one CONCRETE sensory detail per scene (a smell, a sound, a texture, a temperature, a specific named object) — never abstract pep talk.
 - SHOW the success through specific evidence (what they see, do, hold, or are told). NEVER name the emotion directly ("proud", "happy", "grateful") — let the scene make the reader feel it.
-- OBEY all of today's anchors above (lens, domain, horizon, weather, who is here, entry point). Do NOT default to "I wake up to morning light / coffee / stretching", and do NOT drift into a generic success cliché unrelated to today's domain.
+- OBEY all of today's anchors above (occasion, lens, emphasis, horizon, weather, who is here, entry point). Do NOT default to "I wake up to morning light / coffee / stretching", and do NOT drift into a generic success cliché unrelated to today's occasion.
 - Ground every scene in the future self and goals above — earned and specific, NOT generic luxury (no stock clichés like sports cars, yachts, or champagne unless they appear in the persona).
 - ${MIN_SCENES}-${MAX_SCENES} scenes. Each "moment" is a short, specific label (a time+place, or per today's FORMAT if given — not just "afternoon").
 - Each scene "text": 1-3 sentences, warm, grounded, concrete.
@@ -397,20 +435,34 @@ export async function ensureFutureVision(opts: {
   const { uid, ymd, force = false } = opts;
   const ref = getAdminDb().doc(`users/${uid}/futureVisions/${ymd}`);
 
-  if (!force) {
-    const existingSnap = await ref.get();
-    if (existingSnap.exists) {
-      return { vision: existingSnap.data() as FutureVision, cached: true };
-    }
+  // force 든 아니든 직전 문서를 한 번 읽는다.
+  //   · 비-force: 캐시 히트면 그대로 반환.
+  //   · force(또 다른 하루): 덮어쓰기 직전 비전의 제목들을 모아 "이건 피하라" anti-repeat
+  //     컨텍스트로 쓴다 → 직전에 그린 하루들과 확연히 다른 하루가 나온다.
+  const existingSnap = await ref.get();
+  if (!force && existingSnap.exists) {
+    return { vision: existingSnap.data() as FutureVision, cached: true };
+  }
+  let avoidTitles: string[] = [];
+  if (force && existingSnap.exists) {
+    const prev = existingSnap.data() as FutureVision;
+    const prior = Array.isArray(prev.recentTitles) ? prev.recentTitles : [];
+    avoidTitles = [...prior, prev.title]
+      .filter((tt): tt is string => typeof tt === "string" && tt.trim().length > 0)
+      .slice(-RECENT_TITLES_MAX);
   }
 
   const ctx = await fetchVisionContext(uid);
-  const gradient: MotivationGradient = pickGradient(`${uid}:${ymd}:vision`);
 
   // Gemini 가 같은 입력에 같은 답을 주는 경향이 있어, 호출마다 변하는 시드를 주입.
   const varietySalt = force
     ? `regen-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     : ymd;
+
+  // 그라데이션(카드 색)도 force 재생성마다 달라지게 해 시각적으로도 "다른 하루"임을 강조.
+  const gradient: MotivationGradient = pickGradient(
+    force ? `${uid}:${ymd}:vision:${varietySalt}` : `${uid}:${ymd}:vision`,
+  );
 
   // 매일 다른 하루를 만드는 6개 독립 회전 축을 결정론적으로 고른다.
   //   · 비-force: uid+ymd 시드 → 같은 날엔 항상 같은 하루, 다음 날엔 다른 하루.
@@ -426,6 +478,8 @@ export async function ensureFutureVision(opts: {
   const horizon = pick(TIME_HORIZONS, "horizon");
   const seasonWeather = pick(SEASON_WEATHER, "season");
   const cast = pick(CAST, "cast");
+  // 오늘이 "어떤 종류의 날"인가 — 휴가·창업·파티·새 도전 등 큰 틀의 변주(가장 큰 다채로움 레버).
+  const occasion = pick(OCCASIONS, "occasion");
   // 약 FORMAT_ODDS 일 중 1일만 비기본 포맷(문자/일기/엿들은 한마디/인벤토리)을 건다.
   const formatSeed = hash32(`${seedBase}:format`);
   const formatDirective =
@@ -454,8 +508,11 @@ export async function ensureFutureVision(opts: {
           seasonWeather,
           cast,
           formatDirective,
+          occasion,
+          avoidTitles,
         }),
         VISION_MODEL_TOKENS,
+        VISION_TEMPERATURE,
       );
       built = parseVision(raw) ?? buildFallbackVision(ctx, fallbackVariant);
     } catch (err) {
@@ -477,6 +534,15 @@ export async function ensureFutureVision(opts: {
     goalsSnapshot: ctx.goals,
     gradient,
     createdAt: Timestamp.now() as unknown as FutureVision["createdAt"],
+    // force 재생성 시에만 롤링 히스토리를 남긴다(직전 제목들 + 이번 제목, 중복 제거 후 최근 N개).
+    //  다음 "또 다른 하루"가 이 목록을 피하도록 한다. 비-force 최초 생성은 히스토리 없음.
+    ...(force
+      ? {
+          recentTitles: [...new Set([...avoidTitles, built.title].filter(Boolean))].slice(
+            -RECENT_TITLES_MAX,
+          ),
+        }
+      : {}),
   };
 
   // 동시 최초 생성 레이스 차단(동기부여 카드와 동일 전략).
