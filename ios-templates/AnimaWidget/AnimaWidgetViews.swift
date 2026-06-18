@@ -125,6 +125,52 @@ private struct ProgressRow: View {
     }
 }
 
+/// "label  n / N" 한 줄 카운트 칩. 전부 완료면 카운트를 강조색으로.
+/// "오늘의 행동 / 이번 달 목표"를 목록 대신 카운트로 줄여 보여줄 때 쓴다(공간 절약).
+private struct CountChip: View {
+    let label: String
+    let done: Int
+    let total: Int
+    var body: some View {
+        let complete = total > 0 && done >= total
+        (Text("\(label) ")
+            .foregroundColor(WidgetTheme.ink.opacity(WidgetTheme.metaOpacity))
+         + Text("\(done) / \(total)")
+            .foregroundColor(complete ? WidgetTheme.accent : WidgetTheme.ink.opacity(WidgetTheme.dimOpacity)))
+            .font(.system(.caption2, design: .monospaced))
+            .fontWeight(.medium)
+            .lineLimit(1)
+    }
+}
+
+/// "그 꿈을 사는 하루" 비전 티저 — 제목 + (옵션)한 토막 + "전체 보기 →" CTA.
+/// 전체 비전은 위젯에 다 담지 못하므로 맛보기만 노출해 앱을 탭해 전체를 보도록 유도한다.
+private struct VisionTeaser: View {
+    let vision: WidgetFutureVision
+    /// 첫 토막 노출 줄 수(0이면 제목+CTA 만 — 작은 패밀리용).
+    var teaserLines: Int = 2
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(vision.title)
+                .font(.system(.subheadline, design: .serif))
+                .italic()
+                .fontWeight(.semibold)
+                .foregroundColor(WidgetTheme.ink)
+                .lineLimit(1)
+            if teaserLines > 0 && !vision.teaser.isEmpty {
+                Text(vision.teaser)
+                    .font(.system(.footnote, design: .serif))
+                    .foregroundColor(WidgetTheme.ink.opacity(WidgetTheme.dimOpacity))
+                    .lineLimit(teaserLines)
+            }
+            Text("전체 보기  →")
+                .font(.system(.caption2, design: .monospaced))
+                .fontWeight(.medium)
+                .foregroundColor(WidgetTheme.accent)
+        }
+    }
+}
+
 /// 빈 상태(캐시 없음) — 앱 실행 유도.
 private struct EmptyContent: View {
     var compact: Bool = false
@@ -196,7 +242,13 @@ private struct MediumHomeView: View {
                         .lineLimit(1)
                     Spacer(minLength: 0)
                     Divider().background(WidgetTheme.ink.opacity(0.08))
-                    ProgressRow(progress: p)
+                    // 비전 티저가 있으면 제목+CTA(맛보기)를 띄워 전체를 보러 탭하도록 유도하고,
+                    // 없으면 기존 3가지 진척 체크 행을 보여준다. (진척 카운트는 헤더 배지에 상존.)
+                    if let vision = entry.today?.futureVision {
+                        VisionTeaser(vision: vision, teaserLines: 0)
+                    } else {
+                        ProgressRow(progress: p)
+                    }
                 }
             } else {
                 EmptyContent(compact: false)
@@ -240,14 +292,19 @@ private struct AffirmationLine: View {
 private struct LargeHomeView: View {
     let entry: AnimaEntry
 
-    /// 큰 위젯에서 노출할 다짐 최대 줄 수(레이아웃 넘침 방지).
+    /// 큰 위젯에서 노출할 다짐 최대 줄 수(레이아웃 넘침 방지). 비전 티저가 자리를 차지하면 줄인다.
     private static let maxAffirmations = 3
+    private static let maxAffirmationsWithVision = 2
 
     var body: some View {
         Group {
             if let slot = entry.today?.primarySlot {
                 let p = entry.today?.progress ?? .init(affirmation: false, actions: false, wins: false)
                 let affirmations = entry.today?.affirmations ?? []
+                let vision = entry.today?.futureVision
+                let affirmationLimit = vision != nil ? Self.maxAffirmationsWithVision : Self.maxAffirmations
+                let goalsTotal = entry.today?.goalsTotal ?? 0
+                let goalsAchieved = entry.today?.goalsAchieved ?? 0
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Wordmark()
@@ -255,17 +312,24 @@ private struct LargeHomeView: View {
                         StreakChip(streak: entry.today?.streak ?? 0)
                         ProgressBadge(progress: p)
                     }
-                    QuoteText(text: slot.text, lineLimit: 5, size: .title3)
+                    QuoteText(text: slot.text, lineLimit: 4, size: .title3)
                     Text(slot.author.uppercased())
                         .font(.system(.caption, design: .monospaced))
                         .foregroundColor(WidgetTheme.ink.opacity(WidgetTheme.metaOpacity))
                         .lineLimit(1)
 
+                    // 그 꿈을 사는 하루 — 명언 바로 아래 눈에 띄게 배치(전체를 보러 탭하게 유도).
+                    if let vision = vision {
+                        Divider().background(WidgetTheme.ink.opacity(0.08))
+                        SectionLabel(text: "그 꿈을 사는 하루")
+                        VisionTeaser(vision: vision, teaserLines: 2)
+                    }
+
                     if !affirmations.isEmpty {
                         Divider().background(WidgetTheme.ink.opacity(0.08))
                         SectionLabel(text: "오늘의 다짐")
                         VStack(alignment: .leading, spacing: 5) {
-                            ForEach(Array(affirmations.prefix(Self.maxAffirmations).enumerated()), id: \.offset) { _, line in
+                            ForEach(Array(affirmations.prefix(affirmationLimit).enumerated()), id: \.offset) { _, line in
                                 AffirmationLine(text: line)
                             }
                         }
@@ -273,7 +337,14 @@ private struct LargeHomeView: View {
 
                     Spacer(minLength: 0)
                     Divider().background(WidgetTheme.ink.opacity(0.08))
-                    ProgressRow(progress: p)
+                    // 오늘의 행동 / 이번 달 목표 — 목록 대신 "n / N" 카운트 한 줄로 축약(공간 절약).
+                    HStack {
+                        CountChip(label: "오늘의 행동", done: p.doneCount, total: WidgetProgress.total)
+                        Spacer()
+                        if goalsTotal > 0 {
+                            CountChip(label: "이번 달 목표", done: goalsAchieved, total: goalsTotal)
+                        }
+                    }
                 }
             } else {
                 EmptyContent(compact: false)

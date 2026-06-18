@@ -22,7 +22,10 @@ import {
   isValidYmd,
   todayKst,
 } from "@/lib/dailyMotivation";
+import { ensureFutureVision } from "@/lib/futureVision";
 import type {
+  FutureVision,
+  WidgetFutureVision,
   WidgetSlot,
   WidgetTodayProgress,
   WidgetTodayResponse,
@@ -35,6 +38,35 @@ const REQUIRED_WINS = 3;
 // 위젯에 실어 보낼 다짐 최대 개수 — lib/firebase.ts MAX_SUCCESS_AFFIRMATIONS 와 동기화.
 // (저장 시점에 이미 컷되지만, 옛 문서 방어를 위해 응답에서도 한 번 더 제한)
 const MAX_WIDGET_AFFIRMATIONS = 10;
+// "그 꿈을 사는 하루" 위젯 티저로 실을 첫 장면 발췌 길이. 위젯 폭에서 2줄 안에 들어오도록.
+const WIDGET_VISION_TEASER_MAX = 100;
+
+/** 위젯 1줄 카운트("n / N")로 줄여 보여줄 "오늘의 행동 / 이번 달 목표" 진척 카운트 묶음. */
+interface TodayProgressResult {
+  progress: WidgetTodayProgress;
+  goalsAchievedCount: number;
+  goalsTotalCount: number;
+}
+
+/**
+ * 미래 비전 전체에서 위젯용 티저(제목 + 한 토막)를 만든다.
+ * 발췌 본문은 "접힌 카드용 호기심 한 줄"인 hook 을 우선 쓰고, 없으면 첫 장면 본문으로 폴백한다
+ * (hook 은 결말을 감춰 더 보고 싶게 만드는 용도라 위젯 티저에 가장 적합).
+ * 제목 또는 발췌가 모두 비면 null — 위젯은 해당 섹션을 자연 생략한다.
+ */
+function buildVisionTeaser(vision: FutureVision): WidgetFutureVision | null {
+  const title = typeof vision.title === "string" ? vision.title.trim() : "";
+  const hook = typeof vision.hook === "string" ? vision.hook.trim() : "";
+  const firstScene = Array.isArray(vision.scenes) ? vision.scenes[0] : undefined;
+  const sceneText = typeof firstScene?.text === "string" ? firstScene.text.trim() : "";
+  const source = hook || sceneText;
+  if (!title || !source) return null;
+  const teaser =
+    source.length > WIDGET_VISION_TEASER_MAX
+      ? `${source.slice(0, WIDGET_VISION_TEASER_MAX).trimEnd()}…`
+      : source;
+  return { title, teaser };
+}
 
 /**
  * 홈에서 사용자가 오늘 이행한 3가지 작업의 완료 여부를 모아 반환.
@@ -46,7 +78,7 @@ async function fetchTodayProgress(
   uid: string,
   ymd: string,
   userGoals: string[] | undefined,
-): Promise<WidgetTodayProgress> {
+): Promise<TodayProgressResult> {
   const db = getAdminDb();
   const userDocRef = db.collection("users").doc(uid);
 
@@ -85,12 +117,19 @@ async function fetchTodayProgress(
     ? userGoals.map((g) => (typeof g === "string" ? g.trim() : "")).filter((g) => g.length > 0)
     : [];
   const achievedSet = new Set(entry.achievedGoals);
-  const actions = goals.length > 0 && goals.every((g) => achievedSet.has(g));
+  // 목표별 달성 카운트("이번 달 목표 n / N") — 위젯이 목록 대신 한 줄 카운트로 줄여 쓴다.
+  const goalsAchievedCount = goals.filter((g) => achievedSet.has(g)).length;
+  const goalsTotalCount = goals.length;
+  const actions = goalsTotalCount > 0 && goalsAchievedCount === goalsTotalCount;
 
   const winsFilled = entry.wins.filter((w) => w.length > 0).length;
   const wins = winsFilled >= REQUIRED_WINS;
 
-  return { affirmation, actions, wins };
+  return {
+    progress: { affirmation, actions, wins },
+    goalsAchievedCount,
+    goalsTotalCount,
+  };
 }
 
 /** KST 다음 자정의 ISO timestamp — 위젯 다음 갱신 시각 hint. */
@@ -157,7 +196,20 @@ export async function GET(request: NextRequest) {
     } catch (err) {
       console.error("[widget/today] user 문서 조회 실패:", err);
     }
-    const todayProgress = await fetchTodayProgress(me.uid, ymd, userGoals);
+    const progressResult = await fetchTodayProgress(me.uid, ymd, userGoals);
+
+    // 2-b) "그 꿈을 사는 하루" 비전 보장 + 위젯 티저 조립.
+    //   동기부여 카드(ensureMotivation)와 동일하게 force=false 로, 오늘 비전이 없으면 생성하고
+    //   이미 있으면 캐시를 그대로 읽는다(하루 1회 Gemini, 이후 0). force 경로가 아니라
+    //   enforceQuota 를 타지 않으므로 429 위험이 없다. 어떤 실패든 티저를 생략해 위젯 본문은
+    //   영향받지 않는다(비전은 보조 콘텐츠 — 없을 땐 해당 섹션만 자연 생략).
+    let futureVision: WidgetFutureVision | undefined;
+    try {
+      const { vision } = await ensureFutureVision({ uid: me.uid, ymd });
+      futureVision = buildVisionTeaser(vision) ?? undefined;
+    } catch (err) {
+      console.error("[widget/today] 미래 비전 티저 조립 실패(생략):", err);
+    }
 
     // 3) 슬롯 조립 — motivation 한 장만 노출 (홈과 동일).
     const motivationSlot: WidgetSlot = {
@@ -182,9 +234,12 @@ export async function GET(request: NextRequest) {
       currentSlotIndex: 0,
       slots: [motivationSlot],
       nextRefreshAt: nextRefreshIso(now),
-      todayProgress,
+      todayProgress: progressResult.progress,
       streakCount,
       affirmations,
+      ...(futureVision ? { futureVision } : {}),
+      goalsAchievedCount: progressResult.goalsAchievedCount,
+      goalsTotalCount: progressResult.goalsTotalCount,
     };
 
     // 캐시 정책: `_t` 쿼리(클라 측 cache-buster) 가 실려 있거나 Cache-Control: no-cache

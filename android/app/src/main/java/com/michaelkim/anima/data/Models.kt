@@ -41,6 +41,17 @@ data class WidgetTodayProgress(
     val wins: Boolean = false,
 )
 
+/**
+ * "그 꿈을 사는 하루"(미래 일상 비전) 위젯 티저.
+ * 위젯은 전체 비전을 다 담지 못해 제목 + 한 토막만 받아 "더 보고 싶게" 만든다.
+ * 백엔드가 비전을 못 만들었으면 응답에서 통째로 생략되므로 nullable 로 둔다.
+ */
+@Serializable
+data class WidgetFutureVision(
+    val title: String,
+    val teaser: String,
+)
+
 @Serializable
 data class WidgetTodayResponse(
     val generatedAt: String,
@@ -59,6 +70,16 @@ data class WidgetTodayResponse(
      * 없을 수 있어 빈 리스트 기본값. 출처: `users/{uid}.successAffirmations`.
      */
     val affirmations: List<String> = emptyList(),
+    /**
+     * "그 꿈을 사는 하루" 비전 티저. 비전 미생성/옛 응답이면 null → 위젯이 섹션을 자연 생략.
+     */
+    val futureVision: WidgetFutureVision? = null,
+    /**
+     * "이번 달 목표" 진척을 위젯 한 줄 카운트("n / N")로 줄여 보여주기 위한 값.
+     * 옛 캐시/옛 서버 응답엔 없을 수 있어 0 기본값(섹션 측에서 total 0 이면 생략).
+     */
+    val goalsAchievedCount: Int = 0,
+    val goalsTotalCount: Int = 0,
 )
 
 /** DataStore 캐시 직렬화용 — 마지막 응답 + 디스크 기록 시각. */

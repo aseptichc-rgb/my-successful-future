@@ -65,12 +65,22 @@ struct WidgetProgress: Codable {
     static let total = 3
 }
 
+/// "그 꿈을 사는 하루"(미래 일상 비전) 위젯 티저 — 제목 + 한 토막.
+/// 비전 미생성/옛 응답이면 응답에서 통째로 생략되므로 WidgetToday 에서 옵셔널로 둔다.
+struct WidgetFutureVision: Codable {
+    let title: String
+    let teaser: String
+}
+
 struct WidgetToday: Codable {
     let ymd: String?
     let slots: [WidgetSlot]?
     let todayProgress: WidgetProgress?
     let streakCount: Int?
     let affirmations: [String]?
+    let futureVision: WidgetFutureVision?
+    let goalsAchievedCount: Int?
+    let goalsTotalCount: Int?
     let generatedAt: String?
 
     /// "지금 보여야 할" 슬롯 1건(= 오늘의 동기부여 카드). 웹 /home 과 동일하게 첫 장만.
@@ -81,6 +91,10 @@ struct WidgetToday: Codable {
     }
 
     var streak: Int { max(0, streakCount ?? 0) }
+
+    /// "이번 달 목표" 한 줄 카운트용 — 옛 응답엔 없어 0 폴백(total 0 이면 섹션 생략).
+    var goalsTotal: Int { max(0, goalsTotalCount ?? 0) }
+    var goalsAchieved: Int { min(max(0, goalsAchievedCount ?? 0), goalsTotal) }
 }
 
 // MARK: - 디자인 상수 (Android WidgetUi.kt 와 통일)

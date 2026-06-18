@@ -47,11 +47,11 @@ import androidx.glance.text.FontStyle
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
-import androidx.glance.text.TextDecoration
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.michaelkim.anima.MainActivity
 import com.michaelkim.anima.R
+import com.michaelkim.anima.data.WidgetFutureVision
 import com.michaelkim.anima.data.WidgetSlot
 import com.michaelkim.anima.data.WidgetTodayProgress
 import java.time.LocalDate
@@ -62,11 +62,11 @@ import java.util.Locale
 // ────────────────────────────────────────────────────────────────────────────
 // 라벨 (홈 화면과 동기화 — lib/firebase.ts MAX_DAILY_WINS=3 / dictionaries/ko.ts)
 // ────────────────────────────────────────────────────────────────────────────
-private const val PROGRESS_LABEL_AFFIRMATION = "성공한 나에게 한 발 더"
-private const val PROGRESS_LABEL_ACTIONS = "목표를 이루기 위한 오늘의 행동"
-private const val PROGRESS_LABEL_WINS = "오늘 잘한 일 3가지"
 private const val SECTION_TODAY = "TODAY · 오늘의 행동"
 private const val SECTION_GOALS = "GOALS · 이번 달 목표"
+// "그 꿈을 사는 하루"(미래 일상 비전) 티저 섹션 — 제목+한 토막만 노출해 전체를 보러 탭하게 유도.
+private const val SECTION_VISION = "DREAM · 그 꿈을 사는 하루"
+private const val VISION_CTA = "전체 보기  →"
 // "성공한 나에게 한 발 더" 다짐 본문 섹션 — 매일 결심을 다잡도록 vow 를 그대로 노출.
 private const val SECTION_AFFIRMATIONS = "VOW · 성공한 나의 다짐"
 // 시간대별 CTA — design/Widget Directive.md §5 morning/midday/evening 패턴.
@@ -88,7 +88,6 @@ private const val EMPTY_CTA_CONNECT = "연동하기  →"
 // 시간대 컷오프 (KST 기기 시계 기준). 아침 끝/저녁 시작 시각.
 private const val HOUR_MORNING_END = 11   // 11시 전까지가 morning
 private const val HOUR_EVENING_START = 18 // 18시부터 evening
-private const val MAX_GOALS_ON_WIDGET = 3
 private const val TOTAL_DAILY_ACTIONS = 3
 // 다짐 본문 노출 개수 — "오늘의 명언" 다음으로 중요한 콘텐츠라 모든 사이즈에서 노출하되,
 // 가용 높이에 맞춰 행 수를 조절한다. 넘치는 항목은 "+N 더" 로 무음 절단(silent cap)을 피한다.
@@ -114,7 +113,6 @@ private const val ALPHA_META = 0.36f         // 메타·placeholder
 private const val ALPHA_DIM = 0.62f          // 보조 본문
 private const val ALPHA_FAINT_DIVIDER = 0.08f // hairline
 private const val ALPHA_CHECK_TODO = 0.28f   // 미완료 체크박스 stroke
-private const val ALPHA_LABEL_DONE = 0.36f   // 완료된 라벨 (strike-through 와 함께)
 private const val ALPHA_CTA_BG = 0.12f       // EmptyState "연동하기" CTA pill 배경 틴트
 
 // 사이즈
@@ -122,10 +120,8 @@ private val CARD_RADIUS = 28.dp
 private val CARD_PADDING_H = 22.dp
 private val CARD_PADDING_V = 18.dp
 private val SECTION_GAP = 14.dp
-private val ROW_GAP = 4.dp
 private val ROW_V_PADDING = 6.dp
 private val CHECK_ICON_SIZE = 18.dp
-private val CHECK_LABEL_GAP = 12.dp
 private val GOAL_NUM_WIDTH = 24.dp
 private val LOGO_SIZE = 14.dp
 private val BRAND_GAP = 7.dp
@@ -135,7 +131,7 @@ private val QUOTE_FONT_SIZE = 18.sp
 private val ATTRIBUTION_FONT_SIZE = 12.sp
 private val SECTION_HEADER_SIZE = 12.sp
 private val ROW_LABEL_SIZE = 15.sp
-private val GOAL_NUM_SIZE = 20.sp
+private val VISION_TITLE_SIZE = 16.sp
 private val META_SIZE = 13.sp
 private val FOOTER_SIZE = 12.sp
 private val BRAND_NAME_SIZE = 15.sp
@@ -156,6 +152,11 @@ fun WidgetContent(
     ymd: String?,
     streakCount: Int = 0,
     affirmations: List<String> = emptyList(),
+    // "그 꿈을 사는 하루" 비전 티저 — null 이면 해당 섹션을 자연 생략한다.
+    futureVision: WidgetFutureVision? = null,
+    // "이번 달 목표" 한 줄 카운트("n / N") — total 0 이면 섹션 생략.
+    goalsAchieved: Int = 0,
+    goalsTotal: Int = 0,
     // 네이티브 로그인 여부 — EmptyState 가 "로그인 안내" 와 "불러오는 중" 을 구분하는 데 쓴다.
     // 기본 false 로 두어 옛 호출부(테스트/프리뷰) 호환.
     isSignedIn: Boolean = false,
@@ -193,7 +194,11 @@ fun WidgetContent(
             EmptyState(ink, isSignedIn)
             return@Box
         }
-        LoadedContent(slot, progress, ymd, streakCount, affirmations, isWide, isTall, isExtraTall, isLight, ink)
+        LoadedContent(
+            slot, progress, ymd, streakCount, affirmations,
+            futureVision, goalsAchieved, goalsTotal,
+            isWide, isTall, isExtraTall, isLight, ink,
+        )
     }
 }
 
@@ -273,6 +278,9 @@ private fun LoadedContent(
     ymd: String?,
     streakCount: Int,
     affirmations: List<String>,
+    futureVision: WidgetFutureVision?,
+    goalsAchieved: Int,
+    goalsTotal: Int,
     isWide: Boolean,
     isTall: Boolean,
     isExtraTall: Boolean,
@@ -286,7 +294,7 @@ private fun LoadedContent(
     // Glance → RemoteViews 변환은 if/else 분기 안에 직접 자식이 2개 이상이면 두 번째부터
     // 통째로 누락되는 회귀가 있다(실측: 1.1.1). 그래서 모든 조건부 블록은 단일 Column 으로
     // 감싸 if 분기의 직접 자식을 1개로 유지한다. 마찬가지로 컴포저블 함수 호출(SectionHeader,
-    // ProgressList 등)도 호출 시 다중 자식이 펼쳐지므로, 함수 내부에서도 Column 으로 래핑.
+    // FutureVisionTeaser 등)도 호출 시 다중 자식이 펼쳐지므로, 함수 내부에서도 Column 으로 래핑.
     Column(modifier = GlanceModifier.fillMaxSize()) {
         // ── 1. 브랜드 헤더 ─────────────────────────────────────────────
         // 항상 노출 — 로고 + Anima 워드마크. 진척도가 있고 키가 충분하면 같은 줄 우측에 카운트.
@@ -309,37 +317,52 @@ private fun LoadedContent(
         // ── 2. 인용문 + 작가 ───────────────────────────────────────────
         QuoteBlock(slot, isWide, isTall, ink)
 
-        // ── 3. 성공한 나의 다짐 (한 발 더) ─────────────────────────────
+        // ── 3. 그 꿈을 사는 하루 (미래 비전 티저) ──────────────────────
+        // 새로 추가된 비전을 명언 바로 아래에 띄워 "전체를 보러 탭"하도록 유도한다.
+        // 공간 제약상 키가 충분한 위젯(isTall)에서만 노출 — 컴팩트는 명언 중심 유지.
+        val visionShown = futureVision != null && isTall
+        if (futureVision != null && isTall) {
+            FutureVisionTeaser(futureVision, expanded = isExtraTall, accent = accent, ink = ink)
+        }
+
+        // ── 4. 성공한 나의 다짐 (한 발 더) ─────────────────────────────
         // "오늘의 명언" 다음으로 중요한 콘텐츠 — 명언 바로 아래에 배치해 매일 눈에 띄게 한다.
         // 모든 사이즈에서 노출하되, 가용 높이에 맞춰 행 수와 머리말 표시를 조절한다.
         if (affirmations.isNotEmpty()) {
-            val maxRows = when {
+            val baseRows = when {
                 isExtraTall -> MAX_AFFIRMATIONS_ON_WIDGET
                 isTall -> MAX_AFFIRMATIONS_TALL
                 else -> MAX_AFFIRMATIONS_COMPACT
             }
+            // 비전 티저가 세로 공간을 차지하므로 다짐 행을 1개 줄여 넘침 방지(최소 1행 보장).
+            val maxRows = if (visionShown) (baseRows - 1).coerceAtLeast(1) else baseRows
             AffirmationsSection(affirmations, maxRows, expanded = isTall, accent = accent, ink = ink)
         }
 
+        // ── 5. 오늘의 행동 — 체크리스트 대신 "n / 3 완료" 카운트 한 줄로 축약 ──
+        // 사용자 요청: 공간을 비전 티저에 양보하기 위해 전체 항목 대신 완료 개수만 노출.
+        // 좁은 위젯은 기존처럼 3개 체크 아이콘(시각적 카운트)을 유지한다.
         if (progress != null) {
             Column(modifier = GlanceModifier.fillMaxWidth()) {
                 HairlineDivider(ink)
                 if (isWide && isTall) {
-                    SectionHeader(SECTION_TODAY, "$doneCount / $TOTAL_DAILY_ACTIONS", accent, ink)
-                    Spacer(GlanceModifier.height(ROW_GAP))
-                    ProgressList(progress, isLight, ink)
+                    SectionHeader(SECTION_TODAY, "$doneCount / $TOTAL_DAILY_ACTIONS 완료", accent, ink)
                 } else {
                     ProgressIconsCompact(progress, isLight, ink)
                 }
             }
         }
 
-        // ── 5. 이번 달 목표 ────────────────────────────────────────────
-        if (isExtraTall && isWide && slot.goalsSnapshot.isNotEmpty()) {
-            GoalsSection(slot.goalsSnapshot, accent, ink)
+        // ── 6. 이번 달 목표 — 목록 대신 "달성 n / 전체 N 완료" 카운트 한 줄로 축약 ──
+        // goalsTotal 0(옛 캐시/목표 미설정)이면 섹션을 자연 생략.
+        if (isExtraTall && isWide && goalsTotal > 0) {
+            Column(modifier = GlanceModifier.fillMaxWidth()) {
+                HairlineDivider(ink)
+                SectionHeader(SECTION_GOALS, "$goalsAchieved / $goalsTotal 완료", accent, ink)
+            }
         }
 
-        // ── 6. 푸터 CTA ───────────────────────────────────────────────
+        // ── 7. 푸터 CTA ───────────────────────────────────────────────
         if (isExtraTall && isWide) {
             FooterCta(allDone, ink, accent)
         }
@@ -585,42 +608,9 @@ private fun HairlineDivider(ink: Color) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// 체크리스트 — 컨테이너(pill) 제거, hairline 만으로 구획.
+// "오늘의 행동" 진척 — 좁은 위젯용 컴팩트 체크 아이콘.
+// (키 충분한 위젯은 LoadedContent 에서 "n / 3 완료" 카운트 한 줄로 축약 표시.)
 // ────────────────────────────────────────────────────────────────────────────
-@Composable
-private fun ProgressList(progress: WidgetTodayProgress, isLight: Boolean, ink: Color) {
-    // 3개 ProgressRow 를 Column 으로 감싼다 — 호출자에서 1개 자식.
-    Column(modifier = GlanceModifier.fillMaxWidth()) {
-        ProgressRow(PROGRESS_LABEL_AFFIRMATION, progress.affirmation, isLight, ink)
-        ProgressRow(PROGRESS_LABEL_ACTIONS, progress.actions, isLight, ink)
-        ProgressRow(PROGRESS_LABEL_WINS, progress.wins, isLight, ink)
-    }
-}
-
-@Composable
-private fun ProgressRow(label: String, done: Boolean, isLight: Boolean, ink: Color) {
-    Row(
-        modifier = GlanceModifier
-            .fillMaxWidth()
-            .padding(vertical = ROW_V_PADDING),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        CheckIcon(done, isLight, ink)
-        Spacer(GlanceModifier.width(CHECK_LABEL_GAP))
-        Text(
-            text = label,
-            style = TextStyle(
-                color = ColorProvider(ink.copy(alpha = if (done) ALPHA_LABEL_DONE else 1f)),
-                fontSize = ROW_LABEL_SIZE,
-                fontFamily = FontFamily.SansSerif,
-                fontWeight = if (done) FontWeight.Normal else FontWeight.Medium,
-                textDecoration = if (done) TextDecoration.LineThrough else TextDecoration.None,
-            ),
-            maxLines = 1,
-        )
-    }
-}
-
 /** 좁은 위젯: 라벨을 접고 3개 체크 아이콘만 균등 노출. */
 @Composable
 private fun ProgressIconsCompact(
@@ -664,56 +654,64 @@ private fun CheckIcon(done: Boolean, isLight: Boolean, ink: Color) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// "이번 달 목표" 섹션
-// — Glance 회귀 방지를 위해 if 분기의 직접 자식은 이 Column 하나로 유지.
-// — 진행률 bar 는 데이터(goal 별 progress)가 없으므로 생략. 데이터 추가 시 부활.
+// "그 꿈을 사는 하루" 비전 티저
+// — 전체 비전(여러 장면 + closing)은 위젯에 다 담지 못하므로 제목 + 한 토막 + "전체 보기"
+//   CTA 만 노출해 사용자가 앱을 탭해 전체를 보도록 유도한다.
+// — Glance 회귀 방지: 함수가 호출자에서 1개 자식으로 보이도록 전체를 단일 Column 으로 감싼다.
 // ────────────────────────────────────────────────────────────────────────────
 @Composable
-private fun GoalsSection(goals: List<String>, accent: Color, ink: Color) {
+private fun FutureVisionTeaser(
+    vision: WidgetFutureVision,
+    expanded: Boolean,
+    accent: Color,
+    ink: Color,
+) {
     Column(modifier = GlanceModifier.fillMaxWidth()) {
         HairlineDivider(ink)
-        SectionHeader(SECTION_GOALS, null, accent, ink)
-        goals.take(MAX_GOALS_ON_WIDGET).forEachIndexed { i, g ->
-            GoalRow(i + 1, g, accent, ink)
+        SectionHeader(SECTION_VISION, null, accent, ink)
+        // 제목 — serif italic 본문 잉크색으로 "비전의 한 줄"을 강조.
+        Text(
+            text = vision.title,
+            style = TextStyle(
+                color = ColorProvider(ink),
+                fontSize = VISION_TITLE_SIZE,
+                fontFamily = FontFamily.Serif,
+                fontStyle = FontStyle.Italic,
+                fontWeight = FontWeight.Medium,
+            ),
+            maxLines = 1,
+        )
+        // 첫 장면(또는 hook) 한 토막 — 맛보기. 키 충분(expanded)하면 2줄, 아니면 1줄로 절약.
+        if (vision.teaser.isNotBlank()) {
+            Column(modifier = GlanceModifier.fillMaxWidth()) {
+                Spacer(GlanceModifier.height(4.dp))
+                Text(
+                    text = vision.teaser,
+                    style = TextStyle(
+                        color = ColorProvider(ink.copy(alpha = ALPHA_DIM)),
+                        fontSize = ROW_LABEL_SIZE,
+                        fontFamily = FontFamily.Serif,
+                        fontStyle = FontStyle.Italic,
+                        fontWeight = FontWeight.Normal,
+                    ),
+                    maxLines = if (expanded) 2 else 1,
+                )
+            }
         }
-    }
-}
-
-@Composable
-private fun GoalRow(num: Int, title: String, accent: Color, ink: Color) {
-    Row(
-        modifier = GlanceModifier
-            .fillMaxWidth()
-            .padding(vertical = ROW_V_PADDING),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        // 번호 — serif italic accent (메모장식 "1." 평문 대비 디자인 신호 확실)
-        Box(
-            modifier = GlanceModifier.width(GOAL_NUM_WIDTH),
-            contentAlignment = Alignment.CenterStart,
-        ) {
+        // "전체 보기 →" — 위젯 전체가 이미 탭 가능하지만 "더 있다"는 명시적 신호.
+        Column(modifier = GlanceModifier.fillMaxWidth()) {
+            Spacer(GlanceModifier.height(6.dp))
             Text(
-                text = num.toString(),
+                text = VISION_CTA,
                 style = TextStyle(
                     color = ColorProvider(accent),
-                    fontSize = GOAL_NUM_SIZE,
-                    fontFamily = FontFamily.Serif,
-                    fontStyle = FontStyle.Italic,
-                    fontWeight = FontWeight.Normal,
+                    fontSize = META_SIZE,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Medium,
                 ),
                 maxLines = 1,
             )
         }
-        Text(
-            text = title,
-            style = TextStyle(
-                color = ColorProvider(ink.copy(alpha = ALPHA_DIM)),
-                fontSize = ROW_LABEL_SIZE,
-                fontFamily = FontFamily.SansSerif,
-                fontWeight = FontWeight.Normal,
-            ),
-            maxLines = 1,
-        )
     }
 }
 

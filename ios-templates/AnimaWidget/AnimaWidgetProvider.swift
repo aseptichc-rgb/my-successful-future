@@ -31,6 +31,12 @@ struct AnimaEntry: TimelineEntry {
             todayProgress: WidgetProgress(affirmation: true, actions: false, wins: false),
             streakCount: 7,
             affirmations: ["나는 약속을 지키는 사람이다."],
+            futureVision: WidgetFutureVision(
+                title: "이름이 불리는 오후",
+                teaser: "회의실 문이 열리고, 사람들이 내 이름을 부른다. 한때 꿈이었던 그 일이 지금 내 하루다."
+            ),
+            goalsAchievedCount: 1,
+            goalsTotalCount: 3,
             generatedAt: nil
         )
     )
