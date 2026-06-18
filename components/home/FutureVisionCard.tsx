@@ -183,6 +183,21 @@ export default function FutureVisionCard({
                 </p>
               )}
 
+              {/* 비전이 이미 떠 있는 상태에서 재생성이 실패(쿼터 초과/네트워크)하면
+                  과거엔 아무 변화도 오류도 없이 조용히 묻혔다 → 사용자에게 보이도록 노출. */}
+              {errorMessage && (
+                <p
+                  className="mt-4 rounded-xl px-3 py-2 text-[13px] leading-[18px] tracking-[-0.1px]"
+                  style={{
+                    color: isDark ? "rgba(255,255,255,0.96)" : "#9A3412",
+                    background: isDark ? "rgba(0,0,0,0.22)" : "rgba(216,90,48,0.10)",
+                  }}
+                  role="alert"
+                >
+                  {errorMessage}
+                </p>
+              )}
+
               <div className="mt-5 flex items-center justify-end">
                 <button
                   type="button"

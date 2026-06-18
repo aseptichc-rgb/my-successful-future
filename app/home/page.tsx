@@ -257,6 +257,8 @@ export default function HomeDashboardPage() {
       if (cancelled) return;
       setVision(v);
       setVisionLoading(false);
+      // 새 비전이 도착하면(스냅샷/재생성 성공) 직전 재생성 오류 메시지는 더 이상 유효하지 않다.
+      if (v) setVisionError(null);
       if (!v && personaWritten && ensureRequestedVisionYmdRef.current !== ymd) {
         ensureRequestedVisionYmdRef.current = ymd;
         authedFetch("/api/future-vision", {

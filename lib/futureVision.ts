@@ -27,8 +27,14 @@ import type {
 const FUTURE_PERSONA_TRUNC = 280;
 /** 비전 컨텍스트에 넣을 목표 최대 개수. 카드(3개)보다 넉넉히 잡아 하루를 풍부하게. */
 const MAX_GOALS_FOR_VISION = 6;
-/** hook + title + 여러 장면 + closing 을 한 번에 출력하므로 토큰 한도를 넉넉히. */
-const VISION_MODEL_TOKENS = 760;
+/**
+ * hook + title + 여러 장면(최대 4) + closing 을 한 번에 JSON 으로 출력한다.
+ * 한국어/중국어는 음절당 토큰 소모가 커서 760 토큰에선 정상 응답조차 JSON 이 중간에
+ * 잘려(truncate) `parseVision` 이 실패 → 매번 동일한 결정론적 폴백으로 떨어졌다.
+ * 이것이 "또 다른 하루 보기"가 안 바뀌던 핵심 원인. 4장면 정상 출력을 안전히 담도록 상향.
+ * (flash-lite 는 빠르므로 이 길이도 호출당 6s 타임아웃 안에 들어온다.)
+ */
+const VISION_MODEL_TOKENS = 1400;
 /** 하루를 이루는 장면 개수 범위. 너무 적으면 단조롭고 많으면 카드가 길어진다. */
 const MIN_SCENES = 2;
 const MAX_SCENES = 4;
@@ -343,7 +349,10 @@ const FALLBACK_VISIONS: Record<UserLanguage, FallbackCopy> = {
   },
 };
 
-function buildFallbackVision(ctx: VisionContext): {
+function buildFallbackVision(
+  ctx: VisionContext,
+  variantSeed = 0,
+): {
   hook: string;
   title: string;
   scenes: FutureVisionScene[];
@@ -361,7 +370,9 @@ function buildFallbackVision(ctx: VisionContext): {
   }
 
   const persona = ctx.futurePersona.slice(0, PERSONA_EXCERPT);
-  const firstGoal = ctx.goals.length > 0 ? ctx.goals[0].slice(0, GOAL_EXCERPT) : "";
+  // 여러 목표 중 seed 로 하나를 골라 조명 — 재생성마다 다른 목표가 낮 장면에 등장.
+  const goalIdx = ctx.goals.length > 0 ? variantSeed % ctx.goals.length : 0;
+  const firstGoal = ctx.goals.length > 0 ? ctx.goals[goalIdx].slice(0, GOAL_EXCERPT) : "";
   const scenes: FutureVisionScene[] = [
     { moment: copy.labels.morning, text: copy.morning(persona) },
     {
@@ -421,11 +432,14 @@ export async function ensureFutureVision(opts: {
     formatSeed % FORMAT_ODDS === 0
       ? FORMATS[1 + ((formatSeed >>> 4) % (FORMATS.length - 1))]
       : null;
+  // 폴백 비전도 seed 에 따라 다른 목표를 조명하도록 — Gemini 가 잠시 쉬어(폴백) 떨어져도
+  //  "또 다른 하루"가 매번 똑같이 굳지 않게 한다(force 재생성 시 seedBase 가 바뀜).
+  const fallbackVariant = hash32(`${seedBase}:fallback`);
 
   let built: { hook?: string; title: string; scenes: FutureVisionScene[]; closing?: string };
   if (!ctx.futurePersona) {
     // futurePersona 미작성 → Gemini 호출 없이 작성 유도 비전(폴백)을 반환.
-    built = buildFallbackVision(ctx);
+    built = buildFallbackVision(ctx, fallbackVariant);
   } else {
     try {
       const raw = await generateText(
@@ -443,13 +457,13 @@ export async function ensureFutureVision(opts: {
         }),
         VISION_MODEL_TOKENS,
       );
-      built = parseVision(raw) ?? buildFallbackVision(ctx);
+      built = parseVision(raw) ?? buildFallbackVision(ctx, fallbackVariant);
     } catch (err) {
       console.warn(
         "[futureVision] Gemini 실패, 결정론적 폴백 사용:",
         err instanceof Error ? err.message : err,
       );
-      built = buildFallbackVision(ctx);
+      built = buildFallbackVision(ctx, fallbackVariant);
     }
   }
 
