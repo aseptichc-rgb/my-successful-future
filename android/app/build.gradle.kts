@@ -57,8 +57,8 @@ android {
         applicationId = "com.michaelkim.anima"
         minSdk = 26
         targetSdk = 35
-        versionCode = 22
-        versionName = "0.3.0"
+        versionCode = 23
+        versionName = "0.3.1"
 
         buildConfigField("String", "ANIMA_API_BASE_URL", "\"$animaApiBaseUrl\"")
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
@@ -161,9 +161,12 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
 
     // Firebase
+    //  firebase-analytics 는 의도적으로 제외한다 — 앱은 분석 이벤트를 전혀 보내지 않으며,
+    //  Analytics SDK 가 자동 주입하는 com.google.android.gms.permission.AD_ID(광고 ID) 가
+    //  Data Safety 신고("광고 ID 미수집") 및 개인정보처리방침("제3자 분석 SDK 미사용")과 모순되기 때문.
+    //  Crashlytics 는 Analytics 없이도 독립 동작한다.
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth.ktx)
-    implementation(libs.firebase.analytics.ktx)
     implementation(libs.firebase.crashlytics.ktx)
 
     // Credential Manager (Google Sign-In)
