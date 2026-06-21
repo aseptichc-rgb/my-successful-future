@@ -14,7 +14,7 @@
 |---|---|
 | Does your app collect or share any of the required user data types? | **Yes** |
 | Is all of the user data collected by your app encrypted in transit? | **Yes** (Firebase/Vercel — TLS 1.2+) |
-| Do you provide a way for users to request that their data be deleted? | **Yes** — 앱 내 `설정 → 계정 → 계정 삭제` 및 `https://<deployed>/settings` |
+| Do you provide a way for users to request that their data be deleted? | **Yes** — 앱 내 `설정 → 계정 → 계정 삭제` 및 `https://my-successful-future.vercel.app/settings` |
 | Does your app comply with Google Play's Families Policy? | **No** (만 14세 미만 비대상) |
 
 ---
@@ -87,7 +87,7 @@
 ## 3. 개인정보 처리방침 URL
 
 ```
-https://<deployed-domain>/privacy
+https://my-successful-future.vercel.app/privacy
 ```
 
 배포 도메인이 결정되면 위 자리표시자를 실제 호스트로 갱신.

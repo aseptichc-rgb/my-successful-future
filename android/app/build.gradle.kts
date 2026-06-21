@@ -29,6 +29,26 @@ val animaLifetimeProductId: String = localProps.getProperty("ANIMA_LIFETIME_PROD
     ?: System.getenv("ANIMA_LIFETIME_PRODUCT_ID")
     ?: "anima_lifetime"
 
+// Play Store 업로드용 release 서명 자격증명.
+// 키스토어 자체와 비밀번호는 절대 VCS 에 두지 않고 local.properties 또는 환경변수로 주입한다
+// (.jks · local.properties · keystore.properties 모두 .gitignore 등록).
+// local.properties 예시:
+//   ANIMA_RELEASE_STORE_FILE=anima-upload.jks
+//   ANIMA_RELEASE_STORE_PASSWORD=<32-char random>
+//   ANIMA_RELEASE_KEY_ALIAS=anima-upload
+//   ANIMA_RELEASE_KEY_PASSWORD=<32-char random>
+// 누락되면 release 빌드가 unsigned 로 떨어져 Play Store 업로드가 거절된다.
+val releaseStoreFile: String? = localProps.getProperty("ANIMA_RELEASE_STORE_FILE")
+    ?: System.getenv("ANIMA_RELEASE_STORE_FILE")
+val releaseStorePassword: String? = localProps.getProperty("ANIMA_RELEASE_STORE_PASSWORD")
+    ?: System.getenv("ANIMA_RELEASE_STORE_PASSWORD")
+val releaseKeyAlias: String? = localProps.getProperty("ANIMA_RELEASE_KEY_ALIAS")
+    ?: System.getenv("ANIMA_RELEASE_KEY_ALIAS")
+val releaseKeyPassword: String? = localProps.getProperty("ANIMA_RELEASE_KEY_PASSWORD")
+    ?: System.getenv("ANIMA_RELEASE_KEY_PASSWORD")
+val hasReleaseSigning = listOf(releaseStoreFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword)
+    .all { !it.isNullOrBlank() }
+
 android {
     namespace = "com.michaelkim.anima"
     compileSdk = 35
@@ -45,6 +65,17 @@ android {
         buildConfigField("String", "LIFETIME_PRODUCT_ID", "\"$animaLifetimeProductId\"")
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = rootProject.file(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         debug {
             isMinifyEnabled = false
@@ -56,6 +87,13 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                // local.properties 에 자격증명이 없으면 release 빌드를 명시적으로 막아,
+                // 실수로 unsigned/debug-signed AAB 가 Play Store 에 올라가지 못하게 한다.
+                logger.warn("[anima] ANIMA_RELEASE_STORE_FILE 등 자격증명 누락 — release 빌드는 unsigned 로 떨어집니다.")
+            }
         }
     }
     compileOptions {

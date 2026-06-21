@@ -82,3 +82,14 @@ mobile-view.png
 /ios/App/build
 /ios/App/Pods
 DerivedData/
+
+# Android upload keystore — Play Store 업로드 키. 분실 시 앱 업데이트 불가하지만
+# 절대 VCS 에 올리지 않는다 (유출 시 악성 업데이트로 사용자 디바이스 공격 가능).
+# 별도 안전한 외부 백업(패스워드 매니저, 암호화 저장소) 에 복제 보관할 것.
+/android/*.jks
+/android/*.keystore
+/android/upload-keystore-credentials.txt
+/android/keystore.properties
+
+# 심사용 데모 계정 자격증명 — Play Console UI 에 직접 입력만 하고 파일은 로컬에 둔다.
+/scripts/review-account-credentials.txt
