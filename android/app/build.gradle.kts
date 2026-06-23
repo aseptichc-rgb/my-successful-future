@@ -83,6 +83,11 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            // 네이티브 디버그 기호(.so)를 AAB 에 포함시켜 Play Console 의 크래시/ANR 스택트레이스가
+            // 사람이 읽을 수 있게 디심볼화되도록 한다. (Play Console "디버그 기호 미업로드" 경고 해소)
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
