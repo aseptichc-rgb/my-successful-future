@@ -6,6 +6,9 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Play Billing — TWA 웹 결제(Digital Goods API / Payment Request)를 위한 결제 권한. -->
+    <uses-permission android:name="com.android.vending.BILLING" />
+
     <!--
       광고 ID 권한 차단 — 앱은 광고를 표시하지 않고 광고 ID 를 수집하지 않는다.
       Play services 계열 SDK 가 라이브러리 매니페스트에서 자동 병합하더라도 명시적으로 제거해
@@ -105,6 +108,43 @@
                 <data android:scheme="anima" android:host="signout" />
             </intent-filter>
         </activity>
+
+        <!--
+          TWA Play Billing 위임 — 웹 설정 페이지의 Digital Goods API/Payment Request 를
+          androidbrowserhelper:billing 가 Play Billing 으로 중계한다.
+            · AnimaDelegationService: getDigitalGoodsService(getDetails/listPurchases/acknowledge) 처리
+            · PaymentActivity: PaymentRequest(결제 시트) 처리
+            · PaymentService: IS_READY_TO_PAY 응답
+        -->
+        <service
+            android:name=".AnimaDelegationService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.support.customtabs.trusted.TRUSTED_WEB_ACTIVITY_SERVICE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </service>
+
+        <activity
+            android:name="com.google.androidbrowserhelper.playbilling.provider.PaymentActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:configChanges="keyboardHidden|keyboard|orientation|screenLayout|screenSize"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="org.chromium.intent.action.PAY" />
+            </intent-filter>
+            <meta-data
+                android:name="org.chromium.default_payment_method_name"
+                android:value="https://play.google.com/billing" />
+        </activity>
+
+        <service
+            android:name="com.google.androidbrowserhelper.playbilling.provider.PaymentService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="org.chromium.intent.action.IS_READY_TO_PAY" />
+            </intent-filter>
+        </service>
 
         <!-- Glance 위젯 리시버 -->
         <receiver

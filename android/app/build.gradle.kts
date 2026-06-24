@@ -187,4 +187,8 @@ dependencies {
 
     // Trusted Web Activity — 웹앱을 주소창 없이 전체화면으로 띄우기 위함
     implementation(libs.androidbrowserhelper)
+
+    // TWA Play Billing 위임 — 웹(설정 페이지)의 Digital Goods API/Payment Request 를
+    //  Play Billing 으로 중계(PaymentActivity/PaymentService/DigitalGoodsRequestHandler).
+    implementation(libs.androidbrowserhelper.billing)
 }

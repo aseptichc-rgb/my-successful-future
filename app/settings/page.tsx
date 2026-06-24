@@ -20,6 +20,12 @@ import {
   restoreIosPro,
   initIosPurchaseListener,
 } from "@/lib/iosPurchase";
+import {
+  isAndroidPurchaseAvailable,
+  getAndroidProPrice,
+  purchaseAndroidPro,
+  restoreAndroidPro,
+} from "@/lib/androidPurchase";
 import { readEntitlement } from "@/lib/entitlement";
 import { getAllKnownAuthorsGrouped } from "@/lib/famousQuoteCatalog";
 import AffirmationsEditor from "@/components/affirmations/AffirmationsEditor";
@@ -222,14 +228,16 @@ export default function SettingsPage() {
     if (!firebaseUser) router.replace("/login");
   }, [authLoading, firebaseUser, router]);
 
-  // iOS 결제 가용 시: 섹션 노출 + 가격/권한 상태 로드 + 외부 트랜잭션 리스너 등록.
+  // iOS(StoreKit) 또는 Android(TWA Digital Goods) 결제 가용 시: 섹션 노출 + 가격/권한 로드.
   useEffect(() => {
-    if (!isIosPurchaseAvailable()) return;
+    const iosOk = isIosPurchaseAvailable();
+    const androidOk = isAndroidPurchaseAvailable();
+    if (!iosOk && !androidOk) return;
     setShowPro(true);
-    initIosPurchaseListener();
+    if (iosOk) initIosPurchaseListener();
     let cancelled = false;
     void (async () => {
-      const price = await getIosProPrice();
+      const price = iosOk ? await getIosProPrice() : await getAndroidProPrice();
       if (!cancelled && price) setProPrice(price);
       if (!firebaseUser) return;
       try {
@@ -347,7 +355,9 @@ export default function SettingsPage() {
   const handlePurchasePro = async () => {
     setPurchasing(true);
     try {
-      const outcome = await purchaseIosPro();
+      const outcome = isIosPurchaseAvailable()
+        ? await purchaseIosPro()
+        : await purchaseAndroidPro();
       if (outcome.status === "success") {
         setProActive(true);
         window.alert("Anima Pro 구매가 완료되었습니다. 감사합니다!");
@@ -365,7 +375,9 @@ export default function SettingsPage() {
   const handleRestorePro = async () => {
     setRestoring(true);
     try {
-      const outcome = await restoreIosPro();
+      const outcome = isIosPurchaseAvailable()
+        ? await restoreIosPro()
+        : await restoreAndroidPro();
       if (outcome.status === "success") {
         setProActive(true);
         window.alert("구매를 복원했습니다.");

@@ -20,6 +20,7 @@ lifecycle = "2.8.7"
 billing = "7.1.1"
 playIntegrity = "1.4.0"
 browserHelper = "2.5.0"
+browserHelperBilling = "1.1.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -71,6 +72,8 @@ play-integrity = { module = "com.google.android.play:integrity", version.ref = "
 
 # Trusted Web Activity (전체화면 웹 진입 — 주소창 숨김)
 androidbrowserhelper = { module = "com.google.androidbrowserhelper:androidbrowserhelper", version.ref = "browserHelper" }
+# TWA Play Billing 위임 — 웹 Digital Goods API/Payment Request 를 Play Billing 으로 중계
+androidbrowserhelper-billing = { module = "com.google.androidbrowserhelper:billing", version.ref = "browserHelperBilling" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
