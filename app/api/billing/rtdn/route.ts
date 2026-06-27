@@ -29,8 +29,9 @@ import { revokeEntitlementByPurchaseToken } from "@/lib/entitlementAdmin";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const VERIFY_TOKEN = process.env.PLAY_RTDN_VERIFY_TOKEN || "";
-const EXPECTED_PACKAGE_NAME = process.env.ANDROID_PACKAGE_NAME || "";
+// 배포 환경 변수 등록 방식에 따라 앞뒤 공백/개행이 섞일 수 있어 trim 으로 정규화한다.
+const VERIFY_TOKEN = (process.env.PLAY_RTDN_VERIFY_TOKEN || "").trim();
+const EXPECTED_PACKAGE_NAME = (process.env.ANDROID_PACKAGE_NAME || "").trim();
 
 /** Google RTDN refundType. 1 = 전액 환불, 2 = 수량 기반 부분 환불. */
 const REFUND_TYPE_FULL = 1;
