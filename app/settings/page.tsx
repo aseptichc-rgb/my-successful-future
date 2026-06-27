@@ -30,6 +30,7 @@ import { readEntitlement } from "@/lib/entitlement";
 import { isAndroidApp, notifyAndroidPurchase, notifyAndroidRestore } from "@/lib/widgetBridge";
 import { getAllKnownAuthorsGrouped } from "@/lib/famousQuoteCatalog";
 import AffirmationsEditor from "@/components/affirmations/AffirmationsEditor";
+import NoticeDialog from "@/components/ui/NoticeDialog";
 import { useLanguage, LOCALE_META, SUPPORTED_LOCALES, type Locale } from "@/lib/i18n";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -255,6 +256,12 @@ export default function SettingsPage() {
   const [proPrice, setProPrice] = useState<string | null>(null);
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  // 결제/복원 결과 안내 — window.alert(TWA 에서 origin 헤더가 붙어 앱답지 않음) 대신 인앱 다이얼로그.
+  const [proNotice, setProNotice] = useState<{
+    title: string;
+    description?: string;
+    tone?: "success" | "error";
+  } | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -403,7 +410,11 @@ export default function SettingsPage() {
         const ok = firebaseUser ? await waitForNativeEntitlement(firebaseUser) : false;
         if (ok) {
           setProActive(true);
-          window.alert("Anima Pro 구매가 완료되었습니다. 감사합니다!");
+          setProNotice({
+            title: "구매 완료",
+            description: "Anima Pro 구매가 완료되었습니다. 감사합니다!",
+            tone: "success",
+          });
         }
         // 미완료(취소/대기)는 조용히 종료 — 결제됐다면 다음 진입 시 권한이 자동 반영된다.
         return;
@@ -414,11 +425,23 @@ export default function SettingsPage() {
         : await purchaseAndroidPro();
       if (outcome.status === "success") {
         setProActive(true);
-        window.alert("Anima Pro 구매가 완료되었습니다. 감사합니다!");
+        setProNotice({
+          title: "구매 완료",
+          description: "Anima Pro 구매가 완료되었습니다. 감사합니다!",
+          tone: "success",
+        });
       } else if (outcome.status === "pending") {
-        window.alert("결제가 승인 대기 중입니다. 승인되면 자동으로 적용됩니다.");
+        setProNotice({
+          title: "승인 대기 중",
+          description: "결제가 승인 대기 중입니다. 승인되면 자동으로 적용됩니다.",
+          tone: "success",
+        });
       } else if (outcome.status === "error") {
-        window.alert(outcome.message || "결제에 실패했습니다.");
+        setProNotice({
+          title: "결제 실패",
+          description: outcome.message || "결제에 실패했습니다.",
+          tone: "error",
+        });
       }
       // cancelled 는 사용자의 정상 취소 — 안내 없이 조용히 종료.
     } finally {
@@ -435,9 +458,13 @@ export default function SettingsPage() {
         const ok = firebaseUser ? await waitForNativeEntitlement(firebaseUser, { maxMs: 30_000 }) : false;
         if (ok) {
           setProActive(true);
-          window.alert("구매를 복원했습니다.");
+          setProNotice({ title: "복원 완료", description: "구매를 복원했습니다.", tone: "success" });
         } else {
-          window.alert("복원할 구매 내역이 없습니다.");
+          setProNotice({
+            title: "복원할 내역 없음",
+            description: "복원할 구매 내역이 없습니다.",
+            tone: "error",
+          });
         }
         return;
       }
@@ -447,9 +474,13 @@ export default function SettingsPage() {
         : await restoreAndroidPro();
       if (outcome.status === "success") {
         setProActive(true);
-        window.alert("구매를 복원했습니다.");
+        setProNotice({ title: "복원 완료", description: "구매를 복원했습니다.", tone: "success" });
       } else if (outcome.status === "error") {
-        window.alert(outcome.message || "복원할 구매 내역이 없습니다.");
+        setProNotice({
+          title: "복원할 내역 없음",
+          description: outcome.message || "복원할 구매 내역이 없습니다.",
+          tone: "error",
+        });
       }
     } finally {
       setRestoring(false);
@@ -888,6 +919,15 @@ export default function SettingsPage() {
           </button>
         </Sheet>
       )}
+
+      {/* ── 결제/복원 결과 안내 (window.alert 대체) ── */}
+      <NoticeDialog
+        open={proNotice !== null}
+        title={proNotice?.title ?? ""}
+        description={proNotice?.description}
+        tone={proNotice?.tone}
+        onClose={() => setProNotice(null)}
+      />
     </div>
   );
 }
