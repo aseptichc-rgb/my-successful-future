@@ -57,8 +57,8 @@ android {
         applicationId = "com.michaelkim.anima"
         minSdk = 26
         targetSdk = 35
-        versionCode = 27
-        versionName = "0.3.5"
+        versionCode = 28
+        versionName = "0.3.6"
 
         buildConfigField("String", "ANIMA_API_BASE_URL", "\"$animaApiBaseUrl\"")
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
