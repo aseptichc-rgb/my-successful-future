@@ -51,14 +51,16 @@ val hasReleaseSigning = listOf(releaseStoreFile, releaseStorePassword, releaseKe
 
 android {
     namespace = "com.michaelkim.anima"
-    compileSdk = 35
+    // androidbrowserhelper 2.7.2 가 끌어오는 androidx.browser:1.10.0 / core:1.17.0 가
+    // compileSdk 36 을 요구한다. targetSdk 는 35 로 유지해 런타임 동작 변경(권한/백그라운드 등)을 피한다.
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.michaelkim.anima"
         minSdk = 26
         targetSdk = 35
-        versionCode = 28
-        versionName = "0.3.6"
+        versionCode = 29
+        versionName = "0.3.7"
 
         buildConfigField("String", "ANIMA_API_BASE_URL", "\"$animaApiBaseUrl\"")
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")

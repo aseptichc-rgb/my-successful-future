@@ -19,7 +19,7 @@ googleId = "1.1.1"
 lifecycle = "2.8.7"
 billing = "7.1.1"
 playIntegrity = "1.4.0"
-browserHelper = "2.5.0"
+browserHelper = "2.7.2"
 browserHelperBilling = "1.1.0"
 
 [libraries]
