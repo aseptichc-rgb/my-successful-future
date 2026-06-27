@@ -27,12 +27,18 @@ import com.android.billingclient.api.PurchasesUpdatedListener
 import com.android.billingclient.api.QueryProductDetailsParams
 import com.android.billingclient.api.QueryPurchasesParams
 import com.michaelkim.anima.BuildConfig
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeout
 import kotlin.coroutines.resume
 
 object BillingRepository {
+
+    /** 결제 시트가 닫혀 PurchasesUpdatedListener 가 콜백할 때까지의 최대 대기(ms). */
+    private const val PURCHASE_RESULT_TIMEOUT_MS = 5 * 60_000L
 
     private val productId = BuildConfig.LIFETIME_PRODUCT_ID
     private val connectMutex = Mutex()
@@ -41,11 +47,17 @@ object BillingRepository {
     private var client: BillingClient? = null
     @Volatile
     private var lastPurchasesUpdate: List<Purchase> = emptyList()
+    // launchBillingFlowAndAwait 가 설치하는 1회성 대기자. 결제 콜백이 도착하면 완료된다.
+    @Volatile
+    private var pendingPurchase: CompletableDeferred<List<Purchase>>? = null
 
     private val purchasesListener = PurchasesUpdatedListener { _, purchases ->
         // 결제 콜백은 launchBillingFlow 직후 또는 외부 결제(가족 공유 등)에서도 호출됨.
         // 호출부가 즉시 결과를 보지 못해도 다음 query 에서 회수되도록 캐시.
         lastPurchasesUpdate = purchases ?: emptyList()
+        // 대기 중인 호출부가 있으면 즉시 깨운다. (취소 시엔 빈 리스트로 도착)
+        pendingPurchase?.complete(purchases ?: emptyList())
+        pendingPurchase = null
     }
 
     /**
@@ -131,6 +143,34 @@ object BillingRepository {
             result.responseCode != BillingClient.BillingResponseCode.USER_CANCELED
         ) {
             error("launchBillingFlow 실패: ${result.debugMessage}")
+        }
+    }
+
+    /**
+     * 결제 시트를 띄우고 [PurchasesUpdatedListener] 콜백(결제 완료/취소)까지 기다린다.
+     * - 정상 결제: PURCHASED 상태의 Purchase 리스트 반환.
+     * - 사용자 취소: 빈 리스트 반환(throw 아님 — 호출부가 조용히 종료).
+     * - 타임아웃: 빈 리스트 반환(콜백 유실 대비 — 이후 queryOwnedPurchases 로 봉합 가능).
+     *
+     * Digital Goods/TWA 위임 경로(clientAppUnavailable)를 우회해 네이티브에서 직접 결제하기 위한 진입점.
+     */
+    suspend fun launchBillingFlowAndAwait(
+        activity: Activity,
+        details: ProductDetails,
+    ): Result<List<Purchase>> = runCatching {
+        val waiter = CompletableDeferred<List<Purchase>>()
+        pendingPurchase = waiter
+        val launched = launchBillingFlow(activity, details)
+        // 결제 시트 자체를 못 띄운 경우(취소 코드 제외) — 대기자 정리 후 실패 전파.
+        launched.onFailure {
+            if (pendingPurchase === waiter) pendingPurchase = null
+            throw it
+        }
+        try {
+            withTimeout(PURCHASE_RESULT_TIMEOUT_MS) { waiter.await() }
+        } catch (e: TimeoutCancellationException) {
+            if (pendingPurchase === waiter) pendingPurchase = null
+            emptyList()
         }
     }
 

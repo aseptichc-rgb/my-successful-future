@@ -33,6 +33,12 @@ const REFRESH_INTENT_URL =
   "intent://widget-refresh#Intent;scheme=anima;package=com.michaelkim.anima;end";
 const SIGNOUT_INTENT_URL =
   "intent://signout#Intent;scheme=anima;package=com.michaelkim.anima;end";
+// 네이티브 Play Billing 결제 브릿지. TWA 웹 Digital Goods 위임이 Android 13+ 에서
+// clientAppUnavailable 로 깨지므로, 결제만 PurchaseBridgeActivity(네이티브 BillingClient)로 위임한다.
+const PURCHASE_INTENT_URL =
+  "intent://purchase#Intent;scheme=anima;package=com.michaelkim.anima;end";
+const RESTORE_INTENT_URL =
+  "intent://purchase?mode=restore#Intent;scheme=anima;package=com.michaelkim.anima;end";
 const DEDUP_WINDOW_MS = 1500;
 const IFRAME_CLEANUP_MS = 1000;
 
@@ -215,4 +221,29 @@ export function notifyAndroidWidgetRefresh(): void {
  */
 export function notifyAndroidSignOut(): void {
   fireIntent(SIGNOUT_INTENT_URL, "signout");
+}
+
+/**
+ * 이 세션이 안드로이드 네이티브 앱(TWA) 안에서 떠 있는지 — 결제 UI 가 네이티브 브릿지 결제를
+ * 쓸지(웹 Digital Goods 대신) 판정하는 데 쓴다. fireIntent 가 자체 가드하지만, 호출부가
+ * "결제 후 paid claim 폴링" 같은 분기를 타야 할 때 명시적으로 필요하다.
+ */
+export function isAndroidApp(): boolean {
+  return isInsideAndroidApp();
+}
+
+/**
+ * 네이티브 평생 결제 시트를 띄운다(PurchaseBridgeActivity). TWA 환경이 아니면 no-op.
+ * 결과는 서버가 paid claim 을 박는 것으로 반영되며, 호출부는 getIdToken(true) 강제 갱신으로
+ * 감지한다(브릿지가 같은 uid 에 권한을 부여하므로 별도 토큰 전달 불필요).
+ */
+export function notifyAndroidPurchase(): void {
+  fireIntent(PURCHASE_INTENT_URL, "purchase");
+}
+
+/**
+ * 네이티브 구매 복원(결제 시트 없이 보유 영수증만 서버 재검증). TWA 환경이 아니면 no-op.
+ */
+export function notifyAndroidRestore(): void {
+  fireIntent(RESTORE_INTENT_URL, "restore");
 }

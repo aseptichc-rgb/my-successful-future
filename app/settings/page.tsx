@@ -27,6 +27,7 @@ import {
   restoreAndroidPro,
 } from "@/lib/androidPurchase";
 import { readEntitlement } from "@/lib/entitlement";
+import { isAndroidApp, notifyAndroidPurchase, notifyAndroidRestore } from "@/lib/widgetBridge";
 import { getAllKnownAuthorsGrouped } from "@/lib/famousQuoteCatalog";
 import AffirmationsEditor from "@/components/affirmations/AffirmationsEditor";
 import { useLanguage, LOCALE_META, SUPPORTED_LOCALES, type Locale } from "@/lib/i18n";
@@ -41,6 +42,38 @@ import { useLanguage, LOCALE_META, SUPPORTED_LOCALES, type Locale } from "@/lib/
 
 const FUTURE_PERSONA_MAX = 500;
 const GOAL_MAX = 80;
+
+/**
+ * 네이티브 결제 브릿지(anima://purchase)는 서버가 해당 uid 에 paid claim 을 박는 것으로 완료된다.
+ * 웹은 같은 uid 이므로 getIdToken(true) 강제 갱신으로 새 claim 을 감지한다(별도 토큰 전달 불필요).
+ * 결제 시트/브릿지 동안 document 는 hidden → 복귀 시 visible 이 되므로, 복귀 후에도 권한이
+ * 안 잡히면(여러 번 폴링) 취소로 간주해 무한 대기를 막는다.
+ */
+async function waitForNativeEntitlement(
+  user: { getIdTokenResult: (force?: boolean) => Promise<{ claims: Record<string, unknown> }> },
+  { maxMs = 120_000, intervalMs = 2_500 }: { maxMs?: number; intervalMs?: number } = {},
+): Promise<boolean> {
+  const start = Date.now();
+  let sawHidden = false;
+  let pollsAfterReturn = 0;
+  while (Date.now() - start < maxMs) {
+    try {
+      const tr = await user.getIdTokenResult(true);
+      const ent = readEntitlement(tr.claims);
+      if (ent.kind === "lifetime" || ent.kind === "subscription") return true;
+    } catch {
+      // 토큰 갱신 일시 실패 — 다음 폴링에서 재시도.
+    }
+    if (typeof document !== "undefined") {
+      if (document.visibilityState === "hidden") sawHidden = true;
+      else if (sawHidden) pollsAfterReturn += 1;
+    }
+    // 결제 시트/브릿지에서 돌아왔는데(visible) 여러 번 폴링해도 권한이 없으면 취소로 간주.
+    if (sawHidden && pollsAfterReturn >= 4) return false;
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  return false;
+}
 
 /* ───── SF-Symbol-style glyphs in white on colored squares ───── */
 const G = {
@@ -228,16 +261,24 @@ export default function SettingsPage() {
     if (!firebaseUser) router.replace("/login");
   }, [authLoading, firebaseUser, router]);
 
-  // iOS(StoreKit) 또는 Android(TWA Digital Goods) 결제 가용 시: 섹션 노출 + 가격/권한 로드.
+  // iOS(StoreKit) / Android(네이티브 브릿지) 결제 가용 시: 섹션 노출 + 가격/권한 로드.
+  //  · 안드로이드는 TWA 웹 Digital Goods 위임이 Android 13+ 에서 깨지므로(clientAppUnavailable)
+  //    네이티브 브릿지 결제를 쓴다. 따라서 "앱 안(isAndroidApp)" 이기만 하면 섹션을 노출한다.
   useEffect(() => {
     const iosOk = isIosPurchaseAvailable();
-    const androidOk = isAndroidPurchaseAvailable();
-    if (!iosOk && !androidOk) return;
+    const digitalGoodsOk = isAndroidPurchaseAvailable();
+    const androidApp = isAndroidApp();
+    if (!iosOk && !androidApp && !digitalGoodsOk) return;
     setShowPro(true);
     if (iosOk) initIosPurchaseListener();
     let cancelled = false;
     void (async () => {
-      const price = iosOk ? await getIosProPrice() : await getAndroidProPrice();
+      // 가격: iOS=StoreKit, Android=Digital Goods 조회가 되면 표기(안 되면 Play 결제 시트가 가격을 보여줌).
+      const price = iosOk
+        ? await getIosProPrice()
+        : digitalGoodsOk
+          ? await getAndroidProPrice()
+          : null;
       if (!cancelled && price) setProPrice(price);
       if (!firebaseUser) return;
       try {
@@ -355,6 +396,19 @@ export default function SettingsPage() {
   const handlePurchasePro = async () => {
     setPurchasing(true);
     try {
+      // 안드로이드 앱(TWA): 웹 Digital Goods 위임이 Android 13+ 에서 깨지므로 네이티브 결제 브릿지로.
+      //  브릿지가 결제→서버검증→paid claim 부여까지 하면, 같은 uid 인 웹은 토큰 강제갱신으로 감지한다.
+      if (isAndroidApp() && !isIosPurchaseAvailable()) {
+        notifyAndroidPurchase();
+        const ok = firebaseUser ? await waitForNativeEntitlement(firebaseUser) : false;
+        if (ok) {
+          setProActive(true);
+          window.alert("Anima Pro 구매가 완료되었습니다. 감사합니다!");
+        }
+        // 미완료(취소/대기)는 조용히 종료 — 결제됐다면 다음 진입 시 권한이 자동 반영된다.
+        return;
+      }
+
       const outcome = isIosPurchaseAvailable()
         ? await purchaseIosPro()
         : await purchaseAndroidPro();
@@ -375,6 +429,19 @@ export default function SettingsPage() {
   const handleRestorePro = async () => {
     setRestoring(true);
     try {
+      // 안드로이드 앱(TWA): 네이티브 브릿지로 보유 영수증 재검증(결제 시트 없이).
+      if (isAndroidApp() && !isIosPurchaseAvailable()) {
+        notifyAndroidRestore();
+        const ok = firebaseUser ? await waitForNativeEntitlement(firebaseUser, { maxMs: 30_000 }) : false;
+        if (ok) {
+          setProActive(true);
+          window.alert("구매를 복원했습니다.");
+        } else {
+          window.alert("복원할 구매 내역이 없습니다.");
+        }
+        return;
+      }
+
       const outcome = isIosPurchaseAvailable()
         ? await restoreIosPro()
         : await restoreAndroidPro();

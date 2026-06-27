@@ -110,6 +110,28 @@
         </activity>
 
         <!--
+          anima://purchase  (옵션 ?mode=restore)
+          웹(TWA) 결제 버튼이 발화하는 네이티브 결제 브릿지. TWA 웹 Digital Goods 위임이 Android 13+
+          에서 clientAppUnavailable 로 깨지므로, 결제만 네이티브 BillingClient 로 직접 처리한다.
+          Translucent 테마(자체 UI 없이 Play 결제 시트만 위에 뜸) + noHistory 미사용
+          (결제 시트가 닫혀 콜백이 올 때까지 액티비티가 살아 있어야 함).
+          BROWSABLE 카테고리가 있어야 Chrome/Custom Tabs 안에서 발화한 intent 가 라우팅된다.
+        -->
+        <activity
+            android:name=".PurchaseBridgeActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="anima" android:host="purchase" />
+            </intent-filter>
+        </activity>
+
+        <!--
           TWA Play Billing 위임 — 웹 설정 페이지의 Digital Goods API/Payment Request 를
           androidbrowserhelper:billing 가 Play Billing 으로 중계한다.
             · AnimaDelegationService: getDigitalGoodsService(getDetails/listPurchases/acknowledge) 처리
