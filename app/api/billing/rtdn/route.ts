@@ -25,6 +25,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
 import { revokeEntitlementByPurchaseToken } from "@/lib/entitlementAdmin";
+import { notifyTelegram } from "@/lib/telegramNotify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -61,6 +62,31 @@ interface DeveloperNotification {
 /** 로그에 영수증 토큰 전체를 남기지 않는다(민감정보) — 앞 8자만 노출. */
 function maskToken(token: string): string {
   return token.length <= 8 ? "********" : `${token.slice(0, 8)}…(${token.length})`;
+}
+
+/** RTDN 코드값을 사람이 읽을 라벨로. */
+function productTypeLabel(t: number | undefined): string {
+  return t === 1 ? "구독" : t === 2 ? "일회성" : `미상(${t ?? "-"})`;
+}
+function refundTypeLabel(t: number | undefined): string {
+  return t === REFUND_TYPE_FULL ? "전액 환불" : t === 2 ? "부분 환불" : `미상(${t ?? "-"})`;
+}
+function revokeStatusLabel(status: string): string {
+  return status === "revoked"
+    ? "권한 회수 완료"
+    : status === "already_revoked"
+      ? "이미 회수됨(중복 알림)"
+      : status === "not_found"
+        ? "회수 대상 없음(미검증/탈퇴 사용자)"
+        : status;
+}
+
+/** eventTimeMillis(ms) 를 KST 사람용 문자열로. 값이 없으면 '-'. */
+function formatKst(eventTimeMillis: string | undefined): string {
+  if (!eventTimeMillis) return "-";
+  const ms = Number(eventTimeMillis);
+  if (!Number.isFinite(ms) || ms <= 0) return "-";
+  return new Date(ms).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }) + " KST";
 }
 
 /** 길이 노출 없이 상수시간 비교 — 타이밍 공격 방지. */
@@ -141,6 +167,23 @@ export async function POST(request: NextRequest) {
       `[rtdn] voided 처리: token=${maskToken(voided.purchaseToken)} ` +
         `status=${result.status} full=${isFullRefund}`,
     );
+
+    // 운영자 텔레그램 알림 — 중복 전송(already_revoked)은 스팸이 되므로 제외.
+    // 서버리스에서 응답 후 작업이 죽을 수 있어 ack 전에 await (실패해도 ack 는 진행).
+    if (result.status !== "already_revoked") {
+      await notifyTelegram(
+        [
+          "💸 환불 발생 (anima)",
+          `상태: ${revokeStatusLabel(result.status)}`,
+          result.uid ? `uid: ${result.uid}` : null,
+          voided.orderId ? `orderId: ${voided.orderId}` : null,
+          `종류: ${productTypeLabel(voided.productType)} / ${refundTypeLabel(voided.refundType)}`,
+          `시각: ${formatKst(notification.eventTimeMillis)}`,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      );
+    }
 
     // not_found(이미 탈퇴/미검증) · already_revoked(중복 전송) 모두 재시도 무의미 → ack.
     return NextResponse.json({ ok: true, status: result.status });
