@@ -300,6 +300,26 @@ const dict: Record<DictKey, string> = {
   "settings.account.deleteConfirm":
     "All your data will be permanently deleted. Type \"DELETE\" below to confirm.",
   "settings.streakLabel": "STREAK {count}",
+
+  // Anima Pro (in-app purchase)
+  "settings.pro.header": "ANIMA PRO",
+  "settings.pro.footerActive": "All features are unlocked.",
+  "settings.pro.footerInactive": "One-time purchase, lifetime access · No ads",
+  "settings.pro.active": "Anima Pro active",
+  "settings.pro.buy": "Buy lifetime access",
+  "settings.pro.processing": "Processing…",
+  "settings.pro.restore": "Restore purchase",
+  "settings.pro.restoring": "Restoring…",
+  "settings.pro.purchaseDone.title": "Purchase complete",
+  "settings.pro.purchaseDone.desc": "Your Anima Pro purchase is complete. Thank you!",
+  "settings.pro.pending.title": "Awaiting approval",
+  "settings.pro.pending.desc": "Your payment is awaiting approval. It will be applied automatically once approved.",
+  "settings.pro.purchaseFailed.title": "Payment failed",
+  "settings.pro.purchaseFailed.desc": "The payment failed.",
+  "settings.pro.restoreDone.title": "Restore complete",
+  "settings.pro.restoreDone.desc": "Your purchase has been restored.",
+  "settings.pro.restoreNone.title": "Nothing to restore",
+  "settings.pro.restoreNone.desc": "No previous purchases were found.",
 };
 
 export default dict;

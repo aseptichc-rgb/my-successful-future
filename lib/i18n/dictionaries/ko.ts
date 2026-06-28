@@ -282,6 +282,26 @@ const dict = {
   "settings.account.deleteConfirm":
     "모든 데이터가 영구 삭제됩니다. 아래에 \"삭제\"를 입력해주세요.",
   "settings.streakLabel": "연속 {count}일",
+
+  // ── Anima Pro (인앱결제) ──────────────────────────
+  "settings.pro.header": "ANIMA PRO",
+  "settings.pro.footerActive": "모든 기능이 활성화되어 있습니다.",
+  "settings.pro.footerInactive": "1회 결제로 평생 사용 · 광고 없음",
+  "settings.pro.active": "Anima Pro 이용 중",
+  "settings.pro.buy": "평생 이용권 구매",
+  "settings.pro.processing": "처리 중…",
+  "settings.pro.restore": "구매 복원",
+  "settings.pro.restoring": "복원 중…",
+  "settings.pro.purchaseDone.title": "구매 완료",
+  "settings.pro.purchaseDone.desc": "Anima Pro 구매가 완료되었습니다. 감사합니다!",
+  "settings.pro.pending.title": "승인 대기 중",
+  "settings.pro.pending.desc": "결제가 승인 대기 중입니다. 승인되면 자동으로 적용됩니다.",
+  "settings.pro.purchaseFailed.title": "결제 실패",
+  "settings.pro.purchaseFailed.desc": "결제에 실패했습니다.",
+  "settings.pro.restoreDone.title": "복원 완료",
+  "settings.pro.restoreDone.desc": "구매를 복원했습니다.",
+  "settings.pro.restoreNone.title": "복원할 내역 없음",
+  "settings.pro.restoreNone.desc": "복원할 구매 내역이 없습니다.",
 } as const;
 
 export type DictKey = keyof typeof dict;

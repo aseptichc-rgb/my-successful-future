@@ -246,6 +246,8 @@ export default function SettingsPage() {
   const [pinnedDays, setPinnedDays] = useState<number>(0);
   const [authorOpen, setAuthorOpen] = useState(false);
 
+  const [languageOpen, setLanguageOpen] = useState(false);
+
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -411,8 +413,8 @@ export default function SettingsPage() {
         if (ok) {
           setProActive(true);
           setProNotice({
-            title: "구매 완료",
-            description: "Anima Pro 구매가 완료되었습니다. 감사합니다!",
+            title: t("settings.pro.purchaseDone.title"),
+            description: t("settings.pro.purchaseDone.desc"),
             tone: "success",
           });
         }
@@ -426,20 +428,20 @@ export default function SettingsPage() {
       if (outcome.status === "success") {
         setProActive(true);
         setProNotice({
-          title: "구매 완료",
-          description: "Anima Pro 구매가 완료되었습니다. 감사합니다!",
+          title: t("settings.pro.purchaseDone.title"),
+          description: t("settings.pro.purchaseDone.desc"),
           tone: "success",
         });
       } else if (outcome.status === "pending") {
         setProNotice({
-          title: "승인 대기 중",
-          description: "결제가 승인 대기 중입니다. 승인되면 자동으로 적용됩니다.",
+          title: t("settings.pro.pending.title"),
+          description: t("settings.pro.pending.desc"),
           tone: "success",
         });
       } else if (outcome.status === "error") {
         setProNotice({
-          title: "결제 실패",
-          description: outcome.message || "결제에 실패했습니다.",
+          title: t("settings.pro.purchaseFailed.title"),
+          description: outcome.message || t("settings.pro.purchaseFailed.desc"),
           tone: "error",
         });
       }
@@ -458,11 +460,15 @@ export default function SettingsPage() {
         const ok = firebaseUser ? await waitForNativeEntitlement(firebaseUser, { maxMs: 30_000 }) : false;
         if (ok) {
           setProActive(true);
-          setProNotice({ title: "복원 완료", description: "구매를 복원했습니다.", tone: "success" });
+          setProNotice({
+            title: t("settings.pro.restoreDone.title"),
+            description: t("settings.pro.restoreDone.desc"),
+            tone: "success",
+          });
         } else {
           setProNotice({
-            title: "복원할 내역 없음",
-            description: "복원할 구매 내역이 없습니다.",
+            title: t("settings.pro.restoreNone.title"),
+            description: t("settings.pro.restoreNone.desc"),
             tone: "error",
           });
         }
@@ -474,11 +480,15 @@ export default function SettingsPage() {
         : await restoreAndroidPro();
       if (outcome.status === "success") {
         setProActive(true);
-        setProNotice({ title: "복원 완료", description: "구매를 복원했습니다.", tone: "success" });
+        setProNotice({
+          title: t("settings.pro.restoreDone.title"),
+          description: t("settings.pro.restoreDone.desc"),
+          tone: "success",
+        });
       } else if (outcome.status === "error") {
         setProNotice({
-          title: "복원할 내역 없음",
-          description: outcome.message || "복원할 구매 내역이 없습니다.",
+          title: t("settings.pro.restoreNone.title"),
+          description: outcome.message || t("settings.pro.restoreNone.desc"),
           tone: "error",
         });
       }
@@ -613,10 +623,7 @@ export default function SettingsPage() {
             glyph={G.globe}
             title={t("settings.language.header") || "언어"}
             detail={LOCALE_META[locale]?.label || locale}
-            onClick={() => {
-              const next: Locale = locale === "ko" ? "en" : "ko";
-              void handleChangeLanguage(next);
-            }}
+            onClick={() => setLanguageOpen(true)}
             isLast
           />
         </GroupedSection>
@@ -624,11 +631,11 @@ export default function SettingsPage() {
         {/* Anima Pro — iOS 인앱결제 (네이티브 플러그인이 있는 iOS 빌드에서만 노출) */}
         {showPro && (
           <GroupedSection
-            header="ANIMA PRO"
+            header={t("settings.pro.header")}
             footer={
               proActive
-                ? "모든 기능이 활성화되어 있습니다."
-                : "1회 결제로 평생 사용 · 광고 없음"
+                ? t("settings.pro.footerActive")
+                : t("settings.pro.footerInactive")
             }
           >
             {proActive ? (
@@ -640,7 +647,7 @@ export default function SettingsPage() {
                   {G.spark}
                 </div>
                 <div className="flex-1 py-[11px] text-[17px] leading-[22px] tracking-[-0.43px] text-[var(--label)]">
-                  Anima Pro 이용 중
+                  {t("settings.pro.active")}
                 </div>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34C759" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d="M5 12l5 5L20 7" />
@@ -661,7 +668,7 @@ export default function SettingsPage() {
                   {G.spark}
                 </div>
                 <div className="flex-1 py-[11px] text-[17px] leading-[22px] tracking-[-0.43px] text-[var(--soul)] font-semibold">
-                  {purchasing ? "처리 중..." : "평생 이용권 구매"}
+                  {purchasing ? t("settings.pro.processing") : t("settings.pro.buy")}
                 </div>
                 {proPrice && !purchasing && (
                   <span className="text-[17px] tracking-[-0.43px] text-[var(--label-2)]">{proPrice}</span>
@@ -686,7 +693,7 @@ export default function SettingsPage() {
                 </svg>
               </div>
               <div className="flex-1 py-[11px] text-[17px] leading-[22px] tracking-[-0.43px] text-[var(--label)]">
-                {restoring ? "복원 중..." : "구매 복원"}
+                {restoring ? t("settings.pro.restoring") : t("settings.pro.restore")}
               </div>
             </button>
           </GroupedSection>
@@ -897,6 +904,44 @@ export default function SettingsPage() {
         </Sheet>
       )}
 
+      {/* ── Language picker sheet ── */}
+      {languageOpen && (
+        <Sheet onClose={() => setLanguageOpen(false)} title={t("settings.language.header") || "언어"}>
+          <div className="mt-2 bg-[var(--bg-grouped-2)] rounded-[12px] overflow-hidden">
+            {SUPPORTED_LOCALES.map((code, i) => {
+              const isLast = i === SUPPORTED_LOCALES.length - 1;
+              const selected = locale === code;
+              const meta = LOCALE_META[code];
+              return (
+                <button
+                  key={code}
+                  type="button"
+                  disabled={languageSaving}
+                  onClick={() => {
+                    void handleChangeLanguage(code);
+                    setLanguageOpen(false);
+                  }}
+                  className={`w-full relative px-4 py-3 text-left text-[17px] flex items-center gap-3 disabled:opacity-50 ${
+                    selected ? "text-[var(--soul)] font-semibold" : "text-[var(--label)]"
+                  }`}
+                >
+                  <span aria-hidden className="text-[20px] leading-none">{meta.flag}</span>
+                  <span className="flex-1">{meta.nativeLabel}</span>
+                  {selected && (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D85A30" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 12l5 5L20 7" />
+                    </svg>
+                  )}
+                  {!isLast && (
+                    <div className="absolute bottom-0 left-4 right-0 h-[0.5px] bg-[var(--sep)]" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </Sheet>
+      )}
+
       {/* ── Delete account confirm sheet ── */}
       {deleteOpen && (
         <Sheet onClose={() => setDeleteOpen(false)} title={t("settings.account.delete") || "계정 영구 삭제"}>
@@ -945,6 +990,7 @@ function Sheet({
   title: string;
   children: React.ReactNode;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="fixed inset-0 z-50 flex flex-col">
       <button
@@ -963,7 +1009,7 @@ function Sheet({
             onClick={onClose}
             className="text-[17px] tracking-[-0.43px] text-[var(--soul)]"
           >
-            취소
+            {t("common.cancel")}
           </button>
           <span className="text-[17px] font-semibold tracking-[-0.43px] text-[var(--label)]">{title}</span>
           <div className="w-12" />

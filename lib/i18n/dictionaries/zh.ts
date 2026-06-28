@@ -294,6 +294,26 @@ const dict: Record<DictKey, string> = {
   "settings.account.deleteConfirm":
     "您的所有数据将被永久删除。请在下方输入 \"删除\" 以确认。",
   "settings.streakLabel": "连续 {count} 天",
+
+  // Anima Pro (应用内购买)
+  "settings.pro.header": "ANIMA PRO",
+  "settings.pro.footerActive": "所有功能均已解锁。",
+  "settings.pro.footerInactive": "一次付费，永久使用 · 无广告",
+  "settings.pro.active": "Anima Pro 使用中",
+  "settings.pro.buy": "购买永久使用权",
+  "settings.pro.processing": "处理中…",
+  "settings.pro.restore": "恢复购买",
+  "settings.pro.restoring": "恢复中…",
+  "settings.pro.purchaseDone.title": "购买完成",
+  "settings.pro.purchaseDone.desc": "您的 Anima Pro 购买已完成。谢谢！",
+  "settings.pro.pending.title": "等待批准",
+  "settings.pro.pending.desc": "您的付款正在等待批准。批准后将自动生效。",
+  "settings.pro.purchaseFailed.title": "支付失败",
+  "settings.pro.purchaseFailed.desc": "支付失败。",
+  "settings.pro.restoreDone.title": "恢复完成",
+  "settings.pro.restoreDone.desc": "已恢复您的购买。",
+  "settings.pro.restoreNone.title": "没有可恢复的内容",
+  "settings.pro.restoreNone.desc": "未找到以往的购买记录。",
 };
 
 export default dict;
