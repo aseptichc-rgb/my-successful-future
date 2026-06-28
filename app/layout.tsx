@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { AuthProvider } from "@/lib/auth-context";
 import LanguageBridge from "@/components/LanguageBridge";
 import KakaoScript from "@/components/KakaoScript";
-import WidgetDebugBanner from "@/components/WidgetDebugBanner";
 import "./globals.css";
 
 // 폰트는 Pretendard 단일 — globals.css 의 --font-* 체인이 CDN Pretendard 를 우선
@@ -51,8 +50,6 @@ export default function RootLayout({
         <KakaoScript />
         <AuthProvider>
           <LanguageBridge>{children}</LanguageBridge>
-          {/* [임시] iOS 위젯 데이터 공급 진단 — 원인 확정 후 제거 */}
-          <WidgetDebugBanner />
         </AuthProvider>
       </body>
     </html>

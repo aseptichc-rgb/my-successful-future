@@ -93,22 +93,6 @@ export async function refreshIosWidget(): Promise<void> {
   }
 }
 
-/**
- * [진단용] 위젯 데이터를 푸시하되 성공/실패를 호출자에게 그대로 반환한다(에러를 삼키지 않음).
- * 화면 진단 배너가 실제 실패 사유(플러그인 미등록 vs App Group 불가)를 표시하는 데 쓴다.
- */
-export async function pushWidgetDataDiagnostic(
-  data: unknown,
-): Promise<{ ok: boolean; error?: string }> {
-  if (!isIosWidgetAvailable()) return { ok: false, error: "iOS 네이티브 아님" };
-  try {
-    await WidgetBridge.setWidgetData({ json: JSON.stringify(data) });
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) };
-  }
-}
-
 /** 로그아웃 시 위젯 캐시를 비운다. 실패해도 무시. */
 export async function clearIosWidget(): Promise<void> {
   if (!isIosWidgetAvailable()) return;
