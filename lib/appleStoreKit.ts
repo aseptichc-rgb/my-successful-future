@@ -156,6 +156,42 @@ interface SignedTransactionPayload {
   environment?: "Production" | "Sandbox";
 }
 
+/** App Store Server API 가 해당 환경에 거래가 없을 때 주는 상태코드(환경 불일치 신호). */
+const HTTP_NOT_FOUND = 404;
+
+/**
+ * 조회할 Apple 호스트 결정.
+ *  - 거래 JWS 의 environment 를 1순위로 신뢰(TestFlight=Sandbox, 정식=Production).
+ *  - environment 를 모르면 APPLE_USE_SANDBOX 플래그로 폴백.
+ */
+function pickHost(env: SignedTransactionPayload["environment"]): string {
+  if (env === "Sandbox") return HOST_SANDBOX;
+  if (env === "Production") return HOST_PROD;
+  return USE_SANDBOX ? HOST_SANDBOX : HOST_PROD;
+}
+
+interface FetchedTransaction {
+  ok: boolean;
+  status: number;
+  signedTransactionInfo?: string;
+}
+
+/** Get Transaction Info 호출 — 권한 있는 transactionId 만 응답. 네트워크 결과를 정규화해 반환. */
+async function fetchSignedTransaction(
+  transactionId: string,
+  host: string,
+  jwt: string,
+): Promise<FetchedTransaction> {
+  const url = `https://${host}/inApps/v1/transactions/${encodeURIComponent(transactionId)}`;
+  const res = await fetch(url, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${jwt}` },
+  });
+  if (!res.ok) return { ok: false, status: res.status };
+  const body = (await res.json()) as { signedTransactionInfo?: string };
+  return { ok: true, status: res.status, signedTransactionInfo: body.signedTransactionInfo };
+}
+
 /**
  * App Store Server Notification V2 의 디코드된 페이로드(responseBodyV2DecodedPayload).
  * Apple 문서: https://developer.apple.com/documentation/appstoreservernotifications/responsebodyv2decodedpayload
@@ -280,40 +316,46 @@ export async function verifyAppleTransaction(
 
   try {
     let transactionId = input.transactionId?.trim();
-    // signedTransactionInfo 가 오면 JWS 서명을 한 번 검증하고 transactionId 를 추출.
-    if (!transactionId && input.signedTransactionInfo) {
+    let envFromClient: SignedTransactionPayload["environment"];
+    // 클라가 보낸 signedTransaction(JWS) 이 있으면 항상 서명을 검증하고
+    // transactionId 와 environment(Sandbox/Production) 를 추출한다.
+    // (transactionId 가 함께 와도 environment 를 읽어야 올바른 호스트를 고를 수 있다.)
+    if (input.signedTransactionInfo) {
       if (!verifyJwsSignature(input.signedTransactionInfo)) {
         return { ok: false, reason: "JWS 서명 검증 실패" };
       }
       const payload = decodeJwsPayload<SignedTransactionPayload>(
         input.signedTransactionInfo,
       );
-      transactionId = payload.transactionId;
+      if (!transactionId) transactionId = payload.transactionId;
+      envFromClient = payload.environment;
     }
     if (!transactionId) {
       return { ok: false, reason: "transactionId 누락" };
     }
 
-    // App Store Server API 의 Get Transaction Info — 권한 있는 transactionId 만 응답.
-    const host = USE_SANDBOX ? HOST_SANDBOX : HOST_PROD;
-    const url = `https://${host}/inApps/v1/transactions/${encodeURIComponent(transactionId)}`;
+    // App Store Server API 의 Get Transaction Info 로 거래를 권위 있게 확정한다.
+    // 호스트는 거래 environment 로 고르되, 환경이 어긋나 404 가 나면(예: environment 미상인
+    // transactionId-only 요청) 반대 환경으로 한 번 더 시도한다 — TestFlight(샌드박스)와
+    // 정식 출시(운영) 모두 플래그 변경 없이 자동 동작.
     const jwt = signAppleJwt();
-    const res = await fetch(url, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${jwt}` },
-    });
-    if (!res.ok) {
-      return { ok: false, reason: `Apple API ${res.status}` };
+    const primaryHost = pickHost(envFromClient);
+    let fetched = await fetchSignedTransaction(transactionId, primaryHost, jwt);
+    if (!fetched.ok && fetched.status === HTTP_NOT_FOUND) {
+      const otherHost = primaryHost === HOST_PROD ? HOST_SANDBOX : HOST_PROD;
+      fetched = await fetchSignedTransaction(transactionId, otherHost, jwt);
     }
-    const body = (await res.json()) as { signedTransactionInfo?: string };
-    if (!body.signedTransactionInfo) {
+    if (!fetched.ok) {
+      return { ok: false, reason: `Apple API ${fetched.status}` };
+    }
+    if (!fetched.signedTransactionInfo) {
       return { ok: false, reason: "signedTransactionInfo 누락" };
     }
-    if (!verifyJwsSignature(body.signedTransactionInfo)) {
+    if (!verifyJwsSignature(fetched.signedTransactionInfo)) {
       return { ok: false, reason: "Apple 응답 JWS 서명 검증 실패" };
     }
     const payload = decodeJwsPayload<SignedTransactionPayload>(
-      body.signedTransactionInfo,
+      fetched.signedTransactionInfo,
     );
 
     // 우리 앱의 영수증이 맞는지 확인.
