@@ -328,6 +328,11 @@ export default function SettingsPage() {
   }
 
   const uid = firebaseUser.uid;
+  // 계정 삭제 확인 키워드는 언어별로 다르다(예: ko "삭제", en "delete", es "eliminar", zh "删除").
+  // 안내 문구는 대문자("DELETE")로 표기될 수 있으므로 대소문자 무시 비교한다.
+  const deleteKeyword = t("settings.account.delete.confirmInputKeyword");
+  const deleteConfirmed =
+    deleteConfirmText.trim().toLowerCase() === deleteKeyword.trim().toLowerCase();
   const streakCount = user?.affirmationStreak?.count ?? 0;
   const userInitial = (user?.displayName || user?.email || "?").trim().charAt(0).toUpperCase();
   const userName = user?.displayName || user?.email?.split("@")[0] || "—";
@@ -951,13 +956,13 @@ export default function SettingsPage() {
           <input
             value={deleteConfirmText}
             onChange={(e) => setDeleteConfirmText(e.target.value)}
-            placeholder="삭제"
+            placeholder={deleteKeyword}
             className="w-full mt-3 rounded-[12px] border border-[var(--sep)] bg-[var(--bg-grouped-2)] px-4 py-3 text-[17px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none focus:border-[#FF3B30]"
           />
           <button
             type="button"
             onClick={handleDeleteAccount}
-            disabled={deleteConfirmText.trim() !== "삭제" || deleting}
+            disabled={!deleteConfirmed || deleting}
             className="w-full mt-4 h-[50px] rounded-[12px] bg-[#FF3B30] text-white text-[17px] font-semibold disabled:opacity-30"
           >
             {deleting ? t("common.deleting") || "삭제하는 중..." : t("settings.account.delete") || "계정 영구 삭제"}
