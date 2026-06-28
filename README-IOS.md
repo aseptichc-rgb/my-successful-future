@@ -324,8 +324,14 @@ npm run ios:assets     # = capacitor-assets generate --ios
 ## 9. 출시 후 운영
 
 - **결제 환불**: Apple Server-to-Server Notifications V2 webhook 을
-  `POST /api/apple-webhook` 으로 받아 `ent` claim 을 무효화한다.
-  (이번 세션 범위 밖 — 별도 PR 로 추가 예정.)
+  `POST /api/apple-webhook` 으로 받아 `ent` claim 을 무효화한다. **구현 완료.**
+  - App Store Connect → 앱 → 일반 정보 → **App Store Server Notifications** 의
+    Production / Sandbox URL 에 `https://<배포도메인>/api/apple-webhook` 등록(버전 **V2**).
+  - 인증은 공유 토큰이 아니라 Apple 서명 JWS 검증 — 추가 비밀/환경변수 불필요
+    (`APPLE_BUNDLE_ID` 만 일치하면 됨, §0-4 에서 이미 설정).
+  - `REFUND`/`REVOKE` 수신 시 거래의 `originalTransactionId` 로 소유자를 찾아 권한 회수 +
+    운영자 텔레그램 알림(`TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID` 설정 시).
+  - 검증: App Store Connect 에서 **Request a Test Notification** → 200 ack 확인.
 - **iOS / Android 백엔드 통일**: Next.js 코드는 단일 소스. `ent.platform` 만 다르고
   나머지 로직은 동일.
 - **iOS 만 다른 가격**: Apple 수수료 (30%, 소규모 개발자 15%) 차이 흡수 결정 — 동일 가격

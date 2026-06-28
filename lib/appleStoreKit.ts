@@ -149,8 +149,116 @@ interface SignedTransactionPayload {
   purchaseDate?: number;
   expiresDate?: number;
   revocationDate?: number;
+  /** 환불 사유 코드. 0 = 의도치 않은 구매(앱 이슈 등), 1 = 기타. */
+  revocationReason?: number;
   type?: string;
   environment?: "Production" | "Sandbox";
+}
+
+/**
+ * App Store Server Notification V2 의 디코드된 페이로드(responseBodyV2DecodedPayload).
+ * Apple 문서: https://developer.apple.com/documentation/appstoreservernotifications/responsebodyv2decodedpayload
+ */
+interface AppleNotificationPayload {
+  notificationType?: string;
+  subtype?: string;
+  notificationUUID?: string;
+  version?: string;
+  signedDate?: number;
+  data?: {
+    appAppleId?: number;
+    bundleId?: string;
+    bundleVersion?: string;
+    environment?: "Production" | "Sandbox";
+    /** 거래 정보 JWS — REFUND/REVOKE 등 거래 관련 알림에 존재. */
+    signedTransactionInfo?: string;
+    /** 갱신 정보 JWS — 구독 갱신 관련 알림에 존재. */
+    signedRenewalInfo?: string;
+  };
+}
+
+export interface AppleNotificationResult {
+  ok: boolean;
+  reason?: string;
+  /** 알림 종류 (REFUND, REVOKE, DID_RENEW, TEST 등). */
+  notificationType?: string;
+  subtype?: string;
+  notificationUUID?: string;
+  environment?: "Production" | "Sandbox";
+  bundleId?: string;
+  /** 거래 정보 — signedTransactionInfo 가 있을 때만 존재. */
+  transaction?: {
+    originalTransactionId?: string;
+    transactionId?: string;
+    productId?: string;
+    revocationDate?: number;
+    revocationReason?: number;
+  };
+  signedDate?: number;
+}
+
+/**
+ * App Store Server Notification V2 의 signedPayload 를 검증·디코드한다.
+ *
+ * 이 알림은 Apple → 우리 서버로 직접 푸시되며, 인증은 공유 토큰이 아니라 Apple 이 서명한
+ * JWS 그 자체다. 따라서:
+ *   1) 바깥 알림 JWS 의 서명을 검증 (위조 차단)
+ *   2) data.signedTransactionInfo(거래 JWS) 가 있으면 그 서명도 별도 검증 (이중 서명)
+ *   3) 두 페이로드의 bundleId 가 우리 앱과 일치하는지 확인 (타 앱 알림 차단)
+ *
+ * 주의: verifyJwsSignature 는 leaf 인증서 서명만 검증한다. Apple Root CA 까지의 체인 신뢰는
+ * 운영 강화 시 별도 추가 권장(verify-apple 와 동일한 수준의 한계).
+ */
+export function verifyAppleNotification(signedPayload: string): AppleNotificationResult {
+  try {
+    const sp = (signedPayload || "").trim();
+    if (!sp) return { ok: false, reason: "signedPayload 누락" };
+
+    // 1) 바깥 알림 JWS 서명 검증.
+    if (!verifyJwsSignature(sp)) {
+      return { ok: false, reason: "알림 JWS 서명 검증 실패" };
+    }
+    const payload = decodeJwsPayload<AppleNotificationPayload>(sp);
+    const data = payload.data;
+
+    // 3-a) 알림 레벨 bundleId 검증.
+    if (data?.bundleId && data.bundleId !== BUNDLE_ID) {
+      return { ok: false, reason: `bundleId 불일치: ${data.bundleId}` };
+    }
+
+    // 2) 거래 JWS 가 있으면 서명·bundleId 를 한 번 더 검증하고 디코드.
+    let transaction: AppleNotificationResult["transaction"];
+    if (data?.signedTransactionInfo) {
+      if (!verifyJwsSignature(data.signedTransactionInfo)) {
+        return { ok: false, reason: "거래 JWS 서명 검증 실패" };
+      }
+      const tx = decodeJwsPayload<SignedTransactionPayload>(data.signedTransactionInfo);
+      if (tx.bundleId && tx.bundleId !== BUNDLE_ID) {
+        return { ok: false, reason: `거래 bundleId 불일치: ${tx.bundleId}` };
+      }
+      transaction = {
+        originalTransactionId: tx.originalTransactionId,
+        transactionId: tx.transactionId,
+        productId: tx.productId,
+        revocationDate: tx.revocationDate,
+        revocationReason: tx.revocationReason,
+      };
+    }
+
+    return {
+      ok: true,
+      notificationType: payload.notificationType,
+      subtype: payload.subtype,
+      notificationUUID: payload.notificationUUID,
+      environment: data?.environment,
+      bundleId: data?.bundleId,
+      transaction,
+      signedDate: payload.signedDate,
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, reason: `알림 검증 예외: ${msg}` };
+  }
 }
 
 /**

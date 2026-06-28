@@ -1,15 +1,17 @@
 /**
  * 서버 측 권한 회수(revoke) 헬퍼 — 환불/취소/차지백 시 결제 권한을 거둬들인다.
  *
- * /api/entitlement/verify 가 부여한 것의 정확한 역연산:
- *   1) entitlements/{uid} 에 저장된 purchaseToken 으로 소유자를 역추적
+ * verify(android) / verify-apple(ios) 가 부여한 것의 정확한 역연산:
+ *   1) entitlements/{uid} 에 저장된 영수증 식별자로 소유자를 역추적
+ *      - Android RTDN  : purchaseToken
+ *      - Apple S2S V2  : originalTransactionId
  *   2) Firebase custom claim 에서 결제 관련 키(paid/productId/purchaseTime/ent)만 제거
  *      (trialEndsAt 등 무관 claim 은 보존)
  *   3) 기존 ID 토큰(최대 1h)이 paid=true 를 들고 있으므로 refresh token 을 강제 만료 —
  *      다음 토큰 갱신부터 무료 사용자로 떨어진다.
  *   4) entitlements/{uid} 에 회수 사실을 감사 로그로 남김
  *
- * RTDN 웹훅(/api/billing/rtdn)과 향후 운영자 수동 회수가 공유한다.
+ * RTDN 웹훅(/api/billing/rtdn) · Apple 웹훅(/api/apple-webhook) · 향후 운영자 수동 회수가 공유한다.
  */
 import { FieldValue } from "firebase-admin/firestore";
 import { getAdminAuth, getAdminDb } from "./firebase-admin";
@@ -39,25 +41,22 @@ function isUserNotFound(err: unknown): boolean {
 }
 
 /**
- * purchaseToken 으로 소유자를 찾아 결제 권한을 회수한다. 멱등 — 이미 회수된 건은
- * already_revoked 로 즉시 반환하고 재처리하지 않는다.
- *
- * @param purchaseToken Google/Apple 영수증 토큰 (verify 시 entitlements 에 저장된 값)
- * @param reason        감사 로그에 남길 회수 사유 (예: "voided_purchase")
- * @param meta          감사 로그에 함께 남길 부가 정보 (refundType, orderId 등)
+ * entitlements 의 특정 필드값으로 단일 소유자 문서를 찾아 회수를 수행하는 공통 코어.
+ * purchaseToken(Android) / originalTransactionId(Apple) 양쪽이 공유한다 (DRY).
  */
-export async function revokeEntitlementByPurchaseToken(
-  purchaseToken: string,
+async function revokeEntitlementByField(
+  field: "purchaseToken" | "originalTransactionId",
+  value: string,
   reason: string,
   meta?: Record<string, unknown>,
 ): Promise<RevokeResult> {
-  const token = (purchaseToken || "").trim();
-  if (!token) return { status: "not_found" };
+  const trimmed = (value || "").trim();
+  if (!trimmed) return { status: "not_found" };
 
   const db = getAdminDb();
   const snap = await db
     .collection("entitlements")
-    .where("purchaseToken", "==", token)
+    .where(field, "==", trimmed)
     .limit(1)
     .get();
   if (snap.empty) return { status: "not_found" };
@@ -93,4 +92,41 @@ export async function revokeEntitlementByPurchaseToken(
   );
 
   return { status: "revoked", uid };
+}
+
+/**
+ * purchaseToken(Google Play) 으로 소유자를 찾아 결제 권한을 회수한다. 멱등 — 이미 회수된
+ * 건은 already_revoked 로 즉시 반환하고 재처리하지 않는다.
+ *
+ * @param purchaseToken Google 영수증 토큰 (verify 시 entitlements 에 저장된 값)
+ * @param reason        감사 로그에 남길 회수 사유 (예: "voided_purchase")
+ * @param meta          감사 로그에 함께 남길 부가 정보 (refundType, orderId 등)
+ */
+export function revokeEntitlementByPurchaseToken(
+  purchaseToken: string,
+  reason: string,
+  meta?: Record<string, unknown>,
+): Promise<RevokeResult> {
+  return revokeEntitlementByField("purchaseToken", purchaseToken, reason, meta);
+}
+
+/**
+ * originalTransactionId(Apple) 로 소유자를 찾아 결제 권한을 회수한다. 멱등.
+ * verify-apple 가 entitlements/{uid}.originalTransactionId 로 저장한 값을 키로 사용한다.
+ *
+ * @param originalTransactionId Apple 영수증의 영구 식별자 (S2S 알림의 거래 정보에서 추출)
+ * @param reason                감사 로그에 남길 회수 사유 (예: "apple_refund")
+ * @param meta                  감사 로그에 함께 남길 부가 정보 (notificationType 등)
+ */
+export function revokeEntitlementByOriginalTransactionId(
+  originalTransactionId: string,
+  reason: string,
+  meta?: Record<string, unknown>,
+): Promise<RevokeResult> {
+  return revokeEntitlementByField(
+    "originalTransactionId",
+    originalTransactionId,
+    reason,
+    meta,
+  );
 }
