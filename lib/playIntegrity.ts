@@ -12,6 +12,7 @@
  *   PLAY_INTEGRITY_DEV_BYPASS=true  : 검증 스킵 (베타/로컬 테스트 용)
  */
 import { google } from "googleapis";
+import { resolveDevBypass } from "@/lib/devBypass";
 
 export interface IntegrityVerifyResult {
   ok: boolean;
@@ -31,7 +32,7 @@ export interface VerifyIntegrityInput {
   expectedNonce?: string;
 }
 
-const DEV_BYPASS = process.env.PLAY_INTEGRITY_DEV_BYPASS === "true";
+const DEV_BYPASS = resolveDevBypass("PLAY_INTEGRITY_DEV_BYPASS");
 
 let cachedIntegrity: ReturnType<typeof google.playintegrity> | null = null;
 

@@ -13,6 +13,7 @@
  *   PLAY_BILLING_DEV_BYPASS=true  : 검증을 스킵하고 항상 ok 반환 (베타·로컬 테스트 용)
  */
 import { google } from "googleapis";
+import { resolveDevBypass } from "@/lib/devBypass";
 
 export interface PurchaseVerifyResult {
   ok: boolean;
@@ -32,7 +33,7 @@ export interface VerifyPurchaseInput {
   purchaseToken: string;
 }
 
-const DEV_BYPASS = process.env.PLAY_BILLING_DEV_BYPASS === "true";
+const DEV_BYPASS = resolveDevBypass("PLAY_BILLING_DEV_BYPASS");
 
 let cachedPublisher: ReturnType<typeof google.androidpublisher> | null = null;
 

@@ -26,8 +26,9 @@
  *   APPLE_STOREKIT_DEV_BYPASS  : 검증 스킵 (베타·로컬). 운영에서는 절대 사용 금지.
  */
 import { createSign, createPublicKey, createVerify } from "node:crypto";
+import { resolveDevBypass } from "@/lib/devBypass";
 
-const DEV_BYPASS = process.env.APPLE_STOREKIT_DEV_BYPASS === "true";
+const DEV_BYPASS = resolveDevBypass("APPLE_STOREKIT_DEV_BYPASS");
 const USE_SANDBOX = process.env.APPLE_USE_SANDBOX === "true";
 const BUNDLE_ID = process.env.APPLE_BUNDLE_ID || "com.michaelkim.anima";
 
