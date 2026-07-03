@@ -99,7 +99,7 @@ class QuoteWidget : GlanceAppWidget() {
      * 기본 구현은 예외를 다시 던져 앱을 종료시킬 수 있다 — 여기서는 Crashlytics 비치명 보고 후
      * 로딩 레이아웃으로 폴백해, 사용자에겐 "위젯이 잠시 로딩 상태"로만 보이게 한다.
      */
-    override suspend fun onCompositionError(
+    override fun onCompositionError(
         context: Context,
         glanceId: GlanceId,
         appWidgetId: Int,
