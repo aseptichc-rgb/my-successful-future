@@ -12,6 +12,11 @@
  *  - NoDisplay 테마 + noHistory — TWA 위에 어떤 UI 도 그리지 않아 시각적 인터럽트 0.
  *    [AuthBridgeActivity] · [WidgetRefreshBridgeActivity] 와 동일한 패턴.
  *
+ * finish() 타이밍 (중요 — 크래시 회귀 방지):
+ *  - Theme.NoDisplay 액티비티는 onResume 완료 전에 finish() 하지 않으면 시스템이
+ *    IllegalStateException 으로 프로세스를 죽인다. 작업은 프로세스 수명 스코프로 던지고
+ *    onCreate 에서 즉시 finish() 한다.
+ *
  * 보안:
  *  - 이 액티비티는 "로그아웃 + 위젯 정리" 외의 어떤 데이터도 읽거나 쓰지 않는다.
  *  - 외부 앱이 임의로 발화해도 자신의 [FirebaseAuth] 세션과 자신의 위젯 캐시만 정리되므로
@@ -23,6 +28,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.michaelkim.anima.data.auth.AuthRepository
 import com.michaelkim.anima.util.CrashReporter
@@ -47,18 +53,19 @@ class SignOutBridgeActivity : ComponentActivity() {
             finish()
             return
         }
-        // AuthRepository.signOut 은 내부에서 모든 단계를 try-catch 로 격리해 어떤 실패도
-        // 전파하지 않는다. 따라서 여기서도 finally 만 강하게 보장하면 충분.
-        lifecycleScope.launch {
+        // 작업은 프로세스 수명 스코프로 — NoDisplay 규칙(즉시 finish) 준수를 위해
+        // 액티비티 종료 후에도 계속 실행된다. applicationContext 만 캡처하므로 누수 없음.
+        val appContext = applicationContext
+        ProcessLifecycleOwner.get().lifecycleScope.launch {
             try {
-                AuthRepository.signOut(applicationContext)
+                AuthRepository.signOut(appContext)
                 Log.i(TAG, "웹 로그아웃 브릿지 처리 완료 — 위젯 캐시 정리 + 재렌더")
             } catch (e: Exception) {
                 CrashReporter.record(TAG, "웹 로그아웃 브릿지 처리 실패", e)
-            } finally {
-                finish()
             }
         }
+        // NoDisplay 규칙: onResume 완료 전 반드시 finish() — 위 코루틴과 독립적으로 즉시 종료.
+        finish()
     }
 
     companion object {

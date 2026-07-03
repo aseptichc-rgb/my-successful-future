@@ -19,7 +19,11 @@ import {
 } from "@/lib/firebase";
 import type { AuthCredential } from "firebase/auth";
 import { shouldStartTrial } from "@/lib/entitlement";
-import { notifyAndroidSignOut } from "@/lib/widgetBridge";
+import {
+  fireAndroidAuthBridge,
+  installUserGestureTracker,
+  notifyAndroidSignOut,
+} from "@/lib/widgetBridge";
 import type { User } from "@/types";
 
 interface AuthContextValue {
@@ -103,6 +107,11 @@ async function ensureTrialStarted(fbUser: FirebaseUser): Promise<boolean> {
  */
 const NATIVE_BRIDGE_LAST_UID_KEY = "anima.nativeBridge.lastUid";
 const NATIVE_BRIDGE_LAST_AT_KEY = "anima.nativeBridge.lastAt";
+// "네이티브 앱이 이 uid 로 이미 인증돼 있음이 확인됨" 마커. nativeToken(네이티브→웹 SSO)을
+// 소비한 순간 = 네이티브가 그 토큰을 발급했다 = 네이티브 FirebaseAuth 인증 완료가 보장된다.
+// 이 uid 로는 세션 내내 브릿지를 발화할 필요가 전혀 없다 — 60초 재시도 윈도우와 무관하게
+// 영구 skip 해, 진입·토큰갱신 때마다 intent 가 발화돼 Chrome "계속" 확인창이 뜨던 회귀를 막는다.
+const NATIVE_BRIDGE_CONFIRMED_UID_KEY = "anima.nativeBridge.confirmedUid";
 const FROM_APP_FLAG_KEY = "anima.fromApp";
 // Chrome 의 intent:// iframe 차단 + 네트워크 변동성으로 브릿지가 한 번에 안 닿는 경우가 있다.
 // "마지막 발사 후 X ms 가 지나면 같은 uid 라도 한번 더 시도한다" 는 짧은 재시도 윈도우.
@@ -135,24 +144,21 @@ function isInsideAndroidApp(): boolean {
  * 않았으면 no-op. 그 윈도우가 지나면 다시 쏜다 — Chrome 이 intent 를 한 번 막더라도 두 번째
  * 라우팅/포커스에서 자가 봉합되도록.
  *
- * 발화 방식: intent:// URL 을 두 가지 경로 (hidden iframe + 프로그래매틱 <a>.click) 로 시도해
- * Chrome user-activation 정책의 차단 확률을 줄인다. top-level navigation 이 아니므로 TWA 가
- * 그대로 살아있음.
+ * 발화 방식: [fireAndroidAuthBridge] (widgetBridge 공용 발화기) — user activation 이 살아
+ * 있을 때만 iframe + <a>.click + form 다중 경로로 발화한다. 제스처 없이 발화하면 Chrome 이
+ * "앱으로 이동 [계속]" 확인창을 띄우므로 그 경우 발화 자체를 건너뛴다.
  *
  * 보안: customToken 은 URL 쿼리에 실리지만, TWA → Android intent 경로는 OS 내부 IPC 로
  * 브라우저 히스토리/Referer 에 남지 않는다. 토큰의 짧은 수명(약 1시간)도 추가 방어선.
  */
 async function bridgeToNativeIfNeeded(fbUser: FirebaseUser): Promise<void> {
   if (!isInsideAndroidApp()) return;
-  // 마커는 sessionStorage 에 둔다 — 이전엔 localStorage 였고 iframe 발화 *전*에 박혔어서,
-  // Chrome 의 user-gesture 정책으로 iframe intent 가 한 번 차단되면 같은 uid 로는 영구히
-  // 브릿지 재시도가 안 돼 위젯이 EmptyState 에서 못 빠져나오는 회귀가 있었다. sessionStorage 로
-  // 옮기면 이번 세션 안에서만 중복 발화를 막고, 다음 콜드부트 · TWA 재진입에선 자동 재시도된다.
-  // (네이티브 signInWithCustomToken 은 동일 uid 면 멱등이라 중복 호출 비용 없음.)
-  // 추가: 같은 uid 라도 [NATIVE_BRIDGE_RETRY_AFTER_MS] 가 지나면 한 번 더 쏜다.
+  // 네이티브 인증이 이미 확인된 uid(nativeToken SSO 로 진입) 는 브릿지가 100% 불필요 —
+  // 발화하면 Chrome "계속" 확인창/빈 화면 인터럽트만 생긴다. 세션 내내 영구 skip.
   let lastUid: string | null = null;
   let lastAt = 0;
   try {
+    if (window.sessionStorage.getItem(NATIVE_BRIDGE_CONFIRMED_UID_KEY) === fbUser.uid) return;
     lastUid = window.sessionStorage.getItem(NATIVE_BRIDGE_LAST_UID_KEY);
     const rawAt = window.sessionStorage.getItem(NATIVE_BRIDGE_LAST_AT_KEY);
     lastAt = rawAt ? parseInt(rawAt, 10) || 0 : 0;
@@ -175,68 +181,23 @@ async function bridgeToNativeIfNeeded(fbUser: FirebaseUser): Promise<void> {
     const customToken = data.customToken;
     if (!customToken) return;
 
-    fireAuthBridgeIntent(customToken);
+    // user activation 이 살아 있을 때만 실제 발화된다 (widgetBridge 가 게이트).
+    // 제스처 없이 발화하면 Chrome 이 "앱으로 이동 [계속]" 확인창을 띄우므로,
+    // 그 경우 발화를 건너뛰고 다음 제스처 동반 사이클(재시도 윈도우)에 맡긴다.
+    const fired = fireAndroidAuthBridge(customToken);
 
-    // 마커는 발사 *후* 에만 박는다. iframe.appendChild 자체는 Chrome 의 정책으로 silent 차단
-    // 돼도 throw 가 없으므로 마커가 박힐 수 있지만, 우리는 [NATIVE_BRIDGE_RETRY_AFTER_MS]
-    // 윈도우로 재시도를 한 번 더 보장한다.
-    try {
-      window.sessionStorage.setItem(NATIVE_BRIDGE_LAST_UID_KEY, fbUser.uid);
-      window.sessionStorage.setItem(NATIVE_BRIDGE_LAST_AT_KEY, String(now));
-    } catch {
-      // 무시 — 다음 라우팅에서 또 한 번 쏘게 되지만 네이티브 쪽이 멱등.
+    // 마커는 실제로 발화된 경우에만 박는다 — 게이트에 걸려 건너뛴 경우 마커를 박으면
+    // 재시도 윈도우가 헛돌아 위젯이 EmptyState 에 갇힐 수 있다.
+    if (fired) {
+      try {
+        window.sessionStorage.setItem(NATIVE_BRIDGE_LAST_UID_KEY, fbUser.uid);
+        window.sessionStorage.setItem(NATIVE_BRIDGE_LAST_AT_KEY, String(now));
+      } catch {
+        // 무시 — 다음 라우팅에서 또 한 번 쏘게 되지만 네이티브 쪽이 멱등.
+      }
     }
   } catch {
     // 네트워크/JSON 오류 — 다음 로그인 사이클에 다시 시도 (lastUid 기록 안 했으므로).
-  }
-}
-
-/**
- * anima://auth?token=... 인텐트를 두 경로(iframe + <a>.click) 로 동시에 발사.
- * Chrome user-activation 차단을 우회하기 위한 다중 시도.
- */
-function fireAuthBridgeIntent(customToken: string): void {
-  const url =
-    "intent://auth?token=" +
-    encodeURIComponent(customToken) +
-    "#Intent;scheme=anima;package=com.michaelkim.anima;end";
-
-  // Path 1: hidden iframe — Chrome 의 정통 intent 라우팅 경로.
-  try {
-    const iframe = document.createElement("iframe");
-    iframe.style.display = "none";
-    iframe.setAttribute("aria-hidden", "true");
-    iframe.src = url;
-    document.body.appendChild(iframe);
-    window.setTimeout(() => {
-      try {
-        iframe.remove();
-      } catch {
-        // 무시
-      }
-    }, 1000);
-  } catch {
-    // iframe 경로 실패 — 두 번째 경로로 계속
-  }
-
-  // Path 2: 프로그래매틱 <a>.click() — user gesture 컨텍스트에서 호출되면 iframe 보다 강하다.
-  try {
-    const a = document.createElement("a");
-    a.href = url;
-    a.rel = "noopener";
-    a.target = "_blank";
-    a.style.display = "none";
-    document.body.appendChild(a);
-    a.click();
-    window.setTimeout(() => {
-      try {
-        a.remove();
-      } catch {
-        // 무시
-      }
-    }, 1000);
-  } catch {
-    // 두 경로 모두 실패 — 다음 cycle 에서 자가 봉합 (재시도 윈도우)
   }
 }
 
@@ -278,13 +239,15 @@ async function tryConsumeNativeToken(): Promise<boolean> {
   try {
     const cred = await signInWithCustomTokenClient(token);
     // 네이티브가 이 토큰을 발급했다 = 이미 동일 uid 로 네이티브 FirebaseAuth 가 인증돼 있다.
-    // 따라서 bridgeToNativeIfNeeded 를 다시 쏘는 건 100% 멱등 — 그런데도 발화하면
-    // anima://auth 인텐트가 액티비티를 띄워 TWA 위에 빈 화면을 잠깐 노출시킨다 (정확히 사용자가
-    // 보던 "로그인 후 흰 화면 멈춤"). 미리 lastUid 마커를 박아 bridge 를 no-op 으로 만든다.
+    // 따라서 이 uid 로는 세션 내내 브릿지 발화가 전혀 필요 없다 — CONFIRMED 마커로 영구 skip.
+    // (과거엔 lastUid 만 박고 lastAt 을 안 박아, 60초 재시도 윈도우 계산이 0 으로 평가되며
+    //  진입 때마다 intent://auth 가 재발화 → Chrome "계속" 확인창이 매번 뜨던 회귀가 있었다.)
     try {
+      window.sessionStorage.setItem(NATIVE_BRIDGE_CONFIRMED_UID_KEY, cred.user.uid);
       window.sessionStorage.setItem(NATIVE_BRIDGE_LAST_UID_KEY, cred.user.uid);
+      window.sessionStorage.setItem(NATIVE_BRIDGE_LAST_AT_KEY, String(Date.now()));
     } catch {
-      // sessionStorage 차단 — 브릿지가 한 번 더 발화될 수는 있지만 NoDisplay 액티비티가 가려준다.
+      // sessionStorage 차단 — 브릿지가 발화될 수 있지만 user-activation 게이트가 확인창을 막는다.
     }
     return true;
   } catch {
@@ -305,6 +268,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const nativeTokenHandledRef = useRef(false);
 
   useEffect(() => {
+    // 제스처 추적기를 가장 이른 시점에 설치 — 첫 저장/로그인 클릭의 제스처를 놓치면
+    // intent 발화가 user-activation 게이트에 걸려 위젯 즉시 갱신이 한 사이클 늦어진다.
+    installUserGestureTracker();
     const unsubscribe = onIdTokenChanged(getAuth_(), async (fbUser) => {
       // 네이티브 앱(TWA 호스트)이 URL 에 실어 보낸 nativeToken 은 "이 웹뷰가 어느 계정이어야
       // 하는지"의 권위 소스다. 웹 IndexedDB 에 다른(오래된) 계정 세션이 남아 있으면
@@ -403,6 +369,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       window.sessionStorage.removeItem(NATIVE_BRIDGE_LAST_UID_KEY);
       window.sessionStorage.removeItem(NATIVE_BRIDGE_LAST_AT_KEY);
+      window.sessionStorage.removeItem(NATIVE_BRIDGE_CONFIRMED_UID_KEY);
     } catch {
       // 무시
     }

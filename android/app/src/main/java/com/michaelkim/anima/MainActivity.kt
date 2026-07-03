@@ -46,6 +46,8 @@ import com.michaelkim.anima.util.CrashReporter
 import com.michaelkim.anima.widget.QuoteWidget
 import com.michaelkim.anima.work.WinsReminderWorker
 import com.michaelkim.anima.work.WorkScheduler
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -140,6 +142,19 @@ class MainActivity : ComponentActivity() {
             return
         }
         lifecycleScope.launch {
+            // customToken 교환을 위젯 캐시 갱신과 병렬로 시작 — 직렬일 땐 (캐시 갱신 최대 2.5초)
+            // + (교환 왕복) 이 순서대로 쌓여 위젯 탭 → 홈 진입 체감이 그만큼 느렸다.
+            // 실패/타임아웃 시 null — 웹은 자체 세션/쿠키 복원으로 폴백하므로 진입 자체는 막지 않는다.
+            val tokenDeferred = async {
+                try {
+                    withTimeoutOrNull(TOKEN_EXCHANGE_TIMEOUT_MS) {
+                        ApiClient.nativeBridgeApi.exchange().customToken
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "native-bridge customToken 발급 실패 — 웹은 기존 세션으로 진입", e)
+                    null
+                }
+            }
             val completed = try {
                 withTimeoutOrNull(REFRESH_BEFORE_HOME_TIMEOUT_MS) {
                     // 구제 버전 — 신규 가입자 trialEndsAt claim 미반영(402)/만료 임박 토큰(401)을
@@ -170,7 +185,12 @@ class MainActivity : ComponentActivity() {
                 null
             }
             val authoritativeYmd = if (completed == true) (syncedYmd ?: clickedYmd) else clickedYmd
-            openAnimaInTwa(path = "/home", finishAfterLaunch = true, qDate = authoritativeYmd)
+            openAnimaInTwa(
+                path = "/home",
+                finishAfterLaunch = true,
+                qDate = authoritativeYmd,
+                prefetchedToken = tokenDeferred,
+            )
         }
     }
 
@@ -222,11 +242,14 @@ class MainActivity : ComponentActivity() {
      *   로그인/온보딩 UI 가 보이도록 한다.
      * @param qDate 위젯이 보던 카드의 날짜(YYYY-MM-DD). null 이 아니면 `&qDate=` 로 실어
      *   /home 이 기기 시계 대신 이 날짜로 dailyMotivations 문서를 읽게 한다 (위젯-홈 명언 일치의 핵심).
+     * @param prefetchedToken 호출자가 이미 병렬로 시작해 둔 customToken 교환. null 이 아니면
+     *   여기서 새 교환을 시작하지 않고 그 결과만 기다린다 — 위젯 탭 진입 지연 단축의 핵심.
      */
     private fun openAnimaInTwa(
         path: String?,
         finishAfterLaunch: Boolean = false,
         qDate: String? = null,
+        prefetchedToken: Deferred<String?>? = null,
     ) {
         val baseUrl = BuildConfig.ANIMA_API_BASE_URL.removeSuffix("/")
         val rawUrl = if (path.isNullOrBlank()) baseUrl else baseUrl + path
@@ -257,11 +280,16 @@ class MainActivity : ComponentActivity() {
         // finish 는 customToken 교환과 launchTwaWithUrl 이 끝난 뒤 — 그 전에 finish 하면
         // lifecycleScope 가 취소돼 코루틴이 죽고 TWA 가 미인증 상태로 떠 흰 화면이 자주 난다.
         lifecycleScope.launch {
-            val customToken = try {
-                ApiClient.nativeBridgeApi.exchange().customToken
-            } catch (e: Exception) {
-                Log.w(TAG, "native-bridge customToken 발급 실패 — 웹은 미인증 상태로 진입", e)
-                null
+            val customToken = if (prefetchedToken != null) {
+                // 병렬 교환의 결과만 대기 — async 블록이 예외를 자체 흡수하므로 await 는 안 던진다.
+                prefetchedToken.await()
+            } else {
+                try {
+                    ApiClient.nativeBridgeApi.exchange().customToken
+                } catch (e: Exception) {
+                    Log.w(TAG, "native-bridge customToken 발급 실패 — 웹은 미인증 상태로 진입", e)
+                    null
+                }
             }
             val finalUrl = if (customToken.isNullOrBlank()) {
                 finalUrlBeforeToken
@@ -348,5 +376,9 @@ class MainActivity : ComponentActivity() {
         // 위젯/알림 탭에서 /home TWA 를 띄우기 전, 위젯 캐시 동기 갱신에 허용할 최대 대기.
         // 정상 캐시 히트(Firestore 1회 read) 는 200-500ms 라 보통 그 안에 끝난다.
         private const val REFRESH_BEFORE_HOME_TIMEOUT_MS = 2500L
+        // 병렬 customToken 교환의 최대 대기 — 이 시간을 넘기면 토큰 없이 진입한다.
+        // 웹은 자체 Firebase 세션(IndexedDB)/서버 쿠키 복원으로 폴백하므로 로그인 화면으로
+        // 떨어지지 않고, 진입 지연 상한만 확실하게 잡아준다.
+        private const val TOKEN_EXCHANGE_TIMEOUT_MS = 4000L
     }
 }

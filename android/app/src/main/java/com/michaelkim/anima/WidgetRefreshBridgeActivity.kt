@@ -13,6 +13,12 @@
  *  - NoDisplay 테마 + noHistory + 즉시 finish() — TWA 위에 어떤 UI 도 그리지 않아 사용자
  *    시각적 인터럽트 0. [AuthBridgeActivity] 와 동일한 패턴.
  *
+ * finish() 타이밍 (중요 — 크래시 회귀 방지):
+ *  - Theme.NoDisplay 액티비티는 onResume 완료 전에 finish() 하지 않으면 시스템이
+ *    IllegalStateException 으로 프로세스를 죽인다. 과거엔 동기 refresh(최대 4초)가 끝난 뒤에야
+ *    finish() 해, 웹이 저장 직후 이 브릿지를 발화할 때마다 "앱이 중지되었습니다" 크래시가 났다.
+ *  - 픽스: 작업은 프로세스 수명 스코프(ProcessLifecycleOwner)로 던지고 onCreate 에서 즉시 finish().
+ *
  * 보안:
  *  - 이 액티비티는 위젯 갱신 외에 어떤 데이터도 읽거나 쓰지 않는다.
  *  - 외부 앱이 임의로 발화해도 [QuoteRefreshWorker] / 동기 refresh 모두 미로그인 상태면 silent
@@ -26,6 +32,7 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.glance.appwidget.updateAll
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.michaelkim.anima.data.QuoteRepository
 import com.michaelkim.anima.data.auth.AuthRepository
@@ -69,22 +76,23 @@ class WidgetRefreshBridgeActivity : ComponentActivity() {
             finish()
             return
         }
-        lifecycleScope.launch {
-            try {
-                withTimeoutOrNull(REFRESH_TIMEOUT_MS) {
-                    try {
-                        QuoteRepository.refresh(applicationContext)
-                        QuoteWidget().updateAll(applicationContext)
-                        Log.i(TAG, "위젯 동기 refresh 성공")
-                    } catch (e: Exception) {
-                        // 네트워크/401 등 — Worker 폴백이 이미 큐잉돼 있어 다음 사이클에 재시도.
-                        Log.w(TAG, "위젯 동기 refresh 실패 — Worker 폴백으로 위임", e)
-                    }
+        // 작업은 프로세스 수명 스코프로 — NoDisplay 규칙(즉시 finish) 준수를 위해
+        // 액티비티 종료 후에도 계속 실행된다. applicationContext 만 캡처하므로 누수 없음.
+        val appContext = applicationContext
+        ProcessLifecycleOwner.get().lifecycleScope.launch {
+            withTimeoutOrNull(REFRESH_TIMEOUT_MS) {
+                try {
+                    QuoteRepository.refresh(appContext)
+                    QuoteWidget().updateAll(appContext)
+                    Log.i(TAG, "위젯 동기 refresh 성공")
+                } catch (e: Exception) {
+                    // 네트워크/401 등 — Worker 폴백이 이미 큐잉돼 있어 다음 사이클에 재시도.
+                    Log.w(TAG, "위젯 동기 refresh 실패 — Worker 폴백으로 위임", e)
                 }
-            } finally {
-                finish()
             }
         }
+        // NoDisplay 규칙: onResume 완료 전 반드시 finish() — 위 코루틴과 독립적으로 즉시 종료.
+        finish()
     }
 
     companion object {

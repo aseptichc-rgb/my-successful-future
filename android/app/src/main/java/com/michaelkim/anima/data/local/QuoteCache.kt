@@ -13,13 +13,15 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.datastore.preferences.core.emptyPreferences
 import com.michaelkim.anima.data.CachedWidgetState
 import com.michaelkim.anima.data.WidgetTodayResponse
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import java.io.IOException
 
 private val Context.widgetDataStore by preferencesDataStore(name = "anima_widget_cache")
 
@@ -28,14 +30,22 @@ object QuoteCache {
     private val json = Json { ignoreUnknownKeys = true; explicitNulls = false }
 
     fun observe(context: Context): Flow<CachedWidgetState?> =
-        context.widgetDataStore.data.map { prefs ->
-            val raw = prefs[KEY_PAYLOAD] ?: return@map null
-            try {
-                json.decodeFromString(CachedWidgetState.serializer(), raw)
-            } catch (_: SerializationException) {
-                null
+        context.widgetDataStore.data
+            // 디스크 손상/IO 오류로 DataStore 읽기가 던지면 위젯 렌더 전체가 죽는다 —
+            // 빈 Preferences 로 폴백해 EmptyState 를 그리고 다음 refresh 가 다시 채우게 한다.
+            .catch { e ->
+                if (e is IOException) emit(emptyPreferences()) else throw e
             }
-        }
+            .map { prefs ->
+                val raw = prefs[KEY_PAYLOAD] ?: return@map null
+                try {
+                    json.decodeFromString(CachedWidgetState.serializer(), raw)
+                } catch (_: Exception) {
+                    // SerializationException 외에도 잘못된 캐시 형식(IllegalArgumentException 등)
+                    // 전부를 "캐시 없음" 으로 취급 — 캐시는 언제든 재생성 가능한 데이터다.
+                    null
+                }
+            }
 
     suspend fun read(context: Context): CachedWidgetState? = observe(context).first()
 

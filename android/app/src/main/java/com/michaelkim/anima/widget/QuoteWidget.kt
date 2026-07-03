@@ -6,13 +6,17 @@
  */
 package com.michaelkim.anima.widget
 
+import android.appwidget.AppWidgetManager
 import android.content.Context
+import android.widget.RemoteViews
 import androidx.glance.GlanceId
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.provideContent
+import com.michaelkim.anima.R
 import com.michaelkim.anima.data.QuoteRepository
 import com.michaelkim.anima.data.auth.AuthRepository
+import com.michaelkim.anima.util.CrashReporter
 import com.michaelkim.anima.work.WorkScheduler
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -26,7 +30,14 @@ class QuoteWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        var cached = QuoteRepository.getCached(context)
+        // 캐시 읽기 실패(디스크 손상 등)가 위젯 렌더 전체를 죽이면 안 된다 — null 로 폴백해
+        // EmptyState 를 그리고, 자가 복구/Worker 경로가 다시 채우게 한다.
+        var cached = try {
+            QuoteRepository.getCached(context)
+        } catch (e: Exception) {
+            CrashReporter.record(TAG, "위젯 캐시 읽기 실패 — EmptyState 폴백", e)
+            null
+        }
 
         // ── 자가 복구(self-heal) ────────────────────────────────────────────
         // 캐시가 비어 있는데 네이티브 로그인 상태라면, 워커/웹 브릿지가 따라잡기를 기다리지
@@ -83,7 +94,29 @@ class QuoteWidget : GlanceAppWidget() {
         }
     }
 
+    /**
+     * Glance 컴포지션/RemoteViews 변환 실패가 프로세스를 죽이지 않도록 하는 최후 방어선.
+     * 기본 구현은 예외를 다시 던져 앱을 종료시킬 수 있다 — 여기서는 Crashlytics 비치명 보고 후
+     * 로딩 레이아웃으로 폴백해, 사용자에겐 "위젯이 잠시 로딩 상태"로만 보이게 한다.
+     */
+    override suspend fun onCompositionError(
+        context: Context,
+        glanceId: GlanceId,
+        appWidgetId: Int,
+        throwable: Throwable,
+    ) {
+        CrashReporter.record(TAG, "위젯 컴포지션 실패 — 로딩 레이아웃 폴백", throwable)
+        try {
+            val fallback = RemoteViews(context.packageName, R.layout.widget_loading)
+            AppWidgetManager.getInstance(context).updateAppWidget(appWidgetId, fallback)
+        } catch (e: Exception) {
+            // 폴백 렌더마저 실패 — 다음 updateAll 사이클에 위임. 크래시보다 낫다.
+            CrashReporter.record(TAG, "위젯 폴백 렌더 실패", e)
+        }
+    }
+
     private companion object {
+        const val TAG = "QuoteWidget"
         // 자가 복구 동기 fetch 대기 한도. 위젯 redraw 중 백그라운드 코루틴에서 실행되므로
         // 사용자 메인 스레드를 막지 않는다. 정상 캐시 히트(Firestore 1회 read)는 200-500ms,
         // 슬로 네트워크 여유까지 고려해 4초. 초과 시 워커 폴백이 인계.

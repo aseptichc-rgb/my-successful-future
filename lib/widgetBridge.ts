@@ -16,12 +16,15 @@
  *     무시할 수 있다. 사용자 입력 속도 기준으론 거의 영향 없지만, 동일 프레임 내 중복 호출을
  *     막기 위해 [DEDUP_WINDOW_MS] 이내 호출은 합쳐 1회만 쏜다.
  *
- * Chrome user-activation 회귀:
- *   - Chrome 86+ 의 intent:// iframe 정책: 최근 user gesture 가 없는 컨텍스트에서의
- *     iframe-기반 intent 발화는 silent 하게 차단된다. setTimeout(디바운스) 또는 비동기
- *     리스너 안에서 발사하면 종종 묻혀버린다.
- *   - 회피: iframe 발사 + `<a>.click()` 발사 2단계로 시도해 한쪽이 막혀도 다른 쪽이 도달
- *     가능성을 높인다. 더하여 발사 직후 user gesture 가 살아 있으면 즉시 한번 더 시도한다.
+ * Chrome user-activation 정책 (중요 — "계속" 확인창 회귀 방지):
+ *   - 최근 user gesture 가 없는 컨텍스트에서 intent:// 를 발화하면 최신 Chrome 은 조용히
+ *     차단하는 대신 "OO 앱으로 이동 — 이 사이트에서 OO 앱을 열려고 합니다 [계속]" 확인
+ *     대화상자를 띄운다. 검은 화면 위에 이 창이 떠 사용자가 매번 [계속] 을 눌러야 했던
+ *     핵심 UX 회귀의 원인.
+ *   - 따라서 이 모듈의 모든 발화는 user activation 이 살아 있을 때만 수행한다. 제스처가
+ *     없으면 발화를 건너뛴다 — 위젯 갱신은 네이티브 폴백(onResume Worker · 포그라운드
+ *     옵저버 · 정주기 Worker)이 봉합하므로 사용자 피해 0, 확인창 노출 0.
+ *   - 활성 시에는 iframe + `<a>.click()` + form 3경로로 시도해 도달 확률을 끌어올린다.
  *
  * 보안:
  *   - 이 브릿지는 어떤 사용자 데이터도 인텐트에 싣지 않는다. "갱신 트리거" 라는 사실만 전달.
@@ -87,7 +90,12 @@ function isInsideAndroidApp(): boolean {
 const USER_ACTIVATION_WINDOW_MS = 4_500;
 let lastUserGestureAt = 0;
 
-function installUserGestureTracker(): void {
+/**
+ * 사용자 입력(터치/키/포인터) 시각 추적기 설치. 모듈 로드 직후 한 번 호출해 두면 이후의
+ * 모든 제스처를 감지한다 — 발화 시점에 lazy 설치하면 "그 발화를 유발한 제스처" 자체를
+ * 놓쳐 첫 발화가 통째로 게이트에 걸리므로, AuthProvider 마운트 시점에 미리 설치한다.
+ */
+export function installUserGestureTracker(): void {
   if (typeof window === "undefined") return;
   if ((window as unknown as { __animaUgInstalled?: boolean }).__animaUgInstalled) return;
   (window as unknown as { __animaUgInstalled?: boolean }).__animaUgInstalled = true;
@@ -102,6 +110,23 @@ function installUserGestureTracker(): void {
 
 function hasFreshUserGesture(): boolean {
   return Date.now() - lastUserGestureAt < USER_ACTIVATION_WINDOW_MS;
+}
+
+/**
+ * "지금 intent 발화가 확인창 없이 통과할 만큼 user activation 이 살아 있는가" 판정.
+ * 브라우저 표준 API(navigator.userActivation.isActive)를 우선 신뢰하고,
+ * 미지원 환경은 자체 추적기(4.5초 윈도우)로 폴백한다.
+ */
+function hasUserActivation(): boolean {
+  try {
+    const activation = (navigator as Navigator & {
+      userActivation?: { isActive?: boolean };
+    }).userActivation;
+    if (activation?.isActive === true) return true;
+  } catch {
+    // navigator 접근 불가 환경 — 자체 추적기로 폴백.
+  }
+  return hasFreshUserGesture();
 }
 
 function fireIntentMultiPath(intentUrl: string): void {
@@ -148,11 +173,10 @@ function fireIntentMultiPath(intentUrl: string): void {
     // 두 경로 모두 실패 — 위젯은 다음 정주기 Worker (3시간) 또는 사용자 다음 인터랙션에서 봉합.
   }
 
-  // Path 3: user-activation 이 살아 있을 때만 hidden <form target="_self" action=intent...> submit.
+  // Path 3: hidden <form target="_self" action=intent...> submit.
   // Chrome 은 폼 submit 을 user-activation 으로 강하게 인정해 intent 가로채기 확률이 높다.
   // window 가 _self 로 navigate 되면 Chrome 이 intent 로 가로채고 페이지는 그대로 유지된다.
-  // 가로채지 못하면 navigation 이 발생할 수 있으므로 hasFreshUserGesture() 일 때만 시도.
-  if (!hasFreshUserGesture()) return;
+  // (이 함수 자체가 user activation 게이트 뒤에서만 호출된다 — fireIntent 참고.)
   try {
     const form = document.createElement("form");
     form.action = intentUrl;
@@ -175,22 +199,44 @@ function fireIntentMultiPath(intentUrl: string): void {
 
 /**
  * @param key 디바운스 키 — 동일 키 호출은 [DEDUP_WINDOW_MS] 이내라면 1회로 합친다.
+ * @returns 실제로 발화했으면 true. 게이트(비 TWA·제스처 없음·디바운스)에 걸려 건너뛰었으면
+ *   false — 호출자가 "발화됨" 마커를 박을지 판단하는 데 쓴다.
  */
-function fireIntent(intentUrl: string, key: string): void {
+function fireIntent(intentUrl: string, key: string): boolean {
   try {
-    if (!isInsideAndroidApp()) return;
-    // 첫 호출 시 user-gesture tracker 를 lazy install — bundle 이 처음 로드된 직후엔 아직
-    // 사용자 입력이 없을 수 있으므로 이 시점에 등록해 두면 이후 인터랙션을 모두 catch.
+    if (!isInsideAndroidApp()) return false;
+    // 첫 호출 시 user-gesture tracker 를 lazy install — AuthProvider 가 마운트 시점에
+    // 미리 설치해 두지만, 다른 진입 경로를 위한 안전망으로 여기서도 보장한다.
     installUserGestureTracker();
 
+    // user activation 없이 발화하면 Chrome 이 "앱으로 이동 [계속]" 확인창을 띄운다 —
+    // 조용한 실패가 아니라 사용자 눈앞의 인터럽트이므로, 활성 없으면 발화하지 않는다.
+    // 놓친 갱신은 네이티브 폴백(onResume · 포그라운드 옵저버 · 정주기 Worker)이 봉합.
+    if (!hasUserActivation()) return false;
+
     const now = Date.now();
-    if (now - (lastFiredAt[key] ?? 0) < DEDUP_WINDOW_MS) return;
+    if (now - (lastFiredAt[key] ?? 0) < DEDUP_WINDOW_MS) return false;
     lastFiredAt[key] = now;
 
     fireIntentMultiPath(intentUrl);
+    return true;
   } catch {
     // intent 발화 실패는 호출자 흐름에 영향 주지 않는다 — 다음 동작 사이클에서 봉합.
+    return false;
   }
+}
+
+/**
+ * 웹 → 네이티브 FirebaseAuth 브릿지 인텐트(anima://auth?token=...) 발화.
+ * [auth-context.tsx] 의 bridgeToNativeIfNeeded 전용 — 발화 성공 여부를 돌려줘
+ * 호출자가 "이미 쐈음" 마커를 발화 성공 시에만 기록하게 한다.
+ */
+export function fireAndroidAuthBridge(customToken: string): boolean {
+  const url =
+    "intent://auth?token=" +
+    encodeURIComponent(customToken) +
+    "#Intent;scheme=anima;package=com.michaelkim.anima;end";
+  return fireIntent(url, "auth-bridge");
 }
 
 /**

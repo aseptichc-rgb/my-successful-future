@@ -14,7 +14,15 @@
  *  - 인증 직후 [QuoteRepository.refresh] 를 동기로 한 번 호출해 캐시를 즉시 채운다 —
  *    Worker 가 비동기로 따라잡기를 기다리면 사용자가 그 사이 위젯을 보면 EmptyState 가
  *    번쩍였다. [REFRESH_TIMEOUT_MS] 안에 끝나지 않으면 Worker 폴백으로 위임.
- *  - 그 후 위젯 RemoteViews 재렌더 + 정주기 Worker 보장 + 성공/실패 무관 finally finish().
+ *  - 그 후 위젯 RemoteViews 재렌더 + 정주기 Worker 보장.
+ *
+ * finish() 타이밍 (중요 — 크래시 회귀 방지):
+ *  - Theme.NoDisplay 액티비티는 onResume 완료 전에 finish() 를 부르지 않으면 시스템이
+ *    IllegalStateException("did not call finish() prior to onResume() completing") 으로
+ *    프로세스를 죽인다. 과거엔 lifecycleScope 코루틴(네트워크 수 초)이 끝난 뒤에야 finish()
+ *    했기 때문에, 웹이 이 브릿지를 발화할 때마다 "앱이 중지되었습니다" 크래시가 났다.
+ *  - 픽스: 작업은 액티비티와 무관한 프로세스 수명 스코프(ProcessLifecycleOwner)로 던지고,
+ *    onCreate 안에서 즉시 finish() 한다. 작업 자체는 applicationContext 만 쓰므로 안전.
  *
  * 보안:
  *  - customToken 위변조는 Firebase 서명 검증으로 차단. 외부 앱이 임의 토큰을 쏘아도 거부됨.
@@ -27,6 +35,7 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.glance.appwidget.updateAll
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.google.firebase.auth.FirebaseAuth
 import com.michaelkim.anima.data.QuoteRepository
@@ -63,7 +72,10 @@ class AuthBridgeActivity : ComponentActivity() {
             finish()
             return
         }
-        lifecycleScope.launch {
+        // 작업은 프로세스 수명 스코프로 — NoDisplay 규칙(즉시 finish) 준수를 위해
+        // 액티비티 종료 후에도 계속 실행된다. applicationContext 만 캡처하므로 누수 없음.
+        val appContext = applicationContext
+        ProcessLifecycleOwner.get().lifecycleScope.launch {
             try {
                 // 계정 전환 감지: 브릿지 진입 직전 uid 와 signInWithCustomToken 결과 uid 가 다르면
                 // 이전 계정의 위젯 캐시는 그 즉시 stale 이다 — 새 토큰으로 데이터를 받기 전까지의
@@ -74,8 +86,8 @@ class AuthBridgeActivity : ComponentActivity() {
                 if (previousUid != null && newUid != null && previousUid != newUid) {
                     Log.i(TAG, "브릿지 로그인 계정 전환 감지: $previousUid → $newUid — 위젯 캐시 무효화")
                     try {
-                        QuoteCache.clear(applicationContext)
-                        QuoteWidget().updateAll(applicationContext)
+                        QuoteCache.clear(appContext)
+                        QuoteWidget().updateAll(appContext)
                     } catch (e: Exception) {
                         Log.w(TAG, "계정 전환 캐시 정리 실패", e)
                     }
@@ -84,10 +96,9 @@ class AuthBridgeActivity : ComponentActivity() {
 
                 // 인증 직후 동기 refresh — Worker 가 비동기로 따라잡기를 기다리지 않고 이 자리에서
                 // 한 번 fetch 해 위젯이 다음 자체 redraw 에서 EmptyState 가 아닌 콘텐츠를 갖도록.
-                // 타임아웃을 두어 슬로 네트워크에서도 finally 의 finish() 가 지연되지 않게 한다.
                 val refreshed = withTimeoutOrNull(REFRESH_TIMEOUT_MS) {
                     try {
-                        QuoteRepository.refresh(applicationContext)
+                        QuoteRepository.refresh(appContext)
                         true
                     } catch (e: Exception) {
                         Log.w(TAG, "동기 refresh 실패 — Worker 폴백으로 위임", e)
@@ -97,26 +108,26 @@ class AuthBridgeActivity : ComponentActivity() {
                 // 동기 refresh 성공 여부와 무관하게 한번 더 RemoteViews 재렌더 — 캐시가 비어 있으면
                 // EmptyState 로, 채워졌으면 콘텐츠로 자연스레 갱신된다.
                 try {
-                    QuoteWidget().updateAll(applicationContext)
+                    QuoteWidget().updateAll(appContext)
                 } catch (e: Exception) {
                     Log.w(TAG, "위젯 updateAll 실패 — 무시", e)
                 }
                 // 비동기 폴백 + 정주기 Worker 보장 (동기 refresh 가 실패/타임아웃 됐어도 안전망)
                 if (refreshed != true) {
-                    WorkScheduler.scheduleOneTimeRefresh(applicationContext)
+                    WorkScheduler.scheduleOneTimeRefresh(appContext)
                 }
-                WorkScheduler.schedulePeriodicRefresh(applicationContext)
+                WorkScheduler.schedulePeriodicRefresh(appContext)
             } catch (e: Exception) {
                 CrashReporter.record(TAG, "네이티브 브릿지 signInWithCustomToken 실패", e)
-            } finally {
-                finish()
             }
         }
+        // NoDisplay 규칙: onResume 완료 전 반드시 finish() — 위 코루틴과 독립적으로 즉시 종료.
+        finish()
     }
 
     companion object {
         private const val TAG = "AuthBridgeActivity"
-        // 동기 refresh 가 finally finish() 를 지연시키지 않게 짧게 제한.
+        // 동기 refresh 대기 상한 — 슬로 네트워크에서 Worker 폴백으로 넘어가는 기준.
         // 평균 케이스 (Firestore 1 read) 는 200-500ms 라 보통 그 안에 끝난다.
         private const val REFRESH_TIMEOUT_MS = 2_500L
     }
