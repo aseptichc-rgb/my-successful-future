@@ -59,13 +59,42 @@ const FUTURE_PH_KEY: Record<FutureSelfDimension, DictKey> = {
   respect: "onboarding.futureSelf.respect.placeholder",
   growth: "onboarding.futureSelf.growth.placeholder",
 };
-/** 예시칩은 구체 예시가 특히 도움이 되는 3개 차원에만 제공(화면 과밀 방지). */
-const FUTURE_EXAMPLE_KEYS: Partial<Record<FutureSelfDimension, ReadonlyArray<DictKey>>> = {
-  daily: ["onboarding.futureSelf.daily.example1", "onboarding.futureSelf.daily.example2"],
-  work: ["onboarding.futureSelf.work.example1", "onboarding.futureSelf.work.example2"],
+/** 모든 차원에 구체 예시칩 3개씩 제공 — 빈 화면 앞에서 막히지 않고 톤을 잡을 수 있게. */
+const FUTURE_EXAMPLE_KEYS: Record<FutureSelfDimension, ReadonlyArray<DictKey>> = {
+  daily: [
+    "onboarding.futureSelf.daily.example1",
+    "onboarding.futureSelf.daily.example2",
+    "onboarding.futureSelf.daily.example3",
+  ],
+  work: [
+    "onboarding.futureSelf.work.example1",
+    "onboarding.futureSelf.work.example2",
+    "onboarding.futureSelf.work.example3",
+  ],
+  wealth: [
+    "onboarding.futureSelf.wealth.example1",
+    "onboarding.futureSelf.wealth.example2",
+    "onboarding.futureSelf.wealth.example3",
+  ],
+  family: [
+    "onboarding.futureSelf.family.example1",
+    "onboarding.futureSelf.family.example2",
+    "onboarding.futureSelf.family.example3",
+  ],
   achievements: [
     "onboarding.futureSelf.achievements.example1",
     "onboarding.futureSelf.achievements.example2",
+    "onboarding.futureSelf.achievements.example3",
+  ],
+  respect: [
+    "onboarding.futureSelf.respect.example1",
+    "onboarding.futureSelf.respect.example2",
+    "onboarding.futureSelf.respect.example3",
+  ],
+  growth: [
+    "onboarding.futureSelf.growth.example1",
+    "onboarding.futureSelf.growth.example2",
+    "onboarding.futureSelf.growth.example3",
   ],
 };
 
@@ -330,7 +359,7 @@ export default function OnboardingPage() {
   }
 
   const currentDimension = FUTURE_SELF_DIMENSIONS[futureStep];
-  const currentExampleKeys = FUTURE_EXAMPLE_KEYS[currentDimension] ?? [];
+  const currentExampleKeys = FUTURE_EXAMPLE_KEYS[currentDimension];
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F0EDE6]">

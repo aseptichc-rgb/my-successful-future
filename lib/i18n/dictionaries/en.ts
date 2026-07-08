@@ -50,6 +50,8 @@ const dict: Record<DictKey, string> = {
     "I wake at 6 in a home with a river view, open the day with a workout, do deep work all morning, and spend evenings with my family.",
   "onboarding.futureSelf.daily.example2":
     "No commute — two hours of writing in my study with coffee, then an afternoon walk while I shape the next project.",
+  "onboarding.futureSelf.daily.example3":
+    "From my studio overlooking the sea, I lead my team over video in the morning, then cook dinner with my kid to the sound of waves.",
   "onboarding.futureSelf.work.q": "What work do you do then, and where do you stand among people?",
   "onboarding.futureSelf.work.placeholder":
     "Your role, your place on the team, why people come to you.",
@@ -57,12 +59,26 @@ const dict: Record<DictKey, string> = {
     "I lead a 10-person company, and people in the industry come to me first for advice.",
   "onboarding.futureSelf.work.example2":
     "I'm one of the top voices in my field, widening my reach through talks and writing.",
+  "onboarding.futureSelf.work.example3":
+    "I freelance on only the projects I choose — clients wait months just to work with me.",
   "onboarding.futureSelf.wealth.q": "What do your assets and finances look like?",
   "onboarding.futureSelf.wealth.placeholder":
     "Monthly income, what you've built up, where you live, the choices money no longer limits.",
+  "onboarding.futureSelf.wealth.example1":
+    "I built income that pays me $8,000 a month whether I work or not, and my home carries no mortgage.",
+  "onboarding.futureSelf.wealth.example2":
+    "I shop without checking price tags and plan trips by picking the dates first — my balance never makes me anxious.",
+  "onboarding.futureSelf.wealth.example3":
+    "I cover my parents' living costs every month and still take the whole family abroad twice a year.",
   "onboarding.futureSelf.family.q": "What is life with your family like?",
   "onboarding.futureSelf.family.placeholder":
     "The time you share, what you provide, the warmth of those bonds.",
+  "onboarding.futureSelf.family.example1":
+    "Weekend camping trips with the kids, and dinners where we trade stories of the day — no phones at the table.",
+  "onboarding.futureSelf.family.example2":
+    "Every spring I take my parents on a trip to see the blossoms, and my partner and I still keep our Friday date night.",
+  "onboarding.futureSelf.family.example3":
+    "In a house with a yard, the kids and the dog tumble around together, and once a month the whole family cooks one big meal.",
   "onboarding.futureSelf.achievements.q": "What have you achieved by then?",
   "onboarding.futureSelf.achievements.placeholder":
     "Things you've built, goals you've reached, the wins you're proudest of.",
@@ -70,12 +86,26 @@ const dict: Record<DictKey, string> = {
     "A book with my name on it, and a service 10,000 people use.",
   "onboarding.futureSelf.achievements.example2":
     "Starting from nothing, I built a debt-free home and a solid business.",
+  "onboarding.futureSelf.achievements.example3":
+    "I reached financial freedom, and a scholarship in my name now funds ten students' dreams every year.",
   "onboarding.futureSelf.respect.q": "How do people see you, and what do they respect you for?",
   "onboarding.futureSelf.respect.placeholder":
     "The trust, reputation, and respect people give you — and why.",
+  "onboarding.futureSelf.respect.example1":
+    "People say my word can be trusted — before big decisions, they ask for my take first.",
+  "onboarding.futureSelf.respect.example2":
+    "Younger colleagues reach out saying they want to become like me, and I gladly make time to show them the way.",
+  "onboarding.futureSelf.respect.example3":
+    "I'm remembered for steadiness over flash — 'the one who showed up every single day for ten years.'",
   "onboarding.futureSelf.growth.q": "How are your body and mind, and how are you still growing?",
   "onboarding.futureSelf.growth.placeholder":
     "Your health, what you're learning, the ways you keep moving forward.",
+  "onboarding.futureSelf.growth.example1":
+    "A 5km run every morning still feels light, I read 50 books a year, and I keep stepping into new fields.",
+  "onboarding.futureSelf.growth.example2":
+    "A steady mind built through meditation, and a new language good enough to chat with locals when I travel.",
+  "onboarding.futureSelf.growth.example3":
+    "I'm healthier than in my twenties, learning an instrument on weekends — a little better than yesterday, every day.",
 
   "onboarding.step2.title": "Write the concrete actions you need to reach your goals",
   "onboarding.step2.subtitle":
