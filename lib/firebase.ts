@@ -41,11 +41,13 @@ import type {
   DailyEntry,
   DailyTodo,
   DailyMotivation,
+  FutureSelfAnswers,
   FutureVision,
   IdentityProgress,
   QuotePreference,
   UserLanguage,
 } from "@/types";
+import { composeFuturePersona, normalizeFutureSelfAnswers } from "@/lib/futureSelf";
 
 const SUPPORTED_LANGUAGES: ReadonlyArray<UserLanguage> = ["ko", "en", "es", "zh"];
 
@@ -270,6 +272,26 @@ export async function updateFuturePersona(uid: string, futurePersona: string) {
   await setDoc(
     doc(db, "users", uid),
     { futurePersona, futurePersonaUpdatedAt: serverTimestamp() },
+    { merge: true },
+  );
+}
+
+/**
+ * "10년 후 나의 모습" 구조화 답변 저장.
+ * futureSelfAnswers(구조화) 와 함께, 합성한 futurePersona(레거시 문자열)도
+ * 같은 쓰기로 갱신해 기존 AI 소비처(카드/비전/정체성/작가추천)가 그대로 동작하게 한다.
+ */
+export async function updateFutureSelf(uid: string, answers: FutureSelfAnswers) {
+  const cleaned = normalizeFutureSelfAnswers(answers);
+  const db = getDbInstance();
+  await setDoc(
+    doc(db, "users", uid),
+    {
+      futureSelfAnswers: cleaned,
+      futureSelfAnswersUpdatedAt: serverTimestamp(),
+      futurePersona: composeFuturePersona(cleaned),
+      futurePersonaUpdatedAt: serverTimestamp(),
+    },
     { merge: true },
   );
 }

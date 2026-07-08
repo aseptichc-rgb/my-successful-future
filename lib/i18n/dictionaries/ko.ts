@@ -36,17 +36,44 @@ const dict = {
   "language.settings.note": "언어를 바꾸면 다음 카드부터 새 언어로 도착해요.",
 
   // ── 온보딩 ───────────────────────────────────────
-  "onboarding.step1.title": "10년 후의 너의 모습은 어떤가요?",
-  "onboarding.step1.subtitle":
-    "되고 싶은 모습을 한 단락으로 적어보세요. 매일 도착하는 동기부여 한 마디가 이 글을 바탕으로 만들어져요.",
-  "onboarding.step1.placeholder":
-    "예: 10년 뒤 나는 매일 아침 운동과 독서로 하루를 시작하고, 가족과 충분한 시간을 보내며 좋아하는 일로 안정적인 수익을 만든다.",
-  "onboarding.step1.example1":
-    "5년 뒤 월 1,000만 원을 벌며 원하는 시간에 원하는 일을 하고 있다. 매일 아침 운동과 독서로 하루를 시작한다.",
-  "onboarding.step1.example2":
-    "10년 뒤 분야에서 손꼽히는 전문가가 되어, 강연과 집필로도 영향력을 넓히고 있다.",
-  "onboarding.step1.example3":
-    "7년 뒤 가족과 보내는 시간이 최우선인 삶을 살고 있다. 일은 하루 5시간만 하고, 주말은 무조건 비워둔다.",
+  // "10년 후 나의 모습" 몰입형 질문 — 한 화면에 한 질문씩(키 순서 = lib/futureSelf.ts 차원 순서).
+  "onboarding.futureSelf.sectionLabel": "10년 후 나의 모습",
+  "onboarding.futureSelf.progress": "{current} / {total}",
+  "onboarding.futureSelf.hint":
+    "떠오르는 대로 구체적으로 적어보세요. 지금 어려운 질문은 비워두고 넘어가도 좋아요.",
+  "onboarding.futureSelf.daily.q": "10년 후, 당신의 평범한 하루는 어떻게 흘러가나요?",
+  "onboarding.futureSelf.daily.placeholder":
+    "아침에 눈뜨는 곳, 오전에 하는 일, 저녁을 보내는 방식까지 그려보세요.",
+  "onboarding.futureSelf.daily.example1":
+    "한강이 보이는 집에서 6시에 일어나 운동으로 하루를 열고, 오전엔 몰입해서 일한 뒤 저녁은 가족과 보낸다.",
+  "onboarding.futureSelf.daily.example2":
+    "출근 없는 아침, 서재에서 커피와 함께 두 시간 글을 쓰고 오후엔 산책하며 다음 프로젝트를 구상한다.",
+  "onboarding.futureSelf.work.q": "그때 당신은 어떤 일을 하고, 사람들 사이에서 어떤 위치에 있나요?",
+  "onboarding.futureSelf.work.placeholder":
+    "직업·역할, 팀에서의 위치, 사람들이 당신을 찾는 이유를 적어보세요.",
+  "onboarding.futureSelf.work.example1":
+    "10명 규모 회사를 이끄는 대표로, 업계 사람들이 조언을 구하러 먼저 찾아온다.",
+  "onboarding.futureSelf.work.example2":
+    "분야에서 손꼽히는 전문가가 되어 강연과 집필로도 영향력을 넓히고 있다.",
+  "onboarding.futureSelf.wealth.q": "자산과 경제적 형편은 어느 정도인가요?",
+  "onboarding.futureSelf.wealth.placeholder":
+    "월 수입, 모은 자산, 사는 집, 돈 걱정 없이 할 수 있게 된 선택들.",
+  "onboarding.futureSelf.family.q": "가족과 함께하는 삶은 어떤 모습인가요?",
+  "onboarding.futureSelf.family.placeholder":
+    "함께 보내는 시간, 해주고 있는 것, 관계의 온도를 적어보세요.",
+  "onboarding.futureSelf.achievements.q": "그때까지 이루어낸 것들은 무엇인가요?",
+  "onboarding.futureSelf.achievements.placeholder":
+    "만든 것, 도달한 목표, 스스로 가장 자랑스러운 성취.",
+  "onboarding.futureSelf.achievements.example1":
+    "내 이름으로 낸 책 한 권과, 1만 명이 쓰는 서비스를 만들었다.",
+  "onboarding.futureSelf.achievements.example2":
+    "무일푼에서 시작해 대출 없는 내 집과 탄탄한 사업체를 일궜다.",
+  "onboarding.futureSelf.respect.q": "사람들은 당신을 어떻게 바라보고, 어떤 점을 존경하나요?",
+  "onboarding.futureSelf.respect.placeholder":
+    "주변이 당신에게 보내는 신뢰, 평판, 존경의 이유.",
+  "onboarding.futureSelf.growth.q": "몸과 마음은 어떤 상태이고, 여전히 어떻게 성장하고 있나요?",
+  "onboarding.futureSelf.growth.placeholder":
+    "건강, 배우고 있는 것, 계속 나아가는 모습.",
 
   "onboarding.step2.title": "목표를 이루기 위해 필요한 구체적인 행동을 적어주세요",
   "onboarding.step2.subtitle":
@@ -85,6 +112,10 @@ const dict = {
   "onboarding.step5.widgetStep3": "3. 잠금화면에 추가하면 매일 자동으로 한 줄이 도착해요",
   "onboarding.step5.start": "시작하기",
   "onboarding.step5.finishing": "마무리 중…",
+  "onboarding.step5.portraitLabel": "10년 후 나의 모습",
+  "onboarding.step5.portraitLoading": "10년 후 당신의 모습을 그리고 있어요…",
+  "onboarding.step5.portraitError":
+    "10년 후 모습을 만들지 못했어요. 시작 후 홈에서 다시 만들 수 있어요.",
 
   "onboarding.saveError": "저장에 실패했어요.",
   "onboarding.category.philosophy": "철학",
@@ -107,6 +138,13 @@ const dict = {
   "home.future.empty": "아직 적어둔 모습이 없어요. 설정에서 작성할 수 있어요.",
   "home.future.saveAndRegen": "저장하고 카드 다시 받기",
   "home.future.saveFailed": "미래의 나 저장 실패",
+
+  // ── "10년 후 나의 모습" 초상 카드 ─────────────────
+  "futureSelf.portrait.headerLabel": "10년 후 나의 모습",
+  "futureSelf.portrait.loading": "10년 후 당신의 모습을 그리고 있어요…",
+  "futureSelf.portrait.error": "10년 후 모습을 그리지 못했어요.",
+  "futureSelf.portrait.regenerate": "초상 다시 그리기",
+  "futureSelf.portrait.regenerating": "다시 그리는 중…",
 
   "home.goals.title": "목표를 이루기 위한 오늘의 행동",
   "home.goals.subtitle":
@@ -182,6 +220,8 @@ const dict = {
   "settings.subtitle": "미래의 모습 · 매일 다짐 · 오늘의 행동 · 명언 큐레이션을 한곳에서 관리해요.",
   "settings.future.title": "10년 후의 나의 모습",
   "settings.future.subtitle": "매일 도착하는 동기부여 한 마디가 이 글을 바탕으로 만들어져요.",
+  "settings.futureSelf.legacyNote":
+    "이전에 적어둔 글이에요. 위 질문에 답하고 저장하면 이 글을 대체해요.",
   "settings.affirmations.title": "성공한 나에게 한 발 더",
   "settings.affirmations.subtitle":
     "매일 카드 위쪽에 흐린 글씨로 미리 보여드려요. 그 위에 똑같이 따라 적으면 연속일이 +1 됩니다.",

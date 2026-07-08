@@ -16,6 +16,7 @@ import { getAdminDb } from "@/lib/firebase-admin";
 import { generateText } from "@/lib/gemini";
 import { geminiLanguageName, normalizeLanguage } from "@/lib/llmLang";
 import { pickGradient, hash32 } from "@/lib/dailyMotivation";
+import { FUTURE_PERSONA_TRUNC } from "@/lib/constants/futurePersona";
 import type {
   FutureVision,
   FutureVisionScene,
@@ -23,8 +24,6 @@ import type {
   UserLanguage,
 } from "@/types";
 
-/** futurePersona 프롬프트 주입 상한 — 동기부여 카드와 동일(280자). */
-const FUTURE_PERSONA_TRUNC = 280;
 /** 비전 컨텍스트에 넣을 목표 최대 개수. 카드(3개)보다 넉넉히 잡아 하루를 풍부하게. */
 const MAX_GOALS_FOR_VISION = 6;
 /**

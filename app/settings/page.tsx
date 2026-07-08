@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
-  updateFuturePersona,
+  updateFutureSelf,
   updateUserGoals,
   updateQuotePreference,
   updateSuccessAffirmations,
@@ -12,6 +12,14 @@ import {
   MAX_USER_GOALS,
   MAX_SUCCESS_AFFIRMATIONS,
 } from "@/lib/firebase";
+import {
+  FUTURE_SELF_DIMENSIONS,
+  FUTURE_SELF_FIELD_MAX,
+  hasAnyFutureSelfAnswer,
+  type FutureSelfDimension,
+} from "@/lib/futureSelf";
+import type { FutureSelfAnswers } from "@/types";
+import type { DictKey } from "@/lib/i18n";
 import { authedFetch } from "@/lib/authedFetch";
 import {
   isIosPurchaseAvailable,
@@ -41,8 +49,27 @@ import { useLanguage, LOCALE_META, SUPPORTED_LOCALES, type Locale } from "@/lib/
  *  · Destructive actions in System Red
  * ───────────────────────────────────────────────────────────────── */
 
-const FUTURE_PERSONA_MAX = 500;
 const GOAL_MAX = 80;
+
+/** 차원 → i18n 질문/placeholder 키 (온보딩과 동일 키 재사용). */
+const FUTURE_Q_KEY: Record<FutureSelfDimension, DictKey> = {
+  daily: "onboarding.futureSelf.daily.q",
+  work: "onboarding.futureSelf.work.q",
+  wealth: "onboarding.futureSelf.wealth.q",
+  family: "onboarding.futureSelf.family.q",
+  achievements: "onboarding.futureSelf.achievements.q",
+  respect: "onboarding.futureSelf.respect.q",
+  growth: "onboarding.futureSelf.growth.q",
+};
+const FUTURE_PH_KEY: Record<FutureSelfDimension, DictKey> = {
+  daily: "onboarding.futureSelf.daily.placeholder",
+  work: "onboarding.futureSelf.work.placeholder",
+  wealth: "onboarding.futureSelf.wealth.placeholder",
+  family: "onboarding.futureSelf.family.placeholder",
+  achievements: "onboarding.futureSelf.achievements.placeholder",
+  respect: "onboarding.futureSelf.respect.placeholder",
+  growth: "onboarding.futureSelf.growth.placeholder",
+};
 
 /**
  * 네이티브 결제 브릿지(anima://purchase)는 서버가 해당 uid 에 paid claim 을 박는 것으로 완료된다.
@@ -231,9 +258,10 @@ export default function SettingsPage() {
   const { t, locale, setLocale } = useLanguage();
   const [languageSaving, setLanguageSaving] = useState(false);
 
-  const [futureDraft, setFutureDraft] = useState("");
+  const [futureSelfDraft, setFutureSelfDraft] = useState<FutureSelfAnswers>({});
   const [futureSaving, setFutureSaving] = useState(false);
   const [futureOpen, setFutureOpen] = useState(false);
+  const [portraitRegenLoading, setPortraitRegenLoading] = useState(false);
 
   const [goals, setGoals] = useState<string[]>([]);
   const [goalsOpen, setGoalsOpen] = useState(false);
@@ -305,7 +333,9 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!user) return;
-    setFutureDraft(user.futurePersona || "");
+    // 레거시 사용자(구조화 답변 없이 futurePersona 만 있는 경우)는 필드를 공란으로 두고
+    // 기존 원문은 시트 하단에 읽기전용으로 보여준다 — 저장 전까지 원문을 건드리지 않는다.
+    setFutureSelfDraft(user.futureSelfAnswers ? { ...user.futureSelfAnswers } : {});
     setGoals(user.goals && user.goals.length > 0 ? [...user.goals] : []);
     setPinnedAuthor(user.quotePreference?.pinnedAuthor || "");
     setPinnedDays(user.quotePreference?.pinnedDaysPerWeek ?? 0);
@@ -341,14 +371,43 @@ export default function SettingsPage() {
   const handleSaveFuture = async () => {
     setFutureSaving(true);
     try {
-      await updateFuturePersona(uid, futureDraft.trim().slice(0, FUTURE_PERSONA_MAX));
-      await refreshUser().catch(() => {});
+      // 전부 공란이면 아무것도 쓰지 않는다 — 레거시 futurePersona 원문을 실수로 지우는 것 방지.
+      if (hasAnyFutureSelfAnswer(futureSelfDraft)) {
+        await updateFutureSelf(uid, futureSelfDraft);
+        await refreshUser().catch(() => {});
+      }
       setFutureOpen(false);
     } catch (err) {
       console.error("[settings] 미래의 나 저장 실패:", err);
       window.alert(t("common.saveFailed"));
     } finally {
       setFutureSaving(false);
+    }
+  };
+
+  /** "초상 다시 그리기" — force=true 는 일별 한도(5회)에 카운트된다. */
+  const handleRegeneratePortrait = async () => {
+    setPortraitRegenLoading(true);
+    try {
+      const res = await authedFetch("/api/future-self/portrait", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ force: true }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        throw new Error(data.error || `${t("common.error")} (${res.status})`);
+      }
+      await refreshUser().catch(() => {});
+    } catch (err) {
+      console.error("[settings] 초상 재생성 실패:", err);
+      window.alert(
+        err instanceof Error && err.message
+          ? err.message
+          : t("futureSelf.portrait.error"),
+      );
+    } finally {
+      setPortraitRegenLoading(false);
     }
   };
 
@@ -744,21 +803,74 @@ export default function SettingsPage() {
         </div>
       </main>
 
-      {/* ── Future persona sheet ── */}
+      {/* ── Future self sheet — 구조화 7문항 편집 + 초상 미리보기/재생성 ── */}
       {futureOpen && (
         <Sheet onClose={() => setFutureOpen(false)} title={t("home.future.title")}>
-          <textarea
-            value={futureDraft}
-            onChange={(e) => setFutureDraft(e.target.value)}
-            rows={6}
-            maxLength={FUTURE_PERSONA_MAX}
-            placeholder={t("onboarding.step1.placeholder")}
-            className="w-full mt-2 resize-none rounded-[12px] border border-[var(--sep)] bg-[var(--bg-grouped-2)] px-4 py-3 text-[17px] leading-[24px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none focus:border-[var(--soul)]"
-          />
-          <div className="flex justify-between mt-3">
-            <span className="text-[12px] text-[var(--label-3)]">
-              {futureDraft.length}/{FUTURE_PERSONA_MAX}
-            </span>
+          <p className="mt-1 text-[13px] leading-[1.5] tracking-[-0.08px] text-[var(--label-2)]">
+            {t("settings.future.subtitle")}
+          </p>
+
+          <div className="mt-3 space-y-4">
+            {FUTURE_SELF_DIMENSIONS.map((dim) => (
+              <div key={dim}>
+                <p className="text-[13px] font-semibold tracking-[-0.08px] text-[var(--label)]">
+                  {t(FUTURE_Q_KEY[dim])}
+                </p>
+                <textarea
+                  value={futureSelfDraft[dim] ?? ""}
+                  onChange={(e) =>
+                    setFutureSelfDraft((prev) => ({
+                      ...prev,
+                      [dim]: e.target.value.slice(0, FUTURE_SELF_FIELD_MAX),
+                    }))
+                  }
+                  rows={3}
+                  maxLength={FUTURE_SELF_FIELD_MAX}
+                  placeholder={t(FUTURE_PH_KEY[dim])}
+                  className="mt-1.5 w-full resize-none rounded-[12px] border border-[var(--sep)] bg-[var(--bg-grouped-2)] px-4 py-3 text-[15px] leading-[22px] tracking-[-0.24px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none focus:border-[var(--soul)]"
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* 레거시 사용자: 구조화 답변 없이 futurePersona 원문만 있으면 읽기전용으로 노출 */}
+          {!hasAnyFutureSelfAnswer(user?.futureSelfAnswers ?? {}) && user?.futurePersona && (
+            <div className="mt-4 rounded-[12px] bg-[var(--bg-grouped-2)] px-4 py-3">
+              <p className="text-[11px] font-medium tracking-[0.06em] text-[var(--label-3)]">
+                {t("settings.futureSelf.legacyNote")}
+              </p>
+              <p className="mt-1.5 whitespace-pre-wrap text-[13px] leading-[1.55] tracking-[-0.08px] text-[var(--label-2)]">
+                {user.futurePersona}
+              </p>
+            </div>
+          )}
+
+          {/* 저장된 초상 미리보기 + 다시 그리기 */}
+          {user?.futureSelfPortrait && (
+            <div className="mt-4 rounded-[12px] bg-[#1E1B4B] px-4 py-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/50">
+                {t("futureSelf.portrait.headerLabel")}
+              </p>
+              <p className="mt-2 text-[15px] font-bold leading-[1.4] tracking-[-0.24px] text-white">
+                {user.futureSelfPortrait.title}
+              </p>
+              <p className="mt-2 whitespace-pre-wrap text-[13px] leading-[1.6] tracking-[-0.08px] text-white/85">
+                {user.futureSelfPortrait.portrait}
+              </p>
+              <button
+                type="button"
+                onClick={handleRegeneratePortrait}
+                disabled={portraitRegenLoading || futureSaving}
+                className="mt-3 rounded-full bg-white/12 px-4 py-1.5 text-[12px] font-semibold tracking-[-0.05px] text-white/90 transition-colors hover:bg-white/20 disabled:opacity-40"
+              >
+                {portraitRegenLoading
+                  ? t("futureSelf.portrait.regenerating")
+                  : t("futureSelf.portrait.regenerate")}
+              </button>
+            </div>
+          )}
+
+          <div className="flex justify-end mt-4">
             <button
               type="button"
               onClick={handleSaveFuture}

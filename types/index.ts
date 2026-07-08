@@ -14,6 +14,15 @@ export interface User {
   /** "10년 후의 나의 모습" 자유 텍스트 — 동기부여 카드 컨텍스트로 사용. */
   futurePersona?: string;
   futurePersonaUpdatedAt?: Timestamp;
+  /**
+   * 온보딩 몰입형 7문항(일상/일·위치/자산/가족/성취/존경/성장)의 구조화 답변.
+   * 저장 시 composeFuturePersona() 로 합성한 문자열을 futurePersona 에도 함께 기록해
+   * 기존 AI 소비처(카드/비전/정체성/작가추천)는 읽기 경로 수정 없이 그대로 동작한다.
+   */
+  futureSelfAnswers?: FutureSelfAnswers;
+  futureSelfAnswersUpdatedAt?: Timestamp;
+  /** 답변을 종합해 생성한 "10년 후 나의 모습" 초상 — 서버(Admin)에서만 생성·갱신. */
+  futureSelfPortrait?: FutureSelfPortrait;
   onboardedAt?: Timestamp;
   /**
    * UI 와 매일 카드 출력 언어. 온보딩 1단계에서 선택, 설정에서 변경 가능.
@@ -53,6 +62,44 @@ export interface AffirmationStreak {
   /** 마지막으로 정상 체크인이 일어난 날짜 (KST YYYY-MM-DD). */
   lastYmd: string;
   updatedAt?: Timestamp;
+}
+
+/**
+ * "10년 후 나의 모습" 몰입형 질문의 차원별 답변. 모든 필드 선택 —
+ * 사용자는 원하는 문항만 답하고 넘어갈 수 있다. 각 답변은 FUTURE_SELF_FIELD_MAX(200자)로 클램프.
+ */
+export interface FutureSelfAnswers {
+  /** 평범한 하루의 흐름. */
+  daily?: string;
+  /** 하는 일과 사람들 사이에서의 위치. */
+  work?: string;
+  /** 자산·경제적 형편. */
+  wealth?: string;
+  /** 가족과 함께하는 삶. */
+  family?: string;
+  /** 그때까지 이루어낸 것들. */
+  achievements?: string;
+  /** 사람들이 보내는 존경·신뢰. */
+  respect?: string;
+  /** 몸·마음 상태와 계속되는 성장. */
+  growth?: string;
+}
+
+/**
+ * 답변을 종합해 Gemini 가 그려낸 "10년 후 나의 모습" 초상.
+ * 미래 비전(1인칭·매일 회전 '어느 하루')과 달리 2인칭·고정 '정체성 앵커'로,
+ * 유저 문서에 단일 객체로 저장되고 답변이 바뀔 때(sourceHash 불일치)만 재생성된다.
+ */
+export interface FutureSelfPortrait {
+  /** 초상을 요약하는 짧은 제목. */
+  title: string;
+  /** "당신은 …" 2인칭 현재형 본문(4~6문장). */
+  portrait: string;
+  /** 구체적 증거 하이라이트 (최대 3줄, 없을 수 있음). */
+  highlights?: string[];
+  /** language+persona+goals 변경 감지 해시 — 다르면 ensure 가 자동 재생성. */
+  sourceHash: string;
+  generatedAt: Timestamp;
 }
 
 /** 정체성 라벨 풀 — 미션 응답 1건이 라벨 1개의 누적 증거가 된다. */

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
-  updateFuturePersona,
+  updateFutureSelf,
   updateUserGoals,
   updateQuotePreference,
   updateSuccessAffirmations,
@@ -12,6 +12,12 @@ import {
   markOnboarded,
   MAX_USER_GOALS,
 } from "@/lib/firebase";
+import {
+  FUTURE_SELF_DIMENSIONS,
+  FUTURE_SELF_FIELD_MAX,
+  hasAnyFutureSelfAnswer,
+  type FutureSelfDimension,
+} from "@/lib/futureSelf";
 import { authedFetch } from "@/lib/authedFetch";
 import AffirmationsEditor from "@/components/affirmations/AffirmationsEditor";
 import { useLanguage, LOCALE_META, SUPPORTED_LOCALES, type Locale, type DictKey } from "@/lib/i18n";
@@ -19,13 +25,56 @@ import {
   getKnownAuthorsForLanguage,
   getAuthorCategoryMap,
 } from "@/lib/famousQuoteCatalog";
-import type { DailyMotivation, FamousQuoteCategory, UserLanguage } from "@/types";
+import type {
+  DailyMotivation,
+  FamousQuoteCategory,
+  FutureSelfAnswers,
+  UserLanguage,
+} from "@/types";
 
-const FUTURE_PERSONA_MAX = 500;
 const GOAL_MAX = 80;
 /** 0 = 언어 선택, 1~5 = 기존 단계. */
 const TOTAL_STEPS = 6;
 type Step = 0 | 1 | 2 | 3 | 4 | 5;
+
+/** Step 1 몰입형 질문 화면 수 = 차원 수(7). */
+const FUTURE_QUESTION_COUNT = FUTURE_SELF_DIMENSIONS.length;
+
+/** 차원 → i18n 질문/placeholder 키. 동적 키 조합 대신 명시 매핑으로 타입 안전 확보. */
+const FUTURE_Q_KEY: Record<FutureSelfDimension, DictKey> = {
+  daily: "onboarding.futureSelf.daily.q",
+  work: "onboarding.futureSelf.work.q",
+  wealth: "onboarding.futureSelf.wealth.q",
+  family: "onboarding.futureSelf.family.q",
+  achievements: "onboarding.futureSelf.achievements.q",
+  respect: "onboarding.futureSelf.respect.q",
+  growth: "onboarding.futureSelf.growth.q",
+};
+const FUTURE_PH_KEY: Record<FutureSelfDimension, DictKey> = {
+  daily: "onboarding.futureSelf.daily.placeholder",
+  work: "onboarding.futureSelf.work.placeholder",
+  wealth: "onboarding.futureSelf.wealth.placeholder",
+  family: "onboarding.futureSelf.family.placeholder",
+  achievements: "onboarding.futureSelf.achievements.placeholder",
+  respect: "onboarding.futureSelf.respect.placeholder",
+  growth: "onboarding.futureSelf.growth.placeholder",
+};
+/** 예시칩은 구체 예시가 특히 도움이 되는 3개 차원에만 제공(화면 과밀 방지). */
+const FUTURE_EXAMPLE_KEYS: Partial<Record<FutureSelfDimension, ReadonlyArray<DictKey>>> = {
+  daily: ["onboarding.futureSelf.daily.example1", "onboarding.futureSelf.daily.example2"],
+  work: ["onboarding.futureSelf.work.example1", "onboarding.futureSelf.work.example2"],
+  achievements: [
+    "onboarding.futureSelf.achievements.example1",
+    "onboarding.futureSelf.achievements.example2",
+  ],
+};
+
+/** Step 5 초상 카드 표시용 — 서버 JSON 응답에서 쓰는 필드만 (Timestamp 직렬화 무관). */
+interface PortraitPreview {
+  title: string;
+  portrait: string;
+  highlights?: string[];
+}
 
 const CATEGORY_LABEL_KEY: Record<FamousQuoteCategory, DictKey> = {
   philosophy: "onboarding.category.philosophy",
@@ -46,7 +95,9 @@ export default function OnboardingPage() {
   const { t, locale, setLocale } = useLanguage();
 
   const [step, setStep] = useState<Step>(0);
-  const [futurePersona, setFuturePersona] = useState("");
+  /** 몰입형 "10년 후 나의 모습" — 한 화면에 한 질문. 0..FUTURE_QUESTION_COUNT-1. */
+  const [futureStep, setFutureStep] = useState(0);
+  const [futureAnswers, setFutureAnswers] = useState<FutureSelfAnswers>({});
   const [goals, setGoals] = useState<string[]>([""]);
   const [affirmations, setAffirmations] = useState<string[]>([]);
   const [pinnedAuthor, setPinnedAuthor] = useState<string>("");
@@ -56,6 +107,10 @@ export default function OnboardingPage() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [preview, setPreview] = useState<DailyMotivation | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+
+  const [portraitLoading, setPortraitLoading] = useState(false);
+  const [portrait, setPortrait] = useState<PortraitPreview | null>(null);
+  const [portraitError, setPortraitError] = useState<string | null>(null);
 
   /**
    * 현재 언어 풀의 모든 인물을 노출. 시드가 늘면 자동으로 따라온다.
@@ -92,8 +147,28 @@ export default function OnboardingPage() {
     setGoals((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== idx)));
   };
 
-  const goNext = () => setStep((s) => (s < (TOTAL_STEPS - 1) ? ((s + 1) as Step) : s));
-  const goBack = () => setStep((s) => (s > 0 ? ((s - 1) as Step) : s));
+  const handleFutureAnswerChange = (dim: FutureSelfDimension, value: string) => {
+    setFutureAnswers((prev) => ({ ...prev, [dim]: value.slice(0, FUTURE_SELF_FIELD_MAX) }));
+  };
+
+  /**
+   * 다음/이전 버튼이 Step 1 안에서는 몰입형 질문(futureStep)을 먼저 구동한다.
+   * 마지막 질문에서 "다음" → step 2, 첫 질문에서 "이전" → step 0 (언어 선택).
+   */
+  const goNext = () => {
+    if (step === 1 && futureStep < FUTURE_QUESTION_COUNT - 1) {
+      setFutureStep((fs) => fs + 1);
+      return;
+    }
+    setStep((s) => (s < (TOTAL_STEPS - 1) ? ((s + 1) as Step) : s));
+  };
+  const goBack = () => {
+    if (step === 1 && futureStep > 0) {
+      setFutureStep((fs) => fs - 1);
+      return;
+    }
+    setStep((s) => (s > 0 ? ((s - 1) as Step) : s));
+  };
 
   /**
    * Step 0 → 1 진입 시 선택한 언어를 즉시 Firestore 에 저장.
@@ -125,8 +200,10 @@ export default function OnboardingPage() {
       // 언어를 한 번 더 동기화 (step0 저장이 어떤 이유로 누락된 경우 보호)
       try { await updateUserLanguage(uid, locale); } catch {}
 
-      if (futurePersona.trim()) {
-        await updateFuturePersona(uid, futurePersona.trim());
+      const hasFutureAnswers = hasAnyFutureSelfAnswer(futureAnswers);
+      if (hasFutureAnswers) {
+        // 구조화 답변 + 합성 futurePersona 를 함께 저장 (기존 AI 소비처 호환).
+        await updateFutureSelf(uid, futureAnswers);
       }
       const cleanedGoals = goals.map((g) => g.trim()).filter((g) => g.length > 0);
       if (cleanedGoals.length > 0) {
@@ -149,6 +226,35 @@ export default function OnboardingPage() {
         await markOnboarded(uid);
       } catch (err) {
         console.warn("[onboarding] markOnboarded 실패(무시하고 진행):", err);
+      }
+
+      // "10년 후 나의 모습" 초상 생성 — 데일리 카드와 병렬로 발사하고 결과를 기다리지 않는다.
+      // (답변이 하나도 없으면 그릴 재료가 없으므로 호출 자체를 생략 — Step 5 에 섹션 미노출.)
+      if (hasFutureAnswers) {
+        setPortraitLoading(true);
+        setPortraitError(null);
+        void (async () => {
+          try {
+            const res = await authedFetch("/api/future-self/portrait", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({}),
+            });
+            const data = (await res.json().catch(() => ({}))) as {
+              portrait?: PortraitPreview;
+              error?: string;
+            };
+            if (!res.ok || !data.portrait) {
+              throw new Error(data.error || `${t("common.error")} (${res.status})`);
+            }
+            setPortrait(data.portrait);
+          } catch (err) {
+            console.warn("[onboarding] 초상 생성 실패:", err);
+            setPortraitError(t("onboarding.step5.portraitError"));
+          } finally {
+            setPortraitLoading(false);
+          }
+        })();
       }
 
       // 첫 카드 즉시 생성 (force=true 로 핀 인물 반영)
@@ -223,11 +329,8 @@ export default function OnboardingPage() {
     );
   }
 
-  const futurePersonaExamples = [
-    t("onboarding.step1.example1"),
-    t("onboarding.step1.example2"),
-    t("onboarding.step1.example3"),
-  ];
+  const currentDimension = FUTURE_SELF_DIMENSIONS[futureStep];
+  const currentExampleKeys = FUTURE_EXAMPLE_KEYS[currentDimension] ?? [];
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F0EDE6]">
@@ -306,38 +409,66 @@ export default function OnboardingPage() {
           )}
 
           {step === 1 && (
-            <div>
-              <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.003em] text-[#1E1B4B] sm:text-[32px]">
-                {t("onboarding.step1.title")}
+            <div key={currentDimension}>
+              {/* 몰입형: 한 화면에 한 질문. 섹션 라벨 + 서브 진행으로 흐름을 잡아준다. */}
+              <div className="flex items-center gap-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#1E1B4B]/60">
+                  {t("onboarding.futureSelf.sectionLabel")}
+                </p>
+                <span className="text-[11px] font-medium tracking-[-0.01em] text-black/40">
+                  {t("onboarding.futureSelf.progress", {
+                    current: futureStep + 1,
+                    total: FUTURE_QUESTION_COUNT,
+                  })}
+                </span>
+              </div>
+              <div className="mt-2 flex items-center gap-1">
+                {FUTURE_SELF_DIMENSIONS.map((dim, i) => (
+                  <span
+                    key={dim}
+                    className={`h-1 flex-1 rounded-full transition-colors ${
+                      i <= futureStep ? "bg-[#1E1B4B]/70" : "bg-black/10"
+                    }`}
+                  />
+                ))}
+              </div>
+
+              <h1 className="mt-6 text-[26px] font-semibold leading-[1.2] tracking-[-0.003em] text-[#1E1B4B] sm:text-[30px]">
+                {t(FUTURE_Q_KEY[currentDimension])}
               </h1>
-              <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
-                {t("onboarding.step1.subtitle")}
+              <p className="mt-2 text-[14px] leading-[1.5] tracking-[-0.022em] text-black/55">
+                {t("onboarding.futureSelf.hint")}
               </p>
 
               <textarea
-                value={futurePersona}
-                onChange={(e) => setFuturePersona(e.target.value.slice(0, FUTURE_PERSONA_MAX))}
-                rows={8}
-                maxLength={FUTURE_PERSONA_MAX}
-                placeholder={t("onboarding.step1.placeholder")}
-                className="mt-6 w-full resize-none rounded-[14px] border border-black/10 bg-white px-4 py-3 text-[14px] leading-[1.6] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
+                value={futureAnswers[currentDimension] ?? ""}
+                onChange={(e) => handleFutureAnswerChange(currentDimension, e.target.value)}
+                rows={6}
+                maxLength={FUTURE_SELF_FIELD_MAX}
+                placeholder={t(FUTURE_PH_KEY[currentDimension])}
+                className="mt-6 w-full resize-none rounded-[14px] border border-black/10 bg-white px-4 py-3 text-[15px] leading-[1.6] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
               />
               <div className="mt-2 text-right text-[11px] tracking-[-0.01em] text-black/40">
-                {futurePersona.length}/{FUTURE_PERSONA_MAX}
+                {(futureAnswers[currentDimension] ?? "").length}/{FUTURE_SELF_FIELD_MAX}
               </div>
 
-              <div className="mt-3 flex flex-wrap gap-2">
-                {futurePersonaExamples.map((ex, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setFuturePersona(ex)}
-                    className="rounded-pill border border-black/10 bg-white px-3 py-1.5 text-[12px] tracking-[-0.01em] text-black/70 transition-colors hover:border-[#1E1B4B] hover:text-[#1E1B4B]"
-                  >
-                    {ex.length > 32 ? ex.slice(0, 32) + "…" : ex}
-                  </button>
-                ))}
-              </div>
+              {currentExampleKeys.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {currentExampleKeys.map((key) => {
+                    const ex = t(key);
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => handleFutureAnswerChange(currentDimension, ex)}
+                        className="rounded-pill border border-black/10 bg-white px-3 py-1.5 text-[12px] tracking-[-0.01em] text-black/70 transition-colors hover:border-[#1E1B4B] hover:text-[#1E1B4B]"
+                      >
+                        {ex.length > 32 ? ex.slice(0, 32) + "…" : ex}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -561,6 +692,51 @@ export default function OnboardingPage() {
                 <p className="mt-6 text-center text-[13px] tracking-[-0.01em] text-[#D85A30]">
                   {t("onboarding.step5.previewError")} ({previewError})
                 </p>
+              )}
+
+              {/* "10년 후 나의 모습" 초상 — 답변이 있을 때만 생성/노출. 데일리 카드와 병렬 생성. */}
+              {(portraitLoading || portrait || portraitError) && (
+                <div className="mt-6 rounded-[24px] bg-[#1E1B4B] p-7 shadow-[0_24px_60px_-24px_rgba(30,27,75,0.5)]">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/50">
+                    {t("onboarding.step5.portraitLabel")}
+                  </p>
+                  {portraitLoading && (
+                    <div className="mt-6 flex items-center gap-3">
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+                      <p className="text-[13px] tracking-[-0.01em] text-white/70">
+                        {t("onboarding.step5.portraitLoading")}
+                      </p>
+                    </div>
+                  )}
+                  {!portraitLoading && portrait && (
+                    <>
+                      <p className="mt-4 text-[20px] font-bold leading-[1.35] tracking-[-0.02em] text-white">
+                        {portrait.title}
+                      </p>
+                      <p className="mt-3 whitespace-pre-wrap text-[14px] leading-[1.7] tracking-[-0.01em] text-white/85">
+                        {portrait.portrait}
+                      </p>
+                      {portrait.highlights && portrait.highlights.length > 0 && (
+                        <ul className="mt-4 space-y-1.5">
+                          {portrait.highlights.map((h, i) => (
+                            <li
+                              key={i}
+                              className="flex items-start gap-2 text-[12px] leading-[1.5] tracking-[-0.005em] text-white/70"
+                            >
+                              <span aria-hidden className="mt-[1px] text-white/45">·</span>
+                              {h}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  )}
+                  {!portraitLoading && !portrait && portraitError && (
+                    <p className="mt-4 text-[13px] leading-[1.5] tracking-[-0.01em] text-white/70">
+                      {portraitError}
+                    </p>
+                  )}
+                </div>
               )}
 
               <div className="mt-8 rounded-[14px] border border-black/[0.06] bg-white p-4">

@@ -20,6 +20,7 @@ import { type FamousQuoteSeed } from "@/lib/famousQuotesSeed";
 import { getQuoteSeedPool } from "@/lib/famousQuoteCatalog";
 import { ensureIdentities } from "@/lib/identities";
 import { geminiLanguageName, normalizeLanguage } from "@/lib/llmLang";
+import { FUTURE_PERSONA_TRUNC } from "@/lib/constants/futurePersona";
 import type {
   DailyMotivation,
   MotivationGradient,
@@ -29,7 +30,6 @@ import type {
 } from "@/types";
 
 export const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
-const FUTURE_PERSONA_TRUNC = 280;
 const MAX_GOALS_ON_CARD = 3;
 /**
  * mission + identityTag 까지 같은 호출에서 출력하므로 토큰 한도를 키운다.

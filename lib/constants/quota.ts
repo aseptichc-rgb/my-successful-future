@@ -20,6 +20,12 @@ export const DAILY_QUOTA = {
    * 사용자 안내 문구(future-vision 라우트의 429 메시지 "하루 5번까지")와 일치시킨다.
    */
   futureVisionRegenerate: 5,
+  /**
+   * "10년 후 나의 모습" 초상 재생성(force=true) 호출.
+   * 첫 생성과 답변 변경에 따른 자동 재생성(sourceHash 불일치)은 카운트하지 않는다.
+   * 사용자 안내 문구(future-self/portrait 라우트의 429 메시지)와 일치시킨다.
+   */
+  futureSelfPortraitRegenerate: 5,
   /** 위젯 새로고침 호출 (안드로이드 위젯의 폴링 + 수동 새로고침 모두 합산). */
   widgetRefresh: 48,
   /** 명언 작가 자유 발화 추천 (LLM 호출 1건 = 1카운트). */

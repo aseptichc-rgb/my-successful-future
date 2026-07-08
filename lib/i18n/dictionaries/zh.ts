@@ -36,17 +36,44 @@ const dict: Record<DictKey, string> = {
   "language.settings.note": "更改后,下一张卡片将以新的语言送达。",
 
   // Onboarding
-  "onboarding.step1.title": "10 年后的你是什么样子?",
-  "onboarding.step1.subtitle":
-    "用一段话写下你想成为的样子。每天送达的一句话,都从这里出发。",
-  "onboarding.step1.placeholder":
-    "例:10 年后的我每天清晨从锻炼与阅读开始,陪伴家人,从热爱的工作中获得稳定收入。",
-  "onboarding.step1.example1":
-    "5 年后,我月入 7 万,自由选择何时做什么。每个清晨从锻炼与阅读开始。",
-  "onboarding.step1.example2":
-    "10 年后,我成为所在领域的代表声音之一,通过演讲与写作影响更多人。",
-  "onboarding.step1.example3":
-    "7 年后,与家人相处的时间是第一位。每天工作 5 小时,周末完全留给自己。",
+  // 「十年后的我」— 沉浸式提问流程,一屏一个问题。
+  "onboarding.futureSelf.sectionLabel": "十年后的我",
+  "onboarding.futureSelf.progress": "{current} / {total}",
+  "onboarding.futureSelf.hint":
+    "想到什么就具体写下来。现在难以回答的问题,可以留空跳过。",
+  "onboarding.futureSelf.daily.q": "10 年后,你平常的一天是怎样度过的?",
+  "onboarding.futureSelf.daily.placeholder":
+    "在哪里醒来、上午做什么、傍晚如何度过。",
+  "onboarding.futureSelf.daily.example1":
+    "在能看到江景的家里 6 点醒来,先锻炼开启一天,上午专注工作,晚上陪伴家人。",
+  "onboarding.futureSelf.daily.example2":
+    "不用通勤的早晨,在书房伴着咖啡写作两小时,下午散步构思下一个项目。",
+  "onboarding.futureSelf.work.q": "那时你在做什么工作,在人们中处于怎样的位置?",
+  "onboarding.futureSelf.work.placeholder":
+    "职业与角色、在团队中的位置、人们来找你的原因。",
+  "onboarding.futureSelf.work.example1":
+    "我经营着一家 10 人的公司,业内的人有事会先来找我请教。",
+  "onboarding.futureSelf.work.example2":
+    "我成为所在领域的代表声音之一,通过演讲与写作扩大影响力。",
+  "onboarding.futureSelf.wealth.q": "你的资产和经济状况如何?",
+  "onboarding.futureSelf.wealth.placeholder":
+    "月收入、积累的资产、住的房子、金钱不再限制的选择。",
+  "onboarding.futureSelf.family.q": "与家人在一起的生活是什么样子?",
+  "onboarding.futureSelf.family.placeholder":
+    "一起度过的时光、你为他们做的事、关系的温度。",
+  "onboarding.futureSelf.achievements.q": "到那时你已经取得了哪些成就?",
+  "onboarding.futureSelf.achievements.placeholder":
+    "你创造的东西、达成的目标、最自豪的成就。",
+  "onboarding.futureSelf.achievements.example1":
+    "出版了署名的书,做出了 1 万人在用的服务。",
+  "onboarding.futureSelf.achievements.example2":
+    "白手起家,拥有了无贷款的房子和稳固的事业。",
+  "onboarding.futureSelf.respect.q": "人们如何看待你,尊敬你哪些方面?",
+  "onboarding.futureSelf.respect.placeholder":
+    "周围人给予你的信任、声誉与尊敬,以及原因。",
+  "onboarding.futureSelf.growth.q": "你的身心状态如何,又在如何继续成长?",
+  "onboarding.futureSelf.growth.placeholder":
+    "健康状况、正在学习的东西、持续前进的样子。",
 
   "onboarding.step2.title": "写下实现目标所需的具体行动",
   "onboarding.step2.subtitle":
@@ -87,6 +114,10 @@ const dict: Record<DictKey, string> = {
     "3. 添加到锁屏,每天都会自动收到一条新句",
   "onboarding.step5.start": "开始",
   "onboarding.step5.finishing": "正在收尾…",
+  "onboarding.step5.portraitLabel": "十年后的我",
+  "onboarding.step5.portraitLoading": "正在描绘十年后的你…",
+  "onboarding.step5.portraitError":
+    "未能生成你的未来画像。开始之后可以从主页重新生成。",
 
   "onboarding.saveError": "保存失败。",
   "onboarding.category.philosophy": "哲学",
@@ -110,6 +141,13 @@ const dict: Record<DictKey, string> = {
   "home.future.empty": "还没有写。可以在「设置」中撰写。",
   "home.future.saveAndRegen": "保存并重新生成今日卡片",
   "home.future.saveFailed": "未能保存「未来的你」",
+
+  // 「十年后的我」画像卡片
+  "futureSelf.portrait.headerLabel": "十年后的我",
+  "futureSelf.portrait.loading": "正在描绘十年后的你…",
+  "futureSelf.portrait.error": "未能描绘你的未来画像。",
+  "futureSelf.portrait.regenerate": "重新描绘画像",
+  "futureSelf.portrait.regenerating": "重新描绘中…",
 
   "home.goals.title": "通往目标的今日行动",
   "home.goals.subtitle":
@@ -191,6 +229,8 @@ const dict: Record<DictKey, string> = {
     "在一个地方管理你的未来形象、每日誓言、今日行动与名言策展。",
   "settings.future.title": "10 年后的你",
   "settings.future.subtitle": "你的每日一句话,都从这段话出发。",
+  "settings.futureSelf.legacyNote":
+    "这是你之前写下的内容。回答上面的问题并保存后,将替换这段文字。",
   "settings.affirmations.title": "再向成功的自己迈一步",
   "settings.affirmations.subtitle":
     "每张日卡上方以浅色显示。完全一致地抄写,连续天数 +1。",

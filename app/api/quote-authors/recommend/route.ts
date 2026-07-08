@@ -11,12 +11,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { verifyRequestUser, AuthError } from "@/lib/authServer";
 import { generateText } from "@/lib/gemini";
+import { FUTURE_PERSONA_TRUNC } from "@/lib/constants/futurePersona";
 import type { UserLanguage } from "@/types";
 
 export const maxDuration = 20;
 
 const MAX_AUTHORS = 7;
-const FUTURE_PERSONA_TRUNC = 280;
 const MODEL_TOKENS = 200;
 
 interface UserCtx {

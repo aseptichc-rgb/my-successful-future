@@ -38,17 +38,44 @@ const dict: Record<DictKey, string> = {
     "After you change the language, your next card will arrive in the new language.",
 
   // Onboarding
-  "onboarding.step1.title": "What do you look like 10 years from now?",
-  "onboarding.step1.subtitle":
-    "Write the version of you that you want to become — one paragraph. Your daily quote is built around this.",
-  "onboarding.step1.placeholder":
-    "e.g., 10 years from now I start every morning with exercise and reading, spend deep time with my family, and earn a stable income from work I love.",
-  "onboarding.step1.example1":
-    "In 5 years I earn $10K/month and choose what to work on, when. Mornings start with exercise and reading.",
-  "onboarding.step1.example2":
-    "In 10 years I'm one of the top voices in my field and reach more people through talks and writing.",
-  "onboarding.step1.example3":
-    "In 7 years time with my family is the highest priority. Work caps at 5 hours a day; weekends are mine.",
+  // "My self 10 years from now" — immersive one-question-per-screen flow.
+  "onboarding.futureSelf.sectionLabel": "Me, 10 years from now",
+  "onboarding.futureSelf.progress": "{current} / {total}",
+  "onboarding.futureSelf.hint":
+    "Be as concrete as it comes to you. If a question feels hard right now, leave it blank and move on.",
+  "onboarding.futureSelf.daily.q": "10 years from now, how does an ordinary day of yours flow?",
+  "onboarding.futureSelf.daily.placeholder":
+    "Where you wake up, what fills your morning, how your evening winds down.",
+  "onboarding.futureSelf.daily.example1":
+    "I wake at 6 in a home with a river view, open the day with a workout, do deep work all morning, and spend evenings with my family.",
+  "onboarding.futureSelf.daily.example2":
+    "No commute — two hours of writing in my study with coffee, then an afternoon walk while I shape the next project.",
+  "onboarding.futureSelf.work.q": "What work do you do then, and where do you stand among people?",
+  "onboarding.futureSelf.work.placeholder":
+    "Your role, your place on the team, why people come to you.",
+  "onboarding.futureSelf.work.example1":
+    "I lead a 10-person company, and people in the industry come to me first for advice.",
+  "onboarding.futureSelf.work.example2":
+    "I'm one of the top voices in my field, widening my reach through talks and writing.",
+  "onboarding.futureSelf.wealth.q": "What do your assets and finances look like?",
+  "onboarding.futureSelf.wealth.placeholder":
+    "Monthly income, what you've built up, where you live, the choices money no longer limits.",
+  "onboarding.futureSelf.family.q": "What is life with your family like?",
+  "onboarding.futureSelf.family.placeholder":
+    "The time you share, what you provide, the warmth of those bonds.",
+  "onboarding.futureSelf.achievements.q": "What have you achieved by then?",
+  "onboarding.futureSelf.achievements.placeholder":
+    "Things you've built, goals you've reached, the wins you're proudest of.",
+  "onboarding.futureSelf.achievements.example1":
+    "A book with my name on it, and a service 10,000 people use.",
+  "onboarding.futureSelf.achievements.example2":
+    "Starting from nothing, I built a debt-free home and a solid business.",
+  "onboarding.futureSelf.respect.q": "How do people see you, and what do they respect you for?",
+  "onboarding.futureSelf.respect.placeholder":
+    "The trust, reputation, and respect people give you — and why.",
+  "onboarding.futureSelf.growth.q": "How are your body and mind, and how are you still growing?",
+  "onboarding.futureSelf.growth.placeholder":
+    "Your health, what you're learning, the ways you keep moving forward.",
 
   "onboarding.step2.title": "Write the concrete actions you need to reach your goals",
   "onboarding.step2.subtitle":
@@ -89,6 +116,10 @@ const dict: Record<DictKey, string> = {
     "3. Add it to your lock screen — a fresh line arrives every day",
   "onboarding.step5.start": "Start",
   "onboarding.step5.finishing": "Finishing…",
+  "onboarding.step5.portraitLabel": "ME, 10 YEARS FROM NOW",
+  "onboarding.step5.portraitLoading": "Painting the you of 10 years from now…",
+  "onboarding.step5.portraitError":
+    "Couldn't create your future portrait. You can make it again from Home after starting.",
 
   "onboarding.saveError": "Failed to save.",
   "onboarding.category.philosophy": "Philosophy",
@@ -112,6 +143,13 @@ const dict: Record<DictKey, string> = {
   "home.future.empty": "Nothing written yet. You can write it in Settings.",
   "home.future.saveAndRegen": "Save and regenerate today's card",
   "home.future.saveFailed": "Failed to save your future self",
+
+  // "Me, 10 years from now" portrait card
+  "futureSelf.portrait.headerLabel": "ME, 10 YEARS FROM NOW",
+  "futureSelf.portrait.loading": "Painting the you of 10 years from now…",
+  "futureSelf.portrait.error": "Couldn't paint your future portrait.",
+  "futureSelf.portrait.regenerate": "Repaint the portrait",
+  "futureSelf.portrait.regenerating": "Repainting…",
 
   "home.goals.title": "Today's actions toward your goals",
   "home.goals.subtitle":
@@ -195,6 +233,8 @@ const dict: Record<DictKey, string> = {
   "settings.future.title": "You, 10 years from now",
   "settings.future.subtitle":
     "Your daily line is built from this paragraph.",
+  "settings.futureSelf.legacyNote":
+    "This is what you wrote before. Answering the questions above and saving will replace it.",
   "settings.affirmations.title": "One step closer to the future you",
   "settings.affirmations.subtitle":
     "Shown faintly above each daily card. Type each line back exactly to extend your streak by 1.",
