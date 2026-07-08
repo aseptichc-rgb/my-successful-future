@@ -118,17 +118,11 @@ const dict: Record<DictKey, string> = {
   "onboarding.step3.subtitle":
     "Your affirmations show as faint placeholder text on each daily card. Type them again, exactly, to build a streak. Leave it empty if you'd like — you can add them later in Settings.",
 
-  "onboarding.step4.title": "Whose voice do you want to hear each day?",
-  "onboarding.step4.subtitle":
-    "Pin one person and their words land first about 4 days a week. The rest is curated rotation. You can leave it empty.",
-  "onboarding.step4.autoTitle": "Auto rotation",
-  "onboarding.step4.autoSubtitle": "About 8 mentors rotate deterministically each week.",
-  "onboarding.step4.changeLater": "You can change or unpin anytime in Settings.",
   "onboarding.step4.cta": "Get today's quote →",
   "onboarding.step4.preparing": "Preparing…",
 
   "onboarding.step5.titleLoading": "Crafting today's quote for you…",
-  "onboarding.step5.titleDone": "This is what you'll get every day.",
+  "onboarding.step5.titleDone": "Every morning, your day ten years from now comes vividly to life.",
   "onboarding.step5.subtitleLoading": "Just a moment.",
   "onboarding.step5.subtitleDone":
     "The lock-screen widget shows a different line each day. Install the Android app to add the widget.",

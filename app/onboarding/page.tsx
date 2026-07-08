@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -21,21 +21,15 @@ import {
 import { authedFetch } from "@/lib/authedFetch";
 import AffirmationsEditor from "@/components/affirmations/AffirmationsEditor";
 import { useLanguage, LOCALE_META, SUPPORTED_LOCALES, type Locale, type DictKey } from "@/lib/i18n";
-import {
-  getKnownAuthorsForLanguage,
-  getAuthorCategoryMap,
-} from "@/lib/famousQuoteCatalog";
 import type {
   DailyMotivation,
-  FamousQuoteCategory,
   FutureSelfAnswers,
-  UserLanguage,
 } from "@/types";
 
 const GOAL_MAX = 80;
-/** 0 = 언어 선택, 1~5 = 기존 단계. */
-const TOTAL_STEPS = 6;
-type Step = 0 | 1 | 2 | 3 | 4 | 5;
+/** 0 = 언어 선택, 1~3 = 입력 단계, 4 = 미리보기. */
+const TOTAL_STEPS = 5;
+type Step = 0 | 1 | 2 | 3 | 4;
 
 /** Step 1 몰입형 질문 화면 수 = 차원 수(7). */
 const FUTURE_QUESTION_COUNT = FUTURE_SELF_DIMENSIONS.length;
@@ -105,19 +99,6 @@ interface PortraitPreview {
   highlights?: string[];
 }
 
-const CATEGORY_LABEL_KEY: Record<FamousQuoteCategory, DictKey> = {
-  philosophy: "onboarding.category.philosophy",
-  entrepreneur: "onboarding.category.entrepreneur",
-  classic: "onboarding.category.classic",
-  leader: "onboarding.category.leader",
-  scientist: "onboarding.category.scientist",
-  literature: "onboarding.category.literature",
-  // personal 은 핀 후보에서 이미 제외되므로 노출되지 않지만 타입 안전을 위해 매핑.
-  personal: "onboarding.category.philosophy",
-};
-
-const PIN_DAYS_DEFAULT = 4;
-
 export default function OnboardingPage() {
   const router = useRouter();
   const { user, firebaseUser, loading: authLoading, refreshUser } = useAuth();
@@ -129,7 +110,6 @@ export default function OnboardingPage() {
   const [futureAnswers, setFutureAnswers] = useState<FutureSelfAnswers>({});
   const [goals, setGoals] = useState<string[]>([""]);
   const [affirmations, setAffirmations] = useState<string[]>([]);
-  const [pinnedAuthor, setPinnedAuthor] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -140,20 +120,6 @@ export default function OnboardingPage() {
   const [portraitLoading, setPortraitLoading] = useState(false);
   const [portrait, setPortrait] = useState<PortraitPreview | null>(null);
   const [portraitError, setPortraitError] = useState<string | null>(null);
-
-  /**
-   * 현재 언어 풀의 모든 인물을 노출. 시드가 늘면 자동으로 따라온다.
-   * Locale 과 UserLanguage 는 동일한 4개 코드라 그대로 넘긴다.
-   */
-  const pinAuthors = useMemo(() => {
-    const lang: UserLanguage = locale;
-    const names = getKnownAuthorsForLanguage(lang);
-    const catMap = getAuthorCategoryMap(lang);
-    return names.map((name) => ({
-      name,
-      category: catMap.get(name) ?? ("philosophy" as FamousQuoteCategory),
-    }));
-  }, [locale]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -240,9 +206,11 @@ export default function OnboardingPage() {
       }
       // 다짐은 비어 있어도 저장(빈 배열로 정규화) — 사용자가 의도적으로 안 적었을 수 있다.
       await updateSuccessAffirmations(uid, affirmations);
+      // 인물 고정 없이 자동 회전을 기본값으로 저장 — 온보딩에서 더 묻지 않는다.
+      // (설정에서 언제든 특정 인물을 고정할 수 있다.)
       await updateQuotePreference(uid, {
-        pinnedAuthor: pinnedAuthor || undefined,
-        pinnedDaysPerWeek: pinnedAuthor ? PIN_DAYS_DEFAULT : 0,
+        pinnedAuthor: undefined,
+        pinnedDaysPerWeek: 0,
       });
       await refreshUser().catch(() => {});
 
@@ -293,10 +261,7 @@ export default function OnboardingPage() {
         const res = await authedFetch("/api/daily-motivation", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            force: true,
-            ...(pinnedAuthor ? { overrideAuthor: pinnedAuthor } : {}),
-          }),
+          body: JSON.stringify({ force: true }),
         });
         const data = (await res.json().catch(() => ({}))) as {
           motivation?: DailyMotivation;
@@ -313,7 +278,7 @@ export default function OnboardingPage() {
       }
 
       setSaving(false);
-      setStep(5);
+      setStep(4);
     } catch (err) {
       console.error("[onboarding] 저장 실패:", err);
       const msg = err instanceof Error ? err.message : String(err);
@@ -378,7 +343,7 @@ export default function OnboardingPage() {
               {step + 1} / {TOTAL_STEPS}
             </span>
           </div>
-          {step > 0 && step < 5 && (
+          {step > 0 && step < 4 && (
             <button
               type="button"
               onClick={handleSkip}
@@ -574,62 +539,6 @@ export default function OnboardingPage() {
           {step === 4 && (
             <div>
               <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.003em] text-[#1E1B4B] sm:text-[32px]">
-                {t("onboarding.step4.title")}
-              </h1>
-              <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
-                {t("onboarding.step4.subtitle")}
-              </p>
-
-              <div className="mt-6 grid gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => setPinnedAuthor("")}
-                  className={`rounded-[14px] border px-4 py-3 text-left transition-all ${
-                    pinnedAuthor === ""
-                      ? "border-[#1E1B4B] bg-[#1E1B4B]/[0.04]"
-                      : "border-black/10 bg-white hover:border-[#1E1B4B]/40"
-                  }`}
-                >
-                  <p className="text-[14px] font-semibold tracking-[-0.015em] text-[#1E1B4B]">
-                    {t("onboarding.step4.autoTitle")}
-                  </p>
-                  <p className="mt-0.5 text-[12px] tracking-[-0.005em] text-black/55">
-                    {t("onboarding.step4.autoSubtitle")}
-                  </p>
-                </button>
-                {pinAuthors.map(({ name, category }) => {
-                  const isSelected = pinnedAuthor === name;
-                  return (
-                    <button
-                      key={name}
-                      type="button"
-                      onClick={() => setPinnedAuthor(name)}
-                      className={`rounded-[14px] border px-4 py-3 text-left transition-all ${
-                        isSelected
-                          ? "border-[#1E1B4B] bg-[#1E1B4B]/[0.04]"
-                          : "border-black/10 bg-white hover:border-[#1E1B4B]/40"
-                      }`}
-                    >
-                      <p className="text-[14px] font-semibold tracking-[-0.015em] text-[#1E1B4B]">
-                        {name}
-                      </p>
-                      <p className="mt-0.5 text-[11px] font-medium uppercase tracking-[0.08em] text-[#1E1B4B]/60">
-                        {t(CATEGORY_LABEL_KEY[category])}
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <p className="mt-4 text-[12px] leading-[1.5] tracking-[-0.01em] text-black/48">
-                {t("onboarding.step4.changeLater")}
-              </p>
-            </div>
-          )}
-
-          {step === 5 && (
-            <div>
-              <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.003em] text-[#1E1B4B] sm:text-[32px]">
                 {previewLoading ? t("onboarding.step5.titleLoading") : t("onboarding.step5.titleDone")}
               </h1>
               <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
@@ -794,12 +703,12 @@ export default function OnboardingPage() {
           <button
             type="button"
             onClick={goBack}
-            disabled={step === 0 || saving || step === 5}
+            disabled={step === 0 || saving || step === 4}
             className="rounded-pill px-4 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-black/70 transition-colors hover:bg-black/[0.04] disabled:opacity-30"
           >
             {t("common.prev")}
           </button>
-          {step < 4 && (
+          {step < 3 && (
             <button
               type="button"
               onClick={goNext}
@@ -809,7 +718,7 @@ export default function OnboardingPage() {
               {t("common.next")}
             </button>
           )}
-          {step === 4 && (
+          {step === 3 && (
             <button
               type="button"
               onClick={saveAndPreview}
@@ -819,7 +728,7 @@ export default function OnboardingPage() {
               {saving ? t("onboarding.step4.preparing") : t("onboarding.step4.cta")}
             </button>
           )}
-          {step === 5 && (
+          {step === 4 && (
             <button
               type="button"
               onClick={finish}

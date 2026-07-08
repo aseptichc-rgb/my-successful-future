@@ -116,17 +116,11 @@ const dict: Record<DictKey, string> = {
   "onboarding.step3.subtitle":
     "你写下的誓言,每天会作为浅色提示文字出现在卡片上。原样照抄,可以累计连续天数。也可以留空——之后在「设置」里随时添加。",
 
-  "onboarding.step4.title": "你想每天听到谁的声音?",
-  "onboarding.step4.subtitle":
-    "选择一个人之后,每周大约 4 天会先送达此人的话。其余天数与自动轮播由策展决定。也可以留空。",
-  "onboarding.step4.autoTitle": "自动轮播",
-  "onboarding.step4.autoSubtitle": "每周由约 8 位导师按确定算法轮换。",
-  "onboarding.step4.changeLater": "之后在「设置」里随时可改或关闭。",
   "onboarding.step4.cta": "获取今日的一句话 →",
   "onboarding.step4.preparing": "准备中…",
 
   "onboarding.step5.titleLoading": "正在为你准备今日的一句话…",
-  "onboarding.step5.titleDone": "这就是你每天会收到的样子。",
+  "onboarding.step5.titleDone": "每天清晨，十年后你的一天，鲜活地在眼前展开。",
   "onboarding.step5.subtitleLoading": "请稍候。",
   "onboarding.step5.subtitleDone":
     "锁屏小组件每天会显示一条新的话。安装 Android 应用即可添加小组件。",

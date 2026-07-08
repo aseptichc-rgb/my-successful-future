@@ -112,21 +112,15 @@ const dict = {
   "onboarding.step2.addGoal": "+ 목표 추가",
   "onboarding.step2.removeGoalAria": "목표 줄 제거",
 
-  "onboarding.step3.title": "성공한 나의 모습을 한 줄씩 적어주세요",
+  "onboarding.step3.title": "지금의 내가 매일 외쳐야 할, 반드시 이뤄질 미래의 모습을 적어보세요",
   "onboarding.step3.subtitle":
     "여기 적은 다짐이 매일 카드의 “오늘의 한 줄 미션” 영역에 placeholder 로 그대로 노출돼요. 매일 그대로 다시 적어 연속일을 쌓아가세요. 비워둬도 좋아요 — 나중에 설정에서 추가할 수 있어요.",
 
-  "onboarding.step4.title": "매일 누구의 한 마디를 듣고 싶나요?",
-  "onboarding.step4.subtitle":
-    "한 명을 정해두면 주 4일은 그 인물의 명언이 우선 도착해요. 나머지 요일과 자동 회전은 큐레이션이 골라줍니다. 비워둬도 좋아요.",
-  "onboarding.step4.autoTitle": "자동 회전",
-  "onboarding.step4.autoSubtitle": "매주 8명 안팎의 멘토가 결정론적으로 바뀝니다.",
-  "onboarding.step4.changeLater": "나중에 설정에서 언제든 바꾸거나 끌 수 있어요.",
   "onboarding.step4.cta": "오늘의 한 마디 받기 →",
   "onboarding.step4.preparing": "준비 중…",
 
   "onboarding.step5.titleLoading": "오늘의 한 마디를 만들고 있어요…",
-  "onboarding.step5.titleDone": "이게 매일 너에게 도착해요.",
+  "onboarding.step5.titleDone": "매일 아침, 10년 후 나의 하루가 생생히 펼쳐져요.",
   "onboarding.step5.subtitleLoading": "잠시만 기다려주세요.",
   "onboarding.step5.subtitleDone":
     "잠금화면 위젯이 매일 다른 한 줄을 보여줍니다. 안드로이드 앱을 설치하면 위젯을 추가할 수 있어요.",

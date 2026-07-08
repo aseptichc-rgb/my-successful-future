@@ -121,19 +121,11 @@ const dict: Record<DictKey, string> = {
   "onboarding.step3.subtitle":
     "Tus afirmaciones aparecen como texto tenue en cada tarjeta diaria. Vuelve a escribirlas exactamente para construir una racha. Puedes dejarlo vacío y añadirlas más tarde en Ajustes.",
 
-  "onboarding.step4.title": "¿La voz de quién quieres oír cada día?",
-  "onboarding.step4.subtitle":
-    "Si fijas a una persona, sus palabras llegan primero unos 4 días por semana. El resto es rotación curada. Puedes dejarlo vacío.",
-  "onboarding.step4.autoTitle": "Rotación automática",
-  "onboarding.step4.autoSubtitle":
-    "Unos 8 mentores rotan de forma determinista cada semana.",
-  "onboarding.step4.changeLater":
-    "Puedes cambiarlo o desactivarlo en Ajustes cuando quieras.",
   "onboarding.step4.cta": "Recibir la frase de hoy →",
   "onboarding.step4.preparing": "Preparando…",
 
   "onboarding.step5.titleLoading": "Creando tu frase de hoy…",
-  "onboarding.step5.titleDone": "Esto es lo que te llegará cada día.",
+  "onboarding.step5.titleDone": "Cada mañana, tu día dentro de diez años cobra vida ante ti.",
   "onboarding.step5.subtitleLoading": "Un momento.",
   "onboarding.step5.subtitleDone":
     "El widget de pantalla de bloqueo muestra una frase distinta cada día. Instala la app de Android para añadir el widget.",
