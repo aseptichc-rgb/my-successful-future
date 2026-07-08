@@ -18,7 +18,6 @@ import { notifyAndroidWidgetRefresh } from "@/lib/widgetBridge";
 import { refreshIosWidget } from "@/lib/iosWidget";
 import MotivationCard from "@/components/home/MotivationCard";
 import FutureVisionCard from "@/components/home/FutureVisionCard";
-import FutureSelfPortraitCard from "@/components/home/FutureSelfPortraitCard";
 import Logo from "@/components/ui/Logo";
 import { useLanguage } from "@/lib/i18n";
 import type { DailyEntry, DailyMotivation, FutureVision } from "@/types";
@@ -538,12 +537,6 @@ export default function HomeDashboardPage() {
         {/* ─── Tab · 오늘 (future) ─── */}
         {activeTab === "future" && (
           <>
-            {/* "10년 후 나의 모습" 초상 — 저장된 초상이 있을 때만 노출(레거시/미작성 사용자는 숨김) */}
-            {user?.futureSelfPortrait && (
-              <div className="px-4 pt-5">
-                <FutureSelfPortraitCard portrait={user.futureSelfPortrait} />
-              </div>
-            )}
             <div className="px-4 pt-5">
               <FutureVisionCard
                 vision={vision}
