@@ -52,9 +52,6 @@ const HOOK_MAX = 60;
 const MOMENT_MAX = 20;
 const SCENE_TEXT_MAX = 220;
 const CLOSING_MAX = 120;
-/** 폴백 장면에 끼워넣을 persona/goal 발췌 길이. */
-const PERSONA_EXCERPT = 90;
-const GOAL_EXCERPT = 36;
 
 /**
  * 매일 다른 "하루의 결"을 강제하기 위한 결정론적 렌즈 풀.
@@ -307,82 +304,192 @@ function parseVision(
 }
 
 /**
- * 언어별 결정론적 폴백 비전 — Gemini 가 침묵하거나 파싱이 깨져도 카드 톤이 유지되도록.
- * persona/goals 발췌를 끼워넣어 "내 미래"라는 느낌은 살린다.
+ * 언어별 결정론적 폴백 비전 — Gemini 가 침묵하거나(타임아웃/레이트리밋) 파싱이 깨져도
+ * 카드 톤이 유지되도록.
+ *
+ * 설계 원칙(사용자 요청): 사용자가 적은 futurePersona/goal 원문을 프레임에 그대로
+ * 끼워넣지 않는다. 자유서술은 문장 중간에서 잘리거나("...많은 기업들이 — 을") 조사
+ * (이/가·을/를) 플레이스홀더가 노출돼 "어색하게 그대로 삽입"되기 때문이다. 대신 그
+ * 미래가 이미 실현된 "평범한 하루"를 감각적으로 그린 자족적(self-contained) 장면들로
+ * 구성하고, variantSeed 로 여러 하루 중 하나를 골라 "또 다른 하루 보기"에서도 매번 다른
+ * 하루가 나오게 한다.
+ * (개인화된 구체 장면은 Gemini 경로의 몫 — 폴백은 어떤 persona 에도 자연스러운 안전망.)
  */
-interface FallbackCopy {
-  title: string;
-  /** 접힌 카드 teaser — 폴백에서도 호기심 한 줄이 비지 않도록. */
+interface FallbackDay {
   hook: string;
+  title: string;
+  scenes: ReadonlyArray<{ moment: string; text: string }>;
+  closing: string;
+}
+
+interface FallbackCopy {
   emptyTitle: string;
   /** futurePersona 미작성 상태의 teaser. */
   emptyHook: string;
-  morning: (persona: string) => string;
-  midday: (goal: string) => string;
-  middayNoGoal: string;
-  evening: string;
-  closing: string;
   emptyScene: string;
   emptyClosing: string;
-  labels: { morning: string; midday: string; evening: string; invite: string };
+  /** futurePersona 미작성 안내 장면의 라벨. */
+  inviteLabel: string;
+  /** persona 가 있을 때 쓰는 자연스러운 '하루' 변주 — variantSeed 로 하나 선택. */
+  days: ReadonlyArray<FallbackDay>;
 }
 
 const FALLBACK_VISIONS: Record<UserLanguage, FallbackCopy> = {
   ko: {
-    title: "그 미래를 사는 하루",
-    hook: "오늘, 그 하루가 시작된다 —",
     emptyTitle: "아직 그리지 않은 하루",
     emptyHook: "당신의 하루는 아직 비어 있다 —",
-    morning: (p) => `아침 햇살에 눈을 뜬다. 내가 그리던 모습 — ${p} — 을 나는 이미 살고 있다.`,
-    midday: (g) => `낮에는 "${g}"이(가) 더 이상 목표가 아니라 그냥 내 일상이 되어 있다. 손에 익은 듯 자연스럽다.`,
-    middayNoGoal: "낮의 일들이 막힘없이 흘러간다. 내가 바라던 리듬 그대로 하루가 움직인다.",
-    evening: "저녁이 되면 오늘 하루가 충분했다는 감각이 가슴에 남는다. 조급함 대신 단단한 평온이 있다.",
-    closing: "이건 먼 이야기가 아니다. 나는 지금, 그 길 위에 분명히 서 있다.",
     emptyScene: "되고 싶은 나의 모습을 한 단락 적어보세요. 그러면 매일 그 하루를 눈앞에 그려 드릴게요.",
     emptyClosing: "설정에서 '미래의 나'를 적으면 오늘부터 시작돼요.",
-    labels: { morning: "아침", midday: "낮", evening: "저녁", invite: "시작" },
+    inviteLabel: "시작",
+    days: [
+      {
+        hook: "눈을 뜨면, 그 하루가 나를 기다린다 —",
+        title: "이미 도착해 있는 하루",
+        scenes: [
+          { moment: "아침", text: "서두르지 않아도 되는 아침이 열린다. 한때 간절히 그리던 모습은 이제 특별한 사건이 아니라, 그냥 오늘의 결이 되어 있다." },
+          { moment: "낮", text: "낮의 일들이 손에 익어 막힘없이 흘러간다. 애써 다잡지 않아도 몸이 먼저 알고 움직인다." },
+          { moment: "저녁", text: "창밖으로 하루가 저문다. 조급함 대신, 오늘로 충분했다는 감각이 가슴에 낮게 내려앉는다." },
+        ],
+        closing: "이건 먼 이야기가 아니다. 나는 지금, 그 하루 안에서 살고 있다.",
+      },
+      {
+        hook: "익숙한 문을 여는 순간 —",
+        title: "내가 만든 자리에서",
+        scenes: [
+          { moment: "한낮", text: "내가 앉은 자리에서 익숙한 풍경을 바라본다. 오래 바라던 이곳이 지금은 그저 나의 하루가 되어 있다." },
+          { moment: "오후", text: "누군가 건네는 말 한마디에, 예전의 내가 여기까지 왔다는 걸 문득 실감한다. 큰 소리 없이, 조용히." },
+          { moment: "해질 무렵", text: "선선한 저녁 공기 속에서 하루가 단정하게 마무리된다. 마음엔 단단한 평온만 남는다." },
+        ],
+        closing: "상상만 하던 하루가 아니다. 나는 지금, 그 하루를 살아내고 있다.",
+      },
+      {
+        hook: "오늘은 아무것도 증명하지 않아도 된다 —",
+        title: "온전히 내 것인 하루",
+        scenes: [
+          { moment: "느지막한 아침", text: "따뜻한 잔의 온기가 손끝에 번진다. 시간이 온전히 내 것이라는 사실이 새삼 낯설고, 또 익숙하다." },
+          { moment: "낮", text: "곁에 있는 사람과 나누는 평범한 대화 속에, 내가 바라던 삶의 온도가 그대로 담겨 있다." },
+          { moment: "저녁", text: "해 질 무렵, 오늘 하루가 넉넉했다는 마음이 조용히 차오른다. 더 바랄 것도, 서두를 것도 없다." },
+        ],
+        closing: "이 평온은 우연이 아니다. 내가 걸어와 지금 서 있는, 바로 그 자리다.",
+      },
+    ],
   },
   en: {
-    title: "A day living that future",
-    hook: "Today, that day begins —",
     emptyTitle: "A day not yet imagined",
     emptyHook: "Your day is still blank —",
-    morning: (p) => `I wake to morning light. The person I dreamed of — ${p} — I am already living it.`,
-    midday: (g) => `By midday, "${g}" is no longer a goal but simply my ordinary life. It moves through my hands like second nature.`,
-    middayNoGoal: "The day flows without friction, moving in exactly the rhythm I once longed for.",
-    evening: "By evening a quiet fullness settles in my chest — not restlessness, but a steady calm that today was enough.",
-    closing: "This is not a distant story. Right now, I am standing on that very path.",
     emptyScene: "Write a paragraph about who you want to become, and I'll paint that day before your eyes each morning.",
     emptyClosing: "Add your future self in Settings and it begins today.",
-    labels: { morning: "Morning", midday: "Midday", evening: "Evening", invite: "Begin" },
+    inviteLabel: "Begin",
+    days: [
+      {
+        hook: "I wake, and the day is already mine —",
+        title: "A day I've already arrived in",
+        scenes: [
+          { moment: "Morning", text: "The morning opens with nothing to rush toward. What I once longed for isn't an event anymore — it's simply the grain of an ordinary day." },
+          { moment: "Midday", text: "The work moves through my hands without friction. I don't have to brace or push; my body already knows the way." },
+          { moment: "Evening", text: "The day dims beyond the window. In place of restlessness, a low, steady sense that today was enough settles in my chest." },
+        ],
+        closing: "This is not a distant story. Right now, I am living inside that day.",
+      },
+      {
+        hook: "The moment I open that familiar door —",
+        title: "In the place I built",
+        scenes: [
+          { moment: "Midday", text: "From where I sit, I take in a view I know by heart. The place I reached for so long is now just where my day happens." },
+          { moment: "Afternoon", text: "A passing word from someone lands, and I quietly realize how far the old me actually came. No fanfare — just quiet." },
+          { moment: "Dusk", text: "In the cool evening air the day closes cleanly, leaving nothing behind but a firm, settled calm." },
+        ],
+        closing: "This isn't a day I only imagined. Right now, I am living it out.",
+      },
+      {
+        hook: "Today, I have nothing to prove —",
+        title: "A day entirely my own",
+        scenes: [
+          { moment: "Late morning", text: "The warmth of a cup spreads through my fingertips. That my time is fully my own feels strange and familiar all at once." },
+          { moment: "Midday", text: "In an ordinary conversation with someone close, the exact temperature of the life I wanted is simply there." },
+          { moment: "Evening", text: "As the sun lowers, a quiet fullness rises — today was plenty. Nothing more to want, nothing to hurry." },
+        ],
+        closing: "This calm is no accident. It is the very ground I walked toward, and now stand on.",
+      },
+    ],
   },
   es: {
-    title: "Un día viviendo ese futuro",
-    hook: "Hoy empieza ese día —",
     emptyTitle: "Un día aún por imaginar",
     emptyHook: "Tu día aún está en blanco —",
-    morning: (p) => `Despierto con la luz de la mañana. La persona que soñé — ${p} — ya la estoy viviendo.`,
-    midday: (g) => `Al mediodía, "${g}" ya no es una meta, sino simplemente mi vida cotidiana. Fluye en mis manos con naturalidad.`,
-    middayNoGoal: "El día fluye sin fricción, con el ritmo exacto que una vez anhelé.",
-    evening: "Al anochecer, una plenitud serena se asienta en mi pecho: no inquietud, sino una calma firme de que hoy fue suficiente.",
-    closing: "No es una historia lejana. Ahora mismo estoy de pie en ese camino.",
     emptyScene: "Escribe un párrafo sobre quién quieres llegar a ser, y pintaré ese día ante tus ojos cada mañana.",
     emptyClosing: "Añade tu yo futuro en Ajustes y empieza hoy.",
-    labels: { morning: "Mañana", midday: "Mediodía", evening: "Noche", invite: "Empezar" },
+    inviteLabel: "Empezar",
+    days: [
+      {
+        hook: "Despierto, y el día ya es mío —",
+        title: "Un día al que ya he llegado",
+        scenes: [
+          { moment: "Mañana", text: "La mañana se abre sin nada que apresurar. Lo que tanto anhelé ya no es un acontecimiento: es simplemente la textura de un día común." },
+          { moment: "Mediodía", text: "El trabajo fluye entre mis manos sin fricción. No necesito tensarme ni empujar; mi cuerpo ya conoce el camino." },
+          { moment: "Noche", text: "El día se apaga tras la ventana. En lugar de inquietud, se asienta en mi pecho la calma serena de que hoy fue suficiente." },
+        ],
+        closing: "No es una historia lejana. Ahora mismo estoy viviendo dentro de ese día.",
+      },
+      {
+        hook: "En el instante en que abro esa puerta conocida —",
+        title: "En el lugar que construí",
+        scenes: [
+          { moment: "Mediodía", text: "Desde donde estoy, contemplo un paisaje que conozco de memoria. El lugar que busqué tanto tiempo es ahora, sin más, donde transcurre mi día." },
+          { moment: "Tarde", text: "Una palabra al pasar de alguien me alcanza, y comprendo en silencio cuánto avanzó aquel que fui. Sin alardes, en calma." },
+          { moment: "Atardecer", text: "En el aire fresco de la tarde el día se cierra con nitidez, dejando solo una calma firme y asentada." },
+        ],
+        closing: "No es un día que solo imaginé. Ahora mismo lo estoy viviendo.",
+      },
+      {
+        hook: "Hoy no tengo nada que demostrar —",
+        title: "Un día enteramente mío",
+        scenes: [
+          { moment: "Media mañana", text: "El calor de una taza se extiende por mis dedos. Que mi tiempo sea del todo mío se siente extraño y familiar a la vez." },
+          { moment: "Mediodía", text: "En una charla cualquiera con alguien cercano, está, sin más, la temperatura exacta de la vida que quería." },
+          { moment: "Noche", text: "Cuando el sol baja, una plenitud tranquila me sube: hoy bastó. Nada más que desear, nada que apurar." },
+        ],
+        closing: "Esta calma no es casualidad. Es el mismo suelo hacia el que caminé, y sobre el que ahora estoy.",
+      },
+    ],
   },
   zh: {
-    title: "活在那个未来的一天",
-    hook: "今天,那一天开始了 —",
     emptyTitle: "尚未描绘的一天",
     emptyHook: "你的一天还是空白 —",
-    morning: (p) => `我在晨光中醒来。我曾梦想的样子——${p}——我已经在过着这样的生活。`,
-    midday: (g) => `到了中午,"${g}"已不再是目标,而只是我日常的一部分,在手中自然流转。`,
-    middayNoGoal: "这一天毫无阻碍地流动,正是我曾经渴望的节奏。",
-    evening: "夜幕降临时,一种安静的充实感落在心头——不是焦躁,而是今天已然足够的笃定。",
-    closing: "这不是遥远的故事。此刻,我正站在那条路上。",
     emptyScene: "写下你想成为的样子,我会每天清晨把那一天描绘在你眼前。",
     emptyClosing: "在设置中写下未来的自己,今天就开始。",
-    labels: { morning: "清晨", midday: "中午", evening: "夜晚", invite: "开始" },
+    inviteLabel: "开始",
+    days: [
+      {
+        hook: "睁开眼,那一天已经属于我 —",
+        title: "早已抵达的一天",
+        scenes: [
+          { moment: "清晨", text: "清晨到来,无需匆忙。曾经苦苦渴望的模样,如今不再是大事,只是寻常一天的纹理。" },
+          { moment: "中午", text: "手上的事顺畅地流动,不必用力紧绷,身体早已知道该怎么做。" },
+          { moment: "夜晚", text: "窗外天色渐暗。取代焦躁的,是一种今天已然足够的沉稳,悄悄落在心口。" },
+        ],
+        closing: "这不是遥远的故事。此刻,我正活在那一天里。",
+      },
+      {
+        hook: "推开那扇熟悉的门的瞬间 —",
+        title: "在我亲手造就的位置上",
+        scenes: [
+          { moment: "正午", text: "从我所在的位置望去,是早已烂熟于心的风景。追寻已久的这里,如今只是我一天的日常。" },
+          { moment: "午后", text: "有人随口的一句话落下,我悄然意识到,曾经的自己竟走了这么远。没有喧哗,只是安静。" },
+          { moment: "黄昏", text: "傍晚清凉的空气里,一天利落地收束,只留下一份笃定的平静。" },
+        ],
+        closing: "这不是我只是想象过的一天。此刻,我正把它活出来。",
+      },
+      {
+        hook: "今天,我无需证明什么 —",
+        title: "完全属于我的一天",
+        scenes: [
+          { moment: "上午晚些时候", text: "一杯的温热在指尖散开。时间完全属于自己,这件事既陌生又熟悉。" },
+          { moment: "中午", text: "与身边人一段平常的交谈里,我想要的那种生活的温度,就这样在其中。" },
+          { moment: "夜晚", text: "日头西沉时,一种安静的充实悄悄升起——今天很够了。再无所求,也无需匆忙。" },
+        ],
+        closing: "这份平静并非偶然。它正是我一路走来、此刻站定的那片土地。",
+      },
+    ],
   },
 };
 
@@ -401,24 +508,20 @@ function buildFallbackVision(
     return {
       hook: copy.emptyHook,
       title: copy.emptyTitle,
-      scenes: [{ moment: copy.labels.invite, text: copy.emptyScene }],
+      scenes: [{ moment: copy.inviteLabel, text: copy.emptyScene }],
       closing: copy.emptyClosing,
     };
   }
 
-  const persona = ctx.futurePersona.slice(0, PERSONA_EXCERPT);
-  // 여러 목표 중 seed 로 하나를 골라 조명 — 재생성마다 다른 목표가 낮 장면에 등장.
-  const goalIdx = ctx.goals.length > 0 ? variantSeed % ctx.goals.length : 0;
-  const firstGoal = ctx.goals.length > 0 ? ctx.goals[goalIdx].slice(0, GOAL_EXCERPT) : "";
-  const scenes: FutureVisionScene[] = [
-    { moment: copy.labels.morning, text: copy.morning(persona) },
-    {
-      moment: copy.labels.midday,
-      text: firstGoal ? copy.midday(firstGoal) : copy.middayNoGoal,
-    },
-    { moment: copy.labels.evening, text: copy.evening },
-  ];
-  return { hook: copy.hook, title: copy.title, scenes, closing: copy.closing };
+  // persona/goal 원문을 프레임에 끼워넣지 않고, 자족적 '하루' 변주 중 하나를 고른다.
+  //  variantSeed 가 바뀌면(=force 재생성) 다른 하루가 나와 "또 다른 하루 보기"가 굳지 않는다.
+  const day = copy.days[variantSeed % copy.days.length];
+  return {
+    hook: day.hook,
+    title: day.title,
+    scenes: day.scenes.map((s) => ({ moment: s.moment, text: s.text })),
+    closing: day.closing,
+  };
 }
 
 /**

@@ -577,25 +577,6 @@ export default function HomeDashboardPage() {
         {/* ─── Tab · 나의 행동 (actions) ─── */}
         {activeTab === "actions" && (
           <>
-            {/* ── 10년 후의 나 (읽기 전용 — 수정은 /settings) ── */}
-            <GroupedSection header={t("home.future.title")}>
-              <div className="px-5 py-4">
-                {futureText ? (
-                  <p className="whitespace-pre-wrap text-[17px] leading-[24px] tracking-[-0.43px] text-[var(--label)]">
-                    {futureText}
-                  </p>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => router.push("/settings")}
-                    className="block w-full text-left text-[17px] leading-[24px] text-[var(--label-3)]"
-                  >
-                    {t("home.future.empty")}
-                  </button>
-                )}
-              </div>
-            </GroupedSection>
-
             {/* ── 이번 달 목표 (읽기·달성 토글 전용 — 추가/삭제는 /settings) ── */}
             <GroupedSection
               header={t("home.goals.title")}
