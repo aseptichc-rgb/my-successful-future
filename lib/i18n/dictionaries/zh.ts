@@ -374,6 +374,8 @@ const dict: Record<DictKey, string> = {
   "settings.pro.pending.desc": "您的付款正在等待批准。批准后将自动生效。",
   "settings.pro.purchaseFailed.title": "支付失败",
   "settings.pro.purchaseFailed.desc": "支付失败。",
+  "settings.pro.purchaseIncomplete.title": "购买未完成",
+  "settings.pro.purchaseIncomplete.desc": "购买未完成。如果您已购买，请点击下方的‘恢复购买’。",
   "settings.pro.restoreDone.title": "恢复完成",
   "settings.pro.restoreDone.desc": "已恢复您的购买。",
   "settings.pro.restoreNone.title": "没有可恢复的内容",

@@ -386,6 +386,9 @@ const dict: Record<DictKey, string> = {
   "settings.pro.pending.desc": "Tu pago está pendiente de aprobación. Se aplicará automáticamente una vez aprobado.",
   "settings.pro.purchaseFailed.title": "Pago fallido",
   "settings.pro.purchaseFailed.desc": "El pago falló.",
+  "settings.pro.purchaseIncomplete.title": "Compra no completada",
+  "settings.pro.purchaseIncomplete.desc":
+    "La compra no se completó. Si ya la compraste, toca ‘Restaurar compra’ abajo.",
   "settings.pro.restoreDone.title": "Restauración completada",
   "settings.pro.restoreDone.desc": "Tu compra se ha restaurado.",
   "settings.pro.restoreNone.title": "Nada que restaurar",

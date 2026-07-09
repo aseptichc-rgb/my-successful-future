@@ -25,13 +25,16 @@ package com.michaelkim.anima
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
+import com.google.firebase.auth.FirebaseAuth
 import com.michaelkim.anima.data.auth.AuthRepository
 import com.michaelkim.anima.data.auth.EntitlementRepository
 import com.michaelkim.anima.data.billing.BillingRepository
 import com.michaelkim.anima.util.CrashReporter
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 class PurchaseBridgeActivity : ComponentActivity() {
 
@@ -60,14 +63,22 @@ class PurchaseBridgeActivity : ComponentActivity() {
         handled = true
 
         val restoreOnly = data.getQueryParameter("mode") == "restore"
+        // 웹이 함께 넘긴 세션 토큰. 네이티브가 미로그인이어도 이 토큰으로 같은 uid 로그인 후 진행한다.
+        val bridgeToken = data.getQueryParameter("token")
 
         lifecycleScope.launch {
             try {
                 if (!AuthRepository.isSignedIn) {
-                    // 네이티브 미로그인 — 영수증을 uid 에 매달 수 없다. 다음 앱 시작의 entitlement
-                    // 복원에서 봉합되므로 여기선 조용히 종료(웹은 변화 없음).
-                    Log.w(TAG, "네이티브 미로그인 — 결제 브릿지 건너뜀")
-                    return@launch
+                    // 네이티브 미로그인 — 웹 세션 토큰이 있으면 같은 uid 로 로그인해 결제를 진행한다.
+                    // (auth 브릿지가 아직 도달하지 못한 경우에도 결제가 막히지 않도록 하는 핵심 경로.)
+                    val signedIn = signInWithBridgeToken(bridgeToken)
+                    if (!signedIn) {
+                        // 토큰이 없거나 로그인 실패 — 영수증을 uid 에 매달 수 없다. 사용자에게 사유를
+                        // 알리고 종료(다음 앱 시작의 entitlement 복원에서 봉합됨).
+                        Log.w(TAG, "네이티브 미로그인 — 결제 브릿지 건너뜀(token=${if (bridgeToken.isNullOrBlank()) "없음" else "있음"})")
+                        if (!restoreOnly) toast(R.string.purchase_error_sign_in_required)
+                        return@launch
+                    }
                 }
 
                 // 1) 이미 보유 중인 영수증이 있으면 여기서 검증·권한 부여로 끝난다(복원 포함).
@@ -81,15 +92,17 @@ class PurchaseBridgeActivity : ComponentActivity() {
                 // 2) 미보유 → 상품 조회 후 결제 시트를 띄우고 결과를 기다린다.
                 val details = BillingRepository.queryProductDetails(applicationContext).getOrElse {
                     CrashReporter.record(TAG, "상품 조회 실패", it)
+                    toast(R.string.purchase_error_product_unavailable)
                     return@launch
                 }
                 val purchases = BillingRepository.launchBillingFlowAndAwait(this@PurchaseBridgeActivity, details)
                     .getOrElse {
                         CrashReporter.record(TAG, "결제 시트 실행 실패", it)
+                        toast(R.string.purchase_error_launch_failed)
                         return@launch
                     }
                 if (purchases.isEmpty()) {
-                    // 사용자 취소 또는 콜백 유실 — 조용히 종료.
+                    // 사용자 취소 또는 콜백 유실 — 조용히 종료(취소는 안내하지 않는다).
                     Log.i(TAG, "결제 결과 없음(취소 추정)")
                     return@launch
                 }
@@ -97,11 +110,38 @@ class PurchaseBridgeActivity : ComponentActivity() {
                 // 3) 결제 직후 검증 — acknowledge + 서버 검증 + 네이티브 paid claim 적용.
                 val ok = EntitlementRepository.refreshEntitlement(applicationContext).getOrDefault(false)
                 Log.i(TAG, "결제 후 entitlement 검증 결과 ok=$ok")
+                if (!ok) toast(R.string.purchase_error_verify_failed)
             } catch (e: Exception) {
                 CrashReporter.record(TAG, "결제 브릿지 처리 실패", e)
+                toast(R.string.purchase_error_generic)
             } finally {
                 finish()
             }
+        }
+    }
+
+    /**
+     * 웹 세션 토큰으로 네이티브 FirebaseAuth 로그인. 토큰이 없거나 실패하면 false.
+     * 실패해도 throw 하지 않는다 — 호출부가 false 로 분기해 사용자에게 안내한다.
+     */
+    private suspend fun signInWithBridgeToken(token: String?): Boolean {
+        if (token.isNullOrBlank()) return false
+        return try {
+            FirebaseAuth.getInstance().signInWithCustomToken(token).await()
+            AuthRepository.isSignedIn
+        } catch (e: Exception) {
+            CrashReporter.record(TAG, "결제 브릿지 토큰 로그인 실패", e)
+            false
+        }
+    }
+
+    /** 결제 실패 사유를 사용자에게 Toast 로 안내. 코루틴이 Main 디스패처에서 돌므로 그대로 호출 가능. */
+    private fun toast(messageResId: Int) {
+        try {
+            Toast.makeText(applicationContext, getString(messageResId), Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            // Toast 표시 실패가 결제 흐름을 깨면 안 된다 — 무시.
+            Log.w(TAG, "Toast 표시 실패", e)
         }
     }
 

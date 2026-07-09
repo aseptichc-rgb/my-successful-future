@@ -151,6 +151,35 @@ function isInsideAndroidApp(): boolean {
  * 보안: customToken 은 URL 쿼리에 실리지만, TWA → Android intent 경로는 OS 내부 IPC 로
  * 브라우저 히스토리/Referer 에 남지 않는다. 토큰의 짧은 수명(약 1시간)도 추가 방어선.
  */
+/**
+ * 웹 세션(fbUser)의 ID 토큰을 서버(/api/auth/native-bridge)에 제출해, 네이티브 FirebaseAuth 가
+ * 같은 uid 로 로그인할 수 있는 Firebase custom token 을 받아온다. 실패(미로그인·네트워크·서버
+ * 오류)는 모두 null 로 정규화 — 호출부는 "토큰 있으면 브릿지에 전달, 없으면 생략" 만 판단한다.
+ *
+ * 재사용처: (1) bridgeToNativeIfNeeded 의 auth 브릿지 발화, (2) 결제 브릿지 — 네이티브가 아직
+ * 미로그인이어도 결제 직전 이 토큰으로 로그인해 결제를 진행하게 한다.
+ */
+export async function fetchNativeBridgeToken(
+  fbUser: FirebaseUser | null,
+): Promise<string | null> {
+  if (!fbUser) return null;
+  try {
+    const idToken = await fbUser.getIdToken();
+    if (!idToken) return null;
+    const res = await fetch("/api/auth/native-bridge", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${idToken}` },
+      credentials: "same-origin",
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { customToken?: string };
+    return data.customToken ?? null;
+  } catch {
+    // 네트워크/JSON 오류 — 호출부가 토큰 없이(생략) 진행하도록 null.
+    return null;
+  }
+}
+
 async function bridgeToNativeIfNeeded(fbUser: FirebaseUser): Promise<void> {
   if (!isInsideAndroidApp()) return;
   // 네이티브 인증이 이미 확인된 uid(nativeToken SSO 로 진입) 는 브릿지가 100% 불필요 —
@@ -169,16 +198,7 @@ async function bridgeToNativeIfNeeded(fbUser: FirebaseUser): Promise<void> {
   if (lastUid === fbUser.uid && now - lastAt < NATIVE_BRIDGE_RETRY_AFTER_MS) return;
 
   try {
-    const idToken = await fbUser.getIdToken();
-    if (!idToken) return;
-    const res = await fetch("/api/auth/native-bridge", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${idToken}` },
-      credentials: "same-origin",
-    });
-    if (!res.ok) return;
-    const data = (await res.json()) as { customToken?: string };
-    const customToken = data.customToken;
+    const customToken = await fetchNativeBridgeToken(fbUser);
     if (!customToken) return;
 
     // user activation 이 살아 있을 때만 실제 발화된다 (widgetBridge 가 게이트).

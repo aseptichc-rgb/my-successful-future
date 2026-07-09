@@ -362,6 +362,9 @@ const dict = {
   "settings.pro.pending.desc": "결제가 승인 대기 중입니다. 승인되면 자동으로 적용됩니다.",
   "settings.pro.purchaseFailed.title": "결제 실패",
   "settings.pro.purchaseFailed.desc": "결제에 실패했습니다.",
+  "settings.pro.purchaseIncomplete.title": "결제가 완료되지 않았어요",
+  "settings.pro.purchaseIncomplete.desc":
+    "결제가 완료되지 않았습니다. 이미 구매하셨다면 아래 ‘구매 복원’을 눌러 주세요.",
   "settings.pro.restoreDone.title": "복원 완료",
   "settings.pro.restoreDone.desc": "구매를 복원했습니다.",
   "settings.pro.restoreNone.title": "복원할 내역 없음",

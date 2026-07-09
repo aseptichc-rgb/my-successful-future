@@ -282,9 +282,20 @@ export function isAndroidApp(): boolean {
  * 네이티브 평생 결제 시트를 띄운다(PurchaseBridgeActivity). TWA 환경이 아니면 no-op.
  * 결과는 서버가 paid claim 을 박는 것으로 반영되며, 호출부는 getIdToken(true) 강제 갱신으로
  * 감지한다(브릿지가 같은 uid 에 권한을 부여하므로 별도 토큰 전달 불필요).
+ *
+ * @param customToken (선택) 웹 세션의 Firebase custom token. 네이티브 FirebaseAuth 가 아직
+ *   로그인돼 있지 않으면(=auth 브릿지가 아직 도달 못 한 경우) 결제 시트를 못 띄우고 조용히
+ *   종료되던 회귀가 있었다. 이 토큰을 함께 넘기면 PurchaseBridgeActivity 가 결제 직전
+ *   같은 uid 로 로그인한 뒤 진행하므로, 인증 브릿지 도달 여부와 무관하게 결제가 가능하다.
+ *   토큰은 OS intent(IPC) 로만 전달돼 브라우저 히스토리/Referer 에 남지 않는다.
  */
-export function notifyAndroidPurchase(): void {
-  fireIntent(PURCHASE_INTENT_URL, "purchase");
+export function notifyAndroidPurchase(customToken?: string): void {
+  const url = customToken
+    ? "intent://purchase?token=" +
+      encodeURIComponent(customToken) +
+      "#Intent;scheme=anima;package=com.michaelkim.anima;end"
+    : PURCHASE_INTENT_URL;
+  fireIntent(url, "purchase");
 }
 
 /**

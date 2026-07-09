@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth, fetchNativeBridgeToken } from "@/lib/auth-context";
 import {
   updateFutureSelf,
   updateUserGoals,
@@ -71,36 +71,79 @@ const FUTURE_PH_KEY: Record<FutureSelfDimension, DictKey> = {
   growth: "onboarding.futureSelf.growth.placeholder",
 };
 
+/** 결제 대기 폴링 간격(ms). */
+const ENTITLEMENT_POLL_INTERVAL_MS = 2_000;
+/** 결제 시트에서 복귀(visible)한 뒤, 권한 없음을 미완료로 판정하기까지의 유예 폴링 횟수. */
+const ENTITLEMENT_RETURN_GRACE_POLLS = 3;
+/** 페이지가 계속 보이는(hidden 전이 없던) 상태에서의 대기 상한 — 네이티브가 결제 시트도 못 띄우고 즉시 종료한 실패를 빠르게 감지. */
+const ENTITLEMENT_VISIBLE_TIMEOUT_MS = 45_000;
+/** 결제 시트가 오래 떠 있어도 무한 대기는 막는 절대 상한 — 진행 중 결제를 끊지 않도록 넉넉히. */
+const ENTITLEMENT_HARD_CEILING_MS = 5 * 60_000;
+
 /**
  * 네이티브 결제 브릿지(anima://purchase)는 서버가 해당 uid 에 paid claim 을 박는 것으로 완료된다.
  * 웹은 같은 uid 이므로 getIdToken(true) 강제 갱신으로 새 claim 을 감지한다(별도 토큰 전달 불필요).
- * 결제 시트/브릿지 동안 document 는 hidden → 복귀 시 visible 이 되므로, 복귀 후에도 권한이
- * 안 잡히면(여러 번 폴링) 취소로 간주해 무한 대기를 막는다.
+ *
+ * 복귀 감지는 폴링 샘플링 대신 visibilitychange 이벤트로 한다 — 반투명 결제 액티비티/짧은 브릿지가
+ * 폴링 간격 사이에 hidden→visible 로 스쳐 지나가도 이벤트는 그 전이를 놓치지 않는다.
+ *
+ * 종료 규칙:
+ *   · paid claim 감지 → true.
+ *   · 결제 시트를 봤다가(hidden) 돌아온(visible) 뒤 유예 폴링 안에도 권한이 없으면 → false(취소/실패).
+ *   · 한 번도 hidden 이 안 됐고 보이는 채로 상한 초과 → false(네이티브 즉시 종료 = 미로그인/상품조회 실패 등).
+ *   · 결제 시트가 떠 있는(hidden) 동안은 상한을 적용하지 않아 진행 중 결제를 끊지 않는다(절대 상한만 방어).
+ *
+ * @returns true=권한 부여 확인. false=미완료(취소·실패·타임아웃) — 호출부가 안내 다이얼로그를 띄운다.
  */
 async function waitForNativeEntitlement(
   user: { getIdTokenResult: (force?: boolean) => Promise<{ claims: Record<string, unknown> }> },
-  { maxMs = 120_000, intervalMs = 2_500 }: { maxMs?: number; intervalMs?: number } = {},
+  { maxMs = ENTITLEMENT_VISIBLE_TIMEOUT_MS, intervalMs = ENTITLEMENT_POLL_INTERVAL_MS }: {
+    maxMs?: number;
+    intervalMs?: number;
+  } = {},
 ): Promise<boolean> {
-  const start = Date.now();
+  const hasDocument = typeof document !== "undefined";
   let sawHidden = false;
-  let pollsAfterReturn = 0;
-  while (Date.now() - start < maxMs) {
-    try {
-      const tr = await user.getIdTokenResult(true);
-      const ent = readEntitlement(tr.claims);
-      if (ent.kind === "lifetime" || ent.kind === "subscription") return true;
-    } catch {
-      // 토큰 갱신 일시 실패 — 다음 폴링에서 재시도.
+  let visible = hasDocument ? document.visibilityState !== "hidden" : true;
+  const onVisibility = () => {
+    if (document.visibilityState === "hidden") {
+      sawHidden = true;
+      visible = false;
+    } else {
+      visible = true;
     }
-    if (typeof document !== "undefined") {
-      if (document.visibilityState === "hidden") sawHidden = true;
-      else if (sawHidden) pollsAfterReturn += 1;
+  };
+  if (hasDocument) document.addEventListener("visibilitychange", onVisibility);
+
+  try {
+    const start = Date.now();
+    let pollsAfterReturn = 0;
+    for (;;) {
+      try {
+        const tr = await user.getIdTokenResult(true);
+        const ent = readEntitlement(tr.claims);
+        if (ent.kind === "lifetime" || ent.kind === "subscription") return true;
+      } catch {
+        // 토큰 갱신 일시 실패 — 다음 폴링에서 재시도.
+      }
+
+      const elapsed = Date.now() - start;
+      if (elapsed >= ENTITLEMENT_HARD_CEILING_MS) return false;
+      if (visible) {
+        if (sawHidden) {
+          // 결제 시트/브릿지에서 돌아왔다 — 유예 폴링 안에도 권한이 없으면 미완료로 종료.
+          pollsAfterReturn += 1;
+          if (pollsAfterReturn >= ENTITLEMENT_RETURN_GRACE_POLLS) return false;
+        } else if (elapsed >= maxMs) {
+          // 결제 시트가 한 번도 안 떴다 = 네이티브가 즉시 종료(미로그인/상품조회 실패 등).
+          return false;
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
     }
-    // 결제 시트/브릿지에서 돌아왔는데(visible) 여러 번 폴링해도 권한이 없으면 취소로 간주.
-    if (sawHidden && pollsAfterReturn >= 4) return false;
-    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  } finally {
+    if (hasDocument) document.removeEventListener("visibilitychange", onVisibility);
   }
-  return false;
 }
 
 /* ───── SF-Symbol-style glyphs in white on colored squares ───── */
@@ -286,6 +329,10 @@ export default function SettingsPage() {
   const [proPrice, setProPrice] = useState<string | null>(null);
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  // 안드로이드 결제 브릿지에 실어 보낼 네이티브 로그인용 세션 토큰을 미리 받아 둔다.
+  // 클릭 시점에 fetch 를 await 하면 그 사이 user-activation 이 만료돼 결제 intent 가
+  // Chrome 게이트에 걸릴 수 있으므로, 미리 받아 두고 제스처 안에서 동기 발화한다.
+  const bridgeTokenRef = useRef<string | null>(null);
   // 결제/복원 결과 안내 — window.alert(TWA 에서 origin 헤더가 붙어 앱답지 않음) 대신 인앱 다이얼로그.
   const [proNotice, setProNotice] = useState<{
     title: string;
@@ -324,6 +371,12 @@ export default function SettingsPage() {
         if (!cancelled) setProActive(ent.kind === "lifetime" || ent.kind === "subscription");
       } catch {
         // 권한 조회 실패 — 구매 버튼은 그대로 노출(복원/구매로 봉합 가능).
+      }
+      // 안드로이드 네이티브 결제 브릿지용 세션 토큰을 미리 받아 둔다(클릭 시 동기 발화 대비).
+      // 실패해도 무해 — 구매 시 캐시가 없으면 그때 한 번 더 시도한다.
+      if (androidApp && !iosOk) {
+        const token = await fetchNativeBridgeToken(firebaseUser);
+        if (!cancelled && token) bridgeTokenRef.current = token;
       }
     })();
     return () => {
@@ -472,7 +525,13 @@ export default function SettingsPage() {
       // 안드로이드 앱(TWA): 웹 Digital Goods 위임이 Android 13+ 에서 깨지므로 네이티브 결제 브릿지로.
       //  브릿지가 결제→서버검증→paid claim 부여까지 하면, 같은 uid 인 웹은 토큰 강제갱신으로 감지한다.
       if (isAndroidApp() && !isIosPurchaseAvailable()) {
-        notifyAndroidPurchase();
+        // 네이티브 FirebaseAuth 가 아직 미로그인이면(auth 브릿지 미도달) 결제 시트를 못 띄우고
+        // 조용히 종료되던 회귀가 있었다. 웹 세션 토큰을 함께 넘겨 결제 직전 같은 uid 로 로그인시킨다.
+        // 미리 받아 둔 토큰(bridgeTokenRef)이 있으면 await 없이 동기 발화 — user-activation 게이트를
+        // 확실히 통과한다. 캐시가 없을 때만(프리페치 실패/지연) 여기서 한 번 더 받아온다.
+        const bridgeToken =
+          bridgeTokenRef.current ?? (await fetchNativeBridgeToken(firebaseUser));
+        notifyAndroidPurchase(bridgeToken ?? undefined);
         const ok = firebaseUser ? await waitForNativeEntitlement(firebaseUser) : false;
         if (ok) {
           setProActive(true);
@@ -481,8 +540,15 @@ export default function SettingsPage() {
             description: t("settings.pro.purchaseDone.desc"),
             tone: "success",
           });
+        } else {
+          // 미완료(취소/실패/타임아웃) — "처리 중"에 갇힌 채 방치하지 않고 다음 행동을 안내한다.
+          // 실제로 결제됐다면 '구매 복원' 또는 다음 진입 시 권한이 자동 반영된다.
+          setProNotice({
+            title: t("settings.pro.purchaseIncomplete.title"),
+            description: t("settings.pro.purchaseIncomplete.desc"),
+            tone: "error",
+          });
         }
-        // 미완료(취소/대기)는 조용히 종료 — 결제됐다면 다음 진입 시 권한이 자동 반영된다.
         return;
       }
 
