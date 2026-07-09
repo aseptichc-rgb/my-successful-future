@@ -235,7 +235,18 @@ export async function linkAppleCredentialToEmailAccount(
 
 export async function signUp(email: string, password: string, displayName: string) {
   const credential = await createUserWithEmailAndPassword(getAuthInstance(), email, password);
-  await createUserProfile(credential.user.uid, displayName, email);
+  // 프로필 문서 생성 실패를 가입 실패로 승격시키면 안 된다 — Auth 계정은 이미 만들어져
+  // 사용자에게는 "실패" 로 보이지만 재시도는 email-already-in-use 로 영영 막힌다.
+  // 문서는 이후 온보딩의 merge:true 쓰기들로 채워지므로 1회 재시도 후 가입은 성공 처리.
+  try {
+    await createUserProfile(credential.user.uid, displayName, email);
+  } catch {
+    try {
+      await createUserProfile(credential.user.uid, displayName, email);
+    } catch (err) {
+      console.error("[signUp] 프로필 문서 생성 실패 — 가입은 계속 진행:", err);
+    }
+  }
   return credential;
 }
 

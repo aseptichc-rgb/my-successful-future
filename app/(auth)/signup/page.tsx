@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import { authErrorMessageKey } from "@/lib/authError";
 import { useT } from "@/lib/i18n";
 
 export default function SignupPage() {
@@ -36,8 +37,9 @@ export default function SignupPage() {
         return;
       }
       router.push("/onboarding");
-    } catch {
-      setError(t("auth.error.generic"));
+    } catch (err) {
+      const key = authErrorMessageKey(err);
+      if (key) setError(t(key));
     } finally {
       setLoading(false);
     }
@@ -67,8 +69,10 @@ export default function SignupPage() {
       await signUp(email, password, displayName);
       // 신규 가입자는 무조건 온보딩(언어 선택부터)을 거치도록
       router.push("/onboarding");
-    } catch {
-      setError(t("auth.error.generic"));
+    } catch (err) {
+      // email-already-in-use 등 원인별 문구 — generic 만 보여주면 사용자가 영영 막힌다.
+      const key = authErrorMessageKey(err);
+      if (key) setError(t(key));
     } finally {
       setLoading(false);
     }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { AuthCredential } from "firebase/auth";
 import { useAuth } from "@/lib/auth-context";
+import { authErrorMessageKey } from "@/lib/authError";
 import { useT } from "@/lib/i18n";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -136,8 +137,9 @@ export default function LoginPage() {
     try {
       await signIn(email, password);
       router.push(getRedirectPath());
-    } catch {
-      setError(t("auth.error.generic"));
+    } catch (err) {
+      const key = authErrorMessageKey(err);
+      if (key) setError(t(key));
     } finally {
       setLoading(false);
     }
@@ -158,8 +160,9 @@ export default function LoginPage() {
         return;
       }
       router.push(getRedirectPath());
-    } catch {
-      setError(t("auth.error.generic"));
+    } catch (err) {
+      const key = authErrorMessageKey(err);
+      if (key) setError(t(key));
     } finally {
       setLoading(false);
     }
@@ -187,8 +190,9 @@ export default function LoginPage() {
         return;
       }
       router.push(getRedirectPath());
-    } catch {
-      setError(t("auth.error.generic"));
+    } catch (err) {
+      const key = authErrorMessageKey(err);
+      if (key) setError(t(key));
     } finally {
       setLoading(false);
     }
