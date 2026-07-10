@@ -1,20 +1,24 @@
 /**
- * 웹(TWA) → 네이티브 위젯 즉시 갱신 브릿지.
+ * 웹(TWA) → 네이티브 브릿지 (인증 · 로그아웃 · 결제 intent 발화 전용).
  *
- * 동작:
- *   - 사용자가 홈 화면에서 다짐 따라쓰기 · 행동 체크 · 잘한 일 3가지를 저장한 직후,
- *     이 함수가 anima://widget-refresh 인텐트를 발화한다.
- *   - Chrome 이 OS intent 로 해석 → WidgetRefreshBridgeActivity (NoDisplay) 가 즉시 종료되며
- *     OneTime QuoteRefreshWorker 를 enqueue → 위젯 RemoteViews 가 새 진척도로 재렌더된다.
- *   - top-level navigation 이 아니므로 TWA 가 그대로 살아 있다(사용자 시각적 인터럽트 0).
+ * 위젯 갱신은 왜 여기서 발화하지 않나 (중요 — "계속" 확인창 회귀의 근본 해소):
+ *   - 과거엔 저장 직후 anima://widget-refresh 인텐트를 발화해 위젯을 즉시 깨웠다. 그러나 그
+ *     발화는 홈 저장 핸들러의 saveDaily...() await 뒤에 일어나, 탭 시점의 Chrome user-activation
+ *     이 이미 소진된 상태였다. 아래 user-activation 게이트는 "탭 후 5초/4.5초 창" 기준이라
+ *     await 를 넘겨도 여전히 통과 → intent 발화 → Chrome 이 조용히 실행하지 못하고
+ *     "이 사이트에서 Anima 앱을 열려고 합니다 [계속]" 확인창 + 검은 화면을 매 체크마다 띄웠다.
+ *   - 해소: 웹은 안드로이드 위젯 갱신 intent 를 더 이상 발화하지 않는다. 위젯 최신화는 네이티브가
+ *     단독 소유한다 — 앱 포그라운드 복귀([ForegroundWidgetRefresher]), 3시간 정주기,
+ *     자정 갱신 Worker 가 봉합한다. [notifyAndroidWidgetRefresh] 는 무해한 no-op 으로 남긴다.
+ *
+ * 남아 있는 intent 발화(인증/로그아웃/결제)는 모두 버튼 클릭 안에서 "동기로"(await 없이) 쏘므로
+ * 진짜 user-activation 이 살아 있어 확인창이 뜨지 않는다. 아래 게이트는 이들을 위한 안전망이다.
  *
  * 정책:
- *   - TWA 환경이 아닌 일반 브라우저에서는 no-op — 인텐트가 발화되어도 핸들러가 없어 무해하지만
- *     iframe 자체를 만들지 않아 DOM 부하 0.
- *   - 호출 시점은 "쓰기 트랜잭션 성공 직후" — 실패한 저장으로 위젯이 헛 갱신되지 않도록.
+ *   - TWA 환경이 아닌 일반 브라우저에서는 no-op — fireIntent 가 isInsideAndroidApp() 로 가드한다.
  *   - 디바운스(소프트): 동일 인텐트를 너무 짧은 간격으로 연속 발화하면 OS/Chrome 이 한 번
- *     무시할 수 있다. 사용자 입력 속도 기준으론 거의 영향 없지만, 동일 프레임 내 중복 호출을
- *     막기 위해 [DEDUP_WINDOW_MS] 이내 호출은 합쳐 1회만 쏜다.
+ *     무시할 수 있다. 동일 프레임 내 중복 호출을 막기 위해 [DEDUP_WINDOW_MS] 이내 호출은
+ *     합쳐 1회만 쏜다.
  *
  * Chrome user-activation 정책 (중요 — "계속" 확인창 회귀 방지):
  *   - 최근 user gesture 가 없는 컨텍스트에서 intent:// 를 발화하면 최신 Chrome 은 조용히
@@ -32,8 +36,6 @@
  */
 
 const FROM_APP_FLAG_KEY = "anima.fromApp";
-const REFRESH_INTENT_URL =
-  "intent://widget-refresh#Intent;scheme=anima;package=com.michaelkim.anima;end";
 const SIGNOUT_INTENT_URL =
   "intent://signout#Intent;scheme=anima;package=com.michaelkim.anima;end";
 // 네이티브 Play Billing 결제 브릿지. TWA 웹 Digital Goods 위임이 Android 13+ 에서
@@ -240,16 +242,22 @@ export function fireAndroidAuthBridge(customToken: string): boolean {
 }
 
 /**
- * 위젯 즉시 갱신 인텐트 발화. TWA 환경이 아니면 즉시 반환(no-op).
- * 어떤 예외도 호출자에게 전파하지 않는다 — "저장은 성공했는데 위젯만 못 깨운" 시나리오는
- * 다음 정주기 Worker 가 봉합하므로 사용자 흐름에 영향 0.
+ * 안드로이드 위젯 갱신 훅 — 의도적으로 no-op 이다. (모듈 상단 "위젯 갱신은 왜 여기서 발화하지
+ * 않나" 참고.) 과거엔 여기서 intent://widget-refresh 를 발화했으나, 저장 await 뒤 발화가 매
+ * 체크마다 Chrome "계속" 확인창 + 검은 화면을 유발해 제거했다.
  *
- * 가능하면 user gesture 핸들러(클릭/탭 직후) 안에서 호출해야 Chrome user-activation 패스를
- * 통과할 확률이 높다. 디바운스/setTimeout 안에서 호출하는 경로는 가능하면 user gesture 경로로
- * 한 번 더 보완해 주는 것이 안전하다.
+ * 안드로이드 위젯 최신화는 네이티브 폴백이 단독 소유한다:
+ *   - 앱 포그라운드 복귀 시 [ForegroundWidgetRefresher] → OneTime QuoteRefreshWorker
+ *   - 3시간 정주기 Worker · 자정+1분 Worker
+ * 따라서 저장 후 사용자가 홈으로 돌아가 앱을 다시 열면 위젯이 최신 진척도로 갱신된다.
+ *
+ * 호출부(홈 저장 경로)와의 시그니처는 유지해, iOS 쪽 refreshIosWidget() 과 대칭을 이루는
+ * 무해한 stub 으로 둔다 — 안드로이드는 네이티브가, iOS 는 Capacitor 플러그인이 각각 담당.
  */
 export function notifyAndroidWidgetRefresh(): void {
-  fireIntent(REFRESH_INTENT_URL, "widget-refresh");
+  // 의도적 no-op. 안드로이드 위젯 갱신은 네이티브 폴백(ForegroundWidgetRefresher · 정주기
+  // Worker)이 소유한다. 웹에서 intent 를 발화하면 저장 await 뒤 user-activation 소진으로
+  // "계속" 확인창이 뜨는 회귀가 재발하므로 여기서는 어떤 intent 도 쏘지 않는다.
 }
 
 /**
