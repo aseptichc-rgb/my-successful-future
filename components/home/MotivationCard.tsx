@@ -364,6 +364,17 @@ export default function MotivationCard({
                   </button>
                 </div>
               </div>
+              {/* 카드가 이미 있는 상태(예: 하루 재생성 한도 초과)의 안내.
+                  아래 else 분기는 카드가 없을 때만 그려지므로 여기서도 별도로 노출한다. */}
+              {errorMessage && (
+                <p
+                  className="mt-3 text-[13px] leading-[18px] text-[var(--label-3)]"
+                  role="status"
+                  aria-live="polite"
+                >
+                  {errorMessage}
+                </p>
+              )}
             </>
           ) : (
             <p className="text-[16px] leading-[22px] text-[var(--label-2)]">
