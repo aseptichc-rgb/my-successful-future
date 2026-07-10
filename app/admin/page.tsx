@@ -109,7 +109,7 @@ export default function AdminPage() {
         <h1 className="text-xl font-semibold text-[#1E1B4B]">어드민 페이지</h1>
         <p className="max-w-md text-sm text-red-700">{error}</p>
         <p className="max-w-md text-xs text-black/60">
-          ADMIN_EMAILS 환경변수에 본인 이메일이 등록되어 있는지 확인해주세요.
+          접근 권한이 없습니다.
         </p>
       </div>
     );

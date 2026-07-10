@@ -60,6 +60,8 @@ export async function saveMissionResponse(opts: {
   const motivationRef = db.doc(`users/${uid}/dailyMotivations/${ymd}`);
 
   return await db.runTransaction(async (tx) => {
+    // ── 읽기 단계 ── Firestore 트랜잭션은 모든 읽기가 모든 쓰기보다 앞서야 한다.
+    // (쓰기 후 tx.get 은 즉시 예외 → 첫 응답이 100% 실패하던 회귀를 방지)
     const motSnap = await tx.get(motivationRef);
     if (!motSnap.exists) {
       throw new MissionResponseError(404, "오늘의 카드를 찾지 못했어요. 새로고침 후 다시 시도해주세요.");
@@ -73,17 +75,20 @@ export async function saveMissionResponse(opts: {
     const isFirst = !motivation.response;
     const prevEdits = motivation.response?.edits ?? 0;
 
+    // 첫 응답이면 identityProgress 도 갱신하므로 쓰기 전에 미리 읽어둔다.
+    const progressRef = isFirst
+      ? db.doc(`users/${uid}/identityProgress/${identityDocId(identityTag)}`)
+      : null;
+    const progSnap = progressRef ? await tx.get(progressRef) : null;
+
+    // ── 쓰기 단계 ──
     tx.update(motivationRef, {
       "response.text": text,
       "response.respondedAt": Timestamp.now(),
       "response.edits": isFirst ? 0 : prevEdits + 1,
     });
 
-    if (isFirst) {
-      const progressRef = db.doc(
-        `users/${uid}/identityProgress/${identityDocId(identityTag)}`,
-      );
-      const progSnap = await tx.get(progressRef);
+    if (progressRef && progSnap) {
       if (progSnap.exists) {
         const prevRecent = progSnap.get("recentResponses");
         const recentArr: string[] = Array.isArray(prevRecent)

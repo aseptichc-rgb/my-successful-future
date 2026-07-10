@@ -9,7 +9,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
-import { verifyRequestUser, AuthError } from "@/lib/authServer";
+import { requirePaidUser, AuthError } from "@/lib/authServer";
+import { enforceQuota, QuotaExceededError } from "@/lib/quota";
 import { generateText } from "@/lib/gemini";
 import { FUTURE_PERSONA_TRUNC } from "@/lib/constants/futurePersona";
 import type { UserLanguage } from "@/types";
@@ -110,12 +111,18 @@ const FALLBACK_AUTHORS: Readonly<Record<UserLanguage, ReadonlyArray<string>>> = 
 
 export async function POST(request: NextRequest) {
   try {
-    const me = await verifyRequestUser(request);
+    // LLM 생성 경로 — ENTITLEMENT_REQUIRED=true 시 결제/체험 사용자만 통과.
+    const me = await requirePaidUser(request);
+    // LLM 호출 라우트 — 무제한 반복 호출로 비용이 폭주하지 않도록 일별 한도를 강제한다.
+    await enforceQuota(me.uid, "authorRecommend");
     const ctx = await fetchUserCtx(me.uid);
 
     let authors: string[] = [];
     try {
-      const raw = await generateText(buildPrompt(ctx), MODEL_TOKENS);
+      const raw = await generateText(buildPrompt(ctx), MODEL_TOKENS, undefined, {
+        uid: me.uid,
+        feature: "author_recommend",
+      });
       authors = parseAuthors(raw);
     } catch (err) {
       console.warn("[quote-authors/recommend] Gemini 실패:", err instanceof Error ? err.message : err);
@@ -132,6 +139,12 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     if (err instanceof AuthError) {
       return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    if (err instanceof QuotaExceededError) {
+      return NextResponse.json(
+        { error: "추천은 하루 5번까지 받을 수 있어요. 내일 다시 만나요." },
+        { status: 429 },
+      );
     }
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[quote-authors/recommend] 실패:", msg);

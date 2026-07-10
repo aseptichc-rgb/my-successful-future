@@ -25,8 +25,31 @@
  *   APPLE_USE_SANDBOX          : "true" 면 Sandbox 환경에 묻는다. 기본 production.
  *   APPLE_STOREKIT_DEV_BYPASS  : 검증 스킵 (베타·로컬). 운영에서는 절대 사용 금지.
  */
-import { createSign, createPublicKey, createVerify } from "node:crypto";
+import { createSign, createVerify, X509Certificate } from "node:crypto";
 import { resolveDevBypass } from "@/lib/devBypass";
+
+/**
+ * Apple Root CA - G3 (공개 루트 인증서). x5c 체인의 신뢰 앵커로 핀 고정한다.
+ * 출처: https://www.apple.com/certificateauthority/AppleRootCA-G3.cer
+ * SHA-256: 63:34:3A:BF:B8:9A:6A:03:EB:B5:7E:9B:3F:5F:A7:BE:7C:4F:5C:75:6F:30:17:B3:A8:C4:88:C3:65:3E:91:79
+ * (공개 인증서이므로 코드에 임베드해도 무방 — 서버리스 번들 파일 트레이싱 이슈를 피한다.)
+ */
+const APPLE_ROOT_CA_G3_PEM = `-----BEGIN CERTIFICATE-----
+MIICQzCCAcmgAwIBAgIILcX8iNLFS5UwCgYIKoZIzj0EAwMwZzEbMBkGA1UEAwwS
+QXBwbGUgUm9vdCBDQSAtIEczMSYwJAYDVQQLDB1BcHBsZSBDZXJ0aWZpY2F0aW9u
+IEF1dGhvcml0eTETMBEGA1UECgwKQXBwbGUgSW5jLjELMAkGA1UEBhMCVVMwHhcN
+MTQwNDMwMTgxOTA2WhcNMzkwNDMwMTgxOTA2WjBnMRswGQYDVQQDDBJBcHBsZSBS
+b290IENBIC0gRzMxJjAkBgNVBAsMHUFwcGxlIENlcnRpZmljYXRpb24gQXV0aG9y
+aXR5MRMwEQYDVQQKDApBcHBsZSBJbmMuMQswCQYDVQQGEwJVUzB2MBAGByqGSM49
+AgEGBSuBBAAiA2IABJjpLz1AcqTtkyJygRMc3RCV8cWjTnHcFBbZDuWmBSp3ZHtf
+TjjTuxxEtX/1H7YyYl3J6YRbTzBPEVoA/VhYDKX1DyxNB0cTddqXl5dvMVztK517
+IDvYuVTZXpmkOlEKMaNCMEAwHQYDVR0OBBYEFLuw3qFYM4iapIqZ3r6966/ayySr
+MA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMAoGCCqGSM49BAMDA2gA
+MGUCMQCD6cHEFl4aXTQY2e3v9GwOAEZLuN+yRhHFD/3meoyhpmvOwgPUnPWTxnS4
+at+qIxUCMG1mihDK1A3UT82NQz60imOlM27jbdoXt2QfyFMm+YhidDkLF1vLUagM
+6BgD56KyKA==
+-----END CERTIFICATE-----
+`;
 
 const DEV_BYPASS = resolveDevBypass("APPLE_STOREKIT_DEV_BYPASS");
 const USE_SANDBOX = process.env.APPLE_USE_SANDBOX === "true";
@@ -54,6 +77,8 @@ export interface AppleTransactionVerifyResult {
   productId?: string;
   /** auto-renewable subscription 의 originalTransactionId — 영구 식별자. */
   originalTransactionId?: string;
+  /** 거래 환경. 운영에서 Sandbox 거래를 평생권으로 승격시키지 못하도록 라우트에서 검사한다. */
+  environment?: "Production" | "Sandbox";
   reason?: string;
 }
 
@@ -116,30 +141,65 @@ function decodeJwsPayload<T>(jws: string): T {
 }
 
 /**
+ * x5c 인증서 체인을 Apple Root CA - G3 까지 연결 검증하고 신뢰 가능한 leaf 를 반환한다.
+ * 각 인증서가 상위 인증서 공개키로 서명됐는지 + 체인 최상위가 핀 고정된 Apple Root 로
+ * 서명(또는 그 자신)됐는지 + leaf 유효기간을 확인한다. 하나라도 실패하면 null.
+ *
+ * 이 체인 검증이 없으면 공격자가 임의 키로 자기서명한 leaf 를 x5c 에 실어 위조 JWS 를
+ * 통과시킬 수 있다(환불 알림 위조 → 정상 결제자 권한 강제 회수 DoS).
+ */
+function verifyCertChainToAppleRoot(x5c: string[]): X509Certificate | null {
+  try {
+    if (!Array.isArray(x5c) || x5c.length === 0) return null;
+    const certs = x5c.map((b64) => new X509Certificate(Buffer.from(b64, "base64")));
+    const root = new X509Certificate(APPLE_ROOT_CA_G3_PEM);
+
+    // 1) 각 인증서가 바로 다음(상위) 인증서의 공개키로 서명됐는지 검증.
+    for (let i = 0; i < certs.length - 1; i++) {
+      if (!certs[i].verify(certs[i + 1].publicKey)) return null;
+    }
+
+    // 2) 체인 최상위가 핀 고정된 Apple Root 로 서명됐는지, 또는 Root 그 자신인지 확인.
+    const top = certs[certs.length - 1];
+    const chainsToRoot = top.verify(root.publicKey) || top.raw.equals(root.raw);
+    if (!chainsToRoot) return null;
+
+    // 3) leaf 유효기간 확인 (만료/미발효 인증서 거부).
+    const leaf = certs[0];
+    const from = Date.parse(leaf.validFrom);
+    const to = Date.parse(leaf.validTo);
+    if (Number.isNaN(from) || Number.isNaN(to)) return null;
+    const now = Date.now();
+    if (now < from || now > to) return null;
+
+    return leaf;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Apple JWS 의 서명 검증.
- * x5c 헤더에 임베드된 leaf 인증서의 공개키로 ES256 서명을 검증한다.
- * 인증서 체인 자체의 신뢰성 검증(Apple Root CA 까지 연결되는지) 은 운영에서 별도로 추가 권장.
+ * x5c 체인을 Apple Root CA - G3 까지 신뢰 검증한 뒤, 그렇게 검증된 leaf 인증서의
+ * 공개키로만 ES256 서명을 검증한다.
  */
 function verifyJwsSignature(jws: string): boolean {
   const parts = jws.split(".");
   if (parts.length !== 3) return false;
   const headerRaw = Buffer.from(parts[0], "base64url").toString("utf8");
   const header = JSON.parse(headerRaw) as { x5c?: string[]; alg?: string };
-  if (!Array.isArray(header.x5c) || header.x5c.length === 0) return false;
   if (header.alg !== "ES256") return false;
-  const leafDer = Buffer.from(header.x5c[0], "base64");
-  // PEM 으로 감싸 createPublicKey 가 받아들이도록.
-  const leafPem =
-    "-----BEGIN CERTIFICATE-----\n" +
-    leafDer.toString("base64").match(/.{1,64}/g)!.join("\n") +
-    "\n-----END CERTIFICATE-----\n";
-  const pubKey = createPublicKey(leafPem);
+  if (!Array.isArray(header.x5c) || header.x5c.length === 0) return false;
+
+  const leaf = verifyCertChainToAppleRoot(header.x5c);
+  if (!leaf) return false;
+
   const signingInput = `${parts[0]}.${parts[1]}`;
   const sig = Buffer.from(parts[2], "base64url");
   const verifier = createVerify("SHA256");
   verifier.update(signingInput);
   verifier.end();
-  return verifier.verify({ key: pubKey, dsaEncoding: "ieee-p1363" }, sig);
+  return verifier.verify({ key: leaf.publicKey, dsaEncoding: "ieee-p1363" }, sig);
 }
 
 interface SignedTransactionPayload {
@@ -243,8 +303,8 @@ export interface AppleNotificationResult {
  *   2) data.signedTransactionInfo(거래 JWS) 가 있으면 그 서명도 별도 검증 (이중 서명)
  *   3) 두 페이로드의 bundleId 가 우리 앱과 일치하는지 확인 (타 앱 알림 차단)
  *
- * 주의: verifyJwsSignature 는 leaf 인증서 서명만 검증한다. Apple Root CA 까지의 체인 신뢰는
- * 운영 강화 시 별도 추가 권장(verify-apple 와 동일한 수준의 한계).
+ * verifyJwsSignature 는 x5c 체인을 Apple Root CA - G3 까지 신뢰 검증한 뒤 leaf 공개키로
+ * 서명을 확인하므로, 공격자가 자기서명 leaf 로 위조한 알림은 통과하지 못한다.
  */
 export function verifyAppleNotification(signedPayload: string): AppleNotificationResult {
   try {
@@ -258,20 +318,20 @@ export function verifyAppleNotification(signedPayload: string): AppleNotificatio
     const payload = decodeJwsPayload<AppleNotificationPayload>(sp);
     const data = payload.data;
 
-    // 3-a) 알림 레벨 bundleId 검증.
-    if (data?.bundleId && data.bundleId !== BUNDLE_ID) {
-      return { ok: false, reason: `bundleId 불일치: ${data.bundleId}` };
+    // 3-a) 알림 레벨 bundleId 검증 — 누락도 거부(타 앱 알림/필드 생략 우회 차단).
+    if (!data?.bundleId || data.bundleId !== BUNDLE_ID) {
+      return { ok: false, reason: `bundleId 불일치: ${data?.bundleId ?? "누락"}` };
     }
 
     // 2) 거래 JWS 가 있으면 서명·bundleId 를 한 번 더 검증하고 디코드.
     let transaction: AppleNotificationResult["transaction"];
-    if (data?.signedTransactionInfo) {
+    if (data.signedTransactionInfo) {
       if (!verifyJwsSignature(data.signedTransactionInfo)) {
         return { ok: false, reason: "거래 JWS 서명 검증 실패" };
       }
       const tx = decodeJwsPayload<SignedTransactionPayload>(data.signedTransactionInfo);
-      if (tx.bundleId && tx.bundleId !== BUNDLE_ID) {
-        return { ok: false, reason: `거래 bundleId 불일치: ${tx.bundleId}` };
+      if (!tx.bundleId || tx.bundleId !== BUNDLE_ID) {
+        return { ok: false, reason: `거래 bundleId 불일치: ${tx.bundleId ?? "누락"}` };
       }
       transaction = {
         originalTransactionId: tx.originalTransactionId,
@@ -378,6 +438,7 @@ export async function verifyAppleTransaction(
       expiresAtMs: payload.expiresDate,
       productId: payload.productId,
       originalTransactionId: payload.originalTransactionId,
+      environment: payload.environment,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

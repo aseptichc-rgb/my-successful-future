@@ -83,8 +83,13 @@ export async function DELETE(request: NextRequest) {
     }
 
     // 2) entitlements/{uid} — 결제 영수증 검증 캐시. 어드민/감사용이 아니라 본인 권한 캐시이므로 삭제.
-    await db.doc(`entitlements/${uid}`).delete().catch(() => {
-      // 문서 없음은 무시. 다른 오류는 다음 단계 진행에 영향 X — log only.
+    await db.doc(`entitlements/${uid}`).delete().catch((e) => {
+      // 문서 없음/일시 오류는 삭제 흐름을 막지 않는다. 다만 무음으로 넘기지 않고 로그로 남긴다
+      // (사용자 데이터는 지워졌는데 결제 레코드만 남는 상태를 감지할 수 있도록).
+      console.warn(
+        `[account/delete] uid=${uid} entitlements 삭제 실패:`,
+        e instanceof Error ? e.message : String(e),
+      );
     });
 
     // 3) users/{uid} 본문 삭제

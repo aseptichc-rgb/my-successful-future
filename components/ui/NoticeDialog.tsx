@@ -7,7 +7,7 @@ import { useEffect } from "react";
  *
  * window.alert 를 대체한다 — TWA(Chrome) 에서 alert 는 "<origin> 내용:" 헤더가 붙어
  * 앱처럼 보이지 않는다. 결제 성공/복원 등 사용자 안내에 이 컴포넌트를 쓴다.
- * 스타일은 [ConfirmDialog] 와 동일 계열(애플 그룹드 시트 톤)로 맞춘다.
+ * 애플 그룹드 시트 톤의 스타일을 따른다.
  */
 interface Props {
   open: boolean;

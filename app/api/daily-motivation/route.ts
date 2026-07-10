@@ -11,8 +11,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
-import { verifyRequestUser, AuthError } from "@/lib/authServer";
-import { ensureMotivation, isValidYmd, todayKst } from "@/lib/dailyMotivation";
+import { verifyRequestUser, requirePaidUser, AuthError } from "@/lib/authServer";
+import { ensureMotivation, isValidYmd, todayKst, resolveRequestYmd } from "@/lib/dailyMotivation";
 import { enforceQuota, QuotaExceededError } from "@/lib/quota";
 
 export const maxDuration = 30;
@@ -51,14 +51,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const me = await verifyRequestUser(request);
+    // LLM 생성 경로 — ENTITLEMENT_REQUIRED=true 시 결제/체험 사용자만 통과.
+    const me = await requirePaidUser(request);
     let body: PostBody = {};
     try {
       body = (await request.json()) as PostBody;
     } catch {
       // 빈 바디 허용
     }
-    const ymd = body.ymd && isValidYmd(body.ymd) ? body.ymd : todayKst();
+    // 임의 미래/과거 날짜로 문서를 대량 생성해 쿼터를 우회하지 못하도록 [어제, 오늘] 로 제한.
+    const ymd = resolveRequestYmd(body.ymd);
     const force = body.force === true;
     const overrideAuthor =
       typeof body.overrideAuthor === "string" && body.overrideAuthor.trim().length > 0

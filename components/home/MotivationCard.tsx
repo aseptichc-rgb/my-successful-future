@@ -25,7 +25,6 @@ interface MotivationCardProps {
   onCheckinAffirmations?: (
     texts: string[],
   ) => Promise<{ matched: boolean; streakCount: number; mismatchedIndices?: number[] }>;
-  ymd: string;
 }
 
 const RESPONSE_MAX = 60;
@@ -196,7 +195,6 @@ export default function MotivationCard({
   affirmationStreakCount = 0,
   alreadyCheckedInToday = false,
   onCheckinAffirmations,
-  ymd: _ymd,
 }: MotivationCardProps) {
   const { t, locale } = useLanguage();
   const [downloading, setDownloading] = useState(false);

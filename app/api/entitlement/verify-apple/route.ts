@@ -78,6 +78,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 1-b) 샌드박스/TestFlight 거래가 운영 권한으로 승격되는 것을 차단(fail-closed).
+    //      environment 를 확정하지 못한 경우도 운영에서는 거부한다.
+    const useSandbox = process.env.APPLE_USE_SANDBOX === "true";
+    if (!useSandbox && verification.environment !== "Production") {
+      return NextResponse.json(
+        { error: "샌드박스 거래는 운영에서 사용할 수 없습니다." },
+        { status: 402 },
+      );
+    }
+
     const verifiedProductId = verification.productId || declaredProductId;
     if (!verifiedProductId) {
       return NextResponse.json(
@@ -110,6 +120,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 3-b) 영수증 재사용 차단 — 동일 originalTransactionId 가 이미 다른(회수되지 않은)
+    //      계정에 등록돼 있으면 거부한다(1결제 → N계정 공유 방지).
+    const db = getAdminDb();
+    const originalTransactionId = verification.originalTransactionId?.trim();
+    if (originalTransactionId) {
+      const dupSnap = await db
+        .collection("entitlements")
+        .where("originalTransactionId", "==", originalTransactionId)
+        .get();
+      const claimedByOther = dupSnap.docs.find(
+        (d) => d.id !== me.uid && d.data()?.revoked !== true,
+      );
+      if (claimedByOther) {
+        return NextResponse.json(
+          { error: "이미 다른 계정에 등록된 결제입니다." },
+          { status: 409 },
+        );
+      }
+    }
+
     const auth = getAdminAuth();
     const purchaseTime = verification.purchaseTimeMs ?? Date.now();
 
@@ -137,13 +167,12 @@ export async function POST(request: NextRequest) {
     });
 
     // 5) 검증 레코드 영구 저장 — 환불 처리 시 동일 originalTransactionId 로 무효화 가능.
-    const db = getAdminDb();
     await db.doc(`entitlements/${me.uid}`).set(
       {
         uid: me.uid,
         platform: "ios",
         productId: verifiedProductId,
-        originalTransactionId: verification.originalTransactionId ?? null,
+        originalTransactionId: originalTransactionId ?? null,
         purchaseTimeMs: purchaseTime,
         expiresAtMs: verification.expiresAtMs ?? null,
         verifiedAt: FieldValue.serverTimestamp(),

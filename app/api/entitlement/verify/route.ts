@@ -38,6 +38,12 @@ interface RequestBody {
 
 const EXPECTED_PACKAGE_NAME = process.env.ANDROID_PACKAGE_NAME || "";
 const EXPECTED_PRODUCT_ID = process.env.ANDROID_LIFETIME_PRODUCT_ID || "";
+/**
+ * true 로 켜면 Play Integrity 토큰 없이는 결제 검증을 거부한다(루팅/위조 클라이언트 차단).
+ * 기본 false — 켜기 전에 배포된 안드로이드 클라이언트가 integrityToken 을 실제로 보내는지 확인할 것
+ * (ENTITLEMENT_REQUIRED 와 동일한 점진 롤아웃 패턴).
+ */
+const PLAY_INTEGRITY_REQUIRED = process.env.PLAY_INTEGRITY_REQUIRED === "true";
 
 export async function POST(request: NextRequest) {
   try {
@@ -77,7 +83,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1) Play Integrity 가 있으면 함께 검증 (생략 가능 — 운영에서는 강제 권장)
+    // 1) Play Integrity 검증. PLAY_INTEGRITY_REQUIRED=true 면 토큰 누락 자체를 거부한다.
+    if (PLAY_INTEGRITY_REQUIRED && !integrityToken) {
+      return NextResponse.json(
+        { error: "무결성 검증 토큰이 필요합니다." },
+        { status: 401 },
+      );
+    }
     if (integrityToken) {
       const integrity = await verifyPlayIntegrity({
         packageName,
@@ -105,6 +117,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 2-b) 영수증 재사용 차단 — 동일 purchaseToken 이 이미 다른(회수되지 않은) 계정에
+    //      등록돼 있으면 거부한다. 한 결제를 공유해 여러 계정이 평생권을 얻는 것을 막는다.
+    const db = getAdminDb();
+    const dupSnap = await db
+      .collection("entitlements")
+      .where("purchaseToken", "==", purchaseToken)
+      .get();
+    const claimedByOther = dupSnap.docs.find(
+      (d) => d.id !== me.uid && d.data()?.revoked !== true,
+    );
+    if (claimedByOther) {
+      return NextResponse.json(
+        { error: "이미 다른 계정에 등록된 결제입니다." },
+        { status: 409 },
+      );
+    }
+
     const auth = getAdminAuth();
     const purchaseTime = purchase.purchaseTimeMs ?? Date.now();
 
@@ -121,7 +150,6 @@ export async function POST(request: NextRequest) {
     });
 
     // 4) 검증 레코드를 entitlements/{uid} 에 영구 저장 (감사·재검증 캐시)
-    const db = getAdminDb();
     await db.doc(`entitlements/${me.uid}`).set(
       {
         uid: me.uid,

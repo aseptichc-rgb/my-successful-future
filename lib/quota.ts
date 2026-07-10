@@ -14,13 +14,7 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { DAILY_QUOTA, type QuotaKey } from "@/lib/constants/quota";
-
-const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
-
-function todayKstYmd(date: Date = new Date()): string {
-  const k = new Date(date.getTime() + KST_OFFSET_MS);
-  return k.toISOString().slice(0, 10);
-}
+import { todayKstYmd } from "@/lib/kstDate";
 
 export class QuotaExceededError extends Error {
   constructor(
@@ -78,21 +72,4 @@ export async function enforceQuota(
 
     return { used: next, limit, ymd };
   });
-}
-
-/**
- * 한도 검사만 하고 증가시키지는 않는 read-only 헬퍼.
- * 캐시 히트로 LLM 을 부르지 않는 경로에서 "조회만 가능한지" 확인할 때.
- */
-export async function getQuotaUsage(uid: string, key: QuotaKey): Promise<{
-  used: number;
-  limit: number;
-  ymd: string;
-}> {
-  const limit = DAILY_QUOTA[key];
-  const db = getAdminDb();
-  const ymd = todayKstYmd();
-  const snap = await db.doc(`users/${uid}/usage/${ymd}`).get();
-  const used = snap.exists ? Number(snap.get(key)) || 0 : 0;
-  return { used, limit, ymd };
 }

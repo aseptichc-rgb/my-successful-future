@@ -306,7 +306,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (fbUser) {
         setFirebaseUser(fbUser);
-        const profile = await getUserProfile(fbUser.uid);
+        // Firestore 읽기 실패(오프라인 콜드부트·규칙 거부)에도 앱이 무한 스피너에 고착되지
+        // 않도록 프로필 없이 진행한다(아래 setLoading(false) 도달 보장). 다음 토큰 갱신에 재시도.
+        let profile: User | null = null;
+        try {
+          profile = await getUserProfile(fbUser.uid);
+        } catch (err) {
+          console.warn("[auth] getUserProfile 실패:", err);
+        }
         setUser(profile);
 
         if (!trialAttemptedRef.current.has(fbUser.uid)) {
@@ -385,6 +392,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // 2) 복원 시도 플래그를 닫아둔다 — 쿠키 clear 와 firebase signOut 사이의 짧은 윈도우 보호.
     restoreAttemptedRef.current = true;
     trialAttemptedRef.current.clear();
+    // TWA 환경이면 네이티브 FirebaseAuth · 위젯 캐시도 같이 비운다 — 안 하면 홈 화면 위젯이
+    // 이전 계정의 명언/체크리스트를 계속 노출한다.
+    // 클릭 직후(user-activation 이 살아 있을 때) 먼저 발화한다 — 아래 await 들이 느리면
+    // 게이트 윈도우(약 5초)를 넘겨 발화가 조용히 스킵되던 회귀를 막는다. 네이티브 signout 은 멱등.
+    notifyAndroidSignOut();
     // 네이티브 브릿지 마커를 비워 다음 로그인 때 새 uid 로 브릿지가 다시 쏘이도록 한다.
     try {
       window.sessionStorage.removeItem(NATIVE_BRIDGE_LAST_UID_KEY);
@@ -401,10 +413,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     await clearServerSession();
     await firebaseSignOut();
-    // TWA 환경이면 네이티브 FirebaseAuth · 위젯 캐시도 같이 비운다 — 안 하면 홈 화면 위젯이
-    // 이전 계정의 명언/체크리스트를 계속 노출한다(다른 계정 재로그인 시 새 데이터가 도착하기
-    // 전까지의 짧은 구간 동안에도 stale 데이터가 보이는 회귀 방지).
-    notifyAndroidSignOut();
   };
 
   const refreshUser = async () => {

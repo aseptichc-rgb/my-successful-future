@@ -10,21 +10,21 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == uid;
     }
 
-    /**
-     * Play Billing 영수증 검증을 통과한 사용자에게 박힌 custom claim.
-     * 현재 룰에서는 강제하지 않지만, 운영에서 paid-only read 가 필요한 컬렉션이 생기면
-     * 여기서 분기하면 된다. 실제 결제 enforcement 는 서버 라우트의 requirePaidUser 에 위임.
-     */
-    function isPaid() {
-      return isAuthenticated() && request.auth.token.paid == true;
+    // 서버(Admin SDK)만 갱신해야 하는 필드 — 클라이언트가 직접 조작하면 스트릭 위조,
+    // 정체성/초상/명언 히스토리 변조가 가능하므로 클라이언트 write 에서 차단한다.
+    function serverOwnedUserFields() {
+      return ['identities', 'futureSelfPortrait', 'seenQuoteTexts', 'seenQuotes', 'affirmationStreak'];
     }
 
     // ── users ──
     // 본인만 read/write. 채팅·초대 시절 처음보는 uid 의 프로필을 읽어야 했던 요건은 사라졌다.
+    // 단, 서버 전용 필드(스트릭/정체성/초상/명언 히스토리)는 클라이언트가 만들거나 바꿀 수 없다.
     match /users/{uid} {
       allow read: if isOwner(uid);
-      allow create: if isOwner(uid);
-      allow update: if isOwner(uid);
+      allow create: if isOwner(uid)
+        && !request.resource.data.keys().hasAny(serverOwnedUserFields());
+      allow update: if isOwner(uid)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(serverOwnedUserFields());
 
       // 본인 일일 체크리스트/회고 (홈 대시보드, 문서 ID = YYYY-MM-DD KST)
       match /dailyEntries/{ymd} {
@@ -92,6 +92,12 @@ service cloud.firestore {
     // ── tokenUsage ──
     // LLM 호출당 토큰/비용 기록 (server-only).
     match /tokenUsage/{docId} {
+      allow read, write: if false;
+    }
+
+    // ── trialLedger ──
+    // 이메일 해시별 트라이얼 발급 이력 (server-only). 탈퇴→재가입 트라이얼 리셋 차단용.
+    match /trialLedger/{emailHash} {
       allow read, write: if false;
     }
 

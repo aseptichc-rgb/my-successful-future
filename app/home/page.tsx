@@ -169,6 +169,10 @@ export default function HomeDashboardPage() {
 
   useEffect(() => {
     if (!firebaseUser) return;
+    // 날짜(ymd)·계정이 바뀌면 새 문서로 다시 hydrate 해야 하므로 플래그를 리셋한다.
+    // (리셋하지 않으면 자정 롤오버 시 전날 wins 가 오늘 화면에 남고, 한 글자만 입력해도
+    //  전날 기록이 오늘 문서로 자동 저장되는 데이터 오염이 발생.)
+    dailyHydratedRef.current = false;
     const unsub = onDailyEntrySnapshot(firebaseUser.uid, ymd, (entry: DailyEntry | null) => {
       if (!entry) {
         if (!dailyHydratedRef.current) {
@@ -193,28 +197,39 @@ export default function HomeDashboardPage() {
     if (!firebaseUser) return;
     setMotivationLoading(true);
     let cancelled = false;
-    const unsub = onDailyMotivationSnapshot(firebaseUser.uid, ymd, (m) => {
-      if (cancelled) return;
-      setMotivation(m);
-      setMotivationLoading(false);
-      if (!m && ensureRequestedYmdRef.current !== ymd) {
-        ensureRequestedYmdRef.current = ymd;
-        authedFetch("/api/daily-motivation", {
-          method: "POST",
-          body: JSON.stringify({ ymd }),
-        })
-          .then(async (res) => {
-            if (!res.ok) {
-              const data = await res.json().catch(() => ({}));
-              throw new Error((data as { error?: string }).error || "동기부여 카드를 만들지 못했어요.");
-            }
+    const unsub = onDailyMotivationSnapshot(
+      firebaseUser.uid,
+      ymd,
+      (m) => {
+        if (cancelled) return;
+        setMotivation(m);
+        setMotivationLoading(false);
+        if (m) setMotivationError(null);
+        if (!m && ensureRequestedYmdRef.current !== ymd) {
+          ensureRequestedYmdRef.current = ymd;
+          authedFetch("/api/daily-motivation", {
+            method: "POST",
+            body: JSON.stringify({ ymd }),
           })
-          .catch((err) => {
-            if (cancelled) return;
-            setMotivationError(err instanceof Error ? err.message : String(err));
-          });
-      }
-    });
+            .then(async (res) => {
+              if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error((data as { error?: string }).error || "동기부여 카드를 만들지 못했어요.");
+              }
+            })
+            .catch((err) => {
+              if (cancelled) return;
+              setMotivationError(err instanceof Error ? err.message : String(err));
+            });
+        }
+      },
+      // 구독 실패(권한/네트워크) 시 스켈레톤에 갇히지 않도록 로딩을 풀고 에러를 표시한다.
+      () => {
+        if (cancelled) return;
+        setMotivationLoading(false);
+        setMotivationError("동기부여 카드를 불러오지 못했어요.");
+      },
+    );
     return () => {
       cancelled = true;
       unsub();
@@ -558,7 +573,6 @@ export default function HomeDashboardPage() {
                 affirmationStreakCount={streakCount}
                 alreadyCheckedInToday={alreadyCheckedInToday}
                 onCheckinAffirmations={handleAffirmationCheckin}
-                ymd={ymd}
               />
             </div>
             {motivationError && motivation && (

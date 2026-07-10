@@ -11,7 +11,7 @@
  * 프라이버시: 사용자 본인만 호출 가능 (verifyRequestUser). 다른 사용자 uid 로 위장 불가.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { verifyRequestUser, AuthError } from "@/lib/authServer";
+import { verifyRequestUser, requirePaidUser, AuthError } from "@/lib/authServer";
 import { ensureFutureSelfPortrait } from "@/lib/futureSelfPortrait";
 import { enforceQuota, QuotaExceededError } from "@/lib/quota";
 import { getAdminDb } from "@/lib/firebase-admin";
@@ -43,7 +43,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const me = await verifyRequestUser(request);
+    // LLM 생성 경로 — ENTITLEMENT_REQUIRED=true 시 결제/체험 사용자만 통과.
+    const me = await requirePaidUser(request);
     let body: PostBody = {};
     try {
       body = (await request.json()) as PostBody;

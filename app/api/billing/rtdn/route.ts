@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
         [
           "💸 환불 발생 (anima)",
           `상태: ${revokeStatusLabel(result.status)}`,
-          result.uid ? `uid: ${result.uid}` : null,
+          result.uid ? `uid: ${maskToken(result.uid)}` : null,
           voided.orderId ? `orderId: ${voided.orderId}` : null,
           `종류: ${productTypeLabel(voided.productType)} / ${refundTypeLabel(voided.refundType)}`,
           `시각: ${formatKst(notification.eventTimeMillis)}`,

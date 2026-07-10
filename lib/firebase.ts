@@ -414,15 +414,23 @@ export function onDailyEntrySnapshot(
   uid: string,
   ymd: string,
   callback: (entry: DailyEntry | null) => void,
+  onError?: (err: Error) => void,
 ): Unsubscribe {
   const db = getDbInstance();
-  return onSnapshot(doc(db, "users", uid, "dailyEntries", ymd), (snap) => {
-    if (!snap.exists()) {
-      callback(null);
-      return;
-    }
-    callback({ ymd, ...snap.data() } as DailyEntry);
-  });
+  return onSnapshot(
+    doc(db, "users", uid, "dailyEntries", ymd),
+    (snap) => {
+      if (!snap.exists()) {
+        callback(null);
+        return;
+      }
+      callback({ ymd, ...snap.data() } as DailyEntry);
+    },
+    (err) => {
+      console.error("[onDailyEntrySnapshot] 구독 실패:", err);
+      onError?.(err);
+    },
+  );
 }
 
 export async function saveDailyTodos(uid: string, ymd: string, todos: DailyTodo[]) {
@@ -485,15 +493,23 @@ export function onDailyMotivationSnapshot(
   uid: string,
   ymd: string,
   callback: (m: DailyMotivation | null) => void,
+  onError?: (err: Error) => void,
 ): Unsubscribe {
   const db = getDbInstance();
-  return onSnapshot(doc(db, "users", uid, "dailyMotivations", ymd), (snap) => {
-    if (!snap.exists()) {
-      callback(null);
-      return;
-    }
-    callback(snap.data() as DailyMotivation);
-  });
+  return onSnapshot(
+    doc(db, "users", uid, "dailyMotivations", ymd),
+    (snap) => {
+      if (!snap.exists()) {
+        callback(null);
+        return;
+      }
+      callback(snap.data() as DailyMotivation);
+    },
+    (err) => {
+      console.error("[onDailyMotivationSnapshot] 구독 실패:", err);
+      onError?.(err);
+    },
+  );
 }
 
 // ── 미래 일상 비전 구독 ───────────────────────────
@@ -536,11 +552,19 @@ export function onAffirmationCheckinSnapshot(
   uid: string,
   ymd: string,
   callback: (checkedIn: boolean) => void,
+  onError?: (err: Error) => void,
 ): Unsubscribe {
   const db = getDbInstance();
-  return onSnapshot(doc(db, "users", uid, "affirmationLogs", ymd), (snap) => {
-    callback(snap.exists());
-  });
+  return onSnapshot(
+    doc(db, "users", uid, "affirmationLogs", ymd),
+    (snap) => {
+      callback(snap.exists());
+    },
+    (err) => {
+      console.error("[onAffirmationCheckinSnapshot] 구독 실패:", err);
+      onError?.(err);
+    },
+  );
 }
 
 // ── 정체성 진행도 구독 ──────────────────────────────

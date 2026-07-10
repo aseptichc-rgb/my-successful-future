@@ -15,6 +15,7 @@
  */
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
+import { KST_OFFSET_MS, todayKstYmd, yesterdayKstYmd } from "@/lib/kstDate";
 import { generateText } from "@/lib/gemini";
 import { type FamousQuoteSeed } from "@/lib/famousQuotesSeed";
 import { getQuoteSeedPool } from "@/lib/famousQuoteCatalog";
@@ -29,7 +30,8 @@ import type {
   UserLanguage,
 } from "@/types";
 
-export const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+// KST_OFFSET_MS 는 위젯 라우트 등 기존 임포트 호환을 위해 재수출한다(단일 정의는 lib/kstDate).
+export { KST_OFFSET_MS };
 const MAX_GOALS_ON_CARD = 3;
 /**
  * mission + identityTag 까지 같은 호출에서 출력하므로 토큰 한도를 키운다.
@@ -75,14 +77,32 @@ const DARK_PALETTES: ReadonlyArray<Pick<MotivationGradient, "from" | "to" | "ang
   { from: "#0F172A", to: "#7C3AED", angle: 125 },
 ];
 
-/** KST 기준 YYYY-MM-DD */
+/** KST 기준 YYYY-MM-DD (단일 구현은 lib/kstDate.todayKstYmd). */
 export function todayKst(): string {
-  const kst = new Date(Date.now() + KST_OFFSET_MS);
-  return kst.toISOString().slice(0, 10);
+  return todayKstYmd();
 }
 
 export function isValidYmd(ymd: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(ymd);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return false;
+  // 형식뿐 아니라 실존하는 달력 날짜인지 확인 (9999-13-99, 2026-02-30 등 차단).
+  const [y, m, d] = ymd.split("-").map(Number);
+  if (m < 1 || m > 12 || d < 1 || d > 31) return false;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return (
+    dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d
+  );
+}
+
+/**
+ * 클라이언트가 보낸 ymd 를 KST 오늘 기준 [어제, 오늘] 창으로 제한한다.
+ * 임의의 미래/과거 날짜를 순회하며 카드/비전 문서를 대량 생성해 쿼터를 우회하는 것을 막는다.
+ * (자정 경계 전후의 시계 오차를 흡수하기 위해 어제까지 허용.) 창 밖이거나 형식 오류면 오늘로 폴백.
+ */
+export function resolveRequestYmd(ymd: string | undefined | null): string {
+  const today = todayKst();
+  if (!ymd || !isValidYmd(ymd)) return today;
+  if (ymd === today || ymd === yesterdayKstYmd(today)) return ymd;
+  return today;
 }
 
 /** 결정론적 32-bit 해시 (FNV-1a). uid+ymd 같은 짧은 키에 충분. */
@@ -766,6 +786,8 @@ export async function ensureMotivation(opts: {
           avoidQuotes: avoidQuotesForPrompt,
         }),
         QUOTE_MODEL_TOKENS,
+        undefined,
+        { uid, feature: "daily_motivation" },
       );
       const parsed = parseFreeQuote(raw);
       if (parsed) {
@@ -812,6 +834,8 @@ export async function ensureMotivation(opts: {
           avoidQuotes: avoidQuotesForPrompt,
         }),
         QUOTE_MODEL_TOKENS,
+        undefined,
+        { uid, feature: "daily_motivation" },
       );
       const ext = parsePickedExtension(raw);
       const seed = ext ? candidateById.get(ext.id) : undefined;

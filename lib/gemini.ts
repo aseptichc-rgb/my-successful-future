@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { logTokenUsage } from "@/lib/tokenUsage";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -23,10 +24,14 @@ const RETRY_DELAY_MS = 800;
 /** 기본 생성 온도 — 분석/선택형(명언 큐레이션 등) 결정적 작업용. 창작 경로는 인자로 높여 넘긴다. */
 const DEFAULT_TEMPERATURE = 0.3;
 
-export interface GeminiUsage {
-  model: string;
-  promptTokens: number;
-  completionTokens: number;
+/**
+ * LLM 호출의 토큰/비용을 tokenUsage 컬렉션에 기록하기 위한 컨텍스트.
+ * 호출부가 넘겨주면 generateText 가 응답 후 사용량을 기록한다(어드민 비용 대시보드용).
+ */
+export interface GenUsageContext {
+  uid: string | null;
+  /** 어떤 기능이 호출했는지 (예: "daily_motivation", "future_vision"). */
+  feature: string;
 }
 
 /** Gemini 가 호출당 시간 안에 응답하지 못해 끊었음을 나타낸다. */
@@ -55,6 +60,7 @@ async function generateOnce(
   prompt: string,
   maxTokens: number,
   temperature: number,
+  usageCtx?: GenUsageContext,
 ): Promise<string> {
   const model = genAI.getGenerativeModel({
     model: MODEL,
@@ -73,6 +79,18 @@ async function generateOnce(
   });
   try {
     const result = await Promise.race([model.generateContent(prompt), deadline]);
+    if (usageCtx) {
+      // 비용 회계 — fire-and-forget. logTokenUsage 는 내부에서 throw 하지 않으므로 응답을 막지 않는다.
+      const um = result.response.usageMetadata;
+      void logTokenUsage({
+        uid: usageCtx.uid,
+        provider: "google",
+        model: MODEL,
+        promptTokens: um?.promptTokenCount ?? 0,
+        completionTokens: um?.candidatesTokenCount ?? 0,
+        feature: usageCtx.feature,
+      });
+    }
     return result.response.text();
   } finally {
     if (timer) clearTimeout(timer);
@@ -95,12 +113,13 @@ export async function generateText(
   prompt: string,
   maxTokens: number = 800,
   temperature: number = DEFAULT_TEMPERATURE,
+  usageCtx?: GenUsageContext,
 ): Promise<string> {
   try {
-    return await generateOnce(prompt, maxTokens, temperature);
+    return await generateOnce(prompt, maxTokens, temperature, usageCtx);
   } catch (err) {
     if (!isRateLimit(err)) throw err;
     await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
-    return generateOnce(prompt, maxTokens, temperature);
+    return generateOnce(prompt, maxTokens, temperature, usageCtx);
   }
 }

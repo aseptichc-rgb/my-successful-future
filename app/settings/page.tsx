@@ -71,8 +71,10 @@ const FUTURE_PH_KEY: Record<FutureSelfDimension, DictKey> = {
   growth: "onboarding.futureSelf.growth.placeholder",
 };
 
-/** 결제 대기 폴링 간격(ms). */
+/** 결제 대기 폴링 시작 간격(ms). 이후 백오프로 늘어난다. */
 const ENTITLEMENT_POLL_INTERVAL_MS = 2_000;
+/** 폴링 백오프 상한(ms) — getIdTokenResult(true) 강제 갱신 호출 빈도를 낮춰 토큰 스로틀을 피한다. */
+const ENTITLEMENT_POLL_MAX_INTERVAL_MS = 5_000;
 /** 결제 시트에서 복귀(visible)한 뒤, 권한 없음을 미완료로 판정하기까지의 유예 폴링 횟수. */
 const ENTITLEMENT_RETURN_GRACE_POLLS = 3;
 /** 페이지가 계속 보이는(hidden 전이 없던) 상태에서의 대기 상한 — 네이티브가 결제 시트도 못 띄우고 즉시 종료한 실패를 빠르게 감지. */
@@ -97,9 +99,11 @@ const ENTITLEMENT_HARD_CEILING_MS = 5 * 60_000;
  */
 async function waitForNativeEntitlement(
   user: { getIdTokenResult: (force?: boolean) => Promise<{ claims: Record<string, unknown> }> },
-  { maxMs = ENTITLEMENT_VISIBLE_TIMEOUT_MS, intervalMs = ENTITLEMENT_POLL_INTERVAL_MS }: {
+  { maxMs = ENTITLEMENT_VISIBLE_TIMEOUT_MS, intervalMs = ENTITLEMENT_POLL_INTERVAL_MS, signal }: {
     maxMs?: number;
     intervalMs?: number;
+    /** 컴포넌트 언마운트 시 폴링을 즉시 중단하기 위한 신호(백그라운드 폴링·토큰 스로틀 방지). */
+    signal?: AbortSignal;
   } = {},
 ): Promise<boolean> {
   const hasDocument = typeof document !== "undefined";
@@ -118,7 +122,9 @@ async function waitForNativeEntitlement(
   try {
     const start = Date.now();
     let pollsAfterReturn = 0;
+    let currentInterval = intervalMs;
     for (;;) {
+      if (signal?.aborted) return false; // 언마운트/중단 — 더 이상 폴링하지 않는다.
       try {
         const tr = await user.getIdTokenResult(true);
         const ent = readEntitlement(tr.claims);
@@ -139,7 +145,9 @@ async function waitForNativeEntitlement(
           return false;
         }
       }
-      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+      await new Promise((resolve) => setTimeout(resolve, currentInterval));
+      // 백오프 — 강제 토큰 갱신 호출을 점점 뜸하게 해 스로틀(auth/quota-exceeded) 위험을 낮춘다.
+      currentInterval = Math.min(Math.round(currentInterval * 1.5), ENTITLEMENT_POLL_MAX_INTERVAL_MS);
     }
   } finally {
     if (hasDocument) document.removeEventListener("visibilitychange", onVisibility);
@@ -333,6 +341,8 @@ export default function SettingsPage() {
   // 클릭 시점에 fetch 를 await 하면 그 사이 user-activation 이 만료돼 결제 intent 가
   // Chrome 게이트에 걸릴 수 있으므로, 미리 받아 두고 제스처 안에서 동기 발화한다.
   const bridgeTokenRef = useRef<string | null>(null);
+  // 결제/복원 대기 폴링 취소용 — 언마운트 또는 다른 결제 액션 시작 시 이전 폴링을 끊는다.
+  const pollAbortRef = useRef<AbortController | null>(null);
   // 결제/복원 결과 안내 — window.alert(TWA 에서 origin 헤더가 붙어 앱답지 않음) 대신 인앱 다이얼로그.
   const [proNotice, setProNotice] = useState<{
     title: string;
@@ -344,6 +354,11 @@ export default function SettingsPage() {
     if (authLoading) return;
     if (!firebaseUser) router.replace("/login");
   }, [authLoading, firebaseUser, router]);
+
+  // 언마운트 시 진행 중이던 결제/복원 폴링을 중단한다(백그라운드 폴링·토큰 스로틀 방지).
+  useEffect(() => {
+    return () => pollAbortRef.current?.abort();
+  }, []);
 
   // iOS(StoreKit) / Android(네이티브 브릿지) 결제 가용 시: 섹션 노출 + 가격/권한 로드.
   //  · 안드로이드는 TWA 웹 Digital Goods 위임이 Android 13+ 에서 깨지므로(clientAppUnavailable)
@@ -520,6 +535,10 @@ export default function SettingsPage() {
   };
 
   const handlePurchasePro = async () => {
+    if (purchasing || restoring) return; // 이중 실행/상호 충돌 방지.
+    pollAbortRef.current?.abort();
+    const controller = new AbortController();
+    pollAbortRef.current = controller;
     setPurchasing(true);
     try {
       // 안드로이드 앱(TWA): 웹 Digital Goods 위임이 Android 13+ 에서 깨지므로 네이티브 결제 브릿지로.
@@ -532,7 +551,9 @@ export default function SettingsPage() {
         const bridgeToken =
           bridgeTokenRef.current ?? (await fetchNativeBridgeToken(firebaseUser));
         notifyAndroidPurchase(bridgeToken ?? undefined);
-        const ok = firebaseUser ? await waitForNativeEntitlement(firebaseUser) : false;
+        const ok = firebaseUser
+          ? await waitForNativeEntitlement(firebaseUser, { signal: controller.signal })
+          : false;
         if (ok) {
           setProActive(true);
           setProNotice({
@@ -582,12 +603,18 @@ export default function SettingsPage() {
   };
 
   const handleRestorePro = async () => {
+    if (purchasing || restoring) return; // 이중 실행/상호 충돌 방지.
+    pollAbortRef.current?.abort();
+    const controller = new AbortController();
+    pollAbortRef.current = controller;
     setRestoring(true);
     try {
       // 안드로이드 앱(TWA): 네이티브 브릿지로 보유 영수증 재검증(결제 시트 없이).
       if (isAndroidApp() && !isIosPurchaseAvailable()) {
         notifyAndroidRestore();
-        const ok = firebaseUser ? await waitForNativeEntitlement(firebaseUser, { maxMs: 30_000 }) : false;
+        const ok = firebaseUser
+          ? await waitForNativeEntitlement(firebaseUser, { maxMs: 30_000, signal: controller.signal })
+          : false;
         if (ok) {
           setProActive(true);
           setProNotice({
@@ -788,7 +815,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={handlePurchasePro}
-                disabled={purchasing}
+                disabled={purchasing || restoring}
                 className="w-full relative flex items-center gap-3 px-4 min-h-[44px] text-left disabled:opacity-50"
               >
                 <div
@@ -810,7 +837,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={handleRestorePro}
-              disabled={restoring}
+              disabled={purchasing || restoring}
               className="w-full flex items-center gap-3 px-4 min-h-[44px] text-left disabled:opacity-50"
             >
               <div
@@ -865,7 +892,7 @@ export default function SettingsPage() {
         </GroupedSection>
 
         <div className="text-center pt-6 pb-2 text-[12px] tracking-[0.4px] text-[var(--label-3)] font-mono">
-          Anima · v1.0.0
+          Anima · v{process.env.NEXT_PUBLIC_APP_VERSION ?? "0.3.13"}
         </div>
       </main>
 

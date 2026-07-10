@@ -12,7 +12,7 @@
  *   paid 가 아니더라도 trialEndsAt > now 이면 무료 체험 중으로 간주해 통과시킨다.
  */
 import type { NextRequest } from "next/server";
-import { getAdminAuth, getAdminDb } from "./firebase-admin";
+import { getAdminAuth } from "./firebase-admin";
 import { ENTITLEMENT_REQUIRED } from "./constants/quota";
 import { readEntitlement, hasProAccess, type Entitlement } from "./entitlement";
 
@@ -133,23 +133,6 @@ export async function requirePaidUser(request: NextRequest): Promise<AuthedUser>
       ? "무료 체험 기간이 끝났습니다. 안드로이드 앱에서 결제를 완료해 주세요."
       : "무료 체험이 시작되지 않았습니다. 다시 로그인해 주세요.",
   );
-}
-
-/**
- * 사용자가 해당 세션의 참여자인지 확인. 아니면 403.
- */
-export async function assertSessionParticipant(
-  uid: string,
-  sessionId: string
-): Promise<void> {
-  if (!sessionId) throw new AuthError(400, "sessionId가 필요합니다.");
-  const snap = await getAdminDb().doc(`sessions/${sessionId}`).get();
-  if (!snap.exists) throw new AuthError(404, "세션을 찾을 수 없습니다.");
-  const data = snap.data();
-  const participants: unknown = data?.participants;
-  if (!Array.isArray(participants) || !participants.includes(uid)) {
-    throw new AuthError(403, "이 세션에 접근 권한이 없습니다.");
-  }
 }
 
 export class AuthError extends Error {

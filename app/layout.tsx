@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { AuthProvider } from "@/lib/auth-context";
 import LanguageBridge from "@/components/LanguageBridge";
-import KakaoScript from "@/components/KakaoScript";
 import "./globals.css";
 
 // 폰트는 Pretendard 단일 — globals.css 의 --font-* 체인이 CDN Pretendard 를 우선
@@ -47,7 +46,6 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col font-sans bg-[var(--bg-grouped)] text-[var(--label)]">
-        <KakaoScript />
         <AuthProvider>
           <LanguageBridge>{children}</LanguageBridge>
         </AuthProvider>

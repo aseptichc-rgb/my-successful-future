@@ -23,10 +23,16 @@
  *   401 { error }
  */
 import { NextRequest, NextResponse } from "next/server";
+import { createHash } from "node:crypto";
 import { Timestamp } from "firebase-admin/firestore";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
 import { verifyRequestUser, AuthError } from "@/lib/authServer";
 import { TRIAL_DURATION_MS } from "@/lib/constants/quota";
+
+/** 이메일을 트라이얼 원장 문서 ID(해시)로 변환 — 원문 이메일을 저장하지 않는다. */
+function trialLedgerKey(email: string): string {
+  return createHash("sha256").update(email.trim().toLowerCase()).digest("hex");
+}
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,15 +63,45 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    const db = getAdminDb();
+    // 탈퇴→재가입으로 14일 트라이얼을 무한 리셋하는 것을 막는다. 이메일 해시로 원장을 조회해
+    // 과거에 이미 트라이얼을 받은 이메일이면 새 트라이얼을 켜지 않는다(계정과 분리 보존).
+    const ledgerKey = me.email ? trialLedgerKey(me.email) : null;
+    if (ledgerKey) {
+      const ledgerSnap = await db.doc(`trialLedger/${ledgerKey}`).get();
+      if (ledgerSnap.exists) {
+        return NextResponse.json({
+          ok: true,
+          alreadyStarted: true,
+          paid: false,
+          trialEndsAt: null,
+        });
+      }
+    }
+
     const trialEndsAt = Date.now() + TRIAL_DURATION_MS;
     const nextClaims = { ...currentClaims, trialEndsAt };
 
     await auth.setCustomUserClaims(me.uid, nextClaims);
 
+    // 트라이얼 발급 이력을 원장에 남긴다(재가입 리셋 차단용). best-effort.
+    if (ledgerKey) {
+      try {
+        await db.doc(`trialLedger/${ledgerKey}`).set(
+          { firstTrialAt: Timestamp.now(), lastUid: me.uid },
+          { merge: true },
+        );
+      } catch (ledgerErr) {
+        console.error(
+          "[auth/start-trial] 트라이얼 원장 기록 실패:",
+          ledgerErr instanceof Error ? ledgerErr.message : String(ledgerErr),
+        );
+      }
+    }
+
     // Firestore 미러는 best-effort — 실패해도 게이트 판정은 claim 으로 동작하므로
     // 여기서 throw 하지 않고 로그만 남긴다.
     try {
-      const db = getAdminDb();
       await db.doc(`users/${me.uid}`).set(
         { trialEndsAt: Timestamp.fromMillis(trialEndsAt) },
         { merge: true },

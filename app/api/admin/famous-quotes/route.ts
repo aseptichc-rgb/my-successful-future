@@ -6,8 +6,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { Timestamp } from "firebase-admin/firestore";
-import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
-import { isAdminEmail } from "@/lib/tokenUsage";
+import { getAdminDb } from "@/lib/firebase-admin";
+import { assertAdminRequest } from "@/lib/adminAuth";
 import type { FamousQuote, FamousQuoteCategory, FamousQuoteLang } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -35,22 +35,6 @@ interface CreateBody {
   language?: unknown;
   tags?: unknown;
   active?: unknown;
-}
-
-async function assertAdmin(req: NextRequest): Promise<NextResponse | null> {
-  const header = req.headers.get("authorization") || "";
-  if (!header.startsWith("Bearer ")) {
-    return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
-  }
-  try {
-    const decoded = await getAdminAuth().verifyIdToken(header.slice(7).trim());
-    if (!isAdminEmail(decoded.email)) {
-      return NextResponse.json({ error: "어드민 권한이 없습니다." }, { status: 403 });
-    }
-  } catch {
-    return NextResponse.json({ error: "유효하지 않은 토큰입니다." }, { status: 401 });
-  }
-  return null;
 }
 
 function validateAndNormalize(body: CreateBody): {
@@ -88,7 +72,7 @@ function validateAndNormalize(body: CreateBody): {
 }
 
 export async function GET(req: NextRequest) {
-  const denied = await assertAdmin(req);
+  const denied = await assertAdminRequest(req);
   if (denied) return denied;
   try {
     const snap = await getAdminDb().collection("famousQuotes").get();
@@ -102,7 +86,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const denied = await assertAdmin(req);
+  const denied = await assertAdminRequest(req);
   if (denied) return denied;
   let body: CreateBody = {};
   try {

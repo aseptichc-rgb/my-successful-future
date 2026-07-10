@@ -9,8 +9,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { Timestamp } from "firebase-admin/firestore";
-import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
-import { isAdminEmail } from "@/lib/tokenUsage";
+import { getAdminDb } from "@/lib/firebase-admin";
+import { assertAdminRequest } from "@/lib/adminAuth";
 import { FAMOUS_QUOTES_SEED } from "@/lib/famousQuotesSeed";
 
 export const dynamic = "force-dynamic";
@@ -19,22 +19,9 @@ export const maxDuration = 30;
 const FIRESTORE_BATCH_LIMIT = 400; // Firestore 한 batch 당 500 op 안전 마진
 
 export async function POST(req: NextRequest) {
-  // 1. 인증
-  const header = req.headers.get("authorization") || "";
-  if (!header.startsWith("Bearer ")) {
-    return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
-  }
-  const token = header.slice(7).trim();
-  let email: string | undefined;
-  try {
-    const decoded = await getAdminAuth().verifyIdToken(token);
-    email = decoded.email;
-  } catch {
-    return NextResponse.json({ error: "유효하지 않은 토큰입니다." }, { status: 401 });
-  }
-  if (!isAdminEmail(email)) {
-    return NextResponse.json({ error: "어드민 권한이 없습니다." }, { status: 403 });
-  }
+  // 1. 인증 (Bearer + ADMIN_EMAILS)
+  const denied = await assertAdminRequest(req);
+  if (denied) return denied;
 
   // 2. idempotent 시드 적용
   try {

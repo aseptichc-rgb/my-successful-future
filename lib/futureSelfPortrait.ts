@@ -259,6 +259,7 @@ export async function ensureFutureSelfPortrait(opts: {
         buildPortraitPrompt(ctx),
         PORTRAIT_MODEL_TOKENS,
         PORTRAIT_TEMPERATURE,
+        { uid, feature: "future_self_portrait" },
       );
       built = parsePortrait(raw) ?? buildFallbackPortrait(ctx);
     } catch (err) {

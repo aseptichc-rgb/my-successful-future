@@ -6,8 +6,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { Timestamp } from "firebase-admin/firestore";
-import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
-import { isAdminEmail } from "@/lib/tokenUsage";
+import { getAdminDb } from "@/lib/firebase-admin";
+import { assertAdminRequest } from "@/lib/adminAuth";
 import type { FamousQuoteCategory, FamousQuoteLang } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -28,21 +28,6 @@ const AUTHOR_MAX = 60;
 const TAG_MAX = 30;
 const TAGS_MAX_COUNT = 8;
 
-async function assertAdmin(req: NextRequest): Promise<NextResponse | null> {
-  const header = req.headers.get("authorization") || "";
-  if (!header.startsWith("Bearer ")) {
-    return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
-  }
-  try {
-    const decoded = await getAdminAuth().verifyIdToken(header.slice(7).trim());
-    if (!isAdminEmail(decoded.email)) {
-      return NextResponse.json({ error: "어드민 권한이 없습니다." }, { status: 403 });
-    }
-  } catch {
-    return NextResponse.json({ error: "유효하지 않은 토큰입니다." }, { status: 401 });
-  }
-  return null;
-}
 
 interface PatchBody {
   text?: unknown;
@@ -57,7 +42,7 @@ export async function PATCH(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  const denied = await assertAdmin(req);
+  const denied = await assertAdminRequest(req);
   if (denied) return denied;
   const { id } = await ctx.params;
   if (!id) return NextResponse.json({ error: "id 누락" }, { status: 400 });
@@ -136,7 +121,7 @@ export async function DELETE(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  const denied = await assertAdmin(req);
+  const denied = await assertAdminRequest(req);
   if (denied) return denied;
   const { id } = await ctx.params;
   if (!id) return NextResponse.json({ error: "id 누락" }, { status: 400 });

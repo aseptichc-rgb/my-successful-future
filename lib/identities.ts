@@ -151,6 +151,8 @@ export async function ensureIdentities(opts: {
     const raw = await generateText(
       buildIdentityPrompt(futurePersona, goals, language),
       IDENTITY_GENERATION_TOKENS,
+      undefined,
+      { uid, feature: "identities" },
     );
     labels = parseLabels(raw);
   } catch (err) {

@@ -12,8 +12,8 @@
  * 사용:
  *   node scripts/create-review-account.mjs
  *
- * .env.local 의 FIREBASE_SERVICE_ACCOUNT_KEY / NEXT_PUBLIC_FIREBASE_PROJECT_ID 를 사용한다.
- * 이메일·비밀번호는 아래 REVIEWER_EMAIL / REVIEWER_PASSWORD 상수에 박혀 있으며,
+ * .env.local(또는 환경변수)의 FIREBASE_SERVICE_ACCOUNT_KEY / NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+ * 그리고 REVIEWER_EMAIL / REVIEWER_PASSWORD 를 사용한다(자격증명은 코드에 하드코딩하지 않는다).
  * 출력 결과를 그대로 Play Console > 앱 콘텐츠 > 앱 액세스에 붙여넣으면 된다.
  */
 import { cert, getApps, initializeApp } from "firebase-admin/app";
@@ -21,12 +21,6 @@ import { getAuth } from "firebase-admin/auth";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { readFileSync } from "node:fs";
 
-// ─── 심사용 계정 정보 ─────────────────────────────────────────────────────
-// 이메일은 실제 수신이 필요 없으므로 도메인은 자유 — 단 Firebase Auth 가 유효 형식만 받음.
-// 비밀번호는 32자 미만이어도 무방하나(영문+숫자 혼합 24자 권장), 심사관이 손으로 칠 수
-// 있도록 알파벳·숫자 위주로 만든다(특수문자 제외).
-const REVIEWER_EMAIL = "play-review@anima-test.com";
-const REVIEWER_PASSWORD = "8YGngbgaJ4nsuA1uXmlGlbjY";
 const REVIEWER_DISPLAY_NAME = "Play Store Reviewer";
 
 // 데모 사용자가 보게 될 미래 비전 — 심사관이 첫 화면에서 빈 상태가 아닌 실 데이터를 보게 한다.
@@ -55,6 +49,16 @@ try {
 
 if (!process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
   console.error("[create-review-account] FIREBASE_SERVICE_ACCOUNT_KEY 가 없습니다.");
+  process.exit(1);
+}
+
+// 심사용 계정 자격증명은 코드가 아니라 환경변수(.env.local)에서 읽는다 — 저장소 유출 방지.
+const REVIEWER_EMAIL = process.env.REVIEWER_EMAIL;
+const REVIEWER_PASSWORD = process.env.REVIEWER_PASSWORD;
+if (!REVIEWER_EMAIL || !REVIEWER_PASSWORD) {
+  console.error(
+    "[create-review-account] REVIEWER_EMAIL / REVIEWER_PASSWORD 를 .env.local(또는 환경변수)에 설정하세요.",
+  );
   process.exit(1);
 }
 

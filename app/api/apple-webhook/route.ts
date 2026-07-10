@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
           "💸 환불/회수 발생 (anima · iOS)",
           `종류: ${type}${verified.subtype ? ` / ${verified.subtype}` : ""}`,
           `상태: ${revokeStatusLabel(result.status)}`,
-          result.uid ? `uid: ${result.uid}` : null,
+          result.uid ? `uid: ${maskId(result.uid)}` : null,
           verified.transaction?.productId ? `productId: ${verified.transaction.productId}` : null,
           `환경: ${verified.environment ?? "-"}`,
           `시각: ${formatKst(verified.signedDate)}`,

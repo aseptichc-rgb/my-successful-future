@@ -270,8 +270,9 @@ export async function GET(request: NextRequest) {
     const msg = err instanceof Error ? err.message : String(err);
     const stack = err instanceof Error ? err.stack : undefined;
     console.error("[widget/today] 실패:", msg, stack);
+    // 내부 예외 메시지(Firestore 경로·GCP 오류 등)를 클라이언트에 노출하지 않는다.
     return NextResponse.json(
-      { error: "오늘의 위젯 데이터를 불러오지 못했습니다.", detail: msg },
+      { error: "오늘의 위젯 데이터를 불러오지 못했습니다." },
       { status: 500 },
     );
   }

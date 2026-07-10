@@ -615,6 +615,7 @@ export async function ensureFutureVision(opts: {
         }),
         VISION_MODEL_TOKENS,
         VISION_TEMPERATURE,
+        { uid, feature: "future_vision" },
       );
       built = parseVision(raw) ?? buildFallbackVision(ctx, fallbackVariant);
     } catch (err) {

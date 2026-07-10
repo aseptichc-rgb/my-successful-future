@@ -13,7 +13,7 @@
  *
  * RTDN 웹훅(/api/billing/rtdn) · Apple 웹훅(/api/apple-webhook) · 향후 운영자 수동 회수가 공유한다.
  */
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, type QueryDocumentSnapshot } from "firebase-admin/firestore";
 import { getAdminAuth, getAdminDb } from "./firebase-admin";
 
 /** verify 라우트가 박는 결제 관련 claim 키 — 회수 시 이 키들만 지운다. */
@@ -40,31 +40,13 @@ function isUserNotFound(err: unknown): boolean {
   );
 }
 
-/**
- * entitlements 의 특정 필드값으로 단일 소유자 문서를 찾아 회수를 수행하는 공통 코어.
- * purchaseToken(Android) / originalTransactionId(Apple) 양쪽이 공유한다 (DRY).
- */
-async function revokeEntitlementByField(
-  field: "purchaseToken" | "originalTransactionId",
-  value: string,
+/** 단일 entitlements 문서 하나에 대한 claim 제거 + 토큰 무효화 + 감사 로그. */
+async function revokeOneEntitlementDoc(
+  doc: QueryDocumentSnapshot,
   reason: string,
   meta?: Record<string, unknown>,
-): Promise<RevokeResult> {
-  const trimmed = (value || "").trim();
-  if (!trimmed) return { status: "not_found" };
-
-  const db = getAdminDb();
-  const snap = await db
-    .collection("entitlements")
-    .where(field, "==", trimmed)
-    .limit(1)
-    .get();
-  if (snap.empty) return { status: "not_found" };
-
-  const doc = snap.docs[0];
+): Promise<void> {
   const uid = doc.id;
-  if (doc.data()?.revoked === true) return { status: "already_revoked", uid };
-
   const auth = getAdminAuth();
 
   try {
@@ -90,8 +72,41 @@ async function revokeEntitlementByField(
     },
     { merge: true },
   );
+}
 
-  return { status: "revoked", uid };
+/**
+ * entitlements 의 특정 필드값으로 소유자 문서를 찾아 회수를 수행하는 공통 코어.
+ * purchaseToken(Android) / originalTransactionId(Apple) 양쪽이 공유한다 (DRY).
+ *
+ * 하나의 영수증이 과거에 여러 계정에 등록됐을 수 있으므로(영수증 공유 악용) 매칭되는
+ * 문서를 전부 회수한다. .limit(1) 로 한 명만 회수하던 결함을 제거.
+ */
+async function revokeEntitlementByField(
+  field: "purchaseToken" | "originalTransactionId",
+  value: string,
+  reason: string,
+  meta?: Record<string, unknown>,
+): Promise<RevokeResult> {
+  const trimmed = (value || "").trim();
+  if (!trimmed) return { status: "not_found" };
+
+  const db = getAdminDb();
+  const snap = await db
+    .collection("entitlements")
+    .where(field, "==", trimmed)
+    .get();
+  if (snap.empty) return { status: "not_found" };
+
+  let revokedUid: string | undefined;
+  for (const doc of snap.docs) {
+    if (doc.data()?.revoked === true) continue;
+    await revokeOneEntitlementDoc(doc, reason, meta);
+    if (!revokedUid) revokedUid = doc.id;
+  }
+
+  // 매칭은 됐으나 전부 이미 회수된 상태.
+  if (!revokedUid) return { status: "already_revoked", uid: snap.docs[0].id };
+  return { status: "revoked", uid: revokedUid };
 }
 
 /**

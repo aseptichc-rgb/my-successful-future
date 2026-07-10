@@ -30,7 +30,11 @@ export async function POST(request: NextRequest) {
     });
     return response;
   } catch (err) {
-    const message = err instanceof Error ? err.message : "세션 쿠키 발급에 실패했습니다.";
-    return NextResponse.json({ error: message }, { status: 401 });
+    // Firebase Admin 원본 에러(토큰 만료·인자 검증 등 내부 정보)를 클라이언트에 노출하지 않는다.
+    console.error("[session/login] 세션 쿠키 발급 실패:", err instanceof Error ? err.message : String(err));
+    return NextResponse.json(
+      { error: "세션 발급에 실패했습니다. 다시 로그인해주세요." },
+      { status: 401 },
+    );
   }
 }

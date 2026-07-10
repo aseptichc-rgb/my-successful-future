@@ -15,8 +15,11 @@
  */
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
+import { todayKstYmd, yesterdayKstYmd } from "@/lib/kstDate";
 
-const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+// 체크인 라우트가 기존 경로로 계속 임포트할 수 있도록 재수출(단일 정의는 lib/kstDate).
+export { todayKstYmd };
+
 /**
  * 비교 정규화 시 자르는 한도 — 저장된 다짐 60자 + "10. " 같은 번호 프리픽스(<=4자) 여유.
  * 클라 AFFIRMATION_INPUT_MAX 와 동일한 값을 유지해야 잘림으로 인한 mismatch 가 안 생긴다.
@@ -41,22 +44,6 @@ function normalizeForCompare(s: string): string {
  */
 function stripLeadingNumber(s: string): string {
   return s.replace(/^\s*\d+\s*[.)\]]\s*/, "");
-}
-
-/** YYYY-MM-DD (KST) 의 "어제" 문자열. */
-function yesterdayKstYmd(ymd: string): string {
-  const [y, m, d] = ymd.split("-").map((s) => parseInt(s, 10));
-  if (!y || !m || !d) return "";
-  // KST 자정에서 1일 빼기 — Date.UTC 로 일자 산술.
-  const ms = Date.UTC(y, m - 1, d) - 86400000;
-  const k = new Date(ms);
-  return k.toISOString().slice(0, 10);
-}
-
-/** KST 기준 오늘 YYYY-MM-DD. */
-export function todayKstYmd(date: Date = new Date()): string {
-  const k = new Date(date.getTime() + KST_OFFSET_MS);
-  return k.toISOString().slice(0, 10);
 }
 
 export interface CheckinResult {
