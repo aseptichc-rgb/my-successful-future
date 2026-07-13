@@ -39,6 +39,13 @@ const dict = {
   // "10년 후 나의 모습" 몰입형 질문 — 한 화면에 한 질문씩(키 순서 = lib/futureSelf.ts 차원 순서).
   "onboarding.futureSelf.sectionLabel": "10년 후 나의 모습",
   "onboarding.futureSelf.progress": "{current} / {total}",
+  // 통합 진행바 라벨 (언어·미리보기 제외한 실제 입력 화면 기준).
+  "onboarding.progress.remaining": "{remaining}개 남음",
+  "onboarding.progress.lastStep": "마지막 단계",
+  // 칩 우선 미래자아 — 탭으로 답변, 원하면 직접 입력.
+  "onboarding.futureSelf.chooseHint": "가장 가까운 모습을 골라보세요 · 원하면 직접 쓸 수 있어요",
+  "onboarding.futureSelf.writeMyOwn": "직접 입력하기",
+  "onboarding.futureSelf.skipRest": "나머지는 나중에 채울게요 →",
   "onboarding.futureSelf.hint":
     "떠오르는 대로 구체적으로 적어보세요. 지금 어려운 질문은 비워두고 넘어가도 좋아요.",
   "onboarding.futureSelf.daily.q": "10년 후, 당신의 평범한 하루는 어떻게 흘러가나요?",

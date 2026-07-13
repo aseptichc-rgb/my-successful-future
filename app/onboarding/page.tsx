@@ -18,6 +18,7 @@ import {
   hasAnyFutureSelfAnswer,
   type FutureSelfDimension,
 } from "@/lib/futureSelf";
+import { computeOnboardingProgress } from "@/lib/onboardingProgress";
 import { authedFetch } from "@/lib/authedFetch";
 import AffirmationsEditor from "@/components/affirmations/AffirmationsEditor";
 import { useLanguage, LOCALE_META, SUPPORTED_LOCALES, type Locale, type DictKey } from "@/lib/i18n";
@@ -33,6 +34,9 @@ type Step = 0 | 1 | 2 | 3 | 4;
 
 /** Step 1 몰입형 질문 화면 수 = 차원 수(7). */
 const FUTURE_QUESTION_COUNT = FUTURE_SELF_DIMENSIONS.length;
+
+/** 미래자아 앞 N개(일상·일)는 핵심 권장 — 이후 질문엔 "나머지는 나중에" 스킵을 노출한다. */
+const CORE_FUTURE_COUNT = 2;
 
 /** 차원 → i18n 질문/placeholder 키. 동적 키 조합 대신 명시 매핑으로 타입 안전 확보. */
 const FUTURE_Q_KEY: Record<FutureSelfDimension, DictKey> = {
@@ -112,6 +116,8 @@ export default function OnboardingPage() {
   const [affirmations, setAffirmations] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** 사용자가 "직접 입력하기"로 서술형 편집을 연 미래자아 차원 (null = 칩 선택 모드). */
+  const [customEditDim, setCustomEditDim] = useState<FutureSelfDimension | null>(null);
 
   const [previewLoading, setPreviewLoading] = useState(false);
   const [preview, setPreview] = useState<DailyMotivation | null>(null);
@@ -144,6 +150,17 @@ export default function OnboardingPage() {
 
   const handleFutureAnswerChange = (dim: FutureSelfDimension, value: string) => {
     setFutureAnswers((prev) => ({ ...prev, [dim]: value.slice(0, FUTURE_SELF_FIELD_MAX) }));
+  };
+
+  /** 예시 카드 선택 = 해당 문구로 답변을 채우고, 열려 있던 직접입력 편집을 접는다. */
+  const handleSelectExample = (dim: FutureSelfDimension, example: string) => {
+    handleFutureAnswerChange(dim, example);
+    setCustomEditDim((cur) => (cur === dim ? null : cur));
+  };
+
+  /** 핵심 이후 미래자아 질문을 건너뛰고 다음 섹션(다짐)으로. 입력된 답변은 state 에 보존된다. */
+  const skipRemainingFuture = () => {
+    setStep(2);
   };
 
   /**
@@ -325,30 +342,44 @@ export default function OnboardingPage() {
 
   const currentDimension = FUTURE_SELF_DIMENSIONS[futureStep];
   const currentExampleKeys = FUTURE_EXAMPLE_KEYS[currentDimension];
+  const currentExampleTexts = currentExampleKeys.map((key) => t(key));
+  const currentAnswer = futureAnswers[currentDimension] ?? "";
+  // 답변이 예시 문구와 다르면(비어있지 않음) 커스텀으로 간주 — 재진입 시 서술형을 자동 전개.
+  const isCustomAnswer = currentAnswer.length > 0 && !currentExampleTexts.includes(currentAnswer);
+  const showCustomInput = customEditDim === currentDimension || isCustomAnswer;
+
+  // 통합 진행바 — 언어 선택/미리보기에서는 null(미표시).
+  const progress = computeOnboardingProgress(step, futureStep);
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F0EDE6]">
       <div className="sticky top-0 z-10 border-b border-black/[0.06] bg-white/80 backdrop-blur">
-        <div className="mx-auto flex max-w-2xl items-center justify-between px-5 py-3 sm:px-6">
-          <div className="flex items-center gap-1.5">
-            {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-              <span
-                key={i}
-                className={`h-1.5 w-8 rounded-full transition-colors ${
-                  i <= step ? "bg-[#1E1B4B]" : "bg-black/10"
-                }`}
-              />
-            ))}
-            <span className="ml-3 text-[12px] font-medium tracking-[-0.01em] text-black/60">
-              {step + 1} / {TOTAL_STEPS}
-            </span>
-          </div>
+        <div className="mx-auto flex max-w-2xl items-center gap-4 px-5 py-3 sm:px-6">
+          {progress ? (
+            <div className="flex flex-1 items-center gap-3">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-black/10">
+                <div
+                  className="h-full rounded-full bg-[#1E1B4B] transition-[width] duration-300"
+                  style={{ width: `${(progress.current / progress.total) * 100}%` }}
+                />
+              </div>
+              <span className="shrink-0 text-[12px] font-medium tracking-[-0.01em] text-black/60">
+                {progress.current} / {progress.total}
+                {" · "}
+                {progress.remaining > 0
+                  ? t("onboarding.progress.remaining", { remaining: progress.remaining })
+                  : t("onboarding.progress.lastStep")}
+              </span>
+            </div>
+          ) : (
+            <div className="flex-1" />
+          )}
           {step > 0 && step < 4 && (
             <button
               type="button"
               onClick={handleSkip}
               disabled={saving}
-              className="text-[13px] font-medium tracking-[-0.01em] text-black/48 hover:text-black/70 disabled:opacity-50"
+              className="shrink-0 text-[13px] font-medium tracking-[-0.01em] text-black/48 hover:text-black/70 disabled:opacity-50"
             >
               {t("common.skip")}
             </button>
@@ -404,64 +435,89 @@ export default function OnboardingPage() {
 
           {step === 1 && (
             <div key={currentDimension}>
-              {/* 몰입형: 한 화면에 한 질문. 섹션 라벨 + 서브 진행으로 흐름을 잡아준다. */}
-              <div className="flex items-center gap-2">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#1E1B4B]/60">
-                  {t("onboarding.futureSelf.sectionLabel")}
-                </p>
-                <span className="text-[11px] font-medium tracking-[-0.01em] text-black/40">
-                  {t("onboarding.futureSelf.progress", {
-                    current: futureStep + 1,
-                    total: FUTURE_QUESTION_COUNT,
-                  })}
-                </span>
-              </div>
-              <div className="mt-2 flex items-center gap-1">
-                {FUTURE_SELF_DIMENSIONS.map((dim, i) => (
-                  <span
-                    key={dim}
-                    className={`h-1 flex-1 rounded-full transition-colors ${
-                      i <= futureStep ? "bg-[#1E1B4B]/70" : "bg-black/10"
-                    }`}
-                  />
-                ))}
-              </div>
+              {/* 몰입형: 한 화면에 한 질문. 진행 표시는 상단 통합 바로 일원화. */}
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#1E1B4B]/60">
+                {t("onboarding.futureSelf.sectionLabel")}
+              </p>
 
-              <h1 className="mt-6 text-[26px] font-semibold leading-[1.2] tracking-[-0.003em] text-[#1E1B4B] sm:text-[30px]">
+              <h1 className="mt-4 text-[26px] font-semibold leading-[1.2] tracking-[-0.003em] text-[#1E1B4B] sm:text-[30px]">
                 {t(FUTURE_Q_KEY[currentDimension])}
               </h1>
               <p className="mt-2 text-[14px] leading-[1.5] tracking-[-0.022em] text-black/55">
-                {t("onboarding.futureSelf.hint")}
+                {t("onboarding.futureSelf.chooseHint")}
               </p>
 
-              <textarea
-                value={futureAnswers[currentDimension] ?? ""}
-                onChange={(e) => handleFutureAnswerChange(currentDimension, e.target.value)}
-                rows={6}
-                maxLength={FUTURE_SELF_FIELD_MAX}
-                placeholder={t(FUTURE_PH_KEY[currentDimension])}
-                className="mt-6 w-full resize-none rounded-[14px] border border-black/10 bg-white px-4 py-3 text-[15px] leading-[1.6] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
-              />
-              <div className="mt-2 text-right text-[11px] tracking-[-0.01em] text-black/40">
-                {(futureAnswers[currentDimension] ?? "").length}/{FUTURE_SELF_FIELD_MAX}
+              {/* 주 선택지: 예시 3개를 탭 한 번으로 답변 채우기 — 타이핑 없이 완주 가능. */}
+              <div className="mt-6 space-y-2.5">
+                {currentExampleKeys.map((key, i) => {
+                  const ex = currentExampleTexts[i];
+                  const selected = currentAnswer === ex;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => handleSelectExample(currentDimension, ex)}
+                      aria-pressed={selected}
+                      className={`flex w-full items-start gap-3 rounded-[14px] border px-4 py-3 text-left transition-all ${
+                        selected
+                          ? "border-[#1E1B4B] bg-[#1E1B4B]/[0.04]"
+                          : "border-black/10 bg-white hover:border-[#1E1B4B]/40"
+                      }`}
+                    >
+                      <span
+                        aria-hidden
+                        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors ${
+                          selected
+                            ? "border-[#1E1B4B] bg-[#1E1B4B] text-white"
+                            : "border-black/20 text-transparent"
+                        }`}
+                      >
+                        <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M20 6L9 17l-5-5" />
+                        </svg>
+                      </span>
+                      <span className="text-[14px] leading-[1.55] tracking-[-0.01em] text-[#1E1B4B]">
+                        {ex}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
 
-              {currentExampleKeys.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {currentExampleKeys.map((key) => {
-                    const ex = t(key);
-                    return (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => handleFutureAnswerChange(currentDimension, ex)}
-                        className="rounded-pill border border-black/10 bg-white px-3 py-1.5 text-[12px] tracking-[-0.01em] text-black/70 transition-colors hover:border-[#1E1B4B] hover:text-[#1E1B4B]"
-                      >
-                        {ex.length > 32 ? ex.slice(0, 32) + "…" : ex}
-                      </button>
-                    );
-                  })}
+              {/* 직접 입력 — 원하는 사람만 서술형으로. 커스텀 답변이 있으면 자동 전개. */}
+              {showCustomInput ? (
+                <div className="mt-3">
+                  <textarea
+                    value={currentAnswer}
+                    onChange={(e) => handleFutureAnswerChange(currentDimension, e.target.value)}
+                    rows={5}
+                    maxLength={FUTURE_SELF_FIELD_MAX}
+                    placeholder={t(FUTURE_PH_KEY[currentDimension])}
+                    className="w-full resize-none rounded-[14px] border border-black/10 bg-white px-4 py-3 text-[15px] leading-[1.6] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
+                  />
+                  <div className="mt-2 text-right text-[11px] tracking-[-0.01em] text-black/40">
+                    {currentAnswer.length}/{FUTURE_SELF_FIELD_MAX}
+                  </div>
                 </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setCustomEditDim(currentDimension)}
+                  className="mt-3 rounded-pill border border-dashed border-black/15 bg-white px-4 py-2 text-[12px] font-medium tracking-[-0.01em] text-black/60 transition-colors hover:border-[#1E1B4B] hover:text-[#1E1B4B]"
+                >
+                  {t("onboarding.futureSelf.writeMyOwn")}
+                </button>
+              )}
+
+              {/* 핵심(앞 CORE_FUTURE_COUNT개) 이후엔 나머지를 다음에 채우도록 허용. */}
+              {futureStep >= CORE_FUTURE_COUNT && (
+                <button
+                  type="button"
+                  onClick={skipRemainingFuture}
+                  className="mt-6 block text-[13px] font-medium tracking-[-0.01em] text-[#1E1B4B]/70 transition-colors hover:text-[#1E1B4B]"
+                >
+                  {t("onboarding.futureSelf.skipRest")}
+                </button>
               )}
             </div>
           )}

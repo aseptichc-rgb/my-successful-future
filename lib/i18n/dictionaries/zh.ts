@@ -39,6 +39,11 @@ const dict: Record<DictKey, string> = {
   // 「十年后的我」— 沉浸式提问流程,一屏一个问题。
   "onboarding.futureSelf.sectionLabel": "十年后的我",
   "onboarding.futureSelf.progress": "{current} / {total}",
+  "onboarding.progress.remaining": "还剩 {remaining} 个",
+  "onboarding.progress.lastStep": "最后一步",
+  "onboarding.futureSelf.chooseHint": "选择最接近你的一项 · 也可以自己写",
+  "onboarding.futureSelf.writeMyOwn": "自己填写",
+  "onboarding.futureSelf.skipRest": "其余的稍后再填 →",
   "onboarding.futureSelf.hint":
     "想到什么就具体写下来。现在难以回答的问题,可以留空跳过。",
   "onboarding.futureSelf.daily.q": "10 年后,你平常的一天是怎样度过的?",

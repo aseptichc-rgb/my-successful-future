@@ -41,6 +41,11 @@ const dict: Record<DictKey, string> = {
   // "Mi yo dentro de 10 años" — flujo inmersivo de una pregunta por pantalla.
   "onboarding.futureSelf.sectionLabel": "Mi yo dentro de 10 años",
   "onboarding.futureSelf.progress": "{current} / {total}",
+  "onboarding.progress.remaining": "Quedan {remaining}",
+  "onboarding.progress.lastStep": "Último paso",
+  "onboarding.futureSelf.chooseHint": "Elige lo más parecido a ti · o escríbelo tú",
+  "onboarding.futureSelf.writeMyOwn": "Escribir el mío",
+  "onboarding.futureSelf.skipRest": "Completaré el resto más tarde →",
   "onboarding.futureSelf.hint":
     "Escribe tan concreto como te salga. Si una pregunta se te hace difícil ahora, déjala en blanco y sigue.",
   "onboarding.futureSelf.daily.q": "Dentro de 10 años, ¿cómo fluye un día normal de tu vida?",

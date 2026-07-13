@@ -41,6 +41,11 @@ const dict: Record<DictKey, string> = {
   // "My self 10 years from now" — immersive one-question-per-screen flow.
   "onboarding.futureSelf.sectionLabel": "Me, 10 years from now",
   "onboarding.futureSelf.progress": "{current} / {total}",
+  "onboarding.progress.remaining": "{remaining} to go",
+  "onboarding.progress.lastStep": "Last step",
+  "onboarding.futureSelf.chooseHint": "Pick the one closest to you · or write your own",
+  "onboarding.futureSelf.writeMyOwn": "Write my own",
+  "onboarding.futureSelf.skipRest": "I'll fill in the rest later →",
   "onboarding.futureSelf.hint":
     "Be as concrete as it comes to you. If a question feels hard right now, leave it blank and move on.",
   "onboarding.futureSelf.daily.q": "10 years from now, how does an ordinary day of yours flow?",
