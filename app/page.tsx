@@ -1,14 +1,23 @@
 /**
  * 마케팅 랜딩 페이지.
  *
- * 본 제품(매일 동기부여 카드 + 잠금화면 위젯)은 안드로이드 유료 앱이며,
- * 웹은 가치 제안 미리보기와 회원 로그인 진입점 역할만 한다.
+ * 본 제품(매일 동기부여 카드 + 잠금화면 위젯)은 안드로이드 유료 앱이며, iOS 앱은 같은 웹 URL 을
+ * Capacitor WKWebView 로 로드하는 래퍼다([capacitor.config.ts]). 웹은 가치 제안 미리보기와
+ * 회원 로그인 진입점 역할을 한다.
+ *
+ * iOS 심사 대응 (Apple Guideline 2.3.10 — Accurate Metadata):
+ *   같은 URL 을 iOS 앱이 그대로 띄우므로, "Google Play 에서 받기" 버튼과 "안드로이드 앱에서
+ *   동작"·"잠금화면" 같은 타 플랫폼 문구가 앱 안에 보이면 심사에서 거절된다(실제 거절 사유).
+ *   그래서 해당 요소는 [components/landing/PlatformGate] 의 WebOnly/PlatformText 로 감싸
+ *   웹에서만 노출하고, iOS 앱에는 iOS 안전 문구만 그린다(SSR 기본값이 iOS 안전이라 깜빡임 없이 차단).
  *
  * 이미 로그인된 사용자는 /home 으로, 비로그인은 그대로 보이게.
  * (로그인 후 /home 은 web preview 배너와 함께 동작 — 본격 사용은 앱 권장.)
  */
+import type { ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { PlatformText, WebOnly } from "@/components/landing/PlatformGate";
 
 const PLAY_STORE_URL =
   process.env.NEXT_PUBLIC_PLAY_STORE_URL ||
@@ -42,38 +51,46 @@ export default function LandingPage() {
         <section className="grid items-center gap-10 sm:grid-cols-[1.1fr_1fr] sm:gap-14">
           <div>
             <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-[#1E1B4B]/60">
-              매일, 잠금화면에서.
+              <PlatformText web="매일, 잠금화면에서." ios="매일, 한 줄." />
             </p>
             <h1 className="mt-4 text-[40px] font-bold leading-[1.05] tracking-[-0.025em] text-[#1E1B4B] sm:text-[56px]">
               10년 후의 너에게서<br />
               매일 한 마디.
             </h1>
             <p className="mt-5 max-w-xl text-[16px] leading-[1.55] tracking-[-0.01em] text-black/64 sm:text-[17px]">
-              네가 적은 미래의 모습과 오늘의 목표를 바탕으로,
-              실존 멘토의 명언 한 줄이 매일 잠금화면 위젯에 도착합니다.
-              알림 없이, 광고 없이.
+              <PlatformText
+                web="네가 적은 미래의 모습과 오늘의 목표를 바탕으로, 실존 멘토의 명언 한 줄이 매일 잠금화면 위젯에 도착합니다. 알림 없이, 광고 없이."
+                ios="네가 적은 미래의 모습과 오늘의 목표를 바탕으로, 실존 멘토의 명언 한 줄이 매일 도착합니다. 알림 없이, 광고 없이."
+              />
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <a
-                href={PLAY_STORE_URL}
-                target="_blank"
-                rel="noopener"
-                className="inline-flex items-center gap-2 rounded-pill bg-[#1E1B4B] px-6 py-3 text-[14px] font-semibold tracking-[-0.01em] text-white transition-colors hover:bg-[#2A2766]"
-              >
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                  <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 01-.61-.92V2.734a1 1 0 01.609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.183-3.183l2.413 1.396a1 1 0 010 1.732l-2.41 1.395-2.5-2.5 2.497-2.497-.001-.026zm-3.183-3.183l-8.635-8.635 10.937 6.334-2.302 2.301z"/>
-                </svg>
-                Google Play 에서 받기
-              </a>
+              {/* Google Play 버튼: iOS 앱 안에서는 타 스토어 참조라 심사 거절 사유(2.3.10) →
+                  WebOnly 로 감싸 웹에서만 노출한다. */}
+              <WebOnly>
+                <a
+                  href={PLAY_STORE_URL}
+                  target="_blank"
+                  rel="noopener"
+                  className="inline-flex items-center gap-2 rounded-pill bg-[#1E1B4B] px-6 py-3 text-[14px] font-semibold tracking-[-0.01em] text-white transition-colors hover:bg-[#2A2766]"
+                >
+                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                    <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 01-.61-.92V2.734a1 1 0 01.609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.183-3.183l2.413 1.396a1 1 0 010 1.732l-2.41 1.395-2.5-2.5 2.497-2.497-.001-.026zm-3.183-3.183l-8.635-8.635 10.937 6.334-2.302 2.301z"/>
+                  </svg>
+                  Google Play 에서 받기
+                </a>
+              </WebOnly>
               <span className="text-[12px] tracking-[-0.01em] text-black/48">
                 1회 결제, 평생 사용. 광고 없음.
               </span>
             </div>
 
-            <p className="mt-6 text-[12px] leading-[1.6] tracking-[-0.01em] text-black/40">
-              웹은 미리보기 용도입니다. 위젯·잠금화면 기능은 안드로이드 앱에서 동작합니다.
-            </p>
+            {/* "웹은 미리보기 · 안드로이드 앱에서 동작": iOS 앱에서 보이면 타 플랫폼 참조라 웹 전용. */}
+            <WebOnly>
+              <p className="mt-6 text-[12px] leading-[1.6] tracking-[-0.01em] text-black/40">
+                웹은 미리보기 용도입니다. 위젯·잠금화면 기능은 안드로이드 앱에서 동작합니다.
+              </p>
+            </WebOnly>
           </div>
 
           {/* 카드 미리보기 */}
@@ -106,7 +123,7 @@ export default function LandingPage() {
               </div>
             </div>
             <p className="mt-4 text-center text-[11px] tracking-[-0.005em] text-black/40">
-              잠금화면 위젯 미리보기
+              <PlatformText web="잠금화면 위젯 미리보기" ios="오늘의 카드 미리보기" />
             </p>
           </div>
         </section>
@@ -123,7 +140,12 @@ export default function LandingPage() {
           />
           <ValueCard
             title="알림 없음, 광고 없음"
-            body="잠금화면을 한 번 켤 때마다 한 줄. 그것 하나로 충분합니다."
+            body={
+              <PlatformText
+                web="잠금화면을 한 번 켤 때마다 한 줄. 그것 하나로 충분합니다."
+                ios="하루 한 번, 한 줄. 그것 하나로 충분합니다."
+              />
+            }
           />
         </section>
 
@@ -144,7 +166,7 @@ export default function LandingPage() {
   );
 }
 
-function ValueCard({ title, body }: { title: string; body: string }) {
+function ValueCard({ title, body }: { title: string; body: ReactNode }) {
   return (
     <div className="rounded-[18px] bg-white p-6 shadow-apple">
       <h3 className="text-[15px] font-semibold tracking-[-0.015em] text-[#1E1B4B]">
