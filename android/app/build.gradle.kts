@@ -52,15 +52,18 @@ val hasReleaseSigning = listOf(releaseStoreFile, releaseStorePassword, releaseKe
 android {
     namespace = "com.michaelkim.anima"
     // androidbrowserhelper 2.7.2 가 끌어오는 androidx.browser:1.10.0 / core:1.17.0 가
-    // compileSdk 36 을 요구한다. targetSdk 는 35 로 유지해 런타임 동작 변경(권한/백그라운드 등)을 피한다.
+    // compileSdk 36 을 요구한다.
     compileSdk = 36
 
     defaultConfig {
         applicationId = "com.michaelkim.anima"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 35
-        versionName = "0.3.13"
+        // Google Play 연례 대상 API 요구사항 — 2026-08-31 이후 업데이트 게시에는 API 36(Android 16)
+        // 타겟이 필요하다. 앱은 back 오버라이드·화면방향 고정·edge-to-edge 옵트아웃을 쓰지 않아
+        // Android 16 의 targetSdk 게이트 동작 변경(predictive back 기본 on 등)에 영향받지 않는다.
+        targetSdk = 36
+        versionCode = 36
+        versionName = "0.3.14"
 
         buildConfigField("String", "ANIMA_API_BASE_URL", "\"$animaApiBaseUrl\"")
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
