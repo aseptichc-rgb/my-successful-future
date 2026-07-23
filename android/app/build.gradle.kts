@@ -62,8 +62,8 @@ android {
         // 타겟이 필요하다. 앱은 back 오버라이드·화면방향 고정·edge-to-edge 옵트아웃을 쓰지 않아
         // Android 16 의 targetSdk 게이트 동작 변경(predictive back 기본 on 등)에 영향받지 않는다.
         targetSdk = 36
-        versionCode = 36
-        versionName = "0.3.14"
+        versionCode = 37
+        versionName = "0.3.15"
 
         buildConfigField("String", "ANIMA_API_BASE_URL", "\"$animaApiBaseUrl\"")
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
@@ -184,7 +184,7 @@ dependencies {
     implementation(libs.androidx.credentials.play.services)
     implementation(libs.google.id)
 
-    // Play Billing (1회 결제 영수증)
+    // Play Billing (1회 결제 영수증) — 결제·복원·승인 전 구간을 네이티브 BillingClient 로 직접 처리.
     implementation(libs.billing.ktx)
 
     // Play Integrity (호출자 정품 검증 → 서버에서 영수증 위조 차단)
@@ -193,7 +193,7 @@ dependencies {
     // Trusted Web Activity — 웹앱을 주소창 없이 전체화면으로 띄우기 위함
     implementation(libs.androidbrowserhelper)
 
-    // TWA Play Billing 위임 — 웹(설정 페이지)의 Digital Goods API/Payment Request 를
-    //  Play Billing 으로 중계(PaymentActivity/PaymentService/DigitalGoodsRequestHandler).
-    implementation(libs.androidbrowserhelper.billing)
+    // NOTE: androidbrowserhelper:billing(웹 Digital Goods/Payment Request 위임)은 제거됨.
+    //  Play Billing 8.0.0+ 요구사항과 충돌(위임 라이브러리 최신 1.1.0 이 7.1.1 번들, 8.x 호환판 없음)하며,
+    //  결제는 이미 PurchaseBridgeActivity(네이티브)로 우회 중이라 위임 없이도 결제 전 구간이 동작한다.
 }

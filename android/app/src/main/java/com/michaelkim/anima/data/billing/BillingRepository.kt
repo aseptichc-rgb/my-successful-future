@@ -111,8 +111,11 @@ object BillingRepository {
             )
             .build()
         val result = suspendCancellableCoroutine<Pair<BillingResult, List<ProductDetails>>> { cont ->
-            billing.queryProductDetailsAsync(params) { res, list ->
-                cont.resume(res to list)
+            // Play Billing 8.0.0 파괴적 변경: 콜백 2번째 인자가 List<ProductDetails> →
+            //  QueryProductDetailsResult 로 바뀌었다. 조회된 상품 목록은 productDetailsList 로 꺼낸다
+            //  (미조회 상품은 unfetchedProductList 로 별도 제공되나, 단일 상품 조회라 사용하지 않는다).
+            billing.queryProductDetailsAsync(params) { res, queryResult ->
+                cont.resume(res to queryResult.productDetailsList)
             }
         }
         if (result.first.responseCode != BillingClient.BillingResponseCode.OK) {
