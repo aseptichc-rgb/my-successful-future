@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { AuthCredential } from "firebase/auth";
 import { useAuth } from "@/lib/auth-context";
 import { authErrorMessageKey } from "@/lib/authError";
+import { WebOnly } from "@/components/landing/PlatformGate";
 import { useT } from "@/lib/i18n";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -365,21 +366,26 @@ export default function LoginPage() {
             {t("auth.continueWithApple") || "Apple로 계속하기"}
           </button>
 
-          {/* Google */}
-          <button
-            type="button"
-            onClick={handleGoogle}
-            disabled={loading}
-            className="mt-3 w-full h-[50px] rounded-[12px] bg-[var(--bg-grouped-2)] border border-[var(--sep)] text-[var(--label)] text-[17px] font-semibold tracking-[-0.43px] inline-flex items-center justify-center gap-2.5 disabled:opacity-40"
-          >
-            <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
-              <path d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.13-.84 2.08-1.78 2.72v2.26h2.88c1.68-1.55 2.66-3.83 2.66-6.62z" fill="#4285F4" />
-              <path d="M9 18c2.43 0 4.47-.8 5.95-2.18l-2.88-2.26c-.8.54-1.83.85-3.07.85-2.36 0-4.36-1.6-5.07-3.74H.93v2.34A8.997 8.997 0 0 0 9 18z" fill="#34A853" />
-              <path d="M3.93 10.67a5.42 5.42 0 0 1 0-3.34V4.99H.93a8.997 8.997 0 0 0 0 8.02l3-2.34z" fill="#FBBC05" />
-              <path d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A8.95 8.95 0 0 0 9 0 8.997 8.997 0 0 0 .93 4.99l3 2.34C4.64 5.18 6.64 3.58 9 3.58z" fill="#EA4335" />
-            </svg>
-            {t("auth.continueWithGoogle") || "Google로 계속하기"}
-          </button>
+          {/* Google — iOS 앱에서는 숨긴다(App Store Guideline 4 — Design).
+              WKWebView 안의 웹 popup 구글 로그인은 Google 의 임베디드 웹뷰 차단 때문에 기본
+              브라우저(Safari)로 튕겨나가 심사 거절됐다. WebOnly 가 iOS 앱·SSR 에선 렌더하지 않고
+              웹·안드로이드에서만 노출한다(네이티브 구글 SDK 도입 전까지의 조치). */}
+          <WebOnly>
+            <button
+              type="button"
+              onClick={handleGoogle}
+              disabled={loading}
+              className="mt-3 w-full h-[50px] rounded-[12px] bg-[var(--bg-grouped-2)] border border-[var(--sep)] text-[var(--label)] text-[17px] font-semibold tracking-[-0.43px] inline-flex items-center justify-center gap-2.5 disabled:opacity-40"
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
+                <path d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.13-.84 2.08-1.78 2.72v2.26h2.88c1.68-1.55 2.66-3.83 2.66-6.62z" fill="#4285F4" />
+                <path d="M9 18c2.43 0 4.47-.8 5.95-2.18l-2.88-2.26c-.8.54-1.83.85-3.07.85-2.36 0-4.36-1.6-5.07-3.74H.93v2.34A8.997 8.997 0 0 0 9 18z" fill="#34A853" />
+                <path d="M3.93 10.67a5.42 5.42 0 0 1 0-3.34V4.99H.93a8.997 8.997 0 0 0 0 8.02l3-2.34z" fill="#FBBC05" />
+                <path d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A8.95 8.95 0 0 0 9 0 8.997 8.997 0 0 0 .93 4.99l3 2.34C4.64 5.18 6.64 3.58 9 3.58z" fill="#EA4335" />
+              </svg>
+              {t("auth.continueWithGoogle") || "Google로 계속하기"}
+            </button>
+          </WebOnly>
 
           {/* Sign up link */}
           <div className="mt-8 text-center text-[15px] tracking-[-0.24px] text-[var(--label-2)]">
