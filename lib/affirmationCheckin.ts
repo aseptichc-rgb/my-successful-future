@@ -15,10 +15,14 @@
  */
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
-import { todayKstYmd, yesterdayKstYmd } from "@/lib/kstDate";
+import { todayKstYmd, diffKstDays, kstMonth } from "@/lib/kstDate";
+import { prepareEvidence, applyEvidence, type PreparedEvidence } from "@/lib/identityEvidence";
+import { FREEZES_PER_MONTH } from "@/lib/constants/streak";
 
 // 체크인 라우트가 기존 경로로 계속 임포트할 수 있도록 재수출(단일 정의는 lib/kstDate).
 export { todayKstYmd };
+// 프리즈 지급량 재수출 — 서버 코드는 기존 경로로 계속 임포트 가능(단일 정의는 constants/streak).
+export { FREEZES_PER_MONTH };
 
 /**
  * 비교 정규화 시 자르는 한도 — 저장된 다짐 60자 + "10. " 같은 번호 프리픽스(<=4자) 여유.
@@ -55,6 +59,12 @@ export interface CheckinResult {
   matched: boolean;
   /** matched=false 일 때, 어긋난 다짐 인덱스(0-based). */
   mismatchedIndices?: number[];
+  /** 역대 최고 연속일 — 이번 체크인 반영 후 값. */
+  bestCount?: number;
+  /** 이번 체크인에서 결석을 다리 놓는 데 소비한 프리즈 개수 (0=소비 없음). */
+  freezeUsed?: number;
+  /** 프리즈로도 못 막아 스트릭이 1로 리셋됐는지 — 클라 재약속 문구 트리거. */
+  streakBroken?: boolean;
 }
 
 /**
@@ -130,33 +140,128 @@ export async function checkinAffirmations(opts: {
       };
     }
 
+    // ── 스트릭/프리즈 판정 ──
+    // 프리즈 의미론: 결석(gap>=2) 후 "다음 체크인 시점"에 자동 소비되어 스트릭을 잇는다.
+    // 놓친 날 자체는 +1 되지 않는다(오늘 하루만 +1). 월 경계에 걸친 gap 은 체크인한 달의
+    // 잔여분에서 차감한다(단순화 — 단일 작성자 트랜잭션이라 경쟁 없음).
     const prevStreak = userData.affirmationStreak as
-      | { count?: number; lastYmd?: string }
+      | {
+          count?: number;
+          lastYmd?: string;
+          bestCount?: number;
+          freezesLeft?: number;
+          freezeMonth?: string;
+          lastBrokenYmd?: string;
+          lastBrokenCount?: number;
+        }
       | undefined;
-    const yesterday = yesterdayKstYmd(ymd);
     const prevCount = Number(prevStreak?.count ?? 0);
     const prevLast = typeof prevStreak?.lastYmd === "string" ? prevStreak.lastYmd : "";
-    const nextCount = prevLast === yesterday && prevCount > 0 ? prevCount + 1 : 1;
+    // 레거시 문서(bestCount 없음)는 현재 count 를 최고기록으로 간주해 백필한다.
+    const prevBest = Number(prevStreak?.bestCount ?? prevCount);
+    const month = kstMonth(ymd);
+    // 지연 리필: freezeMonth 가 이번 달이 아니면 월초 지급량으로 리셋된 것으로 본다.
+    let freezesLeft =
+      prevStreak?.freezeMonth === month
+        ? Math.max(0, Number(prevStreak?.freezesLeft ?? FREEZES_PER_MONTH))
+        : FREEZES_PER_MONTH;
 
+    let nextCount: number;
+    let nextLastYmd = ymd;
+    let freezeUsed = 0;
+    let streakBroken = false;
+    let brokenYmd: string | undefined;
+    let brokenCount: number | undefined;
+
+    if (prevCount <= 0 || !prevLast) {
+      nextCount = 1; // 최초 체크인 (또는 리셋 후 첫 체크인)
+    } else {
+      const gap = diffKstDays(prevLast, ymd);
+      if (!Number.isFinite(gap) || gap <= 0) {
+        // 방어: lastYmd 가 미래/오늘/깨진 형식(qDate 딥링크로 과거 날짜 체크인 포함) —
+        // 카운트는 no-op 유지, lastYmd 도 뒤로 되돌리지 않는다(되돌리면 같은 구간을
+        // 다음 체크인이 또 +1 하는 스트릭 부풀리기가 가능해진다).
+        nextCount = prevCount;
+        nextLastYmd = prevLast;
+      } else if (gap === 1) {
+        nextCount = prevCount + 1; // 어제 이어서 — 기존과 동일
+      } else {
+        const missed = gap - 1;
+        if (missed <= freezesLeft) {
+          // 프리즈로 결석일을 다리 놓아 스트릭을 잇는다.
+          freezeUsed = missed;
+          freezesLeft -= missed;
+          nextCount = prevCount + 1;
+        } else {
+          // 프리즈로도 못 막음 — 리셋하되 직전 기록은 재약속 문구용으로 보존.
+          streakBroken = true;
+          nextCount = 1;
+          brokenYmd = ymd;
+          brokenCount = prevCount;
+        }
+      }
+    }
+    const bestCount = Math.max(prevBest, nextCount);
+
+    // ── 정체성 증거 적립 준비 (트랜잭션 읽기 단계 — 모든 쓰기 전에 완료해야 한다) ──
+    // 증거 실패가 체크인을 실패시키면 안 되므로 자체 try-catch 로 격리한다.
+    let evidence: PreparedEvidence | null = null;
+    try {
+      const labels = Array.isArray(userData.identities?.labels)
+        ? (userData.identities.labels as string[])
+        : [];
+      evidence = await prepareEvidence(tx, { uid, ymd, labels });
+    } catch (err) {
+      console.error("[affirmationCheckin] 증거 적립 준비 실패(체크인은 계속):", err);
+      evidence = null;
+    }
+
+    // ── 쓰기 단계 ──
     const now = Timestamp.now();
     tx.set(logRef, {
       ymd,
       checkedInAt: now,
       affirmationCount: storedTexts.length,
     });
-    tx.update(userRef, {
-      affirmationStreak: {
-        count: nextCount,
-        lastYmd: ymd,
-        updatedAt: FieldValue.serverTimestamp(),
-      },
-    });
+    // ⚠️ Firestore 는 undefined 값을 거부한다 — 선택 필드는 값이 있을 때만 키를 넣는다.
+    const nextStreak: Record<string, unknown> = {
+      count: nextCount,
+      lastYmd: nextLastYmd,
+      bestCount,
+      freezesLeft,
+      freezeMonth: month,
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+    if (streakBroken) {
+      nextStreak.lastBrokenYmd = brokenYmd;
+      nextStreak.lastBrokenCount = brokenCount;
+    } else {
+      // 끊긴 적 있던 기록은 보존 (재약속 카드가 과거 기록을 계속 참조할 수 있게).
+      if (typeof prevStreak?.lastBrokenYmd === "string") {
+        nextStreak.lastBrokenYmd = prevStreak.lastBrokenYmd;
+      }
+      if (typeof prevStreak?.lastBrokenCount === "number") {
+        nextStreak.lastBrokenCount = prevStreak.lastBrokenCount;
+      }
+    }
+    tx.update(userRef, { affirmationStreak: nextStreak });
+
+    if (evidence) {
+      try {
+        applyEvidence(tx, evidence);
+      } catch (err) {
+        console.error("[affirmationCheckin] 증거 적립 쓰기 실패(체크인은 계속):", err);
+      }
+    }
 
     return {
       ymd,
       newlyCheckedIn: true,
       streakCount: nextCount,
       matched: true,
+      bestCount,
+      freezeUsed,
+      streakBroken,
     };
   });
 }

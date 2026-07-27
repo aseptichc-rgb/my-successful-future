@@ -69,6 +69,20 @@ service cloud.firestore {
         allow read: if isOwner(uid);
         allow write: if false;
       }
+
+      // WOOP 실행설계 (if-then) — 사용자 본인이 작성/수정하는 산문 콘텐츠.
+      // 위조해도 얻는 게 없어 dailyEntries 와 동급으로 클라이언트 직접 write 허용.
+      match /executionPlans/{planId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      // 정체성 증거 장부 (일자별, 문서 ID = YYYY-MM-DD KST).
+      // 체크인 트랜잭션(Admin SDK)에서만 기록 — identityProgress 카운트 위조 차단.
+      // 클라는 /progress 의 최근 증거 피드용으로 read 만 허용.
+      match /identityEvidence/{ymd} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
     }
 
     // ── entitlements ──

@@ -9,8 +9,10 @@ import {
   updateQuotePreference,
   updateSuccessAffirmations,
   updateUserLanguage,
+  onExecutionPlansSnapshot,
   MAX_USER_GOALS,
   MAX_SUCCESS_AFFIRMATIONS,
+  type ExecutionPlanWithId,
 } from "@/lib/firebase";
 import {
   FUTURE_SELF_DIMENSIONS,
@@ -39,6 +41,9 @@ import { isAndroidApp, notifyAndroidPurchase, notifyAndroidRestore } from "@/lib
 import { getAllKnownAuthorsGrouped } from "@/lib/famousQuoteCatalog";
 import AffirmationsEditor from "@/components/affirmations/AffirmationsEditor";
 import NoticeDialog from "@/components/ui/NoticeDialog";
+import GroupedSection from "@/components/ui/GroupedSection";
+import Sheet from "@/components/ui/Sheet";
+import ExecutionPlansSection from "@/components/woop/ExecutionPlansSection";
 import { useLanguage, LOCALE_META, SUPPORTED_LOCALES, type Locale } from "@/lib/i18n";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -193,6 +198,11 @@ const G = {
       <rect x="15" y="2" width="2" height="5" rx="1" />
     </svg>
   ),
+  bolt: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="white" aria-hidden>
+      <path d="M13 2L4.5 13.5h6L9 22l8.5-11.5h-6L13 2z" />
+    </svg>
+  ),
   shield: (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="white" aria-hidden>
       <path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6l8-4z" />
@@ -232,30 +242,6 @@ function IconBack() {
 }
 
 /* ───── Reusable inset card primitives ───── */
-
-function GroupedSection({
-  header,
-  footer,
-  children,
-}: {
-  header?: string;
-  footer?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="mt-7">
-      {header && (
-        <div className="px-7 mb-1.5 text-[13px] uppercase tracking-[-0.08px] text-[var(--label-2)]">
-          {header}
-        </div>
-      )}
-      <div className="mx-4 bg-[var(--bg-grouped-2)] rounded-[12px] overflow-hidden">{children}</div>
-      {footer && (
-        <p className="px-7 mt-1.5 text-[13px] tracking-[-0.08px] text-[var(--label-2)]">{footer}</p>
-      )}
-    </div>
-  );
-}
 
 function SettingsRow({
   color,
@@ -317,6 +303,9 @@ export default function SettingsPage() {
   const [goals, setGoals] = useState<string[]>([]);
   const [goalsOpen, setGoalsOpen] = useState(false);
 
+  // WOOP 실행설계 목록 — 홈과 동일한 섹션/시트를 설정에서도 노출.
+  const [plans, setPlans] = useState<ExecutionPlanWithId[]>([]);
+
   const [affirmations, setAffirmations] = useState<string[]>([]);
   const [affirmationsOpen, setAffirmationsOpen] = useState(false);
   const [affirmationsSaving, setAffirmationsSaving] = useState(false);
@@ -354,6 +343,13 @@ export default function SettingsPage() {
     if (authLoading) return;
     if (!firebaseUser) router.replace("/login");
   }, [authLoading, firebaseUser, router]);
+
+  // WOOP 실행설계 구독 — 실패 시 섹션만 비운다(설정 나머지는 정상 동작).
+  useEffect(() => {
+    if (!firebaseUser) return;
+    const unsub = onExecutionPlansSnapshot(firebaseUser.uid, setPlans, () => setPlans([]));
+    return unsub;
+  }, [firebaseUser]);
 
   // 언마운트 시 진행 중이던 결제/복원 폴링을 중단한다(백그라운드 폴링·토큰 스로틀 방지).
   useEffect(() => {
@@ -762,9 +758,25 @@ export default function SettingsPage() {
             title={t("settings.affirmations.header") || "성공한 나의 모습 다짐"}
             detail={`${affirmations.length}`}
             onClick={() => setAffirmationsOpen(true)}
+          />
+          <SettingsRow
+            color="#FF9500"
+            glyph={G.bolt}
+            title={t("progress.title")}
+            onClick={() => router.push("/progress")}
             isLast
           />
         </GroupedSection>
+
+        {/* 실행 설계 (if-then) — 홈 "나의 행동" 탭과 동일 컴포넌트/시트 재사용 */}
+        {firebaseUser && (
+          <ExecutionPlansSection
+            uid={firebaseUser.uid}
+            goals={goals}
+            identityLabels={user?.identities?.labels ?? []}
+            plans={plans}
+          />
+        )}
 
         {/* 카드 환경설정 */}
         <GroupedSection header={t("settings.quote.header") || "카드"}>
@@ -1187,45 +1199,3 @@ export default function SettingsPage() {
   );
 }
 
-/* ─────────────────────────────────────────────────────────────
- * Sheet — bottom sheet modal (iOS pattern)
- *   Backdrop dim · rounded top corners · handle · safe area bottom
- * ───────────────────────────────────────────────────────────── */
-function Sheet({
-  onClose,
-  title,
-  children,
-}: {
-  onClose: () => void;
-  title: string;
-  children: React.ReactNode;
-}) {
-  const { t } = useLanguage();
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col">
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="close"
-        className="flex-1 bg-black/40"
-      />
-      <div className="bg-[var(--bg-grouped)] rounded-t-[14px] pb-8 safe-pb max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-center pt-2.5 pb-3">
-          <div className="w-9 h-[5px] rounded-full bg-[#C7C7CC]" />
-        </div>
-        <div className="flex items-center justify-between px-4 pb-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-[17px] tracking-[-0.43px] text-[var(--soul)]"
-          >
-            {t("common.cancel")}
-          </button>
-          <span className="text-[17px] font-semibold tracking-[-0.43px] text-[var(--label)]">{title}</span>
-          <div className="w-12" />
-        </div>
-        <div className="px-4">{children}</div>
-      </div>
-    </div>
-  );
-}

@@ -380,6 +380,87 @@ const dict = {
   "settings.pro.restoreDone.desc": "구매를 복원했습니다.",
   "settings.pro.restoreNone.title": "복원할 내역 없음",
   "settings.pro.restoreNone.desc": "복원할 구매 내역이 없습니다.",
+
+  // ── WOOP 실행 설계 (if-then) ──────────────────────
+  "woop.section.title": "실행 설계 (if-then)",
+  "woop.section.footer": "장애물을 미리 정해두면 실행 확률이 크게 올라가요.",
+  "woop.section.designCta": "설계하기",
+  "woop.sheet.title": "실행 설계",
+  "woop.step.wish": "목표",
+  "woop.step.outcome": "최상의 결과",
+  "woop.step.obstacle": "내 안의 장애물",
+  "woop.step.plan": "if-then 계획",
+  "woop.wish.hint": "어떤 목표를 위한 설계인가요?",
+  "woop.wish.empty": "먼저 설정에서 이번 달 목표를 추가해주세요.",
+  "woop.outcome.hint": "이 목표를 이뤘을 때 가장 좋은 순간은 어떤 모습인가요?",
+  "woop.outcome.placeholder": "예: 해낸 나를 떠올리면 가슴이 뛴다",
+  "woop.obstacle.hint": "그 길을 막는 '내 안의' 장애물은 무엇인가요? 환경이 아니라 내 마음속에서 찾아보세요.",
+  "woop.obstacle.placeholder": "예: 저녁이 되면 피곤해서 미루고 싶어진다",
+  "woop.obstacle.suggest": "AI 제안 받기",
+  "woop.obstacle.suggesting": "제안 만드는 중…",
+  "woop.plan.ifLabel": "만약 (if)",
+  "woop.plan.thenLabel": "그러면 (then)",
+  "woop.plan.ifPlaceholder": "장애물 상황이 오면",
+  "woop.plan.thenPlaceholder": "나는 이렇게 한다",
+  "woop.identity.pickLabel": "이 실천이 강화할 정체성",
+  "woop.save": "저장",
+  "woop.saving": "저장 중…",
+  "woop.delete": "삭제",
+  "woop.saveFailed": "실행 설계를 저장하지 못했어요.",
+  "woop.suggestFailed": "제안을 불러오지 못했어요.",
+
+  // ── 오늘의 if-then 카드 (아침 모드) ───────────────
+  "plan.today.title": "오늘의 if-then",
+  "plan.today.if": "만약",
+  "plan.today.then": "그러면",
+  "plan.today.emptyCta": "오늘의 실행 설계를 만들어보세요",
+  "plan.today.firstAction": "어젯밤의 내가 정한 첫 행동",
+
+  // ── 저녁 모드: 내일 첫 행동 ───────────────────────
+  "home.evening.firstAction.title": "내일 첫 행동 1개",
+  "home.evening.firstAction.placeholder": "내일 눈 뜨면 가장 먼저 할 작은 행동",
+  "home.evening.firstAction.footer": "적어두면 밤새 머릿속 걱정이 줄어요 · 자동 저장",
+
+  // ── 진행 상황 (/progress) ─────────────────────────
+  "progress.title": "진행 상황",
+  "progress.back": "← 홈으로",
+  "progress.chipAria": "진행 상황 보기",
+  "progress.streak.current": "현재 연속",
+  "progress.streak.days": "{count}일",
+  "progress.streak.best": "최고 {count}일",
+  "progress.freeze.label": "이번 달 남은 얼음",
+  "progress.freeze.desc": "하루 놓쳐도 얼음이 자동으로 스트릭을 이어줘요 (월 {max}개)",
+  "progress.heatmap.title": "최근 30일",
+  "progress.consistency": "일관성 {pct}%",
+  "progress.identity.title": "정체성 증거 장부",
+  "progress.identity.subtitle": "행동 하나하나가 '나는 그런 사람'이라는 증거가 돼요.",
+  "progress.identity.iAm": "나는 {label}",
+  "progress.identity.votes": "{count}회",
+  "progress.identity.empty": "아직 쌓인 증거가 없어요. 오늘 다짐 체크인부터 시작해보세요.",
+  "progress.evidence.title": "최근 증거",
+  "progress.source.checkin": "다짐",
+  "progress.source.goal": "목표",
+  "progress.source.win": "잘한 일",
+  "progress.source.mission": "미션",
+  "progress.loadFailed": "진행 상황을 불러오지 못했어요.",
+
+  // ── 재약속 카드 (스트릭 끊김 자기연민 복귀) ───────
+  "recommit.title": "다시 시작하기 좋은 날이에요",
+  "recommit.body":
+    "{prev}일을 이어온 기록은 사라지지 않았어요 · 최고 {best}일. 오늘 다시 시작할까요?",
+  "recommit.freezeChip": "지금 체크인하면 얼음 {count}개가 스트릭을 이어줘요",
+  "recommit.cta": "지금 체크인하기",
+  "recommit.dismissAria": "닫기",
+
+  // ── 다짐 코치 ─────────────────────────────────────
+  "coach.buttonAria": "AI 코치 제안 받기",
+  "coach.title": "코치 제안",
+  "coach.loading": "제안 만드는 중…",
+  "coach.style.process": "과정",
+  "coach.style.question": "질문",
+  "coach.style.identity": "정체성",
+  "coach.failed": "제안을 불러오지 못했어요.",
+  "coach.quota": "오늘의 코치 제안 한도를 다 썼어요. 내일 다시 만나요.",
 } as const;
 
 export type DictKey = keyof typeof dict;

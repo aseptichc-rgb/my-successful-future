@@ -23,8 +23,10 @@ import {
   todayKst,
 } from "@/lib/dailyMotivation";
 import { ensureFutureVision } from "@/lib/futureVision";
+import { pickTodayPlan } from "@/lib/planRotation";
 import type {
   FutureVision,
+  WidgetExecutionPlan,
   WidgetFutureVision,
   WidgetSlot,
   WidgetTodayProgress,
@@ -132,6 +134,38 @@ async function fetchTodayProgress(
   };
 }
 
+/**
+ * "오늘의 if-then" 실행설계 1개 — 홈 DailyPlanCard 와 동일한 순수 회전(pickTodayPlan)을
+ * 써 위젯·홈이 항상 같은 플랜을 본다. 정렬(createdAt asc)도 클라 구독과 동일해야
+ * 회전 인덱스가 일치한다. 조회/데이터 실패 시 undefined — 위젯은 섹션 자연 생략.
+ */
+async function fetchTodayExecutionPlan(
+  uid: string,
+  ymd: string,
+): Promise<WidgetExecutionPlan | undefined> {
+  try {
+    const snap = await getAdminDb()
+      .collection(`users/${uid}/executionPlans`)
+      .orderBy("createdAt", "asc")
+      .get();
+    const plans = snap.docs.map((d) => {
+      const data = d.data() ?? {};
+      return {
+        goal: typeof data.goal === "string" ? data.goal.trim() : "",
+        ifText: typeof data.ifText === "string" ? data.ifText.trim() : "",
+        thenText: typeof data.thenText === "string" ? data.thenText.trim() : "",
+        active: data.active !== false,
+      };
+    });
+    const picked = pickTodayPlan(plans, uid, ymd);
+    if (!picked || !picked.ifText || !picked.thenText) return undefined;
+    return { goal: picked.goal, ifText: picked.ifText, thenText: picked.thenText };
+  } catch (err) {
+    console.error("[widget/today] 실행설계 조회 실패(생략):", err);
+    return undefined;
+  }
+}
+
 /** KST 다음 자정의 ISO timestamp — 위젯 다음 갱신 시각 hint. */
 function nextRefreshIso(now: Date): string {
   const kst = new Date(now.getTime() + KST_OFFSET_MS);
@@ -196,7 +230,11 @@ export async function GET(request: NextRequest) {
     } catch (err) {
       console.error("[widget/today] user 문서 조회 실패:", err);
     }
-    const progressResult = await fetchTodayProgress(me.uid, ymd, userGoals);
+    // 진척도와 실행설계는 서로 독립 — 병렬 조회로 응답 시간을 아낀다.
+    const [progressResult, executionPlan] = await Promise.all([
+      fetchTodayProgress(me.uid, ymd, userGoals),
+      fetchTodayExecutionPlan(me.uid, ymd),
+    ]);
 
     // 2-b) "그 꿈을 사는 하루" 비전 보장 + 위젯 티저 조립.
     //   동기부여 카드(ensureMotivation)와 동일하게 force=false 로, 오늘 비전이 없으면 생성하고
@@ -240,6 +278,8 @@ export async function GET(request: NextRequest) {
       ...(futureVision ? { futureVision } : {}),
       goalsAchievedCount: progressResult.goalsAchievedCount,
       goalsTotalCount: progressResult.goalsTotalCount,
+      // 응답 호환성: 플랜 미설정/조회 실패 시 필드 생략 — 옛 클라이언트는 무시, 신 클라이언트는 섹션 생략.
+      ...(executionPlan ? { executionPlan } : {}),
     };
 
     // 캐시 정책: `_t` 쿼리(클라 측 cache-buster) 가 실려 있거나 Cache-Control: no-cache

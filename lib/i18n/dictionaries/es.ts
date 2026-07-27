@@ -402,6 +402,87 @@ const dict: Record<DictKey, string> = {
   "settings.pro.restoreDone.desc": "Tu compra se ha restaurado.",
   "settings.pro.restoreNone.title": "Nada que restaurar",
   "settings.pro.restoreNone.desc": "No se encontraron compras anteriores.",
+
+  // ── Planes de ejecución WOOP (if-then) ────────────
+  "woop.section.title": "Planes de ejecución (if-then)",
+  "woop.section.footer": "Nombrar tu obstáculo por adelantado multiplica la probabilidad de actuar.",
+  "woop.section.designCta": "Diseñar",
+  "woop.sheet.title": "Plan de ejecución",
+  "woop.step.wish": "Meta",
+  "woop.step.outcome": "Mejor resultado",
+  "woop.step.obstacle": "Obstáculo interior",
+  "woop.step.plan": "Plan if-then",
+  "woop.wish.hint": "¿Para qué meta es este plan?",
+  "woop.wish.empty": "Primero agrega una meta mensual en Ajustes.",
+  "woop.outcome.hint": "¿Cómo es el mejor momento cuando logras esta meta?",
+  "woop.outcome.placeholder": "ej.: Imaginarme habiéndolo logrado me acelera el corazón",
+  "woop.obstacle.hint": "¿Qué obstáculo INTERIOR te bloquea? Busca en tu mente, no en las circunstancias.",
+  "woop.obstacle.placeholder": "ej.: Por la noche estoy cansado y quiero aplazarlo",
+  "woop.obstacle.suggest": "Recibir sugerencias de IA",
+  "woop.obstacle.suggesting": "Creando sugerencias…",
+  "woop.plan.ifLabel": "Si (if)",
+  "woop.plan.thenLabel": "Entonces (then)",
+  "woop.plan.ifPlaceholder": "cuando llegue el momento del obstáculo",
+  "woop.plan.thenPlaceholder": "haré esto",
+  "woop.identity.pickLabel": "Identidad que refuerza esta práctica",
+  "woop.save": "Guardar",
+  "woop.saving": "Guardando…",
+  "woop.delete": "Eliminar",
+  "woop.saveFailed": "No se pudo guardar el plan de ejecución.",
+  "woop.suggestFailed": "No se pudieron cargar las sugerencias.",
+
+  // ── Tarjeta if-then de hoy (modo mañana) ──────────
+  "plan.today.title": "El if-then de hoy",
+  "plan.today.if": "Si",
+  "plan.today.then": "Entonces",
+  "plan.today.emptyCta": "Crea el plan de ejecución de hoy",
+  "plan.today.firstAction": "La primera acción que eligió mi yo de anoche",
+
+  // ── Modo noche: primera acción de mañana ──────────
+  "home.evening.firstAction.title": "Una primera acción para mañana",
+  "home.evening.firstAction.placeholder": "La pequeña acción que harás primero mañana",
+  "home.evening.firstAction.footer": "Escribirla calma tu mente durante la noche · guardado automático",
+
+  // ── Progreso (/progress) ──────────────────────────
+  "progress.title": "Progreso",
+  "progress.back": "← Inicio",
+  "progress.chipAria": "Ver progreso",
+  "progress.streak.current": "Racha actual",
+  "progress.streak.days": "{count} días",
+  "progress.streak.best": "Mejor {count} días",
+  "progress.freeze.label": "Hielos restantes este mes",
+  "progress.freeze.desc": "Si fallas un día, un hielo une tu racha automáticamente ({max}/mes)",
+  "progress.heatmap.title": "Últimos 30 días",
+  "progress.consistency": "Constancia {pct}%",
+  "progress.identity.title": "Registro de evidencia de identidad",
+  "progress.identity.subtitle": "Cada acción es un voto por la persona en la que te conviertes.",
+  "progress.identity.iAm": "Soy {label}",
+  "progress.identity.votes": "{count}×",
+  "progress.identity.empty": "Aún no hay evidencia. Empieza con el check-in de hoy.",
+  "progress.evidence.title": "Evidencia reciente",
+  "progress.source.checkin": "Afirmación",
+  "progress.source.goal": "Meta",
+  "progress.source.win": "Logro",
+  "progress.source.mission": "Misión",
+  "progress.loadFailed": "No se pudo cargar tu progreso.",
+
+  // ── Tarjeta de recompromiso ───────────────────────
+  "recommit.title": "Hoy es un buen día para empezar de nuevo",
+  "recommit.body":
+    "Tus {prev} días no se borran · mejor {best} días. ¿Empezamos de nuevo hoy?",
+  "recommit.freezeChip": "Haz check-in ahora y {count} hielo(s) unirán tu racha",
+  "recommit.cta": "Hacer check-in ahora",
+  "recommit.dismissAria": "Cerrar",
+
+  // ── Coach de afirmaciones ─────────────────────────
+  "coach.buttonAria": "Recibir sugerencias del coach de IA",
+  "coach.title": "Sugerencias del coach",
+  "coach.loading": "Creando sugerencias…",
+  "coach.style.process": "Proceso",
+  "coach.style.question": "Pregunta",
+  "coach.style.identity": "Identidad",
+  "coach.failed": "No se pudieron cargar las sugerencias.",
+  "coach.quota": "Agotaste las sugerencias del coach de hoy. Hasta mañana.",
 };
 
 export default dict;

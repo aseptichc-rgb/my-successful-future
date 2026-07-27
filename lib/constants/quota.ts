@@ -40,6 +40,16 @@ export const DAILY_QUOTA = {
    * 받아주기 위해 여유 있게 둔다 (같은 날 모두 일치 시도).
    */
   affirmationCheckin: 12,
+  /**
+   * WOOP 실행설계 "장애물 AI 제안" (LLM 1호출 = 제안 3개).
+   * 플랜은 최대 10개(MAX_EXECUTION_PLANS)라 목표당 1회씩 받아도 하루 안에 끝난다.
+   */
+  obstacleSuggest: 10,
+  /**
+   * 다짐 코치 — 한 다짐당 3가지 스타일 리라이트 제안 (LLM 1호출).
+   * 다짐 최대 10개(MAX_SUCCESS_AFFIRMATIONS)와 맞춘다.
+   */
+  affirmationCoach: 10,
 } as const;
 
 export type QuotaKey = keyof typeof DAILY_QUOTA;

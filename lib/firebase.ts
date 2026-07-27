@@ -26,12 +26,17 @@ import {
   getDoc,
   getDocs,
   setDoc,
+  addDoc,
+  deleteDoc,
   serverTimestamp,
   onSnapshot,
   orderBy,
   limit as fsLimit,
   query,
   deleteField,
+  documentId,
+  startAt,
+  endAt,
   type Firestore,
   type Unsubscribe,
 } from "firebase/firestore";
@@ -41,8 +46,10 @@ import type {
   DailyEntry,
   DailyTodo,
   DailyMotivation,
+  ExecutionPlan,
   FutureSelfAnswers,
   FutureVision,
+  IdentityEvidenceDay,
   IdentityProgress,
   QuotePreference,
   UserLanguage,
@@ -575,10 +582,170 @@ export function onAffirmationCheckinSnapshot(
 export function onIdentityProgressSnapshot(
   uid: string,
   callback: (entries: IdentityProgress[]) => void,
+  onError?: (err: Error) => void,
 ): Unsubscribe {
   const db = getDbInstance();
-  return onSnapshot(collection(db, "users", uid, "identityProgress"), (snap) => {
-    const list: IdentityProgress[] = snap.docs.map((d) => d.data() as IdentityProgress);
-    callback(list);
-  });
+  return onSnapshot(
+    collection(db, "users", uid, "identityProgress"),
+    (snap) => {
+      const list: IdentityProgress[] = snap.docs.map((d) => d.data() as IdentityProgress);
+      callback(list);
+    },
+    (err) => {
+      console.error("[onIdentityProgressSnapshot] 구독 실패:", err);
+      onError?.(err);
+    },
+  );
+}
+
+// ── WOOP 실행설계 (if-then) ─────────────────────────
+export const MAX_EXECUTION_PLANS = 10;
+export const EXECUTION_PLAN_FIELD_MAX = 120;
+
+/** ExecutionPlan + 문서 ID — 목록/수정/삭제 UI 가 함께 쓴다. */
+export interface ExecutionPlanWithId extends ExecutionPlan {
+  id: string;
+}
+
+/** 저장 전 필드 정리 — trim + 길이 클램프 (서버 규칙이 아닌 클라 컨벤션 계층). */
+function normalizePlanField(s: string): string {
+  return s.trim().slice(0, EXECUTION_PLAN_FIELD_MAX);
+}
+
+/**
+ * 실행설계 목록 구독 — createdAt asc 고정 정렬.
+ * pickTodayPlan(lib/planRotation.ts) 의 회전 인덱스가 클라/서버에서 같으려면
+ * 순서가 안정적이어야 한다(위젯 라우트도 동일 정렬 사용).
+ */
+export function onExecutionPlansSnapshot(
+  uid: string,
+  callback: (plans: ExecutionPlanWithId[]) => void,
+  onError?: (err: Error) => void,
+): Unsubscribe {
+  const db = getDbInstance();
+  const q = query(collection(db, "users", uid, "executionPlans"), orderBy("createdAt", "asc"));
+  return onSnapshot(
+    q,
+    (snap) => {
+      callback(snap.docs.map((d) => ({ id: d.id, ...(d.data() as ExecutionPlan) })));
+    },
+    (err) => {
+      console.error("[onExecutionPlansSnapshot] 구독 실패:", err);
+      onError?.(err);
+    },
+  );
+}
+
+/**
+ * 실행설계 저장. planId 를 주면 수정(merge), null 이면 신규 생성.
+ * identityTag 는 값이 없으면 키 자체를 넣지 않는다(Firestore undefined 거부).
+ */
+export async function saveExecutionPlan(
+  uid: string,
+  planId: string | null,
+  plan: {
+    goal: string;
+    outcome: string;
+    obstacle: string;
+    ifText: string;
+    thenText: string;
+    identityTag?: string;
+    active?: boolean;
+  },
+): Promise<void> {
+  const db = getDbInstance();
+  const identityTag = plan.identityTag?.trim();
+  const data = {
+    goal: normalizePlanField(plan.goal),
+    outcome: normalizePlanField(plan.outcome),
+    obstacle: normalizePlanField(plan.obstacle),
+    ifText: normalizePlanField(plan.ifText),
+    thenText: normalizePlanField(plan.thenText),
+    ...(identityTag ? { identityTag } : {}),
+    active: plan.active ?? true,
+    updatedAt: serverTimestamp(),
+  };
+  if (planId) {
+    await setDoc(doc(db, "users", uid, "executionPlans", planId), data, { merge: true });
+  } else {
+    await addDoc(collection(db, "users", uid, "executionPlans"), {
+      ...data,
+      createdAt: serverTimestamp(),
+    });
+  }
+}
+
+export async function deleteExecutionPlan(uid: string, planId: string): Promise<void> {
+  const db = getDbInstance();
+  await deleteDoc(doc(db, "users", uid, "executionPlans", planId));
+}
+
+// ── "내일 첫 행동 1개" (저녁 모드) ───────────────────
+export const TOMORROW_FIRST_ACTION_MAX = 140;
+
+/**
+ * 저녁 모드에서 적는 "내일 첫 행동 1개" 저장 — 오늘 dailyEntries 문서에 merge.
+ * 다음 날 아침 카드가 "어제의 내가 정한 첫 행동"으로 어제 문서에서 읽어간다.
+ */
+export async function saveTomorrowFirstAction(
+  uid: string,
+  ymd: string,
+  text: string,
+): Promise<void> {
+  const db = getDbInstance();
+  await setDoc(
+    doc(db, "users", uid, "dailyEntries", ymd),
+    { ymd, tomorrowFirstAction: text.slice(0, TOMORROW_FIRST_ACTION_MAX), updatedAt: serverTimestamp() },
+    { merge: true },
+  );
+}
+
+/** 특정 날짜의 dailyEntry 단건 조회 — 아침 카드가 "어제 문서"를 읽을 때 사용. */
+export async function getDailyEntryOnce(uid: string, ymd: string): Promise<DailyEntry | null> {
+  const db = getDbInstance();
+  const snap = await getDoc(doc(db, "users", uid, "dailyEntries", ymd));
+  if (!snap.exists()) return null;
+  return { ymd, ...snap.data() } as DailyEntry;
+}
+
+// ── 진행 화면(/progress) 조회 ───────────────────────
+/**
+ * 기간 내 체크인한 날짜(ymd) 목록 — 30일 히트맵/일관성 % 데이터 소스.
+ * affirmationLogs 문서 ID 가 KST YYYY-MM-DD 라 documentId() 레인지 쿼리로 충분하다
+ * (별도 인덱스 불필요).
+ */
+export async function getAffirmationLogYmds(
+  uid: string,
+  fromYmd: string,
+  toYmd: string,
+): Promise<string[]> {
+  const db = getDbInstance();
+  const q = query(
+    collection(db, "users", uid, "affirmationLogs"),
+    orderBy(documentId()),
+    startAt(fromYmd),
+    endAt(toYmd),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => d.id);
+}
+
+/**
+ * 기간 내 정체성 증거 장부 조회(최신 날짜 먼저 반환) — /progress 최근 증거 피드용.
+ */
+export async function getIdentityEvidenceRange(
+  uid: string,
+  fromYmd: string,
+  toYmd: string,
+): Promise<IdentityEvidenceDay[]> {
+  const db = getDbInstance();
+  const q = query(
+    collection(db, "users", uid, "identityEvidence"),
+    orderBy(documentId()),
+    startAt(fromYmd),
+    endAt(toYmd),
+  );
+  const snap = await getDocs(q);
+  const days = snap.docs.map((d) => ({ ...(d.data() as IdentityEvidenceDay), ymd: d.id }));
+  return days.reverse();
 }

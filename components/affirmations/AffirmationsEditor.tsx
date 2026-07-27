@@ -5,6 +5,7 @@ import {
   MAX_SUCCESS_AFFIRMATIONS,
   SUCCESS_AFFIRMATION_MAX_LEN,
 } from "@/lib/firebase";
+import CoachPanel from "@/components/affirmations/CoachPanel";
 import { useT } from "@/lib/i18n";
 
 /**
@@ -12,6 +13,8 @@ import { useT } from "@/lib/i18n";
  *
  * - value/onChange 로 부모가 상태를 관리 (저장 시점 분리).
  * - 행 추가는 최대 MAX_SUCCESS_AFFIRMATIONS 까지, 빈 줄도 일단 허용 (저장 시 normalize 가 떨어냄).
+ * - 행별 ✦ 코치 버튼 — 과정/질문/정체성 3스타일 리라이트 제안(CoachPanel). 탭하면 교체.
+ *   따라쓰기 체크인 플로우/서버 비교 로직은 변경 없음.
  */
 export default function AffirmationsEditor({
   value,
@@ -32,6 +35,8 @@ export default function AffirmationsEditor({
 }) {
   const t = useT();
   const [newDraft, setNewDraft] = useState("");
+  /** 코치 패널이 열린 행 인덱스 (한 번에 1개만). */
+  const [coachIdx, setCoachIdx] = useState<number | null>(null);
 
   const addRow = () => {
     const text = newDraft.trim().slice(0, SUCCESS_AFFIRMATION_MAX_LEN);
@@ -47,6 +52,7 @@ export default function AffirmationsEditor({
 
   const removeRow = (idx: number) => {
     onChange(value.filter((_, i) => i !== idx));
+    setCoachIdx(null);
   };
 
   const moveRow = (idx: number, dir: -1 | 1) => {
@@ -66,53 +72,76 @@ export default function AffirmationsEditor({
       ) : (
         <ul className="space-y-2">
           {value.map((text, idx) => (
-            <li key={idx} className="flex items-center gap-2">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#1E1B4B]/10 text-[12px] font-semibold text-[#1E1B4B]">
-                {idx + 1}
-              </span>
-              <input
-                value={text}
-                disabled={disabled}
-                maxLength={SUCCESS_AFFIRMATION_MAX_LEN}
-                onChange={(e) => updateRow(idx, e.target.value)}
-                placeholder={t("affirmations.editor.placeholder")}
-                className="min-w-0 flex-1 rounded-[10px] border border-black/10 bg-white px-3 py-2 text-[14px] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none disabled:opacity-60"
-              />
-              <div className="flex shrink-0 items-center gap-0.5">
-                <button
-                  type="button"
-                  onClick={() => moveRow(idx, -1)}
-                  disabled={disabled || idx === 0}
-                  aria-label="위로 이동"
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-black/40 transition-colors hover:bg-black/[0.04] hover:text-black/80 disabled:cursor-not-allowed disabled:opacity-30"
-                >
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M6 15l6-6 6 6" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => moveRow(idx, 1)}
-                  disabled={disabled || idx === value.length - 1}
-                  aria-label="아래로 이동"
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-black/40 transition-colors hover:bg-black/[0.04] hover:text-black/80 disabled:cursor-not-allowed disabled:opacity-30"
-                >
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => removeRow(idx)}
+            <li key={idx}>
+              <div className="flex items-center gap-2">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#1E1B4B]/10 text-[12px] font-semibold text-[#1E1B4B]">
+                  {idx + 1}
+                </span>
+                <input
+                  value={text}
                   disabled={disabled}
-                  aria-label={t("affirmations.editor.removeAria")}
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-black/40 transition-colors hover:bg-black/[0.04] hover:text-black/80 disabled:cursor-not-allowed disabled:opacity-30"
-                >
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M18 6L6 18M6 6l12 12" />
-                  </svg>
-                </button>
+                  maxLength={SUCCESS_AFFIRMATION_MAX_LEN}
+                  onChange={(e) => updateRow(idx, e.target.value)}
+                  placeholder={t("affirmations.editor.placeholder")}
+                  className="min-w-0 flex-1 rounded-[10px] border border-black/10 bg-white px-3 py-2 text-[14px] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none disabled:opacity-60"
+                />
+                <div className="flex shrink-0 items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setCoachIdx(coachIdx === idx ? null : idx)}
+                    disabled={disabled || text.trim().length === 0}
+                    aria-label={t("coach.buttonAria")}
+                    aria-expanded={coachIdx === idx}
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-[13px] transition-colors hover:bg-black/[0.04] disabled:cursor-not-allowed disabled:opacity-30"
+                    style={{ color: coachIdx === idx ? "#D85A30" : "rgba(0,0,0,0.4)" }}
+                  >
+                    ✦
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveRow(idx, -1)}
+                    disabled={disabled || idx === 0}
+                    aria-label="위로 이동"
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-black/40 transition-colors hover:bg-black/[0.04] hover:text-black/80 disabled:cursor-not-allowed disabled:opacity-30"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M6 15l6-6 6 6" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveRow(idx, 1)}
+                    disabled={disabled || idx === value.length - 1}
+                    aria-label="아래로 이동"
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-black/40 transition-colors hover:bg-black/[0.04] hover:text-black/80 disabled:cursor-not-allowed disabled:opacity-30"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M6 9l6 6 6-6" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeRow(idx)}
+                    disabled={disabled}
+                    aria-label={t("affirmations.editor.removeAria")}
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-black/40 transition-colors hover:bg-black/[0.04] hover:text-black/80 disabled:cursor-not-allowed disabled:opacity-30"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 6L6 18M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
+              {coachIdx === idx && text.trim().length > 0 && (
+                <CoachPanel
+                  text={text}
+                  onApply={(next) => {
+                    updateRow(idx, next);
+                    setCoachIdx(null);
+                  }}
+                  onClose={() => setCoachIdx(null)}
+                />
+              )}
             </li>
           ))}
         </ul>

@@ -56,12 +56,28 @@ export interface User {
   createdAt: Timestamp;
 }
 
-/** "성공한 나의 모습" 다짐 따라쓰기 연속일 카운터. 서버 트랜잭션으로만 갱신. */
+/**
+ * "성공한 나의 모습" 다짐 따라쓰기 연속일 카운터. 서버 트랜잭션으로만 갱신.
+ * 신규 필드는 전부 optional — 레거시 문서(count/lastYmd 만 존재)와 완전 호환되며,
+ * 읽기 경로는 `bestCount ?? count`, `freezesLeft ?? FREEZES_PER_MONTH` 폴백을 쓴다.
+ */
 export interface AffirmationStreak {
   count: number;
   /** 마지막으로 정상 체크인이 일어난 날짜 (KST YYYY-MM-DD). */
   lastYmd: string;
   updatedAt?: Timestamp;
+  /** 역대 최고 연속일 — 스트릭이 끊겨도 보존된다. 누락(레거시) 시 count 로 폴백해 읽는다. */
+  bestCount?: number;
+  /**
+   * 이번 달 남은 스트릭 프리즈(결석을 다리 놓아주는 얼음). freezeMonth 가
+   * 이번 달(KST YYYY-MM)이 아니면 월초 리필(FREEZES_PER_MONTH)로 간주 — 지연 리필.
+   */
+  freezesLeft?: number;
+  freezeMonth?: string;
+  /** 마지막으로 스트릭이 실제로 끊긴(1로 리셋된) 체크인 날짜 — 재약속 카드 문구용. */
+  lastBrokenYmd?: string;
+  /** 끊기기 직전의 연속일 — "n일을 이어온 기록" 문구용. */
+  lastBrokenCount?: number;
 }
 
 /**
@@ -132,6 +148,12 @@ export interface DailyEntry {
   todos: DailyTodo[];
   wins: string[];
   achievedGoals?: string[];
+  /**
+   * 저녁 모드에서 적는 "내일 첫 행동 1개" (Masicampo & Baumeister 2011 — 계획을 적으면
+   * 미완료 목표의 인지 침입이 해소된다). 오늘 문서에 저장하고, 다음 날 아침 카드가
+   * "어제의 내가 정한 첫 행동"으로 어제 문서에서 읽어간다.
+   */
+  tomorrowFirstAction?: string;
   updatedAt: Timestamp;
 }
 
@@ -237,8 +259,72 @@ export interface FutureVision {
 export interface IdentityProgress {
   identityTag: string;
   count: number;
-  lastRespondedAt: Timestamp;
+  /** 마지막 "미션 응답" 시각. 증거 적립만으로 생성된 문서엔 없을 수 있다(미션 전용 필드). */
+  lastRespondedAt?: Timestamp;
   recentResponses: string[];
+  /**
+   * 증거 출처별 누적 카운트. mission 은 카드 응답(lib/missionResponse.ts),
+   * checkin/goal/win 은 체크인 트랜잭션의 증거 적립(lib/identityEvidence.ts).
+   * 레거시 문서엔 없을 수 있음 — UI 는 누락 시 해당 칩을 생략한다.
+   */
+  sourceCounts?: {
+    mission?: number;
+    checkin?: number;
+    goal?: number;
+    win?: number;
+  };
+  /** 마지막 증거 적립 시각 (mission 응답의 lastRespondedAt 과 별개). */
+  lastEvidenceAt?: Timestamp;
+}
+
+// ── WOOP 실행설계 (if-then) ─────────────────────────
+/**
+ * WOOP(Wish-Outcome-Obstacle-Plan) 실행설계 — 목표 1개당 1개.
+ * `users/{uid}/executionPlans/{planId}` 에 저장. 사용자가 직접 작성하는 산문 콘텐츠라
+ * dailyEntries 와 동급으로 클라이언트 직접 write 를 허용한다(위조 가치 없음).
+ * 실행의도(if-then)는 목표 달성 효과 d=0.65 (Gollwitzer & Sheeran 2006).
+ */
+export interface ExecutionPlan {
+  /** 연결된 목표 텍스트 스냅샷(User.goals 항목). 목표가 지워져도 플랜은 남는다. */
+  goal: string;
+  /** WOOP-O: 가장 좋은 결과를 이룬 순간의 느낌 한 줄. */
+  outcome: string;
+  /** WOOP-O: 나를 막는 "내 안의" 장애물 한 줄 (외부 환경이 아닌 내면의 방해물). */
+  obstacle: string;
+  /** if [장애물 상황이 오면] */
+  ifText: string;
+  /** then [나는 이렇게 한다] */
+  thenText: string;
+  /** 이 목표 달성이 강화할 정체성 라벨 — User.identities.labels 중 1개 (생성 시 선택, 선택사항). */
+  identityTag?: string;
+  /** false 면 오늘의 플랜 회전/위젯 노출에서 제외. */
+  active: boolean;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+// ── 정체성 증거 장부 ─────────────────────────────────
+/** 정체성 증거 1건 — 어떤 행동이 어떤 라벨에 투표했는지. */
+export interface IdentityEvidenceEntry {
+  identityTag: string;
+  /** checkin=오늘 다짐 체크인, goal=어제 목표 달성, win=어제 잘한 일 기록. */
+  source: "checkin" | "goal" | "win";
+  /** 표시용 짧은 근거 (예: 달성한 목표 텍스트, 잘한 일 첫 줄 — 트렁케이트). */
+  detail?: string;
+}
+
+/**
+ * `users/{uid}/identityEvidence/{ymd}` — 하루치 정체성 증거 장부 + 중복 적립 방지 마커.
+ * 체크인 트랜잭션(lib/identityEvidence.ts)에서만 기록 — 클라이언트 write 차단(카운트 위조 방지).
+ * reconciled: 이 날짜의 goal/win 증거가 (다음 날 체크인 시점에) 이미 정산됐는지.
+ * ⚠️ 존재 여부만으로 정산 여부를 판단하면 안 됨 — 당일 체크인이 checkin 엔트리로
+ * 문서를 먼저 만들 수 있으므로 반드시 reconciled 플래그로 가드한다.
+ */
+export interface IdentityEvidenceDay {
+  ymd: string;
+  entries: IdentityEvidenceEntry[];
+  reconciled?: boolean;
+  createdAt: Timestamp;
 }
 
 // ── 안드로이드 위젯: 큐레이션 명언 ──────────────────
@@ -311,6 +397,21 @@ export interface WidgetFutureVision {
   teaser: string;
 }
 
+/**
+ * 위젯에 띄우는 "오늘의 if-then" 실행설계 한 줄.
+ * 출처: `users/{uid}/executionPlans` 중 active 플랜을 ymd 시드로 회전(lib/planRotation.ts —
+ * 홈 DailyPlanCard 와 동일 순수 모듈이라 위젯·홈이 항상 같은 플랜을 본다).
+ * 응답 호환성: 플랜 미설정/조회 실패 시 필드 자체를 생략 — 옛/신 클라이언트 모두 섹션 자연 생략.
+ */
+export interface WidgetExecutionPlan {
+  /** 연결된 목표 텍스트. */
+  goal: string;
+  /** if [장애물 상황] */
+  ifText: string;
+  /** then [행동] */
+  thenText: string;
+}
+
 export interface WidgetTodayResponse {
   generatedAt: string;
   ymd: string;
@@ -342,4 +443,8 @@ export interface WidgetTodayResponse {
    */
   goalsAchievedCount?: number;
   goalsTotalCount?: number;
+  /**
+   * "오늘의 if-then" 실행설계. 누락 시 위젯은 해당 섹션을 자연 생략 — 옛 클라이언트도 안전.
+   */
+  executionPlan?: WidgetExecutionPlan;
 }

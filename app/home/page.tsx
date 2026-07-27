@@ -8,17 +8,28 @@ import {
   onDailyMotivationSnapshot,
   onFutureVisionSnapshot,
   onAffirmationCheckinSnapshot,
+  onExecutionPlansSnapshot,
   saveDailyWins,
   saveDailyAchievedGoals,
+  saveTomorrowFirstAction,
+  getDailyEntryOnce,
   getKstYmd,
   MAX_DAILY_WINS,
+  TOMORROW_FIRST_ACTION_MAX,
+  type ExecutionPlanWithId,
 } from "@/lib/firebase";
+import { kstHour, yesterdayKstYmd } from "@/lib/kstDate";
+import { pickTodayPlan } from "@/lib/planRotation";
 import { authedFetch } from "@/lib/authedFetch";
 import { notifyAndroidWidgetRefresh } from "@/lib/widgetBridge";
 import { refreshIosWidget } from "@/lib/iosWidget";
 import MotivationCard from "@/components/home/MotivationCard";
 import FutureVisionCard from "@/components/home/FutureVisionCard";
+import DailyPlanCard from "@/components/home/DailyPlanCard";
+import RecommitCard from "@/components/home/RecommitCard";
+import ExecutionPlansSection from "@/components/woop/ExecutionPlansSection";
 import Logo from "@/components/ui/Logo";
+import GroupedSection from "@/components/ui/GroupedSection";
 import { useLanguage } from "@/lib/i18n";
 import type { DailyEntry, DailyMotivation, FutureVision } from "@/types";
 
@@ -37,6 +48,21 @@ const WIN_MAX = 140;
 const WINS_AUTOSAVE_MS = 600;
 const WINS_SAVED_TOAST_MS = 1800;
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * 아침/저녁 2모드 경계 (KST 시각).
+ * 아침(<12): 의도 세팅 — "오늘의 if-then" 전면 배치.
+ * 저녁(>=18): 회고 — wins 우선 + "내일 첫 행동 1개" 입력.
+ * 사이(12~17): 중립 — 기존 배치 유지. 모드는 기본 탭/배치만 바꾸고 탭 탭이 항상 우선.
+ */
+const MORNING_END_HOUR = 12;
+const EVENING_START_HOUR = 18;
+type HomeMode = "morning" | "neutral" | "evening";
+
+function currentHomeMode(): HomeMode {
+  const h = kstHour();
+  return h < MORNING_END_HOUR ? "morning" : h >= EVENING_START_HOUR ? "evening" : "neutral";
+}
 
 // 3개 슬롯(다짐·작은 승리·목표) 배지는 모두 동일 indigo — 차분한 인상.
 const SLOT_COLORS = ["#1E1B4B", "#1E1B4B", "#1E1B4B"];
@@ -138,10 +164,25 @@ export default function HomeDashboardPage() {
   const winsSavedToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const winsAutosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // "내일 첫 행동 1개" (저녁 모드) — wins 와 동일한 600ms 디바운스 자동 저장 패턴.
+  const [tomorrowAction, setTomorrowAction] = useState("");
+  const [savedTomorrowAction, setSavedTomorrowAction] = useState("");
+  const [tomorrowSaving, setTomorrowSaving] = useState(false);
+  const [tomorrowJustSaved, setTomorrowJustSaved] = useState(false);
+  const [tomorrowError, setTomorrowError] = useState<string | null>(null);
+  const tomorrowAutosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tomorrowToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // WOOP 실행설계 목록 + 아침 카드의 "어젯밤의 내가 정한 첫 행동".
+  const [plans, setPlans] = useState<ExecutionPlanWithId[]>([]);
+  const [yesterdayFirstAction, setYesterdayFirstAction] = useState<string | null>(null);
+
   useEffect(() => {
     return () => {
       if (winsSavedToastTimerRef.current) clearTimeout(winsSavedToastTimerRef.current);
       if (winsAutosaveTimerRef.current) clearTimeout(winsAutosaveTimerRef.current);
+      if (tomorrowAutosaveTimerRef.current) clearTimeout(tomorrowAutosaveTimerRef.current);
+      if (tomorrowToastTimerRef.current) clearTimeout(tomorrowToastTimerRef.current);
     };
   }, []);
 
@@ -156,7 +197,11 @@ export default function HomeDashboardPage() {
   const [visionError, setVisionError] = useState<string | null>(null);
   const ensureRequestedVisionYmdRef = useRef<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<"future" | "actions">("future");
+  // 시간대 모드는 기본 탭만 정한다 — 탭 탭이 항상 우선 (렌더마다 재계산해 경계를 넘겨도 반영).
+  const homeMode = currentHomeMode();
+  const [activeTab, setActiveTab] = useState<"future" | "actions">(() =>
+    currentHomeMode() === "evening" ? "actions" : "future",
+  );
 
   useEffect(() => {
     if (loading) return;
@@ -179,18 +224,54 @@ export default function HomeDashboardPage() {
           setWins(["", "", ""]);
           setSavedWins(["", "", ""]);
           setAchievedGoals([]);
+          setTomorrowAction("");
+          setSavedTomorrowAction("");
           dailyHydratedRef.current = true;
         }
         return;
       }
       const w = Array.isArray(entry.wins) ? entry.wins : [];
       const normalized = [0, 1, 2].map((i) => w[i] || "");
-      if (!dailyHydratedRef.current) setWins(normalized);
+      const tfa = typeof entry.tomorrowFirstAction === "string" ? entry.tomorrowFirstAction : "";
+      if (!dailyHydratedRef.current) {
+        setWins(normalized);
+        setTomorrowAction(tfa);
+      }
       setSavedWins(normalized);
+      setSavedTomorrowAction(tfa);
       setAchievedGoals(Array.isArray(entry.achievedGoals) ? entry.achievedGoals : []);
       dailyHydratedRef.current = true;
     });
     return unsub;
+  }, [firebaseUser, ymd]);
+
+  // WOOP 실행설계 목록 구독 — "오늘의 if-then" 회전 + 실행 설계 섹션 공용.
+  useEffect(() => {
+    if (!firebaseUser) return;
+    const unsub = onExecutionPlansSnapshot(firebaseUser.uid, setPlans, () => {
+      // 구독 실패(규칙 미배포 등) 시 섹션만 비운다 — 홈 나머지는 정상 동작.
+      setPlans([]);
+    });
+    return unsub;
+  }, [firebaseUser]);
+
+  // 어제 저녁에 적은 "내일 첫 행동" — 아침 카드 보조 행. 실패해도 카드만 생략.
+  useEffect(() => {
+    if (!firebaseUser) return;
+    let cancelled = false;
+    getDailyEntryOnce(firebaseUser.uid, yesterdayKstYmd(ymd))
+      .then((entry) => {
+        if (cancelled) return;
+        const txt = (entry?.tomorrowFirstAction ?? "").trim();
+        setYesterdayFirstAction(txt.length > 0 ? txt : null);
+      })
+      .catch((err) => {
+        console.error("[home] 어제 첫 행동 조회 실패(생략):", err);
+        if (!cancelled) setYesterdayFirstAction(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [firebaseUser, ymd]);
 
   useEffect(() => {
@@ -463,10 +544,48 @@ export default function HomeDashboardPage() {
     }
   };
 
+  // ── "내일 첫 행동 1개" — wins 와 동일한 디바운스 자동 저장 패턴 ──
+  const handleChangeTomorrowAction = (value: string) => {
+    const next = value.slice(0, TOMORROW_FIRST_ACTION_MAX);
+    setTomorrowAction(next);
+    if (tomorrowJustSaved) setTomorrowJustSaved(false);
+    if (tomorrowError) setTomorrowError(null);
+
+    if (tomorrowAutosaveTimerRef.current) clearTimeout(tomorrowAutosaveTimerRef.current);
+    const dirty = next !== savedTomorrowAction;
+    if (!dirty || next.trim().length === 0) return;
+    tomorrowAutosaveTimerRef.current = setTimeout(() => {
+      void doAutoSaveTomorrowAction(next);
+    }, WINS_AUTOSAVE_MS);
+  };
+
+  const doAutoSaveTomorrowAction = async (snapshot: string) => {
+    setTomorrowSaving(true);
+    setTomorrowError(null);
+    try {
+      await saveTomorrowFirstAction(uid, ymd, snapshot);
+      setSavedTomorrowAction(snapshot);
+      setTomorrowJustSaved(true);
+      if (tomorrowToastTimerRef.current) clearTimeout(tomorrowToastTimerRef.current);
+      tomorrowToastTimerRef.current = setTimeout(
+        () => setTomorrowJustSaved(false),
+        WINS_SAVED_TOAST_MS,
+      );
+    } catch (err) {
+      console.error("[home] 내일 첫 행동 자동 저장 실패:", err);
+      setTomorrowError(t("home.wins.saveFailed"));
+    } finally {
+      setTomorrowSaving(false);
+    }
+  };
+
   const futureText = user?.futurePersona || "";
   const streakCount = user?.affirmationStreak?.count ?? 0;
   const longDate = formatLongDate(ymd, locale);
   const goalsDone = achievedGoals.filter((g) => goals.includes(g)).length;
+  // 오늘의 if-then — 홈과 위젯이 같은 순수 회전(lib/planRotation)을 써 항상 일치한다.
+  const todayPlan = pickTodayPlan(plans, uid, ymd);
+  const identityLabels = user?.identities?.labels ?? [];
 
   /* ───── render ───── */
 
@@ -483,17 +602,21 @@ export default function HomeDashboardPage() {
         <div className="mx-auto flex max-w-3xl items-center justify-between px-2 min-h-[44px]">
           <div className="w-[44px]" />
           <div className="flex items-center gap-2">
-            {streakCount > 0 && (
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-                style={{ background: "rgba(255,149,0,0.16)" }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="#D85A30" aria-hidden>
-                  <path d="M13 2L4.5 13.5h6L9 22l8.5-11.5h-6L13 2z" />
-                </svg>
-                <span className="text-[12px] font-semibold tracking-[0.4px] text-[#D85A30]">
-                  {streakCount}
-                </span>
-              </div>
-            )}
+            {/* 스트릭 칩 — 탭하면 /progress (히트맵·최고기록·정체성 장부) 로 이동 */}
+            <button
+              type="button"
+              onClick={() => router.push("/progress")}
+              aria-label={t("progress.chipAria")}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:opacity-80 transition-opacity"
+              style={{ background: "rgba(255,149,0,0.16)" }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="#D85A30" aria-hidden>
+                <path d="M13 2L4.5 13.5h6L9 22l8.5-11.5h-6L13 2z" />
+              </svg>
+              <span className="text-[12px] font-semibold tracking-[0.4px] text-[#D85A30]">
+                {streakCount}
+              </span>
+            </button>
             <button
               type="button"
               onClick={() => router.push("/settings")}
@@ -549,9 +672,28 @@ export default function HomeDashboardPage() {
       </div>
 
       <main className="mx-auto w-full max-w-3xl">
+        {/* ── 스트릭 공백 감지 — 프리즈 안내 칩 / 자기연민 재약속 카드 ── */}
+        <RecommitCard
+          streak={user?.affirmationStreak}
+          todayYmd={ymd}
+          alreadyCheckedInToday={alreadyCheckedInToday}
+          onCheckinCta={() => setActiveTab("future")}
+        />
+
         {/* ─── Tab · 오늘 (future) ─── */}
         {activeTab === "future" && (
           <>
+            {/* 오늘의 if-then — 아침엔 전체, 그 외엔 한 줄 축약. 목표/플랜이 하나도 없으면 생략. */}
+            {(plans.length > 0 || goals.length > 0) && (
+              <div className="px-4 pt-4">
+                <DailyPlanCard
+                  plan={todayPlan}
+                  yesterdayFirstAction={homeMode === "morning" ? yesterdayFirstAction : null}
+                  compact={homeMode !== "morning"}
+                  onCreateCta={() => setActiveTab("actions")}
+                />
+              </div>
+            )}
             <div className="px-4 pt-5">
               <FutureVisionCard
                 vision={vision}
@@ -582,8 +724,11 @@ export default function HomeDashboardPage() {
         )}
 
         {/* ─── Tab · 나의 행동 (actions) ─── */}
+        {/* 저녁 모드는 회고 우선 — flex order 로 (wins → 내일 첫 행동 → goals → 실행설계),
+            그 외는 (goals → 실행설계 → wins). JSX 중복 없이 순서만 바꾼다. */}
         {activeTab === "actions" && (
-          <>
+          <div className="flex flex-col">
+            <div style={{ order: homeMode === "evening" ? 2 : 0 }}>
             {/* ── 이번 달 목표 (읽기·달성 토글 전용 — 추가/삭제는 /settings) ── */}
             <GroupedSection
               header={t("home.goals.title")}
@@ -668,7 +813,19 @@ export default function HomeDashboardPage() {
                 </button>
               )}
             </GroupedSection>
+            </div>
 
+            {/* ── 실행 설계 (if-then) — WOOP ── */}
+            <div style={{ order: homeMode === "evening" ? 3 : 1 }}>
+              <ExecutionPlansSection
+                uid={uid}
+                goals={goals}
+                identityLabels={identityLabels}
+                plans={plans}
+              />
+            </div>
+
+            <div style={{ order: homeMode === "evening" ? 0 : 2 }}>
             {/* ── 오늘의 작은 승리 ── */}
             <GroupedSection
               header={t("home.wins.title", { max: MAX_DAILY_WINS })}
@@ -728,49 +885,53 @@ export default function HomeDashboardPage() {
                 );
               })}
             </GroupedSection>
-          </>
+            </div>
+
+            {/* ── 내일 첫 행동 1개 (저녁 모드 전용) ── */}
+            {homeMode === "evening" && (
+              <div style={{ order: 1 }}>
+                <GroupedSection
+                  header={t("home.evening.firstAction.title")}
+                  trailing={
+                    tomorrowError ? (
+                      <span className="text-[13px] text-[#FF3B30]">{tomorrowError}</span>
+                    ) : tomorrowJustSaved ? (
+                      <span className="text-[13px] font-medium text-[#D85A30]">
+                        {t("common.saved")}
+                      </span>
+                    ) : tomorrowSaving ? (
+                      <span className="text-[13px] text-[var(--label-3)]">
+                        {t("common.saving")}
+                      </span>
+                    ) : null
+                  }
+                  footer={t("home.evening.firstAction.footer")}
+                >
+                  <div className="flex items-start gap-3 px-4 py-3">
+                    <div
+                      className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0 mt-0.5"
+                      style={{ background: "rgba(216,90,48,0.12)" }}
+                    >
+                      <span className="text-[15px]" aria-hidden>
+                        🌅
+                      </span>
+                    </div>
+                    <textarea
+                      value={tomorrowAction}
+                      rows={1}
+                      maxLength={TOMORROW_FIRST_ACTION_MAX}
+                      onChange={(e) => handleChangeTomorrowAction(e.target.value)}
+                      placeholder={t("home.evening.firstAction.placeholder")}
+                      className="flex-1 min-h-[24px] resize-none bg-transparent text-[17px] leading-[24px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none py-2"
+                    />
+                  </div>
+                </GroupedSection>
+              </div>
+            )}
+          </div>
         )}
       </main>
     </div>
   );
 }
 
-/* ─────────────────────────────────────────────────────────────
- * GroupedSection — iOS Settings.app's inset card pattern.
- * Header (uppercase, label2) above + footer (label2 footnote) below.
- * Card itself: white bg, 12px radius, 16px side inset.
- * ───────────────────────────────────────────────────────────── */
-function GroupedSection({
-  header,
-  footer,
-  trailing,
-  children,
-}: {
-  header?: string;
-  footer?: string;
-  trailing?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="mt-7">
-      {(header || trailing) && (
-        <div className="flex items-end justify-between px-7 mb-1.5">
-          {header && (
-            <span className="text-[13px] uppercase tracking-[-0.08px] text-[var(--label-2)]">
-              {header}
-            </span>
-          )}
-          {trailing}
-        </div>
-      )}
-      <div className="mx-4 bg-[var(--bg-grouped-2)] rounded-[12px] overflow-hidden">
-        {children}
-      </div>
-      {footer && (
-        <p className="px-7 mt-1.5 text-[13px] tracking-[-0.08px] text-[var(--label-2)]">
-          {footer}
-        </p>
-      )}
-    </div>
-  );
-}

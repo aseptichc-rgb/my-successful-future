@@ -396,6 +396,87 @@ const dict: Record<DictKey, string> = {
   "settings.pro.restoreDone.desc": "Your purchase has been restored.",
   "settings.pro.restoreNone.title": "Nothing to restore",
   "settings.pro.restoreNone.desc": "No previous purchases were found.",
+
+  // ── WOOP execution plans (if-then) ────────────────
+  "woop.section.title": "Execution plans (if-then)",
+  "woop.section.footer": "Naming your obstacle in advance dramatically raises follow-through.",
+  "woop.section.designCta": "Design",
+  "woop.sheet.title": "Execution plan",
+  "woop.step.wish": "Goal",
+  "woop.step.outcome": "Best outcome",
+  "woop.step.obstacle": "Inner obstacle",
+  "woop.step.plan": "If-then plan",
+  "woop.wish.hint": "Which goal is this plan for?",
+  "woop.wish.empty": "Add a monthly goal in Settings first.",
+  "woop.outcome.hint": "What does the best moment look like when you achieve this goal?",
+  "woop.outcome.placeholder": "e.g. Picturing myself having done it makes my heart race",
+  "woop.obstacle.hint": "What INNER obstacle blocks the way? Look inside your mind, not at circumstances.",
+  "woop.obstacle.placeholder": "e.g. By evening I'm tired and want to put it off",
+  "woop.obstacle.suggest": "Get AI suggestions",
+  "woop.obstacle.suggesting": "Creating suggestions…",
+  "woop.plan.ifLabel": "If",
+  "woop.plan.thenLabel": "Then",
+  "woop.plan.ifPlaceholder": "when the obstacle moment comes",
+  "woop.plan.thenPlaceholder": "I will do this",
+  "woop.identity.pickLabel": "Identity this practice reinforces",
+  "woop.save": "Save",
+  "woop.saving": "Saving…",
+  "woop.delete": "Delete",
+  "woop.saveFailed": "Couldn't save the execution plan.",
+  "woop.suggestFailed": "Couldn't load suggestions.",
+
+  // ── Today's if-then card (morning mode) ───────────
+  "plan.today.title": "Today's if-then",
+  "plan.today.if": "If",
+  "plan.today.then": "Then",
+  "plan.today.emptyCta": "Create today's execution plan",
+  "plan.today.firstAction": "The first action last-night-me chose",
+
+  // ── Evening mode: tomorrow's first action ─────────
+  "home.evening.firstAction.title": "One first action for tomorrow",
+  "home.evening.firstAction.placeholder": "The small action you'll do first tomorrow morning",
+  "home.evening.firstAction.footer": "Writing it down quiets your mind overnight · auto-saved",
+
+  // ── Progress (/progress) ──────────────────────────
+  "progress.title": "Progress",
+  "progress.back": "← Home",
+  "progress.chipAria": "View progress",
+  "progress.streak.current": "Current streak",
+  "progress.streak.days": "{count} days",
+  "progress.streak.best": "Best {count} days",
+  "progress.freeze.label": "Freezes left this month",
+  "progress.freeze.desc": "Miss a day and a freeze bridges your streak automatically ({max}/month)",
+  "progress.heatmap.title": "Last 30 days",
+  "progress.consistency": "Consistency {pct}%",
+  "progress.identity.title": "Identity evidence ledger",
+  "progress.identity.subtitle": "Every action is a vote for the person you're becoming.",
+  "progress.identity.iAm": "I am {label}",
+  "progress.identity.votes": "{count}×",
+  "progress.identity.empty": "No evidence yet. Start with today's affirmation check-in.",
+  "progress.evidence.title": "Recent evidence",
+  "progress.source.checkin": "Affirmation",
+  "progress.source.goal": "Goal",
+  "progress.source.win": "Win",
+  "progress.source.mission": "Mission",
+  "progress.loadFailed": "Couldn't load your progress.",
+
+  // ── Recommit card (self-compassionate return) ─────
+  "recommit.title": "Today is a good day to begin again",
+  "recommit.body":
+    "Your {prev}-day run isn't erased · best {best} days. Shall we start again today?",
+  "recommit.freezeChip": "Check in now and {count} freeze(s) will bridge your streak",
+  "recommit.cta": "Check in now",
+  "recommit.dismissAria": "Dismiss",
+
+  // ── Affirmation coach ─────────────────────────────
+  "coach.buttonAria": "Get AI coach suggestions",
+  "coach.title": "Coach suggestions",
+  "coach.loading": "Creating suggestions…",
+  "coach.style.process": "Process",
+  "coach.style.question": "Question",
+  "coach.style.identity": "Identity",
+  "coach.failed": "Couldn't load suggestions.",
+  "coach.quota": "You've used today's coach suggestions. See you tomorrow.",
 };
 
 export default dict;
