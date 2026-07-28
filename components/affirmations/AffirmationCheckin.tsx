@@ -2,19 +2,25 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useT } from "@/lib/i18n";
+import type { AffirmationCheckinDepth } from "@/types";
 
 /* ─────────────────────────────────────────────────────────────────
- * AffirmationCheckin — Apple iOS native redesign
- *  · Grouped inset card (white on systemGroupedBackground)
- *  · Per-row colored number badges — iOS palette
- *  · Underline-only inputs · matched ✓ Green
- *  · Streak chip — Orange (위젯과 통일)
+ * AffirmationCheckin — 하루 1줄이 기본, 전량 새김은 선택.
+ *
+ * 왜 1줄인가: 스트릭·정체성 증거를 여는 유일한 문이 다짐 전량 정확 전사였다.
+ * 하루의 앵커 행동이 가장 비싸면 실행 빈도가 떨어진다(Fogg B=MAP — Ability 를
+ * 낮춰야 행동이 유지된다). 필수치를 오늘 회전 1줄로 내리고, 전량 전사는
+ * 정체성 증거 보너스가 붙는 선택지로 남겼다(의식은 삭제하지 않는다).
+ *
+ * 오늘의 줄은 lib/planRotation 의 pickTodayAffirmationIndex — 서버 체크인
+ * 트랜잭션과 같은 순수 함수를 공유하므로 클라·서버 판정이 어긋나지 않는다.
+ *
+ * 디자인: Grouped inset 카드 · 번호 배지 indigo · 밑줄 입력 · 스트릭 칩 오렌지.
+ * 실시간(onBlur) 빨간 점선 오류는 없앴다 — 타이핑 중 처벌 신호는 앵커 행동을 억제한다.
  * ───────────────────────────────────────────────────────────────── */
 
 const AFFIRMATION_INPUT_MAX = 72;
-
-// 번호 배지는 단일 indigo 톤으로 통일 — 차분한 인상을 위해 무지개 색 분산을 없앤다.
-const ROW_COLORS = ["#1E1B4B", "#1E1B4B", "#1E1B4B", "#1E1B4B", "#1E1B4B"];
+const ROW_COLOR = "#1E1B4B";
 
 function normalizeForCompare(s: string): string {
   return s.trim().replace(/\s+/g, " ").slice(0, AFFIRMATION_INPUT_MAX);
@@ -23,91 +29,110 @@ function stripLeadingNumber(s: string): string {
   return s.replace(/^\s*\d+\s*[.)\]]\s*/, "");
 }
 
+export interface CheckinSubmitResult {
+  matched: boolean;
+  streakCount: number;
+  mismatchedIndices?: number[];
+  focusIndex?: number;
+  depth?: AffirmationCheckinDepth;
+  evidenceVotes?: number;
+  evidenceTag?: string;
+  freezeUsed?: number;
+}
+
 export default function AffirmationCheckin({
   affirmations,
-  tone: _tone,
+  focusIndex,
   streakCount,
   alreadyCheckedIn,
   onSubmit,
+  onCheckedIn,
 }: {
   affirmations: string[];
-  tone: "dark" | "light";
+  /** 오늘 새길 줄의 인덱스 — 홈이 pickTodayAffirmationIndex 로 계산해 내려준다. */
+  focusIndex: number;
   streakCount: number;
   alreadyCheckedIn: boolean;
-  onSubmit: (
-    texts: string[],
-  ) => Promise<{ matched: boolean; streakCount: number; mismatchedIndices?: number[] }>;
+  /** 실제로 적은 줄만 인덱스와 함께 올린다(희소 제출). */
+  onSubmit: (entries: Array<{ index: number; text: string }>) => Promise<CheckinSubmitResult>;
+  /** 체크인 성공 직후 — 홈이 보상 카드/리듬 링을 갱신한다. */
+  onCheckedIn?: (result: CheckinSubmitResult) => void;
 }) {
   const t = useT();
-  const [drafts, setDrafts] = useState<string[]>(() => affirmations.map(() => ""));
+  const [drafts, setDrafts] = useState<Record<number, string>>({});
+  const [expanded, setExpanded] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  /** 제출 결과로 확정된 어긋난 인덱스 (실시간 검사는 하지 않는다). */
   const [mismatched, setMismatched] = useState<Set<number>>(() => new Set());
-  const [blurred, setBlurred] = useState<Set<number>>(() => new Set());
-  const [flash, setFlash] = useState<string | null>(null);
+  /** focus 는 통과했는데 추가로 적은 줄만 틀린 경우 — 오류가 아니라 안내. */
+  const [extraNotice, setExtraNotice] = useState(false);
 
+  // 다짐 목록이나 오늘 날짜(=focusIndex)가 바뀌면 입력을 초기화한다.
   useEffect(() => {
-    setDrafts(affirmations.map(() => ""));
+    setDrafts({});
     setMismatched(new Set());
-    setBlurred(new Set());
+    setExtraNotice(false);
     setErrorMsg(null);
-  }, [affirmations]);
-
-  useEffect(() => {
-    if (!flash) return;
-    const t = setTimeout(() => setFlash(null), 2400);
-    return () => clearTimeout(t);
-  }, [flash]);
-
-  const allFilled = drafts.every((d) => d.trim().length > 0);
+    setExpanded(false);
+  }, [affirmations, focusIndex]);
 
   const targetNorm = useMemo(
-    () => affirmations.map((tt) => normalizeForCompare(stripLeadingNumber(tt))),
+    () => affirmations.map((a) => normalizeForCompare(stripLeadingNumber(a))),
     [affirmations],
   );
 
+  // 유효 focus — 다짐 개수가 줄어든 직후 등 범위를 벗어난 값이 들어와도 첫 줄로 방어한다.
+  const safeFocus =
+    Number.isInteger(focusIndex) && focusIndex >= 0 && focusIndex < affirmations.length
+      ? focusIndex
+      : 0;
+
+  // 펼침 여부에 따라 화면에 그릴 줄. 접힌 상태에선 오늘의 1줄만.
+  const visibleIndices = expanded ? affirmations.map((_, i) => i) : [safeFocus];
+
+  const focusFilled = (drafts[safeFocus] ?? "").trim().length > 0;
+
   const handleChange = (idx: number, value: string) => {
-    const next = drafts.map((d, i) => (i === idx ? value.slice(0, AFFIRMATION_INPUT_MAX) : d));
-    setDrafts(next);
+    setDrafts((prev) => ({ ...prev, [idx]: value.slice(0, AFFIRMATION_INPUT_MAX) }));
+    // 고치는 순간 직전 제출의 오류 표시를 걷어낸다.
     if (mismatched.has(idx)) {
-      const m = new Set(mismatched);
-      if (normalizeForCompare(stripLeadingNumber(value)) === targetNorm[idx]) m.delete(idx);
-      setMismatched(m);
-    }
-    if (blurred.has(idx)) {
-      const b = new Set(blurred);
-      b.delete(idx);
-      setBlurred(b);
+      setMismatched((prev) => {
+        const next = new Set(prev);
+        next.delete(idx);
+        return next;
+      });
     }
     if (errorMsg) setErrorMsg(null);
-  };
-
-  const handleBlur = (idx: number) => {
-    if (alreadyCheckedIn) return;
-    if ((drafts[idx] ?? "").trim().length === 0) return;
-    if (blurred.has(idx)) return;
-    const b = new Set(blurred);
-    b.add(idx);
-    setBlurred(b);
+    if (extraNotice) setExtraNotice(false);
   };
 
   const handleSubmit = async () => {
-    if (submitting) return;
-    if (!allFilled) {
-      setErrorMsg(t("motivation.affirmations.mismatched"));
+    if (submitting || alreadyCheckedIn) return;
+    // 실제로 적은 줄만 보낸다 — 빈 칸은 "안 한 선택"이므로 실패 사유가 되지 않는다.
+    const entries = visibleIndices
+      .filter((i) => (drafts[i] ?? "").trim().length > 0)
+      .map((i) => ({ index: i, text: drafts[i] ?? "" }));
+
+    if (!entries.some((e) => e.index === safeFocus)) {
+      setErrorMsg(t("affirmations.focus.mismatch"));
       return;
     }
+
     setSubmitting(true);
     setErrorMsg(null);
+    setExtraNotice(false);
     try {
-      const res = await onSubmit(drafts);
+      const res = await onSubmit(entries);
+      const badIndices = new Set(res.mismatchedIndices ?? []);
       if (res.matched) {
-        setFlash(t("motivation.affirmations.matched", { count: res.streakCount }));
-        setMismatched(new Set());
+        // 성공 — focus 는 통과. 추가로 적었다가 틀린 줄이 있으면 안내만 남긴다.
+        setMismatched(badIndices);
+        setExtraNotice(badIndices.size > 0);
+        onCheckedIn?.(res);
       } else {
-        const idxs = new Set(res.mismatchedIndices ?? []);
-        setMismatched(idxs);
-        setErrorMsg(t("motivation.affirmations.mismatched"));
+        setMismatched(badIndices);
+        setErrorMsg(t("affirmations.focus.mismatch"));
       }
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : String(err));
@@ -120,69 +145,57 @@ export default function AffirmationCheckin({
 
   return (
     <div className="bg-[var(--bg-grouped-2)] rounded-[12px] overflow-hidden">
-      {/* Card header — Title + streak chip */}
-      <div className="flex items-center justify-between px-5 pt-4 pb-2">
+      {/* 헤더 — 제목 + 회전 위치 + 스트릭 칩 */}
+      <div className="flex items-center justify-between gap-2 px-5 pt-4 pb-2">
         <span className="text-[17px] font-semibold tracking-[-0.43px] text-[var(--label)]">
-          {t("motivation.affirmations.title")}
+          {t("affirmations.focus.title")}
         </span>
-        <span
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-          style={{ background: "rgba(255,149,0,0.16)" }}
-        >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="#D85A30" aria-hidden>
-            <path d="M13 2L4.5 13.5h6L9 22l8.5-11.5h-6L13 2z" />
-          </svg>
-          <span className="text-[12px] font-semibold tracking-[0.4px] text-[#D85A30]">
-            {t("motivation.affirmations.streak", { count: streakCount })}
+        <div className="flex items-center gap-2">
+          {!expanded && affirmations.length > 1 && (
+            <span className="text-[12px] tracking-[-0.08px] text-[var(--label-3)] tabular-nums">
+              {t("affirmations.focus.rotation", {
+                index: safeFocus + 1,
+                total: affirmations.length,
+              })}
+            </span>
+          )}
+          <span
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+            style={{ background: "rgba(255,149,0,0.16)" }}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="#D85A30" aria-hidden>
+              <path d="M13 2L4.5 13.5h6L9 22l8.5-11.5h-6L13 2z" />
+            </svg>
+            <span className="text-[12px] font-semibold tracking-[0.4px] text-[#D85A30]">
+              {t("motivation.affirmations.streak", { count: streakCount })}
+            </span>
           </span>
-        </span>
+        </div>
       </div>
 
       <p className="px-5 pb-3 text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label-2)]">
         {alreadyCheckedIn
           ? t("motivation.affirmations.alreadyToday")
-          : t("motivation.affirmations.placeholder")}
+          : t("affirmations.focus.hint")}
       </p>
 
-      {/* Rows */}
+      {/* 줄 — 접힘: 오늘의 1줄만 / 펼침: 전량 */}
       <div>
-        {affirmations.map((target, idx) => {
+        {visibleIndices.map((idx, pos) => {
+          const target = affirmations[idx];
           const draft = drafts[idx] ?? "";
-          const lockedNow = alreadyCheckedIn;
           const draftNorm = normalizeForCompare(stripLeadingNumber(draft));
-          const liveErr =
-            !lockedNow &&
-            blurred.has(idx) &&
-            draft.trim().length > 0 &&
-            draftNorm !== targetNorm[idx];
-          const submittedErr = mismatched.has(idx);
-          const showHint = !lockedNow && (liveErr || submittedErr);
-          const matched =
-            !lockedNow && draft.trim().length > 0 && draftNorm === targetNorm[idx];
-          const num = String(idx + 1).padStart(2, "0");
-          const displayDraft = lockedNow ? target : draft;
-          const color = ROW_COLORS[idx % ROW_COLORS.length];
-          const isLast = idx === affirmations.length - 1;
-          const done = lockedNow || matched;
-
-          // Underline color: completed = color, error = red dashed, focused = blue
-          const borderColor = done
-            ? color
-            : showHint
-              ? "#FF3B30"
-              : "var(--sep)";
+          const isBad = mismatched.has(idx);
+          // 일치는 즉시 초록 대신 배지 체크로만 알린다(정답 맞추기 게임이 아니다).
+          const matched = draft.trim().length > 0 && draftNorm === targetNorm[idx];
+          const done = alreadyCheckedIn || matched;
+          const isLast = pos === visibleIndices.length - 1;
 
           return (
-            <div
-              key={idx}
-              className="relative flex items-start gap-3 px-4 py-3"
-            >
-              {/* Colored number badge */}
+            <div key={idx} className="relative flex items-start gap-3 px-4 py-3">
               <div
                 className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0 mt-0.5"
-                style={{
-                  background: done ? color : color + "1F",
-                }}
+                style={{ background: done ? ROW_COLOR : ROW_COLOR + "1F" }}
               >
                 {done ? (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
@@ -191,40 +204,46 @@ export default function AffirmationCheckin({
                 ) : (
                   <span
                     className="text-[15px] font-bold tracking-[-0.3px]"
-                    style={{ color }}
+                    style={{ color: ROW_COLOR }}
                   >
-                    {num}
+                    {String(idx + 1).padStart(2, "0")}
                   </span>
                 )}
               </div>
 
               <div className="flex-1 min-w-0">
-                {/* Target — small gray ghost */}
-                <div className="text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label-3)] mb-1">
+                {/* 원문 — 접힘 상태에선 오늘의 한 줄이 주인공이라 크게 보여준다. */}
+                <div
+                  className={
+                    expanded
+                      ? "text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label-3)] mb-1"
+                      : "text-[17px] leading-[23px] tracking-[-0.43px] font-medium text-[var(--label)] mb-2"
+                  }
+                >
                   {target}
                 </div>
 
-                {/* Input — underline only */}
                 <input
-                  value={displayDraft}
-                  readOnly={lockedNow}
-                  disabled={submitting && !lockedNow}
-                  placeholder="따라 적어주세요…"
+                  value={alreadyCheckedIn ? target : draft}
+                  readOnly={alreadyCheckedIn}
+                  disabled={submitting && !alreadyCheckedIn}
+                  placeholder={t("affirmations.focus.placeholder")}
                   maxLength={AFFIRMATION_INPUT_MAX}
                   onChange={(e) => handleChange(idx, e.target.value)}
-                  onBlur={() => handleBlur(idx)}
-                  aria-label={`${idx + 1}번 다짐 — ${target}`}
-                  aria-invalid={showHint || undefined}
+                  aria-label={`${idx + 1} — ${target}`}
+                  aria-invalid={isBad || undefined}
+                  /* autoFocus 는 쓰지 않는다 — 홈 진입만으로 키보드가 올라오면 훑어보기를 방해한다.
+                     재약속 카드의 "지금 체크인하기" 는 홈이 스크롤 후 이 input 에 포커스를 준다. */
                   className="w-full bg-transparent border-b py-1 text-[17px] leading-[22px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none transition-colors"
                   style={{
-                    borderColor,
-                    borderStyle: showHint ? "dashed" : "solid",
+                    // 어긋난 줄도 빨간 점선이 아니라 회색 실선 — 오류가 아니라 "다시 볼 문장".
+                    borderColor: done ? ROW_COLOR : isBad ? "var(--label-3)" : "var(--sep)",
                     borderWidth: 1,
                   }}
                 />
 
-                {showHint && (
-                  <p className="mt-1 text-[12px] tracking-[-0.08px] text-[#FF3B30]">
+                {isBad && !alreadyCheckedIn && (
+                  <p className="mt-1 text-[12px] tracking-[-0.08px] text-[var(--label-3)]">
                     → {target}
                   </p>
                 )}
@@ -241,32 +260,46 @@ export default function AffirmationCheckin({
         })}
       </div>
 
-      {/* Submit footer */}
+      {/* 푸터 — 체크인 + 전량 새김 토글 */}
       {!alreadyCheckedIn && (
-        <div className="flex items-center justify-end gap-4 px-5 py-3 border-t border-[var(--sep)]">
-          {errorMsg && (
-            <span className="text-[13px] text-[#FF3B30] mr-auto">{errorMsg}</span>
+        <div className="border-t border-[var(--sep)] px-5 py-3">
+          <div className="flex items-center justify-end gap-4">
+            {errorMsg ? (
+              <span className="mr-auto text-[13px] text-[#FF3B30]">{errorMsg}</span>
+            ) : extraNotice ? (
+              <span className="mr-auto text-[13px] text-[var(--label-2)]">
+                {t("affirmations.extra.mismatch")}
+              </span>
+            ) : null}
+            {affirmations.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setExpanded((v) => !v)}
+                disabled={submitting}
+                className="text-[13px] font-medium text-[var(--label-2)] disabled:opacity-40"
+              >
+                {expanded
+                  ? t("affirmations.focus.collapse")
+                  : `⌄ ${t("affirmations.focus.expand", { count: affirmations.length })}`}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={submitting || !focusFilled}
+              className="text-[15px] font-semibold text-[var(--soul)] disabled:opacity-30"
+            >
+              {submitting
+                ? t("motivation.affirmations.checkingIn")
+                : t("motivation.affirmations.checkin")}
+            </button>
+          </div>
+          {expanded && affirmations.length > 1 && (
+            <p className="mt-2 text-[12px] leading-[16px] tracking-[-0.08px] text-[var(--label-3)]">
+              {t("affirmations.focus.deepHint")}
+            </p>
           )}
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={submitting || !allFilled}
-            className="text-[15px] font-semibold text-[var(--soul)] disabled:opacity-30"
-          >
-            {submitting
-              ? t("motivation.affirmations.checkingIn")
-              : t("motivation.affirmations.checkin")}
-          </button>
         </div>
-      )}
-
-      {flash && (
-        <p
-          role="status"
-          className="px-5 py-3 text-[13px] font-semibold text-[#D85A30] border-t border-[var(--sep)]"
-        >
-          ✓ {flash}
-        </p>
       )}
     </div>
   );

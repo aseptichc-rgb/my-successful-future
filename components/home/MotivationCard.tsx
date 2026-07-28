@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DailyMotivation } from "@/types";
-import AffirmationCheckin from "@/components/affirmations/AffirmationCheckin";
 import { useLanguage } from "@/lib/i18n";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -11,6 +10,10 @@ import { useLanguage } from "@/lib/i18n";
  *  · iOS Headline + Subhead type
  *  · 잠금화면 PNG export 유지 (Canvas 그라데이션 그대로)
  *  · 미션 입력 — bordered separator + inline buttons
+ *
+ * 다짐 체크인은 이 카드가 품지 않는다 — 홈이 별도 섹션(오늘의 다짐)으로 직접 그린다.
+ * 하루의 필수 행동을 명언 카드 안에 끼워 넣으면 위계가 흐려져 스크롤에 묻힌다.
+ * 여기 남은 "미션" 분기는 다짐을 아직 설정하지 않은 사용자용 대체 경로다.
  * ───────────────────────────────────────────────────────────────── */
 
 interface MotivationCardProps {
@@ -19,12 +22,8 @@ interface MotivationCardProps {
   errorMessage?: string | null;
   onRegenerate: () => void | Promise<void>;
   onSubmitResponse?: (text: string) => Promise<{ isFirst: boolean; identityTag: string }>;
-  affirmations?: string[];
-  affirmationStreakCount?: number;
-  alreadyCheckedInToday?: boolean;
-  onCheckinAffirmations?: (
-    texts: string[],
-  ) => Promise<{ matched: boolean; streakCount: number; mismatchedIndices?: number[] }>;
+  /** 다짐이 하나라도 설정돼 있으면 미션 분기를 숨긴다(체크인이 그 역할을 한다). */
+  hasAffirmations?: boolean;
 }
 
 const RESPONSE_MAX = 60;
@@ -191,10 +190,7 @@ export default function MotivationCard({
   errorMessage,
   onRegenerate,
   onSubmitResponse,
-  affirmations,
-  affirmationStreakCount = 0,
-  alreadyCheckedInToday = false,
-  onCheckinAffirmations,
+  hasAffirmations = false,
 }: MotivationCardProps) {
   const { t, locale } = useLanguage();
   const [downloading, setDownloading] = useState(false);
@@ -384,20 +380,9 @@ export default function MotivationCard({
         </div>
       </div>
 
-      {/* ── 다짐 따라쓰기 — Affirmation card ── */}
-      {motivation && affirmations && affirmations.length > 0 && onCheckinAffirmations && (
-        <AffirmationCheckin
-          affirmations={affirmations}
-          tone="light"
-          streakCount={affirmationStreakCount}
-          alreadyCheckedIn={alreadyCheckedInToday}
-          onSubmit={onCheckinAffirmations}
-        />
-      )}
-
-      {/* ── 미션 — affirmations 미설정 사용자만 ── */}
+      {/* ── 미션 — 다짐 미설정 사용자만 (다짐이 있으면 체크인 섹션이 그 역할을 한다) ── */}
       {motivation &&
-        (!affirmations || affirmations.length === 0) &&
+        !hasAffirmations &&
         motivation.mission &&
         onSubmitResponse && (
           <div className="bg-[var(--bg-grouped-2)] rounded-[12px] p-5">

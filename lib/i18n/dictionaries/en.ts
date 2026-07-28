@@ -455,6 +455,7 @@ const dict: Record<DictKey, string> = {
   "progress.identity.empty": "No evidence yet. Start with today's affirmation check-in.",
   "progress.evidence.title": "Recent evidence",
   "progress.source.checkin": "Affirmation",
+  "progress.source.deep": "All lines",
   "progress.source.goal": "Goal",
   "progress.source.win": "Win",
   "progress.source.mission": "Mission",
@@ -477,6 +478,64 @@ const dict: Record<DictKey, string> = {
   "coach.style.identity": "Identity",
   "coach.failed": "Couldn't load suggestions.",
   "coach.quota": "You've used today's coach suggestions. See you tomorrow.",
+
+  // ── Today's affirmation (one line required, all lines optional) ──
+  "affirmations.focus.title": "Today's affirmation",
+  "affirmations.focus.rotation": "{index} of {total}",
+  "affirmations.focus.hint": "Copy this one line exactly and today's check-in is done.",
+  "affirmations.focus.placeholder": "Write it out…",
+  "affirmations.focus.expand": "Engrave all {count} lines",
+  "affirmations.focus.collapse": "Just today's line",
+  "affirmations.focus.deepHint": "Engrave them all and you earn one more identity vote.",
+  "affirmations.focus.mismatch": "Match the line above word for word.",
+  "affirmations.extra.mismatch": "A line to revisit — today's check-in is already complete.",
+
+  // ── Right after check-in ──────────────────────────
+  "checkin.reward.title": "You lived as that person today",
+  "checkin.reward.streak": "Day {count} in a row",
+  "checkin.reward.evidence": "Identity evidence +{count} · I am {label}",
+  "checkin.reward.evidencePlain": "Identity evidence +{count}",
+  "checkin.reward.deepBadge": "All lines",
+  "checkin.reward.freeze": "{count} freeze(s) bridged the days you missed",
+
+  // ── 7-day rhythm ring ─────────────────────────────
+  "rhythm.title": "This week's rhythm",
+  "rhythm.count": "{done}/{total}",
+  "rhythm.footer": "{done} of the last 7 days engraved.",
+  "rhythm.startCaption": "Counting from the day you started.",
+  "rhythm.todayAria": "Today",
+
+  // ── Weekly review card (Sunday evening, no input) ──
+  "weekly.title": "This week in review",
+  "weekly.checkinDays": "{count} days engraved",
+  "weekly.wins": "{count} wins",
+  "weekly.evidence": "{count} votes",
+  "weekly.topIdentity": "Proved most this week · I am {label}",
+  "weekly.empty": "A quiet week. We'll start counting again at your next check-in.",
+  "weekly.footer": "Nothing to fill in — just look back at the last 7 days.",
+
+  // ── WOOP quick design (3 taps, no keyboard) ───────
+  "woop.quick.title": "Quick design",
+  "woop.quick.pickGoal": "Which goal are we designing for?",
+  "woop.quick.draftCta": "Get 3 drafts",
+  "woop.quick.drafting": "Writing drafts…",
+  "woop.quick.pickDraft": "Pick the draft you like and save it as it is.",
+  "woop.quick.saveDraft": "Save as is",
+  "woop.quick.manual": "Write it myself",
+  "woop.quick.outcomeLabel": "Best outcome",
+  "woop.quick.obstacleLabel": "Inner obstacle",
+  "woop.section.moreCta": "{count} more goal(s) without a plan",
+  "woop.section.footerOne":
+    "One at a time — practicing one beats writing down three.",
+
+  // ── Home collapsible sections ─────────────────────
+  "home.section.today": "Today's execution",
+  "home.section.record": "Today's record",
+  "home.section.expandAria": "Expand",
+  "home.section.collapseAria": "Collapse",
+  "home.wins.addRow": "Add another line",
+  "home.record.footer": "Anything you write saves itself.",
+  "home.plans.manage": "Manage execution plans",
 };
 
 export default dict;

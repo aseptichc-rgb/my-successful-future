@@ -9,8 +9,10 @@ import { useT } from "@/lib/i18n";
 /* ─────────────────────────────────────────────────────────────────
  * ExecutionPlansSection — "실행 설계 (if-then)" 인셋 목록.
  *  · 플랜이 있는 목표: goal + "if… → then…" 축약행 (탭 → 수정 시트)
- *  · 플랜이 없는 목표: "설계하기" CTA 행 (탭 → 신규 시트, 목표 미리 선택)
- * 홈 "나의 행동" 탭과 설정이 함께 쓴다 — 순수 표현 컴포넌트(구독은 호출부).
+ *  · 플랜이 없는 목표: "설계하기" CTA 행 — **한 번에 하나만** 노출한다.
+ *    빈 CTA 를 목표 수만큼 늘어놓으면 "해야 할 일 3개"로 읽혀 아무것도 시작되지 않는다
+ *    (choice overload). 나머지는 "N개 더" 행을 눌러야 펼쳐진다.
+ * 설정 화면이 쓴다(홈은 읽기 전용 DailyPlanCard 만) — 순수 표현 컴포넌트.
  * ───────────────────────────────────────────────────────────────── */
 
 export default function ExecutionPlansSection({
@@ -28,6 +30,8 @@ export default function ExecutionPlansSection({
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<ExecutionPlanWithId | null>(null);
   const [initialGoal, setInitialGoal] = useState<string | null>(null);
+  /** 미설계 목표를 전부 펼쳤는지 — 기본은 접힘(빈 슬롯 1개만). */
+  const [showAllEmpty, setShowAllEmpty] = useState(false);
 
   const cleanGoals = goals.map((g) => g.trim()).filter((g) => g.length > 0);
   // 목표 텍스트(trim) → 플랜 매핑. 목표가 지워진 플랜(고아)도 목록엔 계속 보여준다.
@@ -49,24 +53,34 @@ export default function ExecutionPlansSection({
   // 목표도 플랜도 없으면 섹션 자체를 숨긴다 (목표 CTA 는 기존 목표 섹션이 담당).
   if (cleanGoals.length === 0 && plans.length === 0) return null;
 
+  // 설계된 플랜은 전부 보여주고, 미설계 목표는 접힌 상태에선 첫 1개만 보여준다.
+  const plannedRows = [
+    ...cleanGoals
+      .filter((g) => planByGoal.has(g))
+      .map((g) => ({ kind: "plan", goal: g, plan: planByGoal.get(g)! }) as const),
+    ...orphanPlans.map((p) => ({ kind: "plan", goal: p.goal.trim(), plan: p }) as const),
+  ];
+  const emptyGoals = cleanGoals.filter((g) => !planByGoal.has(g));
+  const visibleEmptyGoals = showAllEmpty ? emptyGoals : emptyGoals.slice(0, 1);
+  const hiddenEmptyCount = emptyGoals.length - visibleEmptyGoals.length;
+
   const rows: Array<
     | { kind: "plan"; goal: string; plan: ExecutionPlanWithId }
     | { kind: "empty"; goal: string }
   > = [
-    ...cleanGoals.map((g) => {
-      const plan = planByGoal.get(g);
-      return plan
-        ? ({ kind: "plan", goal: g, plan } as const)
-        : ({ kind: "empty", goal: g } as const);
-    }),
-    ...orphanPlans.map((p) => ({ kind: "plan", goal: p.goal.trim(), plan: p }) as const),
+    ...plannedRows,
+    ...visibleEmptyGoals.map((g) => ({ kind: "empty", goal: g }) as const),
   ];
 
   return (
     <>
-      <GroupedSection header={t("woop.section.title")} footer={t("woop.section.footer")}>
+      <GroupedSection
+        header={t("woop.section.title")}
+        footer={emptyGoals.length > 1 ? t("woop.section.footerOne") : t("woop.section.footer")}
+      >
         {rows.map((row, idx) => {
-          const isLast = idx === rows.length - 1;
+          // "N개 더" 행이 뒤에 붙으면 마지막 행에도 구분선이 있어야 한다.
+          const isLast = idx === rows.length - 1 && hiddenEmptyCount === 0;
           return (
             <button
               key={`${row.kind}-${row.goal}-${idx}`}
@@ -106,6 +120,22 @@ export default function ExecutionPlansSection({
             </button>
           );
         })}
+
+        {/* 접어둔 미설계 목표 — 눌러야 펼쳐진다(숨기는 게 아니라 순서를 정해주는 것) */}
+        {hiddenEmptyCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowAllEmpty(true)}
+            className="w-full flex items-center gap-3 px-4 py-3 text-left"
+          >
+            <span className="w-9 flex-shrink-0 text-center text-[15px] text-[var(--label-3)]" aria-hidden>
+              ⌄
+            </span>
+            <span className="flex-1 text-[15px] leading-[20px] tracking-[-0.24px] text-[var(--label-2)]">
+              {t("woop.section.moreCta", { count: hiddenEmptyCount })}
+            </span>
+          </button>
+        )}
       </GroupedSection>
 
       {sheetOpen && (

@@ -439,6 +439,7 @@ const dict = {
   "progress.identity.empty": "아직 쌓인 증거가 없어요. 오늘 다짐 체크인부터 시작해보세요.",
   "progress.evidence.title": "최근 증거",
   "progress.source.checkin": "다짐",
+  "progress.source.deep": "전체 새김",
   "progress.source.goal": "목표",
   "progress.source.win": "잘한 일",
   "progress.source.mission": "미션",
@@ -461,6 +462,63 @@ const dict = {
   "coach.style.identity": "정체성",
   "coach.failed": "제안을 불러오지 못했어요.",
   "coach.quota": "오늘의 코치 제안 한도를 다 썼어요. 내일 다시 만나요.",
+
+  // ── 오늘의 다짐 (하루 1줄 필수 + 전량은 선택) ───────
+  "affirmations.focus.title": "오늘의 다짐",
+  "affirmations.focus.rotation": "{index}/{total}번째",
+  "affirmations.focus.hint": "이 한 줄만 그대로 적으면 오늘 체크인이 완성돼요.",
+  "affirmations.focus.placeholder": "따라 적어주세요…",
+  "affirmations.focus.expand": "{count}줄 전체 새기기",
+  "affirmations.focus.collapse": "오늘 한 줄만 쓰기",
+  "affirmations.focus.deepHint": "전체를 새기면 정체성 증거가 한 표 더 쌓여요.",
+  "affirmations.focus.mismatch": "위 문장과 한 글자씩 맞춰 적어주세요.",
+  "affirmations.extra.mismatch": "다시 볼 문장이 있어요 — 오늘 체크인은 이미 완료됐어요.",
+
+  // ── 체크인 직후 보상 ──────────────────────────────
+  "checkin.reward.title": "오늘의 나로 살았어요",
+  "checkin.reward.streak": "{count}일째 이어가는 중",
+  "checkin.reward.evidence": "정체성 증거 +{count} · 나는 {label}",
+  "checkin.reward.evidencePlain": "정체성 증거 +{count}",
+  "checkin.reward.deepBadge": "전체 새김",
+  "checkin.reward.freeze": "얼음 {count}개가 빈 날을 이어줬어요",
+
+  // ── 7일 리듬 링 ───────────────────────────────────
+  "rhythm.title": "이번 주 리듬",
+  "rhythm.count": "{done}/{total}",
+  "rhythm.footer": "지난 7일 중 {done}일 새겼어요.",
+  "rhythm.startCaption": "여정을 시작한 날부터 세고 있어요.",
+  "rhythm.todayAria": "오늘",
+
+  // ── 주간 회고 카드 (일요일 저녁, 입력 없음) ─────────
+  "weekly.title": "이번 주 회고",
+  "weekly.checkinDays": "다짐 {count}일",
+  "weekly.wins": "잘한 일 {count}개",
+  "weekly.evidence": "증거 {count}표",
+  "weekly.topIdentity": "이번 주 가장 많이 증명한 나 · {label}",
+  "weekly.empty": "이번 주는 기록이 적었어요. 다음 주 첫 체크인부터 다시 세어요.",
+  "weekly.footer": "적을 건 없어요 — 지난 7일을 한 번 보고 가세요.",
+
+  // ── WOOP 빠른 설계 (키보드 없이 3탭) ────────────────
+  "woop.quick.title": "빠른 설계",
+  "woop.quick.pickGoal": "어떤 목표를 설계할까요?",
+  "woop.quick.draftCta": "초안 3개 받기",
+  "woop.quick.drafting": "초안 만드는 중…",
+  "woop.quick.pickDraft": "마음에 드는 초안을 고르면 그대로 저장할 수 있어요.",
+  "woop.quick.saveDraft": "이대로 저장",
+  "woop.quick.manual": "직접 다듬기",
+  "woop.quick.outcomeLabel": "최상의 결과",
+  "woop.quick.obstacleLabel": "내 안의 장애물",
+  "woop.section.moreCta": "설계 안 한 목표 {count}개 더",
+  "woop.section.footerOne": "한 번에 하나씩 — 하나를 실천하는 게 셋을 적어두는 것보다 강해요.",
+
+  // ── 홈 접이식 섹션 ────────────────────────────────
+  "home.section.today": "오늘의 실행",
+  "home.section.record": "오늘의 기록",
+  "home.section.expandAria": "펼치기",
+  "home.section.collapseAria": "접기",
+  "home.wins.addRow": "한 줄 더 적기",
+  "home.record.footer": "적은 내용은 자동으로 저장돼요.",
+  "home.plans.manage": "실행 설계 관리",
 } as const;
 
 export type DictKey = keyof typeof dict;

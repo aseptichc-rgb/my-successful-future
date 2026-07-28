@@ -32,11 +32,12 @@ const EVIDENCE_FEED_MAX_ROWS = 20;
 const SOUL = "#D85A30";
 const STREAK_CHIP_BG = "rgba(255,149,0,0.16)";
 
-type SourceKey = "mission" | "checkin" | "goal" | "win";
-const SOURCE_ORDER: SourceKey[] = ["checkin", "goal", "win", "mission"];
+type SourceKey = "mission" | "checkin" | "deep" | "goal" | "win";
+const SOURCE_ORDER: SourceKey[] = ["checkin", "deep", "goal", "win", "mission"];
 /** 출처 → i18n 라벨 키 (템플릿 리터럴은 DictKey 타입 검증을 못 받으므로 명시 맵). */
 const SOURCE_LABEL_KEY: Record<SourceKey, DictKey> = {
   checkin: "progress.source.checkin",
+  deep: "progress.source.deep",
   goal: "progress.source.goal",
   win: "progress.source.win",
   mission: "progress.source.mission",

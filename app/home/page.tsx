@@ -13,13 +13,22 @@ import {
   saveDailyAchievedGoals,
   saveTomorrowFirstAction,
   getDailyEntryOnce,
+  getAffirmationLogYmds,
+  getIdentityEvidenceRange,
+  getDailyWinsHistory,
   getKstYmd,
   MAX_DAILY_WINS,
   TOMORROW_FIRST_ACTION_MAX,
   type ExecutionPlanWithId,
 } from "@/lib/firebase";
-import { kstHour, yesterdayKstYmd } from "@/lib/kstDate";
-import { pickTodayPlan } from "@/lib/planRotation";
+import { kstHour, kstWeekday, yesterdayKstYmd, addKstDays } from "@/lib/kstDate";
+import { pickTodayPlan, pickTodayAffirmationIndex } from "@/lib/planRotation";
+import {
+  buildWeeklyReview,
+  weeklyReviewFrom,
+  WEEKLY_REVIEW_DAYS,
+  type WeeklyReview,
+} from "@/lib/weeklyReview";
 import { authedFetch } from "@/lib/authedFetch";
 import { notifyAndroidWidgetRefresh } from "@/lib/widgetBridge";
 import { refreshIosWidget } from "@/lib/iosWidget";
@@ -27,36 +36,51 @@ import MotivationCard from "@/components/home/MotivationCard";
 import FutureVisionCard from "@/components/home/FutureVisionCard";
 import DailyPlanCard from "@/components/home/DailyPlanCard";
 import RecommitCard from "@/components/home/RecommitCard";
-import ExecutionPlansSection from "@/components/woop/ExecutionPlansSection";
+import CheckinReward from "@/components/home/CheckinReward";
+import WeekRhythmRing from "@/components/home/WeekRhythmRing";
+import WeeklyReviewCard from "@/components/home/WeeklyReviewCard";
+import AffirmationCheckin, {
+  type CheckinSubmitResult,
+} from "@/components/affirmations/AffirmationCheckin";
 import Logo from "@/components/ui/Logo";
-import GroupedSection from "@/components/ui/GroupedSection";
+import DisclosureSection from "@/components/ui/DisclosureSection";
 import { useLanguage } from "@/lib/i18n";
 import type { DailyEntry, DailyMotivation, FutureVision } from "@/types";
 
 /* ─────────────────────────────────────────────────────────────────
- * Anima Home — Apple iOS native redesign
+ * Anima Home — "오늘 1가지 + 접기"
  * ─────────────────────────────────────────────────────────────────
- *  · Large Title nav + Segmented Control
- *  · Grouped Inset Lists (rounded white cards on systemGroupedBackground)
- *  · 12-color iOS system palette — per-row category colors
- *  · Orange streak chip in nav · gradient hero quote card
+ *  하루에 요구하는 필수 입력은 **다짐 1줄 전사 1건**뿐이다. 나머지(목표 토글·
+ *  작은 승리·내일 첫 행동)는 전부 기본 접힘의 선택 섹션으로 내렸다.
+ *
+ *  ⚠️ 섹션 순서는 절대 고정이다 — 시간대에 따라 카드를 재배치하면 같은 버튼이
+ *  매일 다른 자리에 오고, 습관이 학습하는 위치 단서(context cue)가 깨진다.
+ *  homeMode 는 "무엇을 보여줄지"만 정하고 "어디에 둘지"는 절대 정하지 않는다.
+ *
+ *  고정 순서: 명언 → 오늘의 다짐(필수) → 7일 리듬 → [주간 회고] →
+ *            ▸오늘의 실행(접힘) → ▸오늘의 기록(접힘)
+ *
+ *  · Large Title nav · Grouped Inset Lists · 오렌지 스트릭 칩(→ /progress)
  *  · 600ms debounce auto-save for wins · no save button
- *  · Goal edit mode hides ×/inputs by default
  * ────────────────────────────────────────────────────────────────── */
 
 const WIN_MAX = 140;
 const WINS_AUTOSAVE_MS = 600;
 const WINS_SAVED_TOAST_MS = 1800;
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
+/** 잘한 일은 1칸만 펼쳐두고 나머지는 "한 줄 더"로 — 빈 칸 3개는 숙제처럼 읽힌다. */
+const WINS_INITIAL_VISIBLE = 1;
 
 /**
- * 아침/저녁 2모드 경계 (KST 시각).
- * 아침(<12): 의도 세팅 — "오늘의 if-then" 전면 배치.
- * 저녁(>=18): 회고 — wins 우선 + "내일 첫 행동 1개" 입력.
- * 사이(12~17): 중립 — 기존 배치 유지. 모드는 기본 탭/배치만 바꾸고 탭 탭이 항상 우선.
+ * 아침/저녁 2모드 경계 (KST 시각). **내용 선택에만** 쓴다(배치는 불변):
+ * 아침(<12): "오늘의 if-then" 을 펼쳐 보여준다(compact=false).
+ * 저녁(>=18): 기록 섹션에 "내일 첫 행동 1개" 를 추가하고, 일요일이면 주간 회고를 띈다.
+ * 사이(12~17): 중립.
  */
 const MORNING_END_HOUR = 12;
 const EVENING_START_HOUR = 18;
+/** 주간 회고를 띄우는 요일 (0=일요일) — 한 주를 닫는 시점. */
+const WEEKLY_REVIEW_WEEKDAY = 0;
 type HomeMode = "morning" | "neutral" | "evening";
 
 function currentHomeMode(): HomeMode {
@@ -132,17 +156,6 @@ const IconChevron = ({ color = "rgba(60,60,67,0.3)" }: { color?: string }) => (
     <path d="M1 1l6 6-6 6" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
-const IconCheckCircle = ({ color, size = 22 }: { color: string; size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill={color} aria-hidden>
-    <circle cx="12" cy="12" r="11" />
-    <path d="M7 12l3.5 3.5L17 9" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-  </svg>
-);
-const IconCircle = ({ color = "#C7C7CC", size = 22 }: { color?: string; size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
-    <circle cx="12" cy="12" r="10.5" stroke={color} strokeWidth="1.6" />
-  </svg>
-);
 
 export default function HomeDashboardPage() {
   const router = useRouter();
@@ -177,6 +190,16 @@ export default function HomeDashboardPage() {
   const [plans, setPlans] = useState<ExecutionPlanWithId[]>([]);
   const [yesterdayFirstAction, setYesterdayFirstAction] = useState<string | null>(null);
 
+  // 잘한 일 — 빈 칸을 몇 개 펼칠지. 저장 구조(3-slot 배열)는 그대로다.
+  const [winsVisible, setWinsVisible] = useState(WINS_INITIAL_VISIBLE);
+
+  // 7일 리듬 링 — 최근 7일 체크인 날짜. null = 아직 로딩(또는 실패 → 링 생략).
+  const [weekCheckedYmds, setWeekCheckedYmds] = useState<Set<string> | null>(null);
+  // 체크인 직후 보상 — 이번 세션에서 방금 체크인했을 때만 채워진다.
+  const [reward, setReward] = useState<CheckinSubmitResult | null>(null);
+  // 주간 회고 (일요일 저녁) — 실패하면 null 로 두고 카드만 생략한다.
+  const [weeklyReview, setWeeklyReview] = useState<WeeklyReview | null>(null);
+
   useEffect(() => {
     return () => {
       if (winsSavedToastTimerRef.current) clearTimeout(winsSavedToastTimerRef.current);
@@ -197,11 +220,9 @@ export default function HomeDashboardPage() {
   const [visionError, setVisionError] = useState<string | null>(null);
   const ensureRequestedVisionYmdRef = useRef<string | null>(null);
 
-  // 시간대 모드는 기본 탭만 정한다 — 탭 탭이 항상 우선 (렌더마다 재계산해 경계를 넘겨도 반영).
+  // 시간대 모드는 "무엇을 보여줄지"만 정한다 — 섹션 순서는 절대 바뀌지 않는다.
+  // (렌더마다 재계산해 화면을 열어둔 채 시간 경계를 넘겨도 다음 렌더에 반영된다.)
   const homeMode = currentHomeMode();
-  const [activeTab, setActiveTab] = useState<"future" | "actions">(() =>
-    currentHomeMode() === "evening" ? "actions" : "future",
-  );
 
   useEffect(() => {
     if (loading) return;
@@ -441,6 +462,87 @@ export default function HomeDashboardPage() {
     return unsub;
   }, [firebaseUser, ymd]);
 
+  /* ── 재약속 카드의 "지금 체크인하기" CTA ──
+   * 체크인 카드는 이제 항상 같은 자리(고정 순서 ②)에 있으므로 탭 전환이 필요 없다.
+   * nonce 를 올려 매 클릭마다 이펙트를 재실행하고, 카드로 스크롤 + 첫 입력칸 포커스를 수행한다.
+   * (setState 동일값은 no-op 이라 nonce 없이는 두 번째 클릭이 아무 일도 하지 않는다.) */
+  const checkinAnchorRef = useRef<HTMLDivElement | null>(null);
+  const [checkinCtaNonce, setCheckinCtaNonce] = useState(0);
+
+  const handleCheckinCta = useCallback(() => {
+    setCheckinCtaNonce((n) => n + 1);
+  }, []);
+
+  useEffect(() => {
+    if (checkinCtaNonce === 0) return; // 최초 마운트에는 동작하지 않는다
+    // 렌더가 끝나 카드가 DOM 에 붙은 뒤에 스크롤해야 위치가 정확하다.
+    const raf = requestAnimationFrame(() => {
+      const el = checkinAnchorRef.current;
+      if (!el) return;
+      try {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        // 다짐이 없어 체크인 카드가 없을 수 있다 — 포커스는 best-effort.
+        el.querySelector<HTMLInputElement>("input:not([disabled])")?.focus({ preventScroll: true });
+      } catch {
+        /* smooth 스크롤 미지원 구형 웹뷰 — 카드는 이미 화면에 있다 */
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [checkinCtaNonce]);
+
+  /* ── 7일 리듬 링 데이터 ──
+   * 기존 /progress 조회 함수(getAffirmationLogYmds)를 재사용한다 — 신규 쿼리 없음.
+   * 체크인 성공(alreadyCheckedInToday 전이)마다 다시 읽어 오늘 칸이 즉시 채워진다.
+   * 실패해도 링만 생략하고 홈 나머지는 정상 동작한다. */
+  useEffect(() => {
+    if (!firebaseUser) return;
+    let cancelled = false;
+    getAffirmationLogYmds(firebaseUser.uid, addKstDays(ymd, -(WEEKLY_REVIEW_DAYS - 1)), ymd)
+      .then((ymds) => {
+        if (!cancelled) setWeekCheckedYmds(new Set(ymds));
+      })
+      .catch((err) => {
+        console.error("[home] 주간 리듬 조회 실패(링 생략):", err);
+        if (!cancelled) setWeekCheckedYmds(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [firebaseUser, ymd, alreadyCheckedInToday]);
+
+  /* ── 주간 회고 (일요일 저녁만) ──
+   * 세 조회 모두 기존 함수 재사용. 집계는 lib/weeklyReview 순수 함수가 담당한다.
+   * 조건을 만족하지 않으면 호출 자체를 하지 않아 평일엔 비용이 0이다. */
+  const showWeeklyReview =
+    homeMode === "evening" && kstWeekday(ymd) === WEEKLY_REVIEW_WEEKDAY;
+
+  useEffect(() => {
+    // 조건을 만족하지 않으면 조회하지 않는다(평일 비용 0). 남아 있는 이전 값은
+    // 렌더가 showWeeklyReview 로 게이팅하므로 굳이 지우지 않는다 — 불필요한 재렌더 방지.
+    if (!firebaseUser || !showWeeklyReview) return;
+    let cancelled = false;
+    const from = weeklyReviewFrom(ymd);
+    void (async () => {
+      try {
+        const [checkinYmds, evidenceDays, winsHistory] = await Promise.all([
+          getAffirmationLogYmds(firebaseUser.uid, from, ymd),
+          getIdentityEvidenceRange(firebaseUser.uid, from, ymd),
+          getDailyWinsHistory(firebaseUser.uid, WEEKLY_REVIEW_DAYS),
+        ]);
+        if (cancelled) return;
+        setWeeklyReview(
+          buildWeeklyReview({ checkinYmds, evidenceDays, winsHistory, toYmd: ymd }),
+        );
+      } catch (err) {
+        console.error("[home] 주간 회고 조회 실패(카드 생략):", err);
+        if (!cancelled) setWeeklyReview(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [firebaseUser, ymd, showWeeklyReview, alreadyCheckedInToday]);
+
   // iOS 홈/잠금화면 위젯: 홈 진입 시 오늘 카드를 한 번 받아 위젯 공유 캐시에 공급한다.
   // 위젯 익스텐션은 스스로 인증 호출을 못 하므로 앱이 데이터를 밀어 넣는다. 웹/안드로이드는 no-op.
   useEffect(() => {
@@ -449,16 +551,21 @@ export default function HomeDashboardPage() {
   }, [firebaseUser, ymd]);
 
   const handleAffirmationCheckin = useCallback(
-    async (texts: string[]) => {
+    async (entries: Array<{ index: number; text: string }>): Promise<CheckinSubmitResult> => {
       const res = await authedFetch("/api/affirmation-checkin", {
         method: "POST",
-        body: JSON.stringify({ ymd, texts }),
+        body: JSON.stringify({ ymd, entries }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         ok?: boolean;
         matched?: boolean;
         streakCount?: number;
         mismatchedIndices?: number[];
+        focusIndex?: number;
+        depth?: "focus" | "full";
+        evidenceVotes?: number;
+        evidenceTag?: string;
+        freezeUsed?: number;
         error?: string;
       };
       if (!res.ok || !data.ok) throw new Error(data.error || "체크인을 저장하지 못했어요.");
@@ -471,6 +578,11 @@ export default function HomeDashboardPage() {
         matched: Boolean(data.matched),
         streakCount: Number(data.streakCount ?? 0),
         mismatchedIndices: data.mismatchedIndices,
+        focusIndex: data.focusIndex,
+        depth: data.depth,
+        evidenceVotes: data.evidenceVotes,
+        evidenceTag: data.evidenceTag,
+        freezeUsed: data.freezeUsed,
       };
     },
     [ymd, refreshUser],
@@ -585,7 +697,31 @@ export default function HomeDashboardPage() {
   const goalsDone = achievedGoals.filter((g) => goals.includes(g)).length;
   // 오늘의 if-then — 홈과 위젯이 같은 순수 회전(lib/planRotation)을 써 항상 일치한다.
   const todayPlan = pickTodayPlan(plans, uid, ymd);
-  const identityLabels = user?.identities?.labels ?? [];
+
+  const affirmations = user?.successAffirmations ?? [];
+  // 오늘 새길 다짐 — 서버 체크인 트랜잭션과 같은 순수 함수를 공유하므로 판정이 어긋나지 않는다.
+  const todayFocusIndex = pickTodayAffirmationIndex(uid, ymd, affirmations.length);
+
+  // 여정을 시작한 날(KST) — 리듬 링의 사전 적립 칸. Timestamp 형태가 깨져 있으면 생략한다.
+  const onboardedYmd = (() => {
+    const raw = user?.onboardedAt as { toDate?: () => Date } | undefined;
+    if (!raw?.toDate) return null;
+    try {
+      return getKstYmd(raw.toDate());
+    } catch {
+      return null;
+    }
+  })();
+
+  // 이미 적어둔 잘한 일은 접지 않는다 — 별도 state 동기화 없이 렌더 시점에 파생한다.
+  const winsFilled = wins.filter((w) => (w || "").trim().length > 0).length;
+  const winRowCount = Math.min(MAX_DAILY_WINS, Math.max(winsVisible, winsFilled));
+
+  // 접힌 섹션 요약 — 안에 무엇이 있는지 열지 않고도 알 수 있게 한다.
+  const todaySummary =
+    goals.length > 0 ? `${goalsDone} / ${goals.length}` : todayPlan ? "⚡" : "";
+  const recordSummary =
+    winsFilled > 0 ? t("weekly.wins", { count: winsFilled }) : "";
 
   /* ───── render ───── */
 
@@ -633,43 +769,8 @@ export default function HomeDashboardPage() {
         </div>
       </header>
 
-      {/* ── Segmented control ── */}
-      <div className="mx-auto w-full max-w-3xl px-4 mt-3">
-        <div role="tablist" aria-label={t("home.title")}
-          className="flex p-[2px] rounded-[9px]"
-          style={{ background: "rgba(118,118,128,0.12)" }}>
-          {(["future", "actions"] as const).map((tab) => {
-            const selected = activeTab === tab;
-            const badge =
-              tab === "future"
-                ? alreadyCheckedInToday ? " ✓" : ""
-                : goals.length > 0 ? ` ${goalsDone}/${goals.length}` : "";
-            return (
-              <button
-                key={tab}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                onClick={() => setActiveTab(tab)}
-                className="flex-1 h-7 rounded-[7px] text-[13px] tracking-[-0.08px] transition-colors"
-                style={{
-                  background: selected ? "#FFFFFF" : "transparent",
-                  color: "#000",
-                  fontWeight: selected ? 600 : 500,
-                  boxShadow: selected
-                    ? "0 3px 8px rgba(0,0,0,0.12), 0 1px 1px rgba(0,0,0,0.04), 0 0 0 0.5px rgba(0,0,0,0.04)"
-                    : "none",
-                }}
-              >
-                {t(tab === "future" ? "home.tab.future" : "home.tab.actions")}
-                {badge && (
-                  <span className="ml-1 text-[11px] text-[var(--label-3)]">{badge}</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      {/* 세그먼티드 2탭은 제거했다 — 하루의 필수 행동이 탭 뒤에 숨으면 안 되고,
+          탭 상태에 따라 카드 위치가 바뀌면 습관의 위치 단서가 깨진다. */}
 
       <main className="mx-auto w-full max-w-3xl">
         {/* ── 스트릭 공백 감지 — 프리즈 안내 칩 / 자기연민 재약속 카드 ── */}
@@ -677,259 +778,294 @@ export default function HomeDashboardPage() {
           streak={user?.affirmationStreak}
           todayYmd={ymd}
           alreadyCheckedInToday={alreadyCheckedInToday}
-          onCheckinCta={() => setActiveTab("future")}
+          onCheckinCta={handleCheckinCta}
         />
 
-        {/* ─── Tab · 오늘 (future) ─── */}
-        {activeTab === "future" && (
-          <>
-            {/* 오늘의 if-then — 아침엔 전체, 그 외엔 한 줄 축약. 목표/플랜이 하나도 없으면 생략. */}
-            {(plans.length > 0 || goals.length > 0) && (
-              <div className="px-4 pt-4">
-                <DailyPlanCard
-                  plan={todayPlan}
-                  yesterdayFirstAction={homeMode === "morning" ? yesterdayFirstAction : null}
-                  compact={homeMode !== "morning"}
-                  onCreateCta={() => setActiveTab("actions")}
-                />
-              </div>
-            )}
-            <div className="px-4 pt-5">
-              <FutureVisionCard
-                vision={vision}
-                loading={visionLoading}
-                errorMessage={visionError}
-                onRegenerate={handleRegenerateFutureVision}
-                hasFuturePersona={futureText.trim().length > 0}
-                onWriteFuturePersona={() => router.push("/settings")}
-              />
-            </div>
-            <div className="px-4 pt-5">
-              <MotivationCard
-                motivation={motivation}
-                loading={motivationLoading}
-                errorMessage={motivationError}
-                onRegenerate={handleRegenerateMotivation}
-                onSubmitResponse={handleSubmitMissionResponse}
-                affirmations={user?.successAffirmations ?? []}
-                affirmationStreakCount={streakCount}
-                alreadyCheckedInToday={alreadyCheckedInToday}
-                onCheckinAffirmations={handleAffirmationCheckin}
-              />
-            </div>
-            {motivationError && motivation && (
-              <p className="mx-5 mt-3 text-[13px] text-[#FF3B30]">{motivationError}</p>
-            )}
-          </>
+        {/* ─── ① 오늘의 한마디 (명언 hero) ─── */}
+        <div className="px-4 pt-4">
+          <MotivationCard
+            motivation={motivation}
+            loading={motivationLoading}
+            errorMessage={motivationError}
+            onRegenerate={handleRegenerateMotivation}
+            onSubmitResponse={handleSubmitMissionResponse}
+            hasAffirmations={affirmations.length > 0}
+          />
+        </div>
+        {motivationError && motivation && (
+          <p className="mx-5 mt-3 text-[13px] text-[#FF3B30]">{motivationError}</p>
         )}
 
-        {/* ─── Tab · 나의 행동 (actions) ─── */}
-        {/* 저녁 모드는 회고 우선 — flex order 로 (wins → 내일 첫 행동 → goals → 실행설계),
-            그 외는 (goals → 실행설계 → wins). JSX 중복 없이 순서만 바꾼다. */}
-        {activeTab === "actions" && (
-          <div className="flex flex-col">
-            <div style={{ order: homeMode === "evening" ? 2 : 0 }}>
-            {/* ── 이번 달 목표 (읽기·달성 토글 전용 — 추가/삭제는 /settings) ── */}
-            <GroupedSection
-              header={t("home.goals.title")}
-              trailing={
-                goals.length > 0 ? (
-                  <span className="text-[13px] text-[var(--label-2)] tabular-nums">
-                    {goalsDone} / {goals.length}
-                  </span>
-                ) : null
-              }
-            >
-              {goals.length > 0 ? (
-                goals.map((goal, idx) => {
-                  const trimmed = goal.trim();
-                  const achieved =
-                    trimmed.length > 0 && achievedGoals.includes(trimmed);
-                  const color = SLOT_COLORS[idx % SLOT_COLORS.length];
-                  const num = String(idx + 1).padStart(2, "0");
-                  const isLast = idx === goals.length - 1;
-                  return (
-                    <div
-                      key={idx}
-                      className="relative flex items-center gap-3 px-4 min-h-[60px]"
-                    >
-                      {/* Colored number badge — tap to toggle achieved */}
-                      <button
-                        type="button"
-                        onClick={() => handleToggleGoalAchieved(goal)}
-                        aria-label={
-                          achieved
-                            ? t("home.goals.toggleUnachievedAria")
-                            : t("home.goals.toggleAchievedAria")
-                        }
-                        aria-pressed={achieved}
-                        disabled={trimmed.length === 0}
-                        className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0 transition-opacity"
-                        style={{
-                          background: achieved ? color : color + "1A",
-                          opacity: trimmed.length === 0 ? 0.4 : 1,
-                        }}
-                      >
-                        {achieved ? (
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M5 12l5 5L20 7" />
-                          </svg>
-                        ) : (
-                          <span
-                            className="text-[15px] font-bold tracking-[-0.3px]"
-                            style={{ color }}
-                          >
-                            {num}
-                          </span>
-                        )}
-                      </button>
-                      <div className="flex-1 min-w-0 py-2">
-                        <div
-                          className={`text-[17px] leading-[22px] tracking-[-0.43px] ${
-                            achieved ? "text-[var(--label-2)] line-through decoration-[var(--label-3)]" : "text-[var(--label)]"
-                          }`}
-                        >
-                          {trimmed || (
-                            <span className="text-[var(--label-3)]">{t("home.goals.placeholder")}</span>
-                          )}
-                        </div>
-                      </div>
-                      {!isLast && (
-                        <div
-                          className="absolute bottom-0 right-0 h-[0.5px]"
-                          style={{ left: 60, background: "var(--sep)" }}
-                        />
-                      )}
-                    </div>
-                  );
-                })
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => router.push("/settings")}
-                  className="block w-full px-5 py-4 text-left text-[17px] text-[var(--label-3)]"
-                >
-                  {t("home.goals.subtitle")}
-                </button>
-              )}
-            </GroupedSection>
-            </div>
-
-            {/* ── 실행 설계 (if-then) — WOOP ── */}
-            <div style={{ order: homeMode === "evening" ? 3 : 1 }}>
-              <ExecutionPlansSection
-                uid={uid}
-                goals={goals}
-                identityLabels={identityLabels}
-                plans={plans}
+        {/* ─── ② 오늘의 다짐 — 하루의 유일한 필수 행동 ───
+            체크인 성공 후에는 같은 자리에 보상 카드를 띄운다(행동 → 보상 거리 0). */}
+        {affirmations.length > 0 && (
+          <div className="px-4 pt-5" ref={checkinAnchorRef}>
+            {reward ? (
+              <CheckinReward
+                streakCount={reward.streakCount}
+                depth={reward.depth}
+                evidenceVotes={reward.evidenceVotes}
+                evidenceTag={reward.evidenceTag}
+                freezeUsed={reward.freezeUsed}
+                extraMismatchCount={reward.mismatchedIndices?.length ?? 0}
               />
-            </div>
-
-            <div style={{ order: homeMode === "evening" ? 0 : 2 }}>
-            {/* ── 오늘의 작은 승리 ── */}
-            <GroupedSection
-              header={t("home.wins.title", { max: MAX_DAILY_WINS })}
-              trailing={
-                <div className="flex items-center gap-4">
-                  {winsError ? (
-                    <span className="text-[13px] text-[#FF3B30]">{winsError}</span>
-                  ) : winsJustSaved ? (
-                    <span className="text-[13px] font-medium text-[#D85A30]">
-                      {t("common.saved")}
-                    </span>
-                  ) : winsAutoSaving ? (
-                    <span className="text-[13px] text-[var(--label-3)]">{t("common.saving")}</span>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => router.push("/wins-history")}
-                    className="text-[15px] font-medium text-[var(--soul)]"
-                  >
-                    {t("home.wins.history")}
-                  </button>
-                </div>
-              }
-              footer="자동으로 저장돼요"
-            >
-              {[0, 1, 2].map((idx) => {
-                const num = String(idx + 1).padStart(2, "0");
-                const color = SLOT_COLORS[idx % SLOT_COLORS.length];
-                const placeholder =
-                  idx === 0 ? t("home.wins.placeholder1")
-                  : idx === 1 ? t("home.wins.placeholder2")
-                  : t("home.wins.placeholder3");
-                const isLast = idx === 2;
-                return (
-                  <div key={idx} className="relative flex items-start gap-3 px-4 py-3">
-                    <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0 mt-0.5"
-                      style={{ background: color + "1A" }}>
-                      <span className="text-[15px] font-bold tracking-[-0.3px]" style={{ color }}>
-                        {num}
-                      </span>
-                    </div>
-                    <textarea
-                      value={wins[idx] || ""}
-                      rows={1}
-                      maxLength={WIN_MAX}
-                      onChange={(e) => handleChangeWin(idx, e.target.value)}
-                      placeholder={placeholder}
-                      className="flex-1 min-h-[24px] resize-none bg-transparent text-[17px] leading-[24px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none py-2"
-                    />
-                    {!isLast && (
-                      <div
-                        className="absolute bottom-0 right-0 h-[0.5px]"
-                        style={{ left: 60, background: "var(--sep)" }}
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </GroupedSection>
-            </div>
-
-            {/* ── 내일 첫 행동 1개 (저녁 모드 전용) ── */}
-            {homeMode === "evening" && (
-              <div style={{ order: 1 }}>
-                <GroupedSection
-                  header={t("home.evening.firstAction.title")}
-                  trailing={
-                    tomorrowError ? (
-                      <span className="text-[13px] text-[#FF3B30]">{tomorrowError}</span>
-                    ) : tomorrowJustSaved ? (
-                      <span className="text-[13px] font-medium text-[#D85A30]">
-                        {t("common.saved")}
-                      </span>
-                    ) : tomorrowSaving ? (
-                      <span className="text-[13px] text-[var(--label-3)]">
-                        {t("common.saving")}
-                      </span>
-                    ) : null
-                  }
-                  footer={t("home.evening.firstAction.footer")}
-                >
-                  <div className="flex items-start gap-3 px-4 py-3">
-                    <div
-                      className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0 mt-0.5"
-                      style={{ background: "rgba(216,90,48,0.12)" }}
-                    >
-                      <span className="text-[15px]" aria-hidden>
-                        🌅
-                      </span>
-                    </div>
-                    <textarea
-                      value={tomorrowAction}
-                      rows={1}
-                      maxLength={TOMORROW_FIRST_ACTION_MAX}
-                      onChange={(e) => handleChangeTomorrowAction(e.target.value)}
-                      placeholder={t("home.evening.firstAction.placeholder")}
-                      className="flex-1 min-h-[24px] resize-none bg-transparent text-[17px] leading-[24px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none py-2"
-                    />
-                  </div>
-                </GroupedSection>
-              </div>
+            ) : (
+              <AffirmationCheckin
+                affirmations={affirmations}
+                focusIndex={todayFocusIndex}
+                streakCount={streakCount}
+                alreadyCheckedIn={alreadyCheckedInToday}
+                onSubmit={handleAffirmationCheckin}
+                onCheckedIn={setReward}
+              />
             )}
           </div>
         )}
+
+        {/* ─── ③ 7일 리듬 링 — 무한 카운터 대신 손에 닿는 분모 ───
+            다짐이 없으면 체크인할 행동 자체가 없다 — 0/7 링은 의미 없는 잔소리가 되므로 숨긴다. */}
+        {affirmations.length > 0 && weekCheckedYmds && (
+          <div className="px-4 pt-4">
+            <WeekRhythmRing
+              todayYmd={ymd}
+              checkedYmds={weekCheckedYmds}
+              startedYmd={onboardedYmd}
+            />
+          </div>
+        )}
+
+        {/* ─── ④ 주간 회고 — 일요일 저녁만, 입력 요구 0 ─── */}
+        {showWeeklyReview && weeklyReview && (
+          <div className="px-4 pt-4">
+            <WeeklyReviewCard review={weeklyReview} />
+          </div>
+        )}
+
+        {/* ─── ⑤ 미래 일상 비전 (읽기 전용) ─── */}
+        <div className="px-4 pt-5">
+          <FutureVisionCard
+            vision={vision}
+            loading={visionLoading}
+            errorMessage={visionError}
+            onRegenerate={handleRegenerateFutureVision}
+            hasFuturePersona={futureText.trim().length > 0}
+            onWriteFuturePersona={() => router.push("/settings")}
+          />
+        </div>
+
+        {/* ─── ⑥ 오늘의 실행 (기본 접힘) — 읽기 + 탭만, 자유입력 없음 ─── */}
+        {(plans.length > 0 || goals.length > 0) && (
+          <DisclosureSection
+            id="home.today"
+            header={t("home.section.today")}
+            summary={todaySummary}
+          >
+            {/* 오늘의 if-then — 아침엔 전체, 그 외엔 한 줄 축약.
+                DailyPlanCard 가 자체 카드(같은 bg)라 감싸지 않고 flush 로 두면 한 섹션처럼 이어진다. */}
+            <div className="border-b border-[var(--sep)]">
+              <DailyPlanCard
+                plan={todayPlan}
+                yesterdayFirstAction={homeMode === "morning" ? yesterdayFirstAction : null}
+                compact={homeMode !== "morning"}
+                onCreateCta={() => router.push("/settings")}
+              />
+            </div>
+
+            {/* 이번 달 목표 — 배지를 탭해 달성 토글(추가/삭제는 /settings) */}
+            {goals.map((goal, idx) => {
+              const trimmed = goal.trim();
+              const achieved = trimmed.length > 0 && achievedGoals.includes(trimmed);
+              const color = SLOT_COLORS[idx % SLOT_COLORS.length];
+              const num = String(idx + 1).padStart(2, "0");
+              return (
+                <div key={idx} className="relative flex items-center gap-3 px-4 min-h-[60px]">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleGoalAchieved(goal)}
+                    aria-label={
+                      achieved
+                        ? t("home.goals.toggleUnachievedAria")
+                        : t("home.goals.toggleAchievedAria")
+                    }
+                    aria-pressed={achieved}
+                    disabled={trimmed.length === 0}
+                    className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0 transition-opacity"
+                    style={{
+                      background: achieved ? color : color + "1A",
+                      opacity: trimmed.length === 0 ? 0.4 : 1,
+                    }}
+                  >
+                    {achieved ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 12l5 5L20 7" />
+                      </svg>
+                    ) : (
+                      <span className="text-[15px] font-bold tracking-[-0.3px]" style={{ color }}>
+                        {num}
+                      </span>
+                    )}
+                  </button>
+                  <div className="flex-1 min-w-0 py-2">
+                    <div
+                      className={`text-[17px] leading-[22px] tracking-[-0.43px] ${
+                        achieved
+                          ? "text-[var(--label-2)] line-through decoration-[var(--label-3)]"
+                          : "text-[var(--label)]"
+                      }`}
+                    >
+                      {trimmed || (
+                        <span className="text-[var(--label-3)]">{t("home.goals.placeholder")}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div
+                    className="absolute bottom-0 right-0 h-[0.5px]"
+                    style={{ left: 60, background: "var(--sep)" }}
+                  />
+                </div>
+              );
+            })}
+
+            {/* 실행 설계 관리 — 홈은 읽기 전용, 편집은 설정에서 (홈의 자유입력 진입점 0) */}
+            <button
+              type="button"
+              onClick={() => router.push("/settings")}
+              className="w-full flex items-center gap-3 px-4 py-3 text-left"
+            >
+              <span className="w-9 flex-shrink-0 text-center text-[15px]" aria-hidden>
+                ⚡
+              </span>
+              <span className="flex-1 text-[15px] leading-[20px] font-medium text-[var(--soul)]">
+                {t("home.plans.manage")}
+              </span>
+              <IconChevron />
+            </button>
+          </DisclosureSection>
+        )}
+
+        {/* ─── ⑦ 오늘의 기록 (기본 접힘) — 전부 선택 입력 ─── */}
+        <DisclosureSection
+          id="home.record"
+          header={t("home.section.record")}
+          summary={recordSummary}
+          /* "밤새 걱정이 줄어요" 는 내일 첫 행동 칸이 실제로 있는 저녁에만 맞는 문구다. */
+          footer={
+            homeMode === "evening"
+              ? t("home.evening.firstAction.footer")
+              : t("home.record.footer")
+          }
+        >
+          {/* 작은 승리 — 처음엔 1칸만, "한 줄 더"로 늘린다(빈 칸 3개는 숙제처럼 읽힌다) */}
+          <div className="flex items-center justify-between px-4 pt-3 pb-1">
+            <span className="text-[13px] uppercase tracking-[-0.08px] text-[var(--label-2)]">
+              {t("home.wins.title", { max: MAX_DAILY_WINS })}
+            </span>
+            <div className="flex items-center gap-4">
+              {winsError ? (
+                <span className="text-[13px] text-[#FF3B30]">{winsError}</span>
+              ) : winsJustSaved ? (
+                <span className="text-[13px] font-medium text-[#D85A30]">{t("common.saved")}</span>
+              ) : winsAutoSaving ? (
+                <span className="text-[13px] text-[var(--label-3)]">{t("common.saving")}</span>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => router.push("/wins-history")}
+                className="text-[15px] font-medium text-[var(--soul)]"
+              >
+                {t("home.wins.history")}
+              </button>
+            </div>
+          </div>
+
+          {Array.from({ length: winRowCount }, (_, idx) => {
+            const num = String(idx + 1).padStart(2, "0");
+            const color = SLOT_COLORS[idx % SLOT_COLORS.length];
+            const placeholder =
+              idx === 0
+                ? t("home.wins.placeholder1")
+                : idx === 1
+                  ? t("home.wins.placeholder2")
+                  : t("home.wins.placeholder3");
+            return (
+              <div key={idx} className="relative flex items-start gap-3 px-4 py-3">
+                <div
+                  className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0 mt-0.5"
+                  style={{ background: color + "1A" }}
+                >
+                  <span className="text-[15px] font-bold tracking-[-0.3px]" style={{ color }}>
+                    {num}
+                  </span>
+                </div>
+                <textarea
+                  value={wins[idx] || ""}
+                  rows={1}
+                  maxLength={WIN_MAX}
+                  onChange={(e) => handleChangeWin(idx, e.target.value)}
+                  placeholder={placeholder}
+                  className="flex-1 min-h-[24px] resize-none bg-transparent text-[17px] leading-[24px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none py-2"
+                />
+                <div
+                  className="absolute bottom-0 right-0 h-[0.5px]"
+                  style={{ left: 60, background: "var(--sep)" }}
+                />
+              </div>
+            );
+          })}
+
+          {winRowCount < MAX_DAILY_WINS && (
+            <button
+              type="button"
+              onClick={() => setWinsVisible((n) => Math.min(MAX_DAILY_WINS, n + 1))}
+              className="w-full flex items-center gap-3 px-4 py-3 text-left"
+            >
+              <span className="w-9 flex-shrink-0 text-center text-[17px] text-[var(--soul)]" aria-hidden>
+                ＋
+              </span>
+              <span className="flex-1 text-[15px] leading-[20px] font-medium text-[var(--soul)]">
+                {t("home.wins.addRow")}
+              </span>
+            </button>
+          )}
+
+          {/* 내일 첫 행동 1개 — 저녁에만 나타난다(위치는 항상 기록 섹션 마지막) */}
+          {homeMode === "evening" && (
+            <div className="relative flex items-start gap-3 px-4 py-3 border-t border-[var(--sep)]">
+              <div
+                className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0 mt-0.5"
+                style={{ background: "rgba(216,90,48,0.12)" }}
+              >
+                <span className="text-[15px]" aria-hidden>
+                  🌅
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[13px] font-medium text-[var(--label-2)]">
+                    {t("home.evening.firstAction.title")}
+                  </span>
+                  {tomorrowError ? (
+                    <span className="text-[13px] text-[#FF3B30]">{tomorrowError}</span>
+                  ) : tomorrowJustSaved ? (
+                    <span className="text-[13px] font-medium text-[#D85A30]">
+                      {t("common.saved")}
+                    </span>
+                  ) : tomorrowSaving ? (
+                    <span className="text-[13px] text-[var(--label-3)]">{t("common.saving")}</span>
+                  ) : null}
+                </div>
+                <textarea
+                  value={tomorrowAction}
+                  rows={1}
+                  maxLength={TOMORROW_FIRST_ACTION_MAX}
+                  onChange={(e) => handleChangeTomorrowAction(e.target.value)}
+                  placeholder={t("home.evening.firstAction.placeholder")}
+                  className="mt-1 w-full min-h-[24px] resize-none bg-transparent text-[17px] leading-[24px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none"
+                />
+              </div>
+            </div>
+          )}
+        </DisclosureSection>
       </main>
     </div>
   );

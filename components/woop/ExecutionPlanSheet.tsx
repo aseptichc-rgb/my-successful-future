@@ -14,18 +14,28 @@ import { refreshIosWidget } from "@/lib/iosWidget";
 import { useT } from "@/lib/i18n";
 
 /* ─────────────────────────────────────────────────────────────────
- * ExecutionPlanSheet — WOOP(소망→결과→장애물→계획) 4단계 실행설계 편집 시트.
+ * ExecutionPlanSheet — WOOP(소망→결과→장애물→계획) 실행설계 편집 시트.
  *
  * MCII(심상대비+실행의도): 긍정 상상(outcome) 뒤에 반드시 "내 안의 장애물"을
  * 마주하고 if-then 으로 잇는다 — 순수 긍정 상상만으로는 실행이 늘지 않는다
- * (Kappes & Oettingen 2011). 장애물 단계에서 AI 제안 3개를 받아 탭 한 번으로
- * obstacle/if/then 을 채울 수 있다(/api/execution-plan/obstacles).
+ * (Kappes & Oettingen 2011).
+ *
+ * 두 가지 경로가 있고 **기본은 빠른 설계**다:
+ *  · quick : 목표 선택 → 초안 3개 받기 → 카드 탭 → 저장. 자유입력 0회(총 3탭).
+ *            목표당 4칸을 직접 쓰게 하면 목표 3개에 12칸이 되어 아무도 끝내지 못한다.
+ *  · wizard: 기존 4단계(소망→결과→장애물→계획) 위저드 — "직접 다듬기" 로 진입.
+ *            수정 모드(existingPlan)는 항상 이쪽으로 바로 들어간다.
  * ───────────────────────────────────────────────────────────────── */
 
 const STEPS = ["wish", "outcome", "obstacle", "plan"] as const;
 type Step = (typeof STEPS)[number];
 
+/** quick = 초안 선택 경로, wizard = 4단계 직접 작성 경로. */
+type Mode = "quick" | "wizard";
+
 interface ObstacleSuggestion {
+  /** 신규 필드 — 구버전 서버 응답엔 없을 수 있어 optional 로 받는다. */
+  outcome?: string;
   obstacle: string;
   ifText: string;
   thenText: string;
@@ -54,6 +64,8 @@ export default function ExecutionPlanSheet({
   onSaved?: () => void;
 }) {
   const t = useT();
+  // 수정 모드는 이미 내용이 있으니 위저드로 직행한다. 신규는 빠른 설계가 기본.
+  const [mode, setMode] = useState<Mode>(existingPlan ? "wizard" : "quick");
   const [stepIdx, setStepIdx] = useState(0);
   const [goal, setGoal] = useState(existingPlan?.goal ?? initialGoal ?? "");
   const [outcome, setOutcome] = useState(existingPlan?.outcome ?? "");
@@ -63,13 +75,15 @@ export default function ExecutionPlanSheet({
   const [identityTag, setIdentityTag] = useState(existingPlan?.identityTag ?? "");
   const [suggestions, setSuggestions] = useState<ObstacleSuggestion[] | null>(null);
   const [suggesting, setSuggesting] = useState(false);
+  /** 빠른 설계에서 고른 초안 인덱스 — null 이면 아직 저장할 수 없다. */
+  const [pickedIdx, setPickedIdx] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 단계 이동 시 이전 단계의 오류 문구는 무효.
+  // 단계/경로 이동 시 이전 화면의 오류 문구는 무효.
   useEffect(() => {
     setError(null);
-  }, [stepIdx]);
+  }, [stepIdx, mode]);
 
   const step: Step = STEPS[stepIdx];
   const cleanGoals = goals.map((g) => g.trim()).filter((g) => g.length > 0);
@@ -82,6 +96,10 @@ export default function ExecutionPlanSheet({
         : step === "obstacle"
           ? obstacle.trim().length > 0
           : ifText.trim().length > 0 && thenText.trim().length > 0;
+
+  /** 저장 가능 조건 — 두 경로가 공유한다. if-then 이 플랜의 본질이므로 그 둘 + 목표만 요구. */
+  const canSave =
+    goal.trim().length > 0 && ifText.trim().length > 0 && thenText.trim().length > 0;
 
   const handleSuggest = async () => {
     if (suggesting || !goal.trim()) return;
@@ -108,14 +126,27 @@ export default function ExecutionPlanSheet({
     }
   };
 
-  const handleApplySuggestion = (s: ObstacleSuggestion) => {
+  /**
+   * 초안 하나를 플랜 필드 전체에 적용한다.
+   * outcome 은 구버전 서버 응답에 없을 수 있어 있을 때만 덮어쓴다
+   * (없으면 위저드에서 사용자가 채우거나 빈 값으로 저장된다 — 저장 자체는 막지 않는다).
+   */
+  const handleApplySuggestion = (s: ObstacleSuggestion, idx: number) => {
+    if (s.outcome) setOutcome(s.outcome);
     setObstacle(s.obstacle);
     setIfText(s.ifText);
     setThenText(s.thenText);
+    setPickedIdx(idx);
+  };
+
+  /** 빠른 설계 → 직접 다듬기. 목표가 이미 정해졌으면 소망 단계를 건너뛴다. */
+  const switchToWizard = () => {
+    setMode("wizard");
+    setStepIdx(goal.trim().length > 0 ? 1 : 0);
   };
 
   const handleSave = async () => {
-    if (saving || !canNext) return;
+    if (saving || !canSave) return;
     setSaving(true);
     setError(null);
     try {
@@ -170,6 +201,152 @@ export default function ExecutionPlanSheet({
   const inputClass =
     "w-full rounded-[10px] bg-[var(--bg-grouped-2)] px-4 py-3 text-[17px] leading-[22px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none";
 
+  /* ───── 목표 선택 행 — quick 과 wizard 의 소망 단계가 공유 ───── */
+  const goalPicker = (
+    <div className="bg-[var(--bg-grouped-2)] rounded-[12px] overflow-hidden">
+      {cleanGoals.map((g, idx) => {
+        const selected = goal.trim() === g;
+        const isLast = idx === cleanGoals.length - 1;
+        return (
+          <button
+            key={idx}
+            type="button"
+            onClick={() => {
+              setGoal(g);
+              // 목표가 바뀌면 이전 목표로 받은 초안은 더 이상 맞지 않는다.
+              setSuggestions(null);
+              setPickedIdx(null);
+            }}
+            className="relative w-full flex items-center gap-3 px-4 py-3 text-left"
+          >
+            <span
+              className="w-[22px] h-[22px] rounded-full flex-shrink-0 flex items-center justify-center"
+              style={{
+                border: selected ? "none" : "1.6px solid #C7C7CC",
+                background: selected ? "#D85A30" : "transparent",
+              }}
+            >
+              {selected && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12l5 5L20 7" />
+                </svg>
+              )}
+            </span>
+            <span className="flex-1 text-[17px] leading-[22px] tracking-[-0.43px] text-[var(--label)]">
+              {g}
+            </span>
+            {!isLast && (
+              <span
+                className="absolute bottom-0 right-0 h-[0.5px]"
+                style={{ left: 50, background: "var(--sep)" }}
+              />
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  /* ───── 경로 1: 빠른 설계 — 목표 선택 → 초안 3개 → 탭 → 저장 (키보드 0회) ───── */
+  if (mode === "quick") {
+    return (
+      <Sheet onClose={onClose} title={t("woop.quick.title")}>
+        <p className="text-[13px] leading-[18px] text-[var(--label-2)] pb-3">
+          {suggestions ? t("woop.quick.pickDraft") : t("woop.quick.pickGoal")}
+        </p>
+
+        {cleanGoals.length === 0 ? (
+          <p className="text-[15px] text-[var(--label-3)] py-4">{t("woop.wish.empty")}</p>
+        ) : (
+          goalPicker
+        )}
+
+        {/* 초안 받기 — 목표를 고른 뒤에만 활성 */}
+        {cleanGoals.length > 0 && (
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={handleSuggest}
+              disabled={suggesting || goal.trim().length === 0}
+              className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-[15px] font-semibold text-[var(--soul)] disabled:opacity-40"
+              style={{ background: "rgba(216,90,48,0.10)" }}
+            >
+              <span aria-hidden>✦</span>
+              {suggesting ? t("woop.quick.drafting") : t("woop.quick.draftCta")}
+            </button>
+          </div>
+        )}
+
+        {/* 초안 카드 — 탭하면 outcome/obstacle/if/then 이 한 번에 채워진다 */}
+        {suggestions && (
+          <div className="mt-3 space-y-2">
+            {suggestions.map((s, i) => {
+              const picked = pickedIdx === i;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => handleApplySuggestion(s, i)}
+                  className="w-full rounded-[12px] px-4 py-3 text-left transition-colors"
+                  style={{
+                    background: picked ? "rgba(216,90,48,0.10)" : "var(--bg-grouped-2)",
+                    boxShadow: picked ? "inset 0 0 0 1.5px #D85A30" : "none",
+                  }}
+                >
+                  {s.outcome && (
+                    <>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--label-3)]">
+                        {t("woop.quick.outcomeLabel")}
+                      </p>
+                      <p className="mt-0.5 text-[15px] leading-[20px] font-medium text-[var(--label)]">
+                        {s.outcome}
+                      </p>
+                    </>
+                  )}
+                  <p
+                    className={`text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--label-3)] ${s.outcome ? "mt-2.5" : ""}`}
+                  >
+                    {t("woop.quick.obstacleLabel")}
+                  </p>
+                  <p className="mt-0.5 text-[15px] leading-[20px] text-[var(--label)]">
+                    {s.obstacle}
+                  </p>
+                  <p className="mt-2 text-[13px] leading-[18px] text-[var(--label-2)]">
+                    {t("plan.today.if")} {s.ifText} → {s.thenText}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {error && <p className="mt-3 text-[13px] text-[#FF3B30]">{error}</p>}
+
+        <div className="mt-5 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={switchToWizard}
+            disabled={saving}
+            className="text-[15px] font-medium text-[var(--label-2)] disabled:opacity-40"
+          >
+            {t("woop.quick.manual")}
+          </button>
+          <div className="flex-1" />
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={!canSave || saving}
+            className="rounded-full px-5 py-2.5 text-[15px] font-semibold text-white disabled:opacity-30"
+            style={{ background: "#D85A30" }}
+          >
+            {saving ? t("woop.saving") : t("woop.quick.saveDraft")}
+          </button>
+        </div>
+      </Sheet>
+    );
+  }
+
+  /* ───── 경로 2: 4단계 위저드 (직접 작성 / 기존 플랜 수정) ───── */
   return (
     <Sheet onClose={onClose} title={t("woop.sheet.title")}>
       {/* 단계 도트 + 단계명 */}
@@ -196,43 +373,7 @@ export default function ExecutionPlanSheet({
           {cleanGoals.length === 0 ? (
             <p className="text-[15px] text-[var(--label-3)] py-4">{t("woop.wish.empty")}</p>
           ) : (
-            <div className="bg-[var(--bg-grouped-2)] rounded-[12px] overflow-hidden">
-              {cleanGoals.map((g, idx) => {
-                const selected = goal.trim() === g;
-                const isLast = idx === cleanGoals.length - 1;
-                return (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setGoal(g)}
-                    className="relative w-full flex items-center gap-3 px-4 py-3 text-left"
-                  >
-                    <span
-                      className="w-[22px] h-[22px] rounded-full flex-shrink-0 flex items-center justify-center"
-                      style={{
-                        border: selected ? "none" : "1.6px solid #C7C7CC",
-                        background: selected ? "#D85A30" : "transparent",
-                      }}
-                    >
-                      {selected && (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M5 12l5 5L20 7" />
-                        </svg>
-                      )}
-                    </span>
-                    <span className="flex-1 text-[17px] leading-[22px] tracking-[-0.43px] text-[var(--label)]">
-                      {g}
-                    </span>
-                    {!isLast && (
-                      <span
-                        className="absolute bottom-0 right-0 h-[0.5px]"
-                        style={{ left: 50, background: "var(--sep)" }}
-                      />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+            goalPicker
           )}
         </div>
       )}
@@ -291,7 +432,7 @@ export default function ExecutionPlanSheet({
                   <button
                     key={i}
                     type="button"
-                    onClick={() => handleApplySuggestion(s)}
+                    onClick={() => handleApplySuggestion(s, i)}
                     className="w-full rounded-[10px] px-4 py-3 text-left transition-colors"
                     style={{
                       background: applied ? "rgba(216,90,48,0.10)" : "var(--bg-grouped-2)",

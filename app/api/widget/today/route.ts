@@ -23,7 +23,7 @@ import {
   todayKst,
 } from "@/lib/dailyMotivation";
 import { ensureFutureVision } from "@/lib/futureVision";
-import { pickTodayPlan } from "@/lib/planRotation";
+import { pickTodayPlan, pickTodayAffirmationIndex } from "@/lib/planRotation";
 import type {
   FutureVision,
   WidgetExecutionPlan,
@@ -211,6 +211,12 @@ export async function GET(request: NextRequest) {
     let userGoals: string[] | undefined;
     let streakCount = 0;
     let affirmations: string[] = [];
+    /**
+     * 오늘 새길 다짐 인덱스 — 앱 체크인이 요구하는 그 한 줄을 위젯도 같이 가리키게 한다.
+     * ⚠️ 회전은 **잘라내기 전 전체 목록 길이**로 계산해야 서버 체크인 판정과 일치한다.
+     *    잘린 목록에 그 줄이 없으면 필드를 생략한다(잘못된 줄을 강조하지 않는다).
+     */
+    let affirmationFocusIndex: number | undefined;
     try {
       const userSnap = await getAdminDb().collection("users").doc(me.uid).get();
       const data = userSnap.data();
@@ -222,10 +228,14 @@ export async function GET(request: NextRequest) {
       streakCount = Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
       // "성공한 나에게 한 발 더" 다짐 본문 — 위젯이 매일 결심을 다잡도록 그대로 노출.
       if (data && Array.isArray(data.successAffirmations)) {
-        affirmations = (data.successAffirmations as unknown[])
+        const all = (data.successAffirmations as unknown[])
           .map((a) => (typeof a === "string" ? a.trim() : ""))
-          .filter((a) => a.length > 0)
-          .slice(0, MAX_WIDGET_AFFIRMATIONS);
+          .filter((a) => a.length > 0);
+        affirmations = all.slice(0, MAX_WIDGET_AFFIRMATIONS);
+        if (all.length > 0) {
+          const focus = pickTodayAffirmationIndex(me.uid, ymd, all.length);
+          if (focus < affirmations.length) affirmationFocusIndex = focus;
+        }
       }
     } catch (err) {
       console.error("[widget/today] user 문서 조회 실패:", err);
@@ -275,6 +285,7 @@ export async function GET(request: NextRequest) {
       todayProgress: progressResult.progress,
       streakCount,
       affirmations,
+      ...(affirmationFocusIndex !== undefined ? { affirmationFocusIndex } : {}),
       ...(futureVision ? { futureVision } : {}),
       goalsAchievedCount: progressResult.goalsAchievedCount,
       goalsTotalCount: progressResult.goalsTotalCount,

@@ -448,6 +448,7 @@ const dict: Record<DictKey, string> = {
   "progress.identity.empty": "还没有累积的证据。从今天的誓言打卡开始吧。",
   "progress.evidence.title": "最近的证据",
   "progress.source.checkin": "誓言",
+  "progress.source.deep": "全部刻下",
   "progress.source.goal": "目标",
   "progress.source.win": "小成就",
   "progress.source.mission": "任务",
@@ -469,6 +470,63 @@ const dict: Record<DictKey, string> = {
   "coach.style.identity": "身份",
   "coach.failed": "无法加载建议。",
   "coach.quota": "今天的教练建议次数已用完，明天见。",
+
+  // ── 今日誓言（每天只需一行，全部抄写为可选）──────────
+  "affirmations.focus.title": "今日誓言",
+  "affirmations.focus.rotation": "第 {index}/{total} 条",
+  "affirmations.focus.hint": "把这一行照原样写下来，今天的打卡就完成了。",
+  "affirmations.focus.placeholder": "照着写一遍…",
+  "affirmations.focus.expand": "刻下全部 {count} 行",
+  "affirmations.focus.collapse": "只写今天这一行",
+  "affirmations.focus.deepHint": "全部刻下，会多得一票身份证据。",
+  "affirmations.focus.mismatch": "请与上面的句子逐字一致。",
+  "affirmations.extra.mismatch": "有一行可以再看看 — 今天的打卡已经完成了。",
+
+  // ── 打卡之后 ──────────────────────────────────────
+  "checkin.reward.title": "今天你活成了那个人",
+  "checkin.reward.streak": "连续第 {count} 天",
+  "checkin.reward.evidence": "身份证据 +{count} · 我是{label}",
+  "checkin.reward.evidencePlain": "身份证据 +{count}",
+  "checkin.reward.deepBadge": "全部刻下",
+  "checkin.reward.freeze": "{count} 块冰接上了空缺的日子",
+
+  // ── 七日节律环 ────────────────────────────────────
+  "rhythm.title": "本周节律",
+  "rhythm.count": "{done}/{total}",
+  "rhythm.footer": "过去 7 天里刻下了 {done} 天。",
+  "rhythm.startCaption": "从你启程的那天开始计。",
+  "rhythm.todayAria": "今天",
+
+  // ── 每周回顾卡（周日晚，无需输入）──────────────────
+  "weekly.title": "本周回顾",
+  "weekly.checkinDays": "誓言 {count} 天",
+  "weekly.wins": "小成就 {count} 件",
+  "weekly.evidence": "证据 {count} 票",
+  "weekly.topIdentity": "本周证明最多的自己 · 我是{label}",
+  "weekly.empty": "这周记录不多。下次打卡我们重新开始计。",
+  "weekly.footer": "不用填写 — 只要回望这 7 天。",
+
+  // ── WOOP 快速设计（三次点击，无需键盘）─────────────
+  "woop.quick.title": "快速设计",
+  "woop.quick.pickGoal": "要为哪个目标设计？",
+  "woop.quick.draftCta": "获取 3 份草稿",
+  "woop.quick.drafting": "正在生成草稿…",
+  "woop.quick.pickDraft": "选中喜欢的草稿，可以原样保存。",
+  "woop.quick.saveDraft": "就这样保存",
+  "woop.quick.manual": "我自己写",
+  "woop.quick.outcomeLabel": "最好的结果",
+  "woop.quick.obstacleLabel": "内心的阻碍",
+  "woop.section.moreCta": "还有 {count} 个目标未设计",
+  "woop.section.footerOne": "一次一个 — 做到一个，胜过写下三个。",
+
+  // ── 首页折叠区块 ──────────────────────────────────
+  "home.section.today": "今天的行动",
+  "home.section.record": "今天的记录",
+  "home.section.expandAria": "展开",
+  "home.section.collapseAria": "收起",
+  "home.wins.addRow": "再写一行",
+  "home.record.footer": "写下的内容会自动保存。",
+  "home.plans.manage": "管理执行设计",
 };
 
 export default dict;

@@ -5,6 +5,8 @@
  *   - checkin(오늘): 다짐 따라쓰기 체크인 성공 1건 = 1표. 라벨은 결정론적 회전
  *     (labels[fnv1a(uid|ymd|checkin) % n]) — 의미 매핑을 가장하지 않고 풀 전체에
  *     증거를 고르게 분산한다. 유일성은 affirmationLogs/{ymd} 미존재 가드가 보장.
+ *   - deep(오늘): 그 체크인이 전량 전사(depth="full")였다면 보너스 1표. 필수치는
+ *     1줄로 낮추되 더 깊이 한 노력에는 눈에 보이는 보상을 붙인다(선택 행동의 강화).
  *   - goal(어제): 어제 달성한 목표가 1개 이상이면 1표. 라벨은 그 목표와 trim-일치하는
  *     ExecutionPlan.identityTag 우선, 없으면 회전 폴백.
  *   - win(어제): 어제 "잘한 일"이 1칸 이상 기록됐으면 1표. 라벨은 회전.
@@ -29,8 +31,8 @@ import { yesterdayKstYmd } from "@/lib/kstDate";
 import { fnv1a } from "@/lib/planRotation";
 import type { IdentityEvidenceEntry } from "@/types";
 
-/** 하루에 적립 가능한 최대 표 수 — checkin + goal + win 카테고리당 1표. */
-export const MAX_EVIDENCE_VOTES_PER_DAY = 3;
+/** 하루에 적립 가능한 최대 표 수 — checkin + deep + goal + win 카테고리당 1표. */
+export const MAX_EVIDENCE_VOTES_PER_DAY = 4;
 /** 증거 피드(detail)에 남기는 근거 텍스트 최대 길이. */
 const EVIDENCE_DETAIL_MAX = 40;
 
@@ -61,6 +63,8 @@ export interface PreparedEvidence {
   yesterdayYmd: string;
   /** 오늘 checkin 1표. */
   checkinEntry: IdentityEvidenceEntry;
+  /** 오늘 deep 보너스 1표 (전량 전사 체크인일 때만, 아니면 null). */
+  deepEntry: IdentityEvidenceEntry | null;
   /** 어제분 goal/win 표 (reconciled 가드 통과분만, 없으면 빈 배열). */
   yesterdayEntries: IdentityEvidenceEntry[];
   /** 어제 evidence 문서에 이미 있던 entries (append 시 보존용). */
@@ -90,7 +94,13 @@ export interface PreparedEvidence {
  */
 export async function prepareEvidence(
   tx: Transaction,
-  opts: { uid: string; ymd: string; labels: string[] },
+  opts: {
+    uid: string;
+    ymd: string;
+    labels: string[];
+    /** true = 이번 체크인이 전량 전사(depth="full") — deep 보너스 1표를 함께 적립한다. */
+    deep?: boolean;
+  },
 ): Promise<PreparedEvidence | null> {
   const { uid, ymd } = opts;
   const labels = opts.labels
@@ -114,6 +124,9 @@ export async function prepareEvidence(
     identityTag: rotateLabel(labels, uid, ymd, "checkin"),
     source: "checkin",
   };
+  const deepEntry: IdentityEvidenceEntry | null = opts.deep
+    ? { identityTag: rotateLabel(labels, uid, ymd, "deep"), source: "deep" }
+    : null;
 
   // ── 어제분 goal/win 표 계산 (reconciled 가드) ──
   const alreadyReconciled = evidenceSnap.exists && evidenceSnap.get("reconciled") === true;
@@ -167,7 +180,7 @@ export async function prepareEvidence(
 
   // ── 갱신 대상 identityProgress 문서 집계 후 읽기 ──
   const progress: PreparedEvidence["progress"] = new Map();
-  for (const entry of [checkinEntry, ...yesterdayEntries]) {
+  for (const entry of [checkinEntry, ...(deepEntry ? [deepEntry] : []), ...yesterdayEntries]) {
     const docId = identityDocId(entry.identityTag);
     if (!docId) continue;
     const agg = progress.get(docId) ?? {
@@ -194,6 +207,7 @@ export async function prepareEvidence(
     ymd,
     yesterdayYmd: yesterday,
     checkinEntry,
+    deepEntry,
     yesterdayEntries,
     yesterdayExistingEntries,
     yesterdayDocExists: evidenceSnap.exists,
@@ -215,15 +229,19 @@ export function applyEvidence(tx: Transaction, prepared: PreparedEvidence): void
 
   // 오늘 장부 — 보통은 신규 생성이지만, qDate 딥링크로 과거 날짜를 체크인하는 경우
   // 다음 날의 정산이 이미 문서를 만들어 두었을 수 있다 → 기존 entries 를 보존하며 append.
+  const todayNewEntries = [
+    prepared.checkinEntry,
+    ...(prepared.deepEntry ? [prepared.deepEntry] : []),
+  ];
   const todayRef = db.doc(`users/${uid}/identityEvidence/${ymd}`);
   if (prepared.todayDocExists) {
     tx.update(todayRef, {
-      entries: [...prepared.todayExistingEntries, prepared.checkinEntry],
+      entries: [...prepared.todayExistingEntries, ...todayNewEntries],
     });
   } else {
     tx.set(todayRef, {
       ymd,
-      entries: [prepared.checkinEntry],
+      entries: todayNewEntries,
       createdAt: now,
     });
   }

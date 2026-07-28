@@ -81,6 +81,19 @@ export interface AffirmationStreak {
 }
 
 /**
+ * 체크인 깊이. focus = 오늘 회전으로 뽑힌 1줄만 새김(하루 필수 최소치),
+ * full = 저장된 다짐을 전량 새김(선택 — 정체성 증거 보너스 1표).
+ *
+ * 부담을 줄이려 focus 를 기본 경로로 내렸다: 하루의 앵커 행동이 가장 비싸면
+ * 실행 빈도가 떨어진다(Fogg B=MAP — Ability 를 낮춰야 행동이 유지된다).
+ * 전량 전사는 삭제하지 않고 보너스가 붙는 선택지로 남긴다.
+ *
+ * 레거시 affirmationLogs 문서엔 이 필드가 없다 — 당시엔 전량 전사만 가능했으므로
+ * 읽는 쪽에서 `depth ?? "full"` 로 폴백하는 것이 사실에 부합한다.
+ */
+export type AffirmationCheckinDepth = "focus" | "full";
+
+/**
  * "10년 후 나의 모습" 몰입형 질문의 차원별 답변. 모든 필드 선택 —
  * 사용자는 원하는 문항만 답하고 넘어갈 수 있다. 각 답변은 FUTURE_SELF_FIELD_MAX(200자)로 클램프.
  */
@@ -272,6 +285,7 @@ export interface IdentityProgress {
     checkin?: number;
     goal?: number;
     win?: number;
+    deep?: number;
   };
   /** 마지막 증거 적립 시각 (mission 응답의 lastRespondedAt 과 별개). */
   lastEvidenceAt?: Timestamp;
@@ -307,8 +321,11 @@ export interface ExecutionPlan {
 /** 정체성 증거 1건 — 어떤 행동이 어떤 라벨에 투표했는지. */
 export interface IdentityEvidenceEntry {
   identityTag: string;
-  /** checkin=오늘 다짐 체크인, goal=어제 목표 달성, win=어제 잘한 일 기록. */
-  source: "checkin" | "goal" | "win";
+  /**
+   * checkin=오늘 다짐 체크인(1줄 이상), goal=어제 목표 달성, win=어제 잘한 일 기록,
+   * deep=오늘 다짐을 전량 따라쓴 보너스(checkin 과 별개 카테고리라 하루 최대 1표).
+   */
+  source: "checkin" | "goal" | "win" | "deep";
   /** 표시용 짧은 근거 (예: 달성한 목표 텍스트, 잘한 일 첫 줄 — 트렁케이트). */
   detail?: string;
 }
@@ -431,6 +448,12 @@ export interface WidgetTodayResponse {
    * 응답 호환성: 누락 시 위젯 측 빈 배열 폴백 — 옛 클라이언트도 동작.
    */
   affirmations?: string[];
+  /**
+   * `affirmations` 중 오늘 새길 줄의 인덱스(0-based) — 앱 체크인이 요구하는 그 한 줄.
+   * lib/planRotation 의 pickTodayAffirmationIndex 결과로, 앱·서버와 같은 값이다.
+   * 응답 호환성: 누락(또는 목록이 잘려 그 줄이 빠진 경우) 시 위젯은 강조 없이 전체를 보여준다.
+   */
+  affirmationFocusIndex?: number;
   /**
    * "그 꿈을 사는 하루" 비전 티저. 비전 미생성/생성 실패 시 생략된다(위젯은 해당 섹션 자연 생략).
    */

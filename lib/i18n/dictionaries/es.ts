@@ -461,6 +461,7 @@ const dict: Record<DictKey, string> = {
   "progress.identity.empty": "Aún no hay evidencia. Empieza con el check-in de hoy.",
   "progress.evidence.title": "Evidencia reciente",
   "progress.source.checkin": "Afirmación",
+  "progress.source.deep": "Todas las líneas",
   "progress.source.goal": "Meta",
   "progress.source.win": "Logro",
   "progress.source.mission": "Misión",
@@ -483,6 +484,66 @@ const dict: Record<DictKey, string> = {
   "coach.style.identity": "Identidad",
   "coach.failed": "No se pudieron cargar las sugerencias.",
   "coach.quota": "Agotaste las sugerencias del coach de hoy. Hasta mañana.",
+
+  // ── Afirmación de hoy (una línea obligatoria, el resto opcional) ──
+  "affirmations.focus.title": "La afirmación de hoy",
+  "affirmations.focus.rotation": "{index} de {total}",
+  "affirmations.focus.hint": "Copia esta única línea tal cual y el registro de hoy queda hecho.",
+  "affirmations.focus.placeholder": "Escríbela igual…",
+  "affirmations.focus.expand": "Grabar las {count} líneas",
+  "affirmations.focus.collapse": "Solo la línea de hoy",
+  "affirmations.focus.deepHint": "Si las grabas todas, ganas un voto de identidad más.",
+  "affirmations.focus.mismatch": "Escríbela igual que la línea de arriba, letra por letra.",
+  "affirmations.extra.mismatch":
+    "Hay una línea para repasar — el registro de hoy ya está completo.",
+
+  // ── Justo después del registro ────────────────────
+  "checkin.reward.title": "Hoy viviste como esa persona",
+  "checkin.reward.streak": "Día {count} seguido",
+  "checkin.reward.evidence": "Evidencia de identidad +{count} · Soy {label}",
+  "checkin.reward.evidencePlain": "Evidencia de identidad +{count}",
+  "checkin.reward.deepBadge": "Todas las líneas",
+  "checkin.reward.freeze": "{count} hielo(s) unieron los días que faltaron",
+
+  // ── Anillo de ritmo de 7 días ─────────────────────
+  "rhythm.title": "El ritmo de esta semana",
+  "rhythm.count": "{done}/{total}",
+  "rhythm.footer": "{done} de los últimos 7 días grabados.",
+  "rhythm.startCaption": "Contamos desde el día en que empezaste.",
+  "rhythm.todayAria": "Hoy",
+
+  // ── Repaso semanal (domingo por la noche, sin escribir) ──
+  "weekly.title": "Repaso de la semana",
+  "weekly.checkinDays": "{count} días grabados",
+  "weekly.wins": "{count} logros",
+  "weekly.evidence": "{count} votos",
+  "weekly.topIdentity": "Lo que más probaste esta semana · Soy {label}",
+  "weekly.empty":
+    "Una semana tranquila. Volvemos a contar en tu próximo registro.",
+  "weekly.footer": "No hay nada que escribir — solo mira los últimos 7 días.",
+
+  // ── Diseño rápido WOOP (3 toques, sin teclado) ────
+  "woop.quick.title": "Diseño rápido",
+  "woop.quick.pickGoal": "¿Para qué meta lo diseñamos?",
+  "woop.quick.draftCta": "Recibir 3 borradores",
+  "woop.quick.drafting": "Escribiendo borradores…",
+  "woop.quick.pickDraft": "Elige el borrador que te guste y guárdalo tal cual.",
+  "woop.quick.saveDraft": "Guardar así",
+  "woop.quick.manual": "Escribirlo yo",
+  "woop.quick.outcomeLabel": "Mejor resultado",
+  "woop.quick.obstacleLabel": "Obstáculo interno",
+  "woop.section.moreCta": "{count} meta(s) más sin plan",
+  "woop.section.footerOne":
+    "De una en una — practicar una vale más que anotar tres.",
+
+  // ── Secciones plegables del inicio ────────────────
+  "home.section.today": "La acción de hoy",
+  "home.section.record": "El registro de hoy",
+  "home.section.expandAria": "Desplegar",
+  "home.section.collapseAria": "Plegar",
+  "home.wins.addRow": "Añadir otra línea",
+  "home.record.footer": "Lo que escribas se guarda solo.",
+  "home.plans.manage": "Gestionar diseños de ejecución",
 };
 
 export default dict;

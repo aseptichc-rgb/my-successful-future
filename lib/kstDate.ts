@@ -53,3 +53,13 @@ export function kstMonth(ymd: string): string {
 export function kstHour(date: Date = new Date()): number {
   return new Date(date.getTime() + KST_OFFSET_MS).getUTCHours();
 }
+
+/**
+ * 주어진 KST YYYY-MM-DD 의 요일 (0=일요일 … 6=토요일) — 주간 회고 카드 노출 판정용.
+ * ymd 는 이미 KST 로 환산된 날짜이므로 UTC 자정으로 파싱해도 요일이 어긋나지 않는다.
+ * 형식이 깨졌으면 -1 (호출부는 === 0 비교만 하므로 자연히 미노출).
+ */
+export function kstWeekday(ymd: string): number {
+  const ms = ymdToUtcMs(ymd);
+  return Number.isNaN(ms) ? -1 : new Date(ms).getUTCDay();
+}
