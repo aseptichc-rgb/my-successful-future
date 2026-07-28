@@ -1,5 +1,8 @@
 # 재심사 — Guideline 4 대응 build 1.0(9) 올리기
 
+> **상태(2026-07-28): build 1.0(9) 업로드 완료** — 위젯 수동 서명 경로로 archive→export→altool 성공.
+> ASC TestFlight 처리 후 §5~6 대로 "앱 심사에 다시 제출" 하면 됨. 아래는 그 재현 절차.
+>
 > Mac 빌드 시 참고용. App Store 거절(Guideline 4 — Design) 대응 후 **정식 재제출**을 위한 절차다.
 > 전체 iOS 셋업은 [README-IOS.md](README-IOS.md) 참고. 이 문서는 "이미 build 8까지 올린 상태에서
 > Guideline 4 수정본을 재심사에 넣는" 최소 절차만 담는다.
@@ -35,14 +38,33 @@ cd ios/App && xcrun agvtool new-version -all 9 && cd ../..
 ```
 또는 Xcode에서 Target **App** → General → Build = **9**.
 
-### 4) 아카이브 + 업로드
+### 4) 아카이브 + 업로드 (위젯 = **수동 서명** 경로)
+
+> ⚠️ `scripts/ios-archive-upload.sh` 는 **자동 서명**을 강제해 쓰지 말 것. 위젯(AnimaWidget)
+> 타깃이 생긴 뒤로 자동 서명은 "no devices" 로 막히고, pbxproj 는 이미 두 타깃 **수동 서명**
+> (프로파일 `Anima AppStore Main 2` / `AnimaWidget AppStore`)으로 세팅돼 있다. 아래 경로를 쓴다.
+
 ```bash
-export DEVELOPMENT_TEAM=<10자 Team ID>
-# 자동 업로드 시(선택):
-# export ASC_API_KEY_ID=...  ASC_API_ISSUER_ID=...  ASC_API_KEY_PATH=~/AuthKey_XXXX.p8
-bash scripts/ios-archive-upload.sh
+# 0) 서명 키체인 잠금해제 (배포 인증서는 anima-build 키체인, 암호 anima)
+security unlock-keychain -p anima ~/Library/Keychains/anima-build.keychain-db
+security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k anima \
+  ~/Library/Keychains/anima-build.keychain-db
+
+# 1) Archive (수동 서명 — pbxproj 값 그대로 사용, 인증 인자 불필요)
+xcodebuild -scheme App -project ios/App/App.xcodeproj -configuration Release \
+  -destination 'generic/platform=iOS' -archivePath build/Anima.xcarchive \
+  CODE_SIGN_STYLE=Manual archive
+
+# 2) Export IPA (두 프로파일 매핑한 위젯용 ExportOptions)
+xcodebuild -exportArchive -archivePath build/Anima.xcarchive \
+  -exportPath build/export -exportOptionsPlist scripts/ExportOptions-widget.plist
+
+# 3) 업로드 (altool, ASC API 키 — .p8 는 ~/.appstoreconnect/private_keys/)
+xcrun altool --upload-app -f build/export/App.ipa -t ios \
+  --apiKey 8ZJ3Y6N6J7 --apiIssuer daa5537d-77cb-44e3-904f-6df67f61ffde
 ```
-- API 키 미설정 시: 스크립트가 `build/export/App.ipa`까지만 만든다 → **Apple Transporter 앱에 그 IPA 드래그**로 업로드.
+- `UPLOAD SUCCEEDED with no errors` 가 뜨면 완료. App Store Connect > TestFlight 에서 5~15분 뒤 처리됨.
+- 대안: API 키 없이 하려면 **Apple Transporter 앱에 `build/export/App.ipa` 드래그**.
 
 ---
 
