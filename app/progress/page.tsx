@@ -11,9 +11,9 @@ import {
 } from "@/lib/firebase";
 import { addKstDays, kstMonth } from "@/lib/kstDate";
 import { FREEZES_PER_MONTH } from "@/lib/constants/streak";
-import { GROWTH_STAGE_EMOJI } from "@/lib/constants/growth";
-import { computeGrowthStage, GROWTH_STAGE_LABEL_KEY } from "@/lib/growthStage";
+import { growthStageOf } from "@/lib/growthStage";
 import GroupedSection from "@/components/ui/GroupedSection";
+import ProgressBar from "@/components/ui/ProgressBar";
 import { useLanguage, type DictKey } from "@/lib/i18n";
 import type { IdentityEvidenceDay, IdentityProgress } from "@/types";
 
@@ -144,8 +144,7 @@ export default function ProgressPage() {
   // 레거시 문서(bestCount 없음)는 현재 count 를 최고기록으로 간주 — 서버 백필과 동일 폴백.
   const best = Math.max(streak?.bestCount ?? count, count);
   // 성장 단계 — 누적 증거 표(서버 전용 growth.votes). 표가 없으면 히어로를 통째로 생략.
-  const growthVotes = user?.growth?.votes ?? 0;
-  const growthStage = growthVotes > 0 ? computeGrowthStage(growthVotes) : null;
+  const growthStage = growthStageOf(user?.growth?.votes);
   // 목표 지킨 날 누적 — goalStreak 미보유(레거시/신규) 계정은 줄 자체를 생략.
   const goalDays = user?.goalStreak?.totalDays ?? 0;
   const freezesLeft =
@@ -214,34 +213,22 @@ export default function ProgressPage() {
                 style={{ background: "rgba(30,27,75,0.08)" }}
                 aria-hidden
               >
-                {GROWTH_STAGE_EMOJI[growthStage.index]}
+                {growthStage.emoji}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] tracking-[-0.08px] text-[var(--label-2)]">
                   {t("growth.title")}
                 </p>
                 <p className="text-[28px] font-bold leading-[34px] tracking-[-0.4px] text-[var(--label)]">
-                  {t(GROWTH_STAGE_LABEL_KEY[growthStage.index])}
+                  {t(growthStage.labelKey)}
                 </p>
                 <p className="mt-0.5 text-[13px] tracking-[-0.08px] text-[var(--label-2)] tabular-nums">
-                  {t("growth.votes", { count: growthVotes })}
+                  {t("growth.votes", { count: growthStage.votes })}
                   {growthStage.next !== null && (
                     <> · {t("growth.toNext", { count: growthStage.votesToNext })}</>
                   )}
                 </p>
-                <div
-                  className="mt-2 h-[4px] rounded-full overflow-hidden"
-                  style={{ background: "rgba(30,27,75,0.10)" }}
-                  role="progressbar"
-                  aria-valuenow={growthStage.progressPct}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                >
-                  <div
-                    className="h-full rounded-full"
-                    style={{ width: `${growthStage.progressPct}%`, background: "#1E1B4B" }}
-                  />
-                </div>
+                <ProgressBar pct={growthStage.progressPct} className="mt-2" />
               </div>
             </div>
           </GroupedSection>

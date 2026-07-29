@@ -79,6 +79,12 @@ export interface PreparedEvidence {
    */
   todayExistingEntries: IdentityEvidenceEntry[];
   todayDocExists: boolean;
+  /**
+   * 이번에 적립되는 표 총수 — progress 집계(total)의 합, 즉 identityProgress 에 실제로
+   * 더해지는 수와 같은 정의다. growth.votes 증가분은 반드시 이 값을 써야 두 카운터가
+   * 어긋나지 않는다(호출부에서 checkin+deep+어제분으로 재유도하지 말 것).
+   */
+  totalVotes: number;
   /** 어제분을 이번에 정산해야 하는지 (아직 reconciled 마커가 없을 때). */
   shouldReconcileYesterday: boolean;
   /** 갱신할 identityProgress 문서별 증가량 집계 (docId → 라벨/총합/출처별). */
@@ -103,11 +109,13 @@ export async function prepareEvidence(
     /**
      * 어제의 dailyEntries/{어제} 스냅샷 — 호출부(체크인 트랜잭션)가 goalStreak 정산과
      * 공유하려고 한 번만 읽어 주입한다(중복 읽기 제거). 여기서 다시 읽지 않는다.
+     * promise 를 그대로 받아 아래 Promise.all 에 합류시킨다 — 호출부가 먼저 await 하면
+     * 읽기 왕복이 직렬화되므로, 발사만 하고 넘길 것.
      */
-    yesterdayEntrySnap: DocumentSnapshot;
+    yesterdayEntrySnap: DocumentSnapshot | Promise<DocumentSnapshot>;
   },
 ): Promise<PreparedEvidence | null> {
-  const { uid, ymd, yesterdayEntrySnap: entrySnap } = opts;
+  const { uid, ymd } = opts;
   const labels = opts.labels
     .filter((l): l is string => typeof l === "string")
     .map((l) => l.trim())
@@ -117,8 +125,9 @@ export async function prepareEvidence(
   const db = getAdminDb();
   const yesterday = yesterdayKstYmd(ymd);
 
-  // ── 어제/오늘 장부 + 실행설계(goal→라벨 매핑) 읽기 (어제 행동은 주입받은 스냅샷) ──
-  const [evidenceSnap, todayEvidenceSnap, plansSnap] = await Promise.all([
+  // ── 어제의 행동(주입) + 어제/오늘 장부 + 실행설계(goal→라벨 매핑) 동시 읽기 ──
+  const [entrySnap, evidenceSnap, todayEvidenceSnap, plansSnap] = await Promise.all([
+    opts.yesterdayEntrySnap,
     tx.get(db.doc(`users/${uid}/identityEvidence/${yesterday}`)),
     tx.get(db.doc(`users/${uid}/identityEvidence/${ymd}`)),
     tx.get(db.collection(`users/${uid}/executionPlans`)),
@@ -206,6 +215,9 @@ export async function prepareEvidence(
     if (agg) agg.exists = snap.exists;
   });
 
+  let totalVotes = 0;
+  for (const agg of progress.values()) totalVotes += agg.total;
+
   return {
     uid,
     ymd,
@@ -219,6 +231,7 @@ export async function prepareEvidence(
     todayDocExists: todayEvidenceSnap.exists,
     shouldReconcileYesterday: !alreadyReconciled,
     progress,
+    totalVotes,
   };
 }
 

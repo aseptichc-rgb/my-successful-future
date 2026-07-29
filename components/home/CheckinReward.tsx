@@ -1,8 +1,8 @@
 "use client";
 
 import { useT } from "@/lib/i18n";
-import { computeGrowthStage, GROWTH_STAGE_LABEL_KEY } from "@/lib/growthStage";
-import { GROWTH_STAGE_EMOJI } from "@/lib/constants/growth";
+import { growthStageOf } from "@/lib/growthStage";
+import ProgressBar from "@/components/ui/ProgressBar";
 import type { AffirmationCheckinDepth } from "@/types";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -42,9 +42,7 @@ export default function CheckinReward({
 }) {
   const t = useT();
   // 행동 직후가 보상이 가장 강하게 박히는 자리 — 총합·단계·진행바를 여기서 보여준다.
-  const stage = typeof growthVotes === "number" && growthVotes > 0
-    ? computeGrowthStage(growthVotes)
-    : null;
+  const stage = growthStageOf(growthVotes);
 
   return (
     <div
@@ -90,29 +88,17 @@ export default function CheckinReward({
             </p>
           )}
 
-          {stage && typeof growthVotes === "number" && (
+          {stage && (
             <div className="mt-2">
               <p className="text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label)]">
-                <span aria-hidden>{GROWTH_STAGE_EMOJI[stage.index]}</span>{" "}
+                <span aria-hidden>{stage.emoji}</span>{" "}
                 <span className="font-semibold tabular-nums">
-                  {t("growth.votes", { count: growthVotes })}
+                  {t("growth.votes", { count: stage.votes })}
                 </span>
                 {" · "}
-                {t(GROWTH_STAGE_LABEL_KEY[stage.index])}
+                {t(stage.labelKey)}
               </p>
-              <div
-                className="mt-1.5 h-[4px] rounded-full overflow-hidden"
-                style={{ background: "rgba(30,27,75,0.10)" }}
-                role="progressbar"
-                aria-valuenow={stage.progressPct}
-                aria-valuemin={0}
-                aria-valuemax={100}
-              >
-                <div
-                  className="h-full rounded-full"
-                  style={{ width: `${stage.progressPct}%`, background: "#1E1B4B" }}
-                />
-              </div>
+              <ProgressBar pct={stage.progressPct} className="mt-1.5" />
               {stage.next !== null && (
                 <p className="mt-1 text-[11px] tracking-[-0.08px] text-[var(--label-3)] tabular-nums">
                   {t("growth.toNext", { count: stage.votesToNext })}

@@ -27,6 +27,7 @@ import {
   normalizeGoalStreak,
   type GoalStreakState,
 } from "@/lib/goalStreak";
+import { toCount } from "@/lib/counters";
 import { pickTodayAffirmationIndex } from "@/lib/planRotation";
 import { FREEZES_PER_MONTH } from "@/lib/constants/streak";
 import type { AffirmationCheckinDepth, GoalStreak } from "@/types";
@@ -265,60 +266,64 @@ export async function checkinAffirmations(opts: {
     const bestCount = Math.max(prevBest, nextCount);
 
     // ── 성장 루프 준비 (트랜잭션 읽기 단계 — 모든 쓰기 전에 완료해야 한다) ──
-    // 어제 dailyEntry 는 goalStreak 정산과 증거 표(goal/win) 정산이 공유하므로 여기서
-    // 한 번만 읽어 prepareEvidence 에 주입한다 — 중복 읽기 제거이자, 라벨이 없어
-    // prepareEvidence 가 null 을 돌려주는 사용자도 goalStreak 은 정상적으로 오르게 한다.
-    // 카운터 실패가 체크인을 실패시키면 안 되므로 전체를 자체 try-catch 로 격리한다.
+    // 어제 dailyEntry 는 goalStreak 정산과 증거 표(goal/win) 정산이 공유한다 — promise 를
+    // 그대로 prepareEvidence 에 주입해 한 번만, 다른 읽기와 **동시에** 읽는다(읽기 왕복을
+    // 직렬화하지 않는다). 라벨이 없어 prepareEvidence 가 null 을 돌려주는 사용자도
+    // goalStreak 은 정상적으로 오른다. 카운터 실패가 체크인을 실패시키면 안 되므로
+    // 전체를 자체 try-catch 로 격리하고, 결과는 단일 객체 prep 하나로만 남긴다 —
+    // 부분 성공 상태가 존재할 수 없음이 타입으로 보장된다.
     const yesterdayYmd = yesterdayKstYmd(ymd);
-    let evidence: PreparedEvidence | null = null;
-    let prevGoal: GoalStreakState | null = null;
-    let nextGoal: GoalStreakState | null = null;
-    let growthPrevVotes = 0;
-    let growthBackfillSum: number | null = null;
-    let growthReady = false;
+    let prep: {
+      evidence: PreparedEvidence | null;
+      prevGoal: GoalStreakState;
+      nextGoal: GoalStreakState;
+      prevVotes: number;
+      backfillSum: number | null;
+    } | null = null;
     try {
-      const yesterdaySnap = await tx.get(db.doc(`users/${uid}/dailyEntries/${yesterdayYmd}`));
+      const yesterdayGet = tx.get(db.doc(`users/${uid}/dailyEntries/${yesterdayYmd}`));
+      const growthRaw = userData.growth as { votes?: unknown; backfilledAt?: unknown } | undefined;
+      // 성장 카운터 백필은 최초 1회(backfilledAt 없음)만 — 라벨 수가 한 자릿수인 컬렉션이다.
+      const backfillGet = growthRaw?.backfilledAt
+        ? null
+        : tx.get(db.collection(`users/${uid}/identityProgress`));
+      const labels = Array.isArray(userData.identities?.labels)
+        ? (userData.identities.labels as string[])
+        : [];
+
+      const [yesterdaySnap, prepared, backfillSnap] = await Promise.all([
+        yesterdayGet,
+        prepareEvidence(tx, {
+          uid,
+          ymd,
+          labels,
+          deep: depth === "full",
+          yesterdayEntrySnap: yesterdayGet,
+        }),
+        backfillGet,
+      ]);
 
       // 목표 달성 스트릭 — 어제 달성한 목표 수로 정산 (증거 표와 같은 하루 지연 트레이드오프).
       const yesterdayData = yesterdaySnap.exists ? (yesterdaySnap.data() ?? {}) : {};
       const achievedCount = (
         Array.isArray(yesterdayData.achievedGoals) ? yesterdayData.achievedGoals : []
       ).filter((g: unknown) => typeof g === "string" && g.trim().length > 0).length;
-      const prevGoalRaw = userData.goalStreak as Partial<GoalStreak> | undefined;
-      prevGoal = normalizeGoalStreak(prevGoalRaw);
-      nextGoal = nextGoalStreak(prevGoalRaw, yesterdayYmd, achievedCount);
+      const prevGoal = normalizeGoalStreak(userData.goalStreak as Partial<GoalStreak> | undefined);
 
-      const labels = Array.isArray(userData.identities?.labels)
-        ? (userData.identities.labels as string[])
-        : [];
-      evidence = await prepareEvidence(tx, {
-        uid,
-        ymd,
-        labels,
-        deep: depth === "full",
-        yesterdayEntrySnap: yesterdaySnap,
-      });
-
-      // 성장 카운터 — 백필이 필요한 최초 1회만 identityProgress 를 읽는다(라벨 수는 한 자릿수).
-      const growthRaw = userData.growth as { votes?: unknown; backfilledAt?: unknown } | undefined;
-      const rawVotes = Number(growthRaw?.votes);
-      growthPrevVotes = Number.isFinite(rawVotes) && rawVotes > 0 ? Math.floor(rawVotes) : 0;
-      if (!growthRaw?.backfilledAt) {
-        const progressSnap = await tx.get(db.collection(`users/${uid}/identityProgress`));
-        growthBackfillSum = progressSnap.docs.reduce((sum, doc) => {
-          const n = Number(doc.get("count"));
-          return sum + (Number.isFinite(n) && n > 0 ? Math.floor(n) : 0);
-        }, 0);
-      }
-      growthReady = true;
+      prep = {
+        evidence: prepared,
+        prevGoal,
+        nextGoal: nextGoalStreak(prevGoal, yesterdayYmd, achievedCount),
+        prevVotes: toCount(growthRaw?.votes),
+        backfillSum: backfillSnap
+          ? backfillSnap.docs.reduce((sum, doc) => sum + toCount(doc.get("count")), 0)
+          : null,
+      };
     } catch (err) {
       console.error("[affirmationCheckin] 성장 루프 준비 실패(체크인은 계속):", err);
-      evidence = null;
-      prevGoal = null;
-      nextGoal = null;
-      growthBackfillSum = null;
-      growthReady = false;
+      prep = null;
     }
+    const evidence = prep?.evidence ?? null;
 
     // ── 쓰기 단계 ──
     const now = Timestamp.now();
@@ -353,34 +358,27 @@ export async function checkinAffirmations(opts: {
     }
 
     // ── 성장 루프 쓰기 — userRef 쓰기는 한 번으로 병합한다(같은 문서 다중 update 회피).
-    // 계산·읽기는 위 try-catch 에서 이미 격리됐고, 실패 시 성장 필드만 조용히 빠진다.
+    // 계산·읽기는 위 try-catch 에서 이미 격리됐고, 실패(prep=null) 시 성장 필드만 조용히 빠진다.
     const userUpdate: Record<string, unknown> = { affirmationStreak: nextStreak };
     let growthVotesTotal: number | null = null;
-    if (prevGoal && nextGoal) {
-      const goalChanged =
-        nextGoal.count !== prevGoal.count ||
-        nextGoal.bestCount !== prevGoal.bestCount ||
-        nextGoal.totalDays !== prevGoal.totalDays ||
-        nextGoal.lastYmd !== prevGoal.lastYmd;
-      // 변화 없는 날(어제 달성 0 + 이미 정산됨 등)은 쓰지 않는다 — serverTimestamp 공회전 방지.
-      if (goalChanged) {
-        userUpdate.goalStreak = { ...nextGoal, updatedAt: FieldValue.serverTimestamp() };
+    if (prep) {
+      // nextGoalStreak 는 no-op 이면 인자를 그대로 돌려준다 — 참조 비교면 충분하다.
+      // 변화 없는 날(어제 달성 0 + 이미 정산됨 등)은 쓰지 않는다(serverTimestamp 공회전 방지).
+      if (prep.nextGoal !== prep.prevGoal) {
+        userUpdate.goalStreak = { ...prep.nextGoal, updatedAt: FieldValue.serverTimestamp() };
       }
-    }
-    if (growthReady) {
-      // 이번 트랜잭션이 적립하는 표 총수 = 오늘 checkin(1) + deep 보너스 + 어제분 goal/win.
-      const earnedVotes = evidence
-        ? 1 + (evidence.deepEntry ? 1 : 0) + evidence.yesterdayEntries.length
-        : 0;
-      if (growthBackfillSum !== null) {
+      // 이번 트랜잭션이 적립하는 표 총수 — identityProgress 에 실제로 더해지는 수와
+      // 같은 정의(PreparedEvidence.totalVotes)라 두 카운터가 어긋나지 않는다.
+      const earnedVotes = evidence?.totalVotes ?? 0;
+      if (prep.backfillSum !== null) {
         // 최초 1회 백필 — 기존 identityProgress 합계 + 이번 적립분을 절대값으로 세팅.
-        growthVotesTotal = growthBackfillSum + earnedVotes;
+        growthVotesTotal = prep.backfillSum + earnedVotes;
         userUpdate.growth = {
           votes: growthVotesTotal,
           backfilledAt: FieldValue.serverTimestamp(),
         };
       } else {
-        growthVotesTotal = growthPrevVotes + earnedVotes;
+        growthVotesTotal = prep.prevVotes + earnedVotes;
         if (earnedVotes > 0) {
           userUpdate["growth.votes"] = FieldValue.increment(earnedVotes);
         }
@@ -413,7 +411,7 @@ export async function checkinAffirmations(opts: {
           }
         : {}),
       // 성장 루프 — 준비 실패 시 키 자체를 생략(Firestore/undefined 컨벤션과 동일 패턴).
-      ...(nextGoal ? { goalStreakCount: nextGoal.count } : {}),
+      ...(prep ? { goalStreakCount: prep.nextGoal.count } : {}),
       ...(growthVotesTotal !== null ? { growthVotes: growthVotesTotal } : {}),
       bestCount,
       freezeUsed,

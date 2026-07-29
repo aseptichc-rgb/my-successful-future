@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { GOAL_SLOT_MAX } from "@/lib/constants/goal";
+import { createAckStore } from "@/lib/ackStore";
 import type { GoalSlotSource } from "@/lib/goalSlots";
 import { useT } from "@/lib/i18n";
 
@@ -17,59 +18,24 @@ import { useT } from "@/lib/i18n";
  * 목표를 늘리는 것만이 성장은 아니다. 하나를 더 또렷하게 만드는 쪽이 대개 낫기 때문에
  * 같은 무게로 나란히 제시한다.
  *
- * 확인 여부는 localStorage 에 "확인한 최고 earned 값"으로 남긴다(서버 필드 불필요).
- * localStorage 는 React 바깥의 저장소이므로 useSyncExternalStore 로 구독한다 —
- * 서버 스냅샷은 항상 "다 확인함"이라 SSR 에서는 배너가 없고, 하이드레이션 후에만
- * 실제 값으로 판정된다(마운트 이펙트에서 setState 하는 방식의 깜빡임/경고 회피).
+ * 확인 여부는 "확인한 최고 earned 값"으로 남긴다(lib/ackStore, 서버 필드 불필요).
+ * SSR 스냅샷은 GOAL_SLOT_MAX — earned 가 그를 넘지 않으므로 서버 렌더에서는 항상
+ * 숨겨졌다가, 하이드레이션 후에만 실제 값으로 판정된다(깜빡임/경고 회피).
  * ───────────────────────────────────────────────────────────────── */
 
-const STORAGE_KEY = "anima.goalSlot.ack";
-
-const listeners = new Set<() => void>();
-/** getSnapshot 은 같은 값을 안정적으로 돌려줘야 하므로 모듈 캐시를 둔다(-1 = 아직 안 읽음). */
-let ackCache = -1;
-
-function readAck(): number {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+const ackStore = createAckStore<number>("anima.goalSlot.ack", {
+  parse: (raw) => {
     const n = raw === null ? 0 : Number(raw);
     return Number.isFinite(n) && n > 0 ? n : 0;
-  } catch {
-    return 0;
-  }
-}
-
-function subscribe(onChange: () => void): () => void {
-  listeners.add(onChange);
-  return () => {
-    listeners.delete(onChange);
-  };
-}
-
-function getSnapshot(): number {
-  if (ackCache < 0) ackCache = readAck();
-  return ackCache;
-}
-
-/** 서버 렌더에서는 "전부 확인함"으로 간주 — earned 는 GOAL_SLOT_MAX 를 넘지 않으므로 항상 숨김. */
-function getServerSnapshot(): number {
-  return GOAL_SLOT_MAX;
-}
-
-function acknowledge(value: number): void {
-  ackCache = value;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, String(value));
-  } catch {
-    /* localStorage 불가 환경 — 이번 세션에만 숨긴다 */
-  }
-  listeners.forEach((l) => l());
-}
+  },
+  serialize: String,
+  serverSnapshot: GOAL_SLOT_MAX,
+});
 
 export default function SlotUnlockBanner({
   earned,
   progress,
-  source = "affirmation",
+  source,
   onAddGoal,
   onRefineGoal,
 }: {
@@ -78,17 +44,21 @@ export default function SlotUnlockBanner({
   /** 현재 최고 연속일 — 문구에 그대로 쓴다. */
   progress: number;
   /** 게이지를 끌고 있는 축 — 달성 축이면 "목표를 지켰어요" 문구로 바꾼다. */
-  source?: GoalSlotSource;
+  source: GoalSlotSource;
   onAddGoal: () => void;
   onRefineGoal: () => void;
 }) {
   const t = useT();
-  const ack = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const ack = useSyncExternalStore(
+    ackStore.subscribe,
+    ackStore.getSnapshot,
+    ackStore.getServerSnapshot,
+  );
 
   // 첫 칸(earned=1)은 해금이 아니라 기본값이므로 축하할 것이 없다.
   if (earned <= 1 || earned <= ack) return null;
 
-  const dismiss = () => acknowledge(earned);
+  const dismiss = () => ackStore.acknowledge(earned);
 
   return (
     <div className="mx-4 mt-4 rounded-[12px] bg-[var(--bg-grouped-2)] px-5 py-4">

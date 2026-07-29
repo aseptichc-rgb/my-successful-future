@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -21,8 +21,7 @@ import { kstWeekday, yesterdayKstYmd, addKstDays } from "@/lib/kstDate";
 import { currentHomeMode, WEEKLY_REVIEW_WEEKDAY } from "@/lib/homeMode";
 import { pickTodayPlan, pickTodayAffirmationIndex } from "@/lib/planRotation";
 import { computeGoalSlots } from "@/lib/goalSlots";
-import { computeGrowthStage, GROWTH_STAGE_LABEL_KEY } from "@/lib/growthStage";
-import { GROWTH_STAGE_EMOJI } from "@/lib/constants/growth";
+import { growthStageOf } from "@/lib/growthStage";
 import { suggestStepUp } from "@/lib/goalStepUp";
 import {
   buildWeeklyReview,
@@ -115,6 +114,31 @@ function formatLongDate(ymd: string, locale: string): string {
 }
 
 /* ─────────────── icons ─────────────── */
+
+/** 헤더 우상단 칩 — 성장 단계·스트릭이 같은 탭 타깃/여백/hover 규칙을 공유한다. */
+function HeaderChip({
+  bg,
+  ariaLabel,
+  onClick,
+  children,
+}: {
+  bg: string;
+  ariaLabel: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={ariaLabel}
+      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:opacity-80 transition-opacity"
+      style={{ background: bg }}
+    >
+      {children}
+    </button>
+  );
+}
 
 const IconGear = ({ size = 24 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -564,11 +588,14 @@ export default function HomeDashboardPage() {
   const primaryGoal = (goals[0] ?? "").trim();
   const extraGoals = goals.slice(1);
   // 해금 게이지는 다짐 전사·목표 달성 두 축 중 큰 값으로 찬다.
-  const slots = computeGoalSlots(user?.affirmationStreak, user?.goalStreak, goals.length);
+  const slots = computeGoalSlots({
+    affirmation: user?.affirmationStreak,
+    goal: user?.goalStreak,
+    currentGoalCount: goals.length,
+  });
 
   // 성장 단계 칩 — 증거 표가 1표라도 쌓인 뒤에만 그린다(레거시/빈 계정은 조용히 생략).
-  const growthVotes = user?.growth?.votes ?? 0;
-  const growthStage = growthVotes > 0 ? computeGrowthStage(growthVotes) : null;
+  const growthStage = growthStageOf(user?.growth?.votes);
 
   // 스텝업 초안 — 첫 목표에 숫자가 있고 목표 달성 스트릭이 이어졌을 때만 나온다.
   const stepUpDraft = suggestStepUp(primaryGoal, user?.goalStreak?.count ?? 0);
@@ -599,28 +626,24 @@ export default function HomeDashboardPage() {
           <div className="flex items-center gap-2">
             {/* 성장 단계 칩 — 누적 증거 표의 현재 단계. 탭하면 /progress (입력 요구 0). */}
             {growthStage && (
-              <button
-                type="button"
+              <HeaderChip
+                bg="rgba(30,27,75,0.08)"
+                ariaLabel={t("growth.title")}
                 onClick={() => router.push("/progress")}
-                aria-label={t("growth.title")}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:opacity-80 transition-opacity"
-                style={{ background: "rgba(30,27,75,0.08)" }}
               >
                 <span className="text-[12px] leading-none" aria-hidden>
-                  {GROWTH_STAGE_EMOJI[growthStage.index]}
+                  {growthStage.emoji}
                 </span>
                 <span className="text-[12px] font-semibold tracking-[0.4px] text-[#1E1B4B] tabular-nums">
-                  {t(GROWTH_STAGE_LABEL_KEY[growthStage.index])} · {growthVotes}
+                  {t(growthStage.labelKey)} · {growthStage.votes}
                 </span>
-              </button>
+              </HeaderChip>
             )}
             {/* 스트릭 칩 — 탭하면 /progress (히트맵·최고기록·정체성 장부) 로 이동 */}
-            <button
-              type="button"
+            <HeaderChip
+              bg="rgba(255,149,0,0.16)"
+              ariaLabel={t("progress.chipAria")}
               onClick={() => router.push("/progress")}
-              aria-label={t("progress.chipAria")}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:opacity-80 transition-opacity"
-              style={{ background: "rgba(255,149,0,0.16)" }}
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="#D85A30" aria-hidden>
                 <path d="M13 2L4.5 13.5h6L9 22l8.5-11.5h-6L13 2z" />
@@ -628,7 +651,7 @@ export default function HomeDashboardPage() {
               <span className="text-[12px] font-semibold tracking-[0.4px] text-[#D85A30]">
                 {streakCount}
               </span>
-            </button>
+            </HeaderChip>
             <button
               type="button"
               onClick={openSettings}

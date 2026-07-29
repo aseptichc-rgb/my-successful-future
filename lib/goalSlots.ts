@@ -21,15 +21,8 @@ import {
   GOAL_SLOT_MAX,
   GOAL_SLOT_THRESHOLDS,
 } from "@/lib/constants/goal";
-
-/**
- * 스트릭 카운터의 공통 최소 형태 — AffirmationStreak(다짐 전사)과 GoalStreak(목표 달성)
- * 모두 이 형태를 만족하므로 bestStreakCount 하나로 두 축을 같은 규칙으로 읽는다.
- */
-export interface StreakLike {
-  count?: number;
-  bestCount?: number;
-}
+import { toCount } from "@/lib/counters";
+import type { StreakCounter } from "@/types";
 
 /** 게이지를 끌고 있는 해금 축. */
 export type GoalSlotSource = "affirmation" | "goal";
@@ -47,20 +40,30 @@ export interface GoalSlotState {
   source: GoalSlotSource;
 }
 
-/** 역대 최고 연속일. 레거시 문서는 현재 count 를 최고로 간주한다. */
-export function bestStreakCount(streak?: StreakLike | null): number {
+/**
+ * 역대 최고 연속일. 정상 문서는 bestCount >= count 라 `bestCount ?? count` 폴백과 같고,
+ * 어긋난 문서(bestCount < count)에서도 큰 쪽을 취해 이미 연 슬롯이 잠기지 않는다 —
+ * 서버 백필(Math.max(prevBest, nextCount))·normalizeGoalStreak 와 같은 규칙.
+ */
+export function bestStreakCount(streak?: StreakCounter | null): number {
   if (!streak) return 0;
-  const raw = Number(streak.bestCount ?? streak.count ?? 0);
-  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 0;
+  return Math.max(toCount(streak.bestCount), toCount(streak.count));
 }
 
-export function computeGoalSlots(
-  streak?: StreakLike | null,
-  goalStreak?: StreakLike | null,
+export function computeGoalSlots({
+  affirmation,
+  goal,
   currentGoalCount = 0,
-): GoalSlotState {
-  const affirmationBest = bestStreakCount(streak);
-  const goalBest = bestStreakCount(goalStreak);
+}: {
+  /** 다짐 전사 스트릭 (users.affirmationStreak). */
+  affirmation?: StreakCounter | null;
+  /** 목표 달성 스트릭 (users.goalStreak). */
+  goal?: StreakCounter | null;
+  /** 지금 가진 목표 수 — 기존 사용자 보존용. */
+  currentGoalCount?: number;
+} = {}): GoalSlotState {
+  const affirmationBest = bestStreakCount(affirmation);
+  const goalBest = bestStreakCount(goal);
   // 동률이면 기존 축(전사)을 유지한다 — 레거시 문구가 바뀔 이유가 없다.
   const source: GoalSlotSource = goalBest > affirmationBest ? "goal" : "affirmation";
   const progress = Math.max(affirmationBest, goalBest);
@@ -72,10 +75,7 @@ export function computeGoalSlots(
   }
   earned = Math.min(earned, GOAL_SLOT_MAX);
 
-  const existing =
-    Number.isFinite(currentGoalCount) && currentGoalCount > 0
-      ? Math.floor(currentGoalCount)
-      : 0;
+  const existing = toCount(currentGoalCount);
 
   return {
     unlocked: Math.max(earned, existing),

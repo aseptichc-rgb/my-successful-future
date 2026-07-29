@@ -67,11 +67,22 @@ export interface User {
 }
 
 /**
+ * 스트릭 카운터의 공통 최소 계약 — 목표 슬롯 해금(lib/goalSlots.bestStreakCount)이
+ * 다짐 전사·목표 달성 두 축을 같은 규칙으로 읽는 형태. 두 스트릭 타입이 이를 extends
+ * 하므로, 스키마 필드가 리네임되면 여기서 컴파일 에러로 잡힌다(느슨한 구조적 타입을
+ * 소비자 쪽에 두면 리네임이 조용히 0 폴백으로 새는 것을 막는 장치).
+ */
+export interface StreakCounter {
+  count?: number;
+  bestCount?: number;
+}
+
+/**
  * "성공한 나의 모습" 다짐 따라쓰기 연속일 카운터. 서버 트랜잭션으로만 갱신.
  * 신규 필드는 전부 optional — 레거시 문서(count/lastYmd 만 존재)와 완전 호환되며,
  * 읽기 경로는 `bestCount ?? count`, `freezesLeft ?? FREEZES_PER_MONTH` 폴백을 쓴다.
  */
-export interface AffirmationStreak {
+export interface AffirmationStreak extends StreakCounter {
   count: number;
   /** 마지막으로 정상 체크인이 일어난 날짜 (KST YYYY-MM-DD). */
   lastYmd: string;
@@ -95,7 +106,7 @@ export interface AffirmationStreak {
  * 판정 대상은 언제나 "어제"의 dailyEntry.achievedGoals 라 하루 지연으로 반영된다.
  * 프리즈 없음 — 슬롯 해금(lib/goalSlots)은 bestCount 만 보므로 끊김이 칸을 뺏지 않는다.
  */
-export interface GoalStreak {
+export interface GoalStreak extends StreakCounter {
   /** 현재 연속일. 달성 없는 날이 정산되면 0으로 끊긴다. */
   count: number;
   /** 마지막으로 달성이 정산된 날짜 (KST YYYY-MM-DD). */
