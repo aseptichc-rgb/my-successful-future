@@ -38,16 +38,12 @@ const dict = {
   // ── 온보딩 ───────────────────────────────────────
   // "10년 후 나의 모습" 몰입형 질문 — 한 화면에 한 질문씩(키 순서 = lib/futureSelf.ts 차원 순서).
   "onboarding.futureSelf.sectionLabel": "10년 후 나의 모습",
-  "onboarding.futureSelf.progress": "{current} / {total}",
   // 통합 진행바 라벨 (언어·미리보기 제외한 실제 입력 화면 기준).
   "onboarding.progress.remaining": "{remaining}개 남음",
   "onboarding.progress.lastStep": "마지막 단계",
   // 칩 우선 미래자아 — 탭으로 답변, 원하면 직접 입력.
   "onboarding.futureSelf.chooseHint": "가장 가까운 모습을 골라보세요 · 원하면 직접 쓸 수 있어요",
   "onboarding.futureSelf.writeMyOwn": "직접 입력하기",
-  "onboarding.futureSelf.skipRest": "나머지는 나중에 채울게요 →",
-  "onboarding.futureSelf.hint":
-    "떠오르는 대로 구체적으로 적어보세요. 지금 어려운 질문은 비워두고 넘어가도 좋아요.",
   "onboarding.futureSelf.daily.q": "10년 후, 당신의 평범한 하루는 어떻게 흘러가나요?",
   "onboarding.futureSelf.daily.placeholder":
     "아침에 눈뜨는 곳, 오전에 하는 일, 저녁을 보내는 방식까지 그려보세요.",
@@ -112,16 +108,16 @@ const dict = {
   "onboarding.futureSelf.growth.example3":
     "20대보다 건강한 몸을 유지하고, 주말엔 악기를 배우며 어제보다 나은 나를 만든다.",
 
-  "onboarding.step2.title": "목표를 이루기 위해 필요한 구체적인 행동을 적어주세요",
-  "onboarding.step2.subtitle":
-    "앞 3개 목표가 매일 동기부여 카드와 잠금화면에 함께 표시돼요. 우선순위대로.",
-  "onboarding.step2.placeholder": "예: 매일 30분 책 읽기",
-  "onboarding.step2.addGoal": "+ 목표 추가",
-  "onboarding.step2.removeGoalAria": "목표 줄 제거",
-
-  "onboarding.step3.title": "지금의 내가 매일 외쳐야 할, 반드시 이뤄질 미래의 모습을 적어보세요",
-  "onboarding.step3.subtitle":
-    "여기 적은 다짐이 매일 카드의 “오늘의 한 줄 미션” 영역에 placeholder 로 그대로 노출돼요. 매일 그대로 다시 적어 연속일을 쌓아가세요. 비워둬도 좋아요 — 나중에 설정에서 추가할 수 있어요.",
+  // 목표는 딱 하나로 시작한다 — 다짐은 이 문장에서 자동으로 파생된다(lib/affirmationDerive).
+  "onboarding.goal.title": "그 모습에 닿기 위한, 딱 하나",
+  "onboarding.goal.subtitle":
+    "하나면 충분해요. 꾸준히 지키면 담을 수 있는 목표가 하나씩 늘어나요.",
+  "onboarding.goal.placeholder": "매일 30분 책을 읽는다",
+  "onboarding.goal.hint": "“~한다”로 끝나는 행동 문장으로 적으면 매일 지켰는지 바로 알 수 있어요.",
+  "onboarding.goal.affirmationLabel": "매일 새길 다짐",
+  "onboarding.goal.affirmationHint": "목표에서 자동으로 만들었어요. 그대로 두셔도 돼요.",
+  "onboarding.goal.affirmationEdit": "다짐 고치기",
+  "onboarding.goal.affirmationReset": "목표에 맞춰 되돌리기",
 
   "onboarding.step4.cta": "오늘의 한 마디 받기 →",
   "onboarding.step4.preparing": "준비 중…",
@@ -519,6 +515,58 @@ const dict = {
   "home.wins.addRow": "한 줄 더 적기",
   "home.record.footer": "적은 내용은 자동으로 저장돼요.",
   "home.plans.manage": "실행 설계 관리",
+  // 홈에 남는 건 명언·오늘 카드·7일 링뿐 — 나머지는 전부 이 한 섹션 뒤로 접힌다.
+  "home.section.more": "더 보기",
+  "home.more.summary": "미래의 나 · 기록 · 실행 설계",
+
+  // ── 오늘의 목표 실행 체크 (전사 체크인과 같은 카드) ──
+  "home.todayGoal.title": "오늘의 목표",
+  "home.todayGoal.question": "오늘 지켰나요?",
+  "home.todayGoal.did": "했어요",
+  "home.todayGoal.notYet": "아직이에요",
+  "home.todayGoal.doneToday": "오늘 해냈어요",
+  "home.todayGoal.undo": "취소",
+  "home.todayGoal.empty": "아직 정한 목표가 없어요.",
+  "home.todayGoal.setCta": "목표 정하기",
+  "home.todayGoal.afterCheckin": "다짐을 새겼어요. 이제 오늘 실제로 지켰는지만 알려주세요.",
+
+  // ── 미래의 나 한 줄 ────────────────────────────────
+  "home.futureLine.label": "미래의 나",
+  "home.futureLine.empty": "아직 적어둔 모습이 없어요.",
+  "home.futureLine.write": "지금 적기",
+
+  // ── 목표 슬롯 해금 ─────────────────────────────────
+  "goalSlot.unlock.title": "목표 하나를 더 담을 수 있어요",
+  "goalSlot.unlock.body":
+    "{days}일을 이어왔어요. 새 목표를 더할지, 지금 목표를 더 또렷하게 만들지 골라보세요.",
+  "goalSlot.unlock.addGoal": "새 목표 추가",
+  "goalSlot.unlock.refine": "지금 목표를 더 구체적으로",
+  "goalSlot.unlock.later": "나중에",
+  "goalSlot.locked": "🔒 {days}일 연속이면 열려요",
+  "goalSlot.lockedProgress": "지금 {progress}일",
+  "goalSlot.maxed": "목표는 최대 {max}개까지예요. 하나에 집중할수록 잘 지켜져요.",
+  "goalSlot.hint": "하나를 지키는 힘이 쌓이면 칸이 하나씩 열려요.",
+
+  // ── 목표 구체화 ────────────────────────────────────
+  "goal.specific.hint": "조금 더 구체적으로 적으면 지키기 쉬워요",
+  "goal.specific.count": "숫자",
+  "goal.specific.cadence": "얼마나 자주",
+  "goal.specific.unit": "단위",
+  "goal.specific.countExample": "30",
+  "goal.specific.cadenceExample": "매일",
+  "goal.specific.unitExample": "분",
+  "goal.refine.title": "목표를 더 또렷하게",
+  "goal.refine.subtitle": "빠진 조각을 눌러 넣어보세요. 그대로 두셔도 괜찮아요.",
+  "goal.refine.apply": "이 목표로 바꾸기",
+
+  // ── 목표 수정 시 다짐 동기화 ─────────────────────────
+  "settings.goals.sync.title": "다짐도 바꿀까요?",
+  "settings.goals.sync.desc": "목표가 바뀌었어요. 매일 새길 다짐도 새 목표에 맞출 수 있어요.",
+  "settings.goals.sync.current": "지금 다짐",
+  "settings.goals.sync.next": "새 다짐",
+  "settings.goals.sync.apply": "새 다짐으로 바꾸기",
+  "settings.goals.sync.keep": "그대로 둘게요",
+  "settings.futureSelf.moreDetail": "더 자세히 쓰기",
 } as const;
 
 export type DictKey = keyof typeof dict;

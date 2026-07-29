@@ -55,6 +55,7 @@ import type {
   UserLanguage,
 } from "@/types";
 import { composeFuturePersona, normalizeFutureSelfAnswers } from "@/lib/futureSelf";
+import { SUCCESS_AFFIRMATION_MAX_LEN } from "@/lib/constants/goal";
 
 const SUPPORTED_LANGUAGES: ReadonlyArray<UserLanguage> = ["ko", "en", "es", "zh"];
 
@@ -335,7 +336,9 @@ export async function updateUserLanguage(uid: string, language: UserLanguage): P
 
 // ── "성공한 나의 모습" 다짐 ────────────────────────
 export const MAX_SUCCESS_AFFIRMATIONS = 10;
-export const SUCCESS_AFFIRMATION_MAX_LEN = 60;
+// 길이 상한은 lib/constants/goal.ts 가 단일 정의 — 순수 모듈(lib/affirmationDerive)이
+// Firebase SDK 를 끌어오지 않고도 같은 값을 봐야 하기 때문이다. 기존 import 경로 호환을 위해 재수출한다.
+export { SUCCESS_AFFIRMATION_MAX_LEN };
 
 /**
  * 다짐 배열 정규화 — 공백 trim, 빈 항목 제거, 길이 제한, 중복 제거, 최대 N개로 컷.

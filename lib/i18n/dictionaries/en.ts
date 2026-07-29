@@ -40,14 +40,10 @@ const dict: Record<DictKey, string> = {
   // Onboarding
   // "My self 10 years from now" — immersive one-question-per-screen flow.
   "onboarding.futureSelf.sectionLabel": "Me, 10 years from now",
-  "onboarding.futureSelf.progress": "{current} / {total}",
   "onboarding.progress.remaining": "{remaining} to go",
   "onboarding.progress.lastStep": "Last step",
   "onboarding.futureSelf.chooseHint": "Pick the one closest to you · or write your own",
   "onboarding.futureSelf.writeMyOwn": "Write my own",
-  "onboarding.futureSelf.skipRest": "I'll fill in the rest later →",
-  "onboarding.futureSelf.hint":
-    "Be as concrete as it comes to you. If a question feels hard right now, leave it blank and move on.",
   "onboarding.futureSelf.daily.q": "10 years from now, how does an ordinary day of yours flow?",
   "onboarding.futureSelf.daily.placeholder":
     "Where you wake up, what fills your morning, how your evening winds down.",
@@ -112,16 +108,17 @@ const dict: Record<DictKey, string> = {
   "onboarding.futureSelf.growth.example3":
     "I'm healthier than in my twenties, learning an instrument on weekends — a little better than yesterday, every day.",
 
-  "onboarding.step2.title": "Write the concrete actions you need to reach your goals",
-  "onboarding.step2.subtitle":
-    "Your top 3 goals appear on the daily card and on the lock screen — listed in order of priority.",
-  "onboarding.step2.placeholder": "e.g., Read for 30 minutes every day",
-  "onboarding.step2.addGoal": "+ Add a goal",
-  "onboarding.step2.removeGoalAria": "Remove this goal",
-
-  "onboarding.step3.title": "Write a one-line affirmation of your future self",
-  "onboarding.step3.subtitle":
-    "Your affirmations show as faint placeholder text on each daily card. Type them again, exactly, to build a streak. Leave it empty if you'd like — you can add them later in Settings.",
+  // One goal to start — the affirmation is derived from it (lib/affirmationDerive).
+  "onboarding.goal.title": "One thing to get you there",
+  "onboarding.goal.subtitle":
+    "One is enough. Keep it up and you'll earn room for another goal.",
+  "onboarding.goal.placeholder": "read for 30 minutes every day",
+  "onboarding.goal.hint":
+    "Write it as an action you either did or didn't do today — that's what makes it checkable.",
+  "onboarding.goal.affirmationLabel": "What you'll write each day",
+  "onboarding.goal.affirmationHint": "Built from your goal. Feel free to leave it as is.",
+  "onboarding.goal.affirmationEdit": "Edit this line",
+  "onboarding.goal.affirmationReset": "Match my goal again",
 
   "onboarding.step4.cta": "Get today's quote →",
   "onboarding.step4.preparing": "Preparing…",
@@ -536,6 +533,59 @@ const dict: Record<DictKey, string> = {
   "home.wins.addRow": "Add another line",
   "home.record.footer": "Anything you write saves itself.",
   "home.plans.manage": "Manage execution plans",
+  // Home keeps only the quote, today's card and the 7-day ring — the rest folds in here.
+  "home.section.more": "More",
+  "home.more.summary": "Future self · Notes · Plans",
+
+  // ── Today's goal check (same card as the transcription check-in) ──
+  "home.todayGoal.title": "Today's goal",
+  "home.todayGoal.question": "Did you keep it today?",
+  "home.todayGoal.did": "I did",
+  "home.todayGoal.notYet": "Not yet",
+  "home.todayGoal.doneToday": "Done today",
+  "home.todayGoal.undo": "Undo",
+  "home.todayGoal.empty": "No goal set yet.",
+  "home.todayGoal.setCta": "Set a goal",
+  "home.todayGoal.afterCheckin": "Written. Now just tell us whether you actually kept it today.",
+
+  // ── Future self, one line ──
+  "home.futureLine.label": "Future me",
+  "home.futureLine.empty": "Nothing written yet.",
+  "home.futureLine.write": "Write it now",
+
+  // ── Goal slots ──
+  "goalSlot.unlock.title": "You've earned room for another goal",
+  "goalSlot.unlock.body":
+    "{days} days in a row. Add a new goal, or make the one you have sharper.",
+  "goalSlot.unlock.addGoal": "Add a goal",
+  "goalSlot.unlock.refine": "Sharpen my current goal",
+  "goalSlot.unlock.later": "Later",
+  "goalSlot.locked": "🔒 Opens at {days} days in a row",
+  "goalSlot.lockedProgress": "{progress} so far",
+  "goalSlot.maxed": "Up to {max} goals. The fewer you carry, the better you keep them.",
+  "goalSlot.hint": "Keep one, and room for the next one opens up.",
+
+  // ── Goal specificity ──
+  "goal.specific.hint": "A little more concrete makes it easier to keep",
+  "goal.specific.count": "a number",
+  "goal.specific.cadence": "how often",
+  "goal.specific.unit": "a unit",
+  "goal.specific.countExample": "30",
+  "goal.specific.cadenceExample": "every day",
+  "goal.specific.unitExample": "minutes",
+  "goal.refine.title": "Make it sharper",
+  "goal.refine.subtitle": "Tap a missing piece to add it. Leaving it as is works too.",
+  "goal.refine.apply": "Use this goal",
+
+  // ── Syncing the affirmation after a goal edit ──
+  "settings.goals.sync.title": "Update your daily line too?",
+  "settings.goals.sync.desc":
+    "Your goal changed. The line you write each day can follow it.",
+  "settings.goals.sync.current": "Current line",
+  "settings.goals.sync.next": "New line",
+  "settings.goals.sync.apply": "Use the new line",
+  "settings.goals.sync.keep": "Keep mine",
+  "settings.futureSelf.moreDetail": "Add more detail",
 };
 
 export default dict;

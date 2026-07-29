@@ -38,14 +38,10 @@ const dict: Record<DictKey, string> = {
   // Onboarding
   // 「十年后的我」— 沉浸式提问流程,一屏一个问题。
   "onboarding.futureSelf.sectionLabel": "十年后的我",
-  "onboarding.futureSelf.progress": "{current} / {total}",
   "onboarding.progress.remaining": "还剩 {remaining} 个",
   "onboarding.progress.lastStep": "最后一步",
   "onboarding.futureSelf.chooseHint": "选择最接近你的一项 · 也可以自己写",
   "onboarding.futureSelf.writeMyOwn": "自己填写",
-  "onboarding.futureSelf.skipRest": "其余的稍后再填 →",
-  "onboarding.futureSelf.hint":
-    "想到什么就具体写下来。现在难以回答的问题,可以留空跳过。",
   "onboarding.futureSelf.daily.q": "10 年后,你平常的一天是怎样度过的?",
   "onboarding.futureSelf.daily.placeholder":
     "在哪里醒来、上午做什么、傍晚如何度过。",
@@ -110,16 +106,15 @@ const dict: Record<DictKey, string> = {
   "onboarding.futureSelf.growth.example3":
     "保持着比二十多岁更健康的身体,周末学习乐器,每天都比昨天更好一点。",
 
-  "onboarding.step2.title": "写下实现目标所需的具体行动",
-  "onboarding.step2.subtitle":
-    "前 3 个目标会显示在每日卡片与锁屏上,按优先级排列。",
-  "onboarding.step2.placeholder": "例:每天读书 30 分钟",
-  "onboarding.step2.addGoal": "+ 添加目标",
-  "onboarding.step2.removeGoalAria": "移除该目标",
-
-  "onboarding.step3.title": "把那个成功的自己,一行行写下来",
-  "onboarding.step3.subtitle":
-    "你写下的誓言,每天会作为浅色提示文字出现在卡片上。原样照抄,可以累计连续天数。也可以留空——之后在「设置」里随时添加。",
+  // 只从一个目标开始 —— 誓言由它自动生成(lib/affirmationDerive)。
+  "onboarding.goal.title": "抵达那里的,唯一一件事",
+  "onboarding.goal.subtitle": "一个就够了。坚持下去,就能多放一个目标。",
+  "onboarding.goal.placeholder": "每天读书 30 分钟",
+  "onboarding.goal.hint": "写成「今天做了或没做」的行动,才能一眼判断有没有做到。",
+  "onboarding.goal.affirmationLabel": "每天要写的一句",
+  "onboarding.goal.affirmationHint": "根据目标自动生成,保持原样也可以。",
+  "onboarding.goal.affirmationEdit": "修改这一句",
+  "onboarding.goal.affirmationReset": "重新对齐目标",
 
   "onboarding.step4.cta": "获取今日的一句话 →",
   "onboarding.step4.preparing": "准备中…",
@@ -527,6 +522,57 @@ const dict: Record<DictKey, string> = {
   "home.wins.addRow": "再写一行",
   "home.record.footer": "写下的内容会自动保存。",
   "home.plans.manage": "管理执行设计",
+  // 首页只留名言、今天的卡片和 7 天节奏环,其余全部折叠到这里。
+  "home.section.more": "查看更多",
+  "home.more.summary": "未来的我 · 记录 · 执行设计",
+
+  // ── 今天的目标打卡(与誓言抄写同一张卡片)──
+  "home.todayGoal.title": "今天的目标",
+  "home.todayGoal.question": "今天做到了吗?",
+  "home.todayGoal.did": "做到了",
+  "home.todayGoal.notYet": "还没有",
+  "home.todayGoal.doneToday": "今天已完成",
+  "home.todayGoal.undo": "撤销",
+  "home.todayGoal.empty": "还没有设定目标。",
+  "home.todayGoal.setCta": "设定目标",
+  "home.todayGoal.afterCheckin": "已经写下了。接下来只要告诉我们今天有没有真的做到。",
+
+  // ── 未来的我(一行)──
+  "home.futureLine.label": "未来的我",
+  "home.futureLine.empty": "还没有写下任何内容。",
+  "home.futureLine.write": "现在写",
+
+  // ── 目标格子解锁 ──
+  "goalSlot.unlock.title": "你又赢得了一个目标位",
+  "goalSlot.unlock.body": "已经坚持 {days} 天。可以添加新目标,也可以把现在的目标写得更清楚。",
+  "goalSlot.unlock.addGoal": "添加新目标",
+  "goalSlot.unlock.refine": "让现在的目标更具体",
+  "goalSlot.unlock.later": "以后再说",
+  "goalSlot.locked": "🔒 连续 {days} 天即可解锁",
+  "goalSlot.lockedProgress": "目前 {progress} 天",
+  "goalSlot.maxed": "最多 {max} 个目标。带得越少,越容易做到。",
+  "goalSlot.hint": "守住一个,下一个格子就会打开。",
+
+  // ── 目标具体化 ──
+  "goal.specific.hint": "写得再具体一点,更容易坚持",
+  "goal.specific.count": "数字",
+  "goal.specific.cadence": "多久一次",
+  "goal.specific.unit": "单位",
+  "goal.specific.countExample": "30",
+  "goal.specific.cadenceExample": "每天",
+  "goal.specific.unitExample": "分钟",
+  "goal.refine.title": "让目标更清楚",
+  "goal.refine.subtitle": "点一下缺少的部分补进去。保持原样也没关系。",
+  "goal.refine.apply": "改成这个目标",
+
+  // ── 修改目标后同步誓言 ──
+  "settings.goals.sync.title": "誓言也要一起改吗?",
+  "settings.goals.sync.desc": "目标变了。每天要写的那一句可以跟着一起变。",
+  "settings.goals.sync.current": "现在的誓言",
+  "settings.goals.sync.next": "新的誓言",
+  "settings.goals.sync.apply": "改成新的誓言",
+  "settings.goals.sync.keep": "保持原样",
+  "settings.futureSelf.moreDetail": "写得更详细",
 };
 
 export default dict;

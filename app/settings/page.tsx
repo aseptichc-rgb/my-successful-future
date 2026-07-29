@@ -10,7 +10,6 @@ import {
   updateSuccessAffirmations,
   updateUserLanguage,
   onExecutionPlansSnapshot,
-  MAX_USER_GOALS,
   MAX_SUCCESS_AFFIRMATIONS,
   type ExecutionPlanWithId,
 } from "@/lib/firebase";
@@ -20,6 +19,10 @@ import {
   hasAnyFutureSelfAnswer,
   type FutureSelfDimension,
 } from "@/lib/futureSelf";
+import { computeGoalSlots } from "@/lib/goalSlots";
+import { deriveAffirmation, shouldOfferAffirmationSync } from "@/lib/affirmationDerive";
+import { missingGoalSignals, needsMoreSpecificGoal, type GoalSignal } from "@/lib/goalQuality";
+import { GOAL_SLOT_MAX, GOAL_TEXT_MAX } from "@/lib/constants/goal";
 import type { FutureSelfAnswers } from "@/types";
 import type { DictKey } from "@/lib/i18n";
 import { authedFetch } from "@/lib/authedFetch";
@@ -54,7 +57,20 @@ import { useLanguage, LOCALE_META, SUPPORTED_LOCALES, type Locale } from "@/lib/
  *  · Destructive actions in System Red
  * ───────────────────────────────────────────────────────────────── */
 
-const GOAL_MAX = 80;
+/** 미래 서술의 기본 질문 — 온보딩에서 유일하게 묻는 차원. 나머지는 "더 자세히" 뒤로. */
+const PRIMARY_FUTURE_DIMENSION: FutureSelfDimension = "daily";
+
+/** 구체성 신호 → i18n 라벨/예시 키. 빠진 신호만 칩으로 보여준다. */
+const GOAL_SIGNAL_LABEL_KEY: Record<GoalSignal, DictKey> = {
+  count: "goal.specific.count",
+  cadence: "goal.specific.cadence",
+  unit: "goal.specific.unit",
+};
+const GOAL_SIGNAL_EXAMPLE_KEY: Record<GoalSignal, DictKey> = {
+  count: "goal.specific.countExample",
+  cadence: "goal.specific.cadenceExample",
+  unit: "goal.specific.unitExample",
+};
 
 /** 차원 → i18n 질문/placeholder 키 (온보딩과 동일 키 재사용). */
 const FUTURE_Q_KEY: Record<FutureSelfDimension, DictKey> = {
@@ -302,6 +318,13 @@ export default function SettingsPage() {
 
   const [goals, setGoals] = useState<string[]>([]);
   const [goalsOpen, setGoalsOpen] = useState(false);
+  /** 홈의 해금 배너에서 "더 구체적으로"로 들어온 경우 — 해당 줄의 구체성 힌트를 항상 펼친다. */
+  const [refineIdx, setRefineIdx] = useState<number | null>(null);
+  /** 미래 서술 나머지 6문항 펼침 — 기본은 접힘(온보딩에서 묻지 않는 항목들). */
+  const [futureDetailOpen, setFutureDetailOpen] = useState(false);
+  /** 목표를 바꾼 뒤 다짐도 맞출지 묻는 시트. null 이면 묻지 않는다. */
+  const [syncPrompt, setSyncPrompt] = useState<{ current: string; next: string } | null>(null);
+  const [syncSaving, setSyncSaving] = useState(false);
 
   // WOOP 실행설계 목록 — 홈과 동일한 섹션/시트를 설정에서도 노출.
   const [plans, setPlans] = useState<ExecutionPlanWithId[]>([]);
@@ -410,8 +433,41 @@ export default function SettingsPage() {
     );
   }, [user]);
 
+  /* 홈의 "목표 정하기"·해금 배너에서 넘어온 딥링크(?sheet=goals[&refine=1]).
+     useSearchParams 대신 window.location 을 읽는다 — Suspense 경계 없이도 안전하고,
+     읽은 뒤 쿼리를 지워 뒤로가기/새로고침에 시트가 다시 열리지 않는다. */
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("sheet") !== "goals") return;
+      setGoalsOpen(true);
+      if (url.searchParams.get("refine") === "1") setRefineIdx(0);
+      url.searchParams.delete("sheet");
+      url.searchParams.delete("refine");
+      window.history.replaceState({}, "", url.toString());
+    } catch {
+      /* URL 파싱 불가 환경 — 시트를 열지 않을 뿐 나머지는 정상 동작 */
+    }
+  }, []);
+
+  /* 이미 나머지 차원까지 채워둔 사용자(기존 7문항 온보딩 이용자)에게는 접혀 있으면
+     자기가 쓴 글이 사라진 것처럼 보인다 — 시트를 열 때 내용이 있으면 자동으로 펼친다.
+     (state 는 접혀 있어도 보존되므로 저장 자체는 어느 쪽이든 안전하다.) */
+  useEffect(() => {
+    if (!futureOpen) return;
+    const hasDetail = FUTURE_SELF_DIMENSIONS.some(
+      (dim) => dim !== PRIMARY_FUTURE_DIMENSION && (futureSelfDraft[dim] ?? "").trim().length > 0,
+    );
+    if (hasDetail) setFutureDetailOpen(true);
+  }, [futureOpen, futureSelfDraft]);
+
   const goalCount = useMemo(() => goals.filter((g) => g.trim().length > 0).length, [goals]);
   const authorGroups = useMemo(() => getAllKnownAuthorsGrouped(locale), [locale]);
+  // 목표 칸 수는 꾸준함으로 열린다. 기존 사용자는 지금 가진 목표 수만큼 자동 인정된다.
+  const goalSlots = useMemo(
+    () => computeGoalSlots(user?.affirmationStreak, user?.goals?.length ?? 0),
+    [user?.affirmationStreak, user?.goals?.length],
+  );
 
   if (authLoading || !firebaseUser) {
     return (
@@ -493,12 +549,50 @@ export default function SettingsPage() {
   const handleSaveGoals = async () => {
     try {
       const cleaned = goals.map((g) => g.trim()).filter((g) => g.length > 0);
+      // 저장 전에 판정해 둔다 — refreshUser 이후엔 "이전 목표"를 알 수 없다.
+      const prevGoal = user?.goals?.[0] ?? "";
+      const prevAffirmations = user?.successAffirmations ?? [];
+      const offerSync = shouldOfferAffirmationSync({
+        prevGoal,
+        nextGoal: cleaned[0] ?? "",
+        affirmations: prevAffirmations,
+        locale,
+      });
+
       await updateUserGoals(uid, cleaned);
       await refreshUser().catch(() => {});
       setGoalsOpen(false);
+      setRefineIdx(null);
+
+      // 자동 파생본을 그대로 쓰던 사용자에게만 물어본다(직접 고쳐 쓴 다짐은 건드리지 않는다).
+      if (offerSync) {
+        setSyncPrompt({
+          current: prevAffirmations[0] ?? "",
+          next: deriveAffirmation(cleaned[0] ?? "", locale),
+        });
+      }
     } catch (err) {
       console.error("[settings] 목표 저장 실패:", err);
       window.alert(t("common.saveFailed"));
+    }
+  };
+
+  /** 목표에 맞춰 첫 다짐 1줄만 교체한다 — 나머지 다짐은 손대지 않는다. */
+  const handleApplyAffirmationSync = async () => {
+    if (!syncPrompt) return;
+    setSyncSaving(true);
+    try {
+      const next = [...(user?.successAffirmations ?? [])];
+      if (next.length === 0) next.push(syncPrompt.next);
+      else next[0] = syncPrompt.next;
+      await updateSuccessAffirmations(uid, next);
+      await refreshUser().catch(() => {});
+      setSyncPrompt(null);
+    } catch (err) {
+      console.error("[settings] 다짐 동기화 실패:", err);
+      window.alert(t("common.saveFailed"));
+    } finally {
+      setSyncSaving(false);
     }
   };
 
@@ -915,8 +1009,12 @@ export default function SettingsPage() {
             {t("settings.future.subtitle")}
           </p>
 
+          {/* 온보딩에서 묻는 것은 이 한 문항뿐 — 나머지 6개는 원하는 사람만 펼쳐서 채운다. */}
           <div className="mt-3 space-y-4">
-            {FUTURE_SELF_DIMENSIONS.map((dim) => (
+            {(futureDetailOpen
+              ? FUTURE_SELF_DIMENSIONS
+              : [PRIMARY_FUTURE_DIMENSION]
+            ).map((dim) => (
               <div key={dim}>
                 <p className="text-[13px] font-semibold tracking-[-0.08px] text-[var(--label)]">
                   {t(FUTURE_Q_KEY[dim])}
@@ -937,6 +1035,16 @@ export default function SettingsPage() {
               </div>
             ))}
           </div>
+
+          {!futureDetailOpen && (
+            <button
+              type="button"
+              onClick={() => setFutureDetailOpen(true)}
+              className="mt-3 text-[15px] font-medium text-[var(--soul)]"
+            >
+              ⌄ {t("settings.futureSelf.moreDetail")}
+            </button>
+          )}
 
           {/* 레거시 사용자: 구조화 답변 없이 futurePersona 원문만 있으면 읽기전용으로 노출 */}
           {!hasAnyFutureSelfAnswer(user?.futureSelfAnswers ?? {}) && user?.futurePersona && (
@@ -994,36 +1102,82 @@ export default function SettingsPage() {
           <div className="bg-[var(--bg-grouped-2)] rounded-[12px] overflow-hidden mt-2">
             {goals.map((g, i) => {
               const isLast = i === goals.length - 1;
+              // 구체성 힌트는 조용히 — 점수가 낮을 때, 또는 홈 배너로 들어온 그 줄에만.
+              const missing = missingGoalSignals(g);
+              const showHint =
+                missing.length > 0 && (refineIdx === i || needsMoreSpecificGoal(g));
               return (
-                <div
-                  key={i}
-                  className="relative flex items-center gap-3 px-4 min-h-[52px]"
-                >
-                  <span className="text-[15px] font-bold w-7 text-center text-[#1E1B4B]">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <input
-                    value={g}
-                    maxLength={GOAL_MAX}
-                    onChange={(e) =>
-                      setGoals(goals.map((x, j) => (j === i ? e.target.value : x)))
-                    }
-                    className="flex-1 bg-transparent text-[17px] tracking-[-0.43px] text-[var(--label)] focus:outline-none py-2"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setGoals(goals.filter((_, j) => j !== i))}
-                    className="text-[#FF3B30] text-[15px]"
-                  >
-                    ×
-                  </button>
+                <div key={i} className="relative px-4 py-1">
+                  <div className="flex items-center gap-3 min-h-[52px]">
+                    <span className="text-[15px] font-bold w-7 text-center text-[#1E1B4B]">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <input
+                      value={g}
+                      maxLength={GOAL_TEXT_MAX}
+                      autoFocus={refineIdx === i}
+                      onChange={(e) =>
+                        setGoals(goals.map((x, j) => (j === i ? e.target.value : x)))
+                      }
+                      className="flex-1 bg-transparent text-[17px] tracking-[-0.43px] text-[var(--label)] focus:outline-none py-2"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setGoals(goals.filter((_, j) => j !== i))}
+                      className="text-[#FF3B30] text-[15px]"
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  {showHint && (
+                    <div className="pb-2.5 pl-10">
+                      <p className="text-[12px] leading-[16px] tracking-[-0.05px] text-[var(--label-3)]">
+                        {t("goal.specific.hint")}
+                      </p>
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {missing.map((signal) => (
+                          <span
+                            key={signal}
+                            className="inline-flex items-center gap-1 rounded-full bg-[#1E1B4B]/[0.06] px-2.5 py-1 text-[12px] tracking-[-0.05px] text-[#1E1B4B]/80"
+                          >
+                            {t(GOAL_SIGNAL_LABEL_KEY[signal])}
+                            <span className="text-[var(--label-3)]">
+                              {t(GOAL_SIGNAL_EXAMPLE_KEY[signal])}
+                            </span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {!isLast && (
                     <div className="absolute bottom-0 left-[50px] right-0 h-[0.5px] bg-[var(--sep)]" />
                   )}
                 </div>
               );
             })}
-            {goals.length < MAX_USER_GOALS && (
+
+            {/* 잠긴 칸 — 왜 못 늘리는지, 언제 열리는지를 그 자리에서 보여준다. */}
+            {goals.length >= goalSlots.unlocked &&
+              goalSlots.unlocked < GOAL_SLOT_MAX &&
+              goalSlots.nextThreshold !== null && (
+                <div className="flex items-center gap-3 px-4 py-3 border-t border-[var(--sep)]">
+                  <span className="w-7 text-center text-[15px]" aria-hidden>
+                    🔒
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[15px] leading-[20px] tracking-[-0.24px] text-[var(--label-2)]">
+                      {t("goalSlot.locked", { days: goalSlots.nextThreshold })}
+                    </p>
+                    <p className="mt-0.5 text-[13px] tracking-[-0.08px] text-[var(--label-3)]">
+                      {t("goalSlot.lockedProgress", { progress: goalSlots.progress })}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+            {goals.length < goalSlots.unlocked && (
               <button
                 type="button"
                 onClick={() => setGoals([...goals, ""])}
@@ -1033,6 +1187,13 @@ export default function SettingsPage() {
               </button>
             )}
           </div>
+
+          <p className="px-1 mt-2 text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label-2)]">
+            {goalSlots.earned >= GOAL_SLOT_MAX && goals.length >= goalSlots.unlocked
+              ? t("goalSlot.maxed", { max: GOAL_SLOT_MAX })
+              : t("goalSlot.hint")}
+          </p>
+
           <div className="flex justify-end mt-3">
             <button
               type="button"
@@ -1040,6 +1201,54 @@ export default function SettingsPage() {
               className="text-[17px] font-semibold text-[var(--soul)]"
             >
               {t("common.save")}
+            </button>
+          </div>
+        </Sheet>
+      )}
+
+      {/* ── 목표를 바꾼 뒤: 다짐도 맞출지 묻는 시트 ──
+          자동 파생본을 그대로 쓰던 사용자에게만 뜬다(직접 고친 다짐은 묻지 않고 보존). */}
+      {syncPrompt && (
+        <Sheet onClose={() => setSyncPrompt(null)} title={t("settings.goals.sync.title")}>
+          <p className="mt-1 text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label-2)]">
+            {t("settings.goals.sync.desc")}
+          </p>
+
+          <div className="mt-3 space-y-2">
+            <div className="rounded-[12px] bg-[var(--bg-grouped-2)] px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--label-3)]">
+                {t("settings.goals.sync.current")}
+              </p>
+              <p className="mt-1 text-[15px] leading-[20px] tracking-[-0.24px] text-[var(--label-2)] line-through decoration-[var(--label-3)]">
+                {syncPrompt.current}
+              </p>
+            </div>
+            <div className="rounded-[12px] bg-[var(--bg-grouped-2)] px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--label-3)]">
+                {t("settings.goals.sync.next")}
+              </p>
+              <p className="mt-1 text-[17px] font-medium leading-[22px] tracking-[-0.43px] text-[var(--label)]">
+                {syncPrompt.next}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => setSyncPrompt(null)}
+              disabled={syncSaving}
+              className="text-[15px] font-medium text-[var(--label-2)] disabled:opacity-40"
+            >
+              {t("settings.goals.sync.keep")}
+            </button>
+            <button
+              type="button"
+              onClick={handleApplyAffirmationSync}
+              disabled={syncSaving}
+              className="text-[17px] font-semibold text-[var(--soul)] disabled:opacity-40"
+            >
+              {syncSaving ? t("common.saving") : t("settings.goals.sync.apply")}
             </button>
           </div>
         </Sheet>

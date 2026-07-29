@@ -10,93 +10,41 @@ import {
   updateSuccessAffirmations,
   updateUserLanguage,
   markOnboarded,
-  MAX_USER_GOALS,
 } from "@/lib/firebase";
-import {
-  FUTURE_SELF_DIMENSIONS,
-  FUTURE_SELF_FIELD_MAX,
-  hasAnyFutureSelfAnswer,
-  type FutureSelfDimension,
-} from "@/lib/futureSelf";
+import { FUTURE_SELF_FIELD_MAX, hasAnyFutureSelfAnswer } from "@/lib/futureSelf";
 import { computeOnboardingProgress } from "@/lib/onboardingProgress";
+import { deriveAffirmation, normalizeGoalText } from "@/lib/affirmationDerive";
+import { needsMoreSpecificGoal } from "@/lib/goalQuality";
+import { GOAL_TEXT_MAX, SUCCESS_AFFIRMATION_MAX_LEN } from "@/lib/constants/goal";
 import { authedFetch } from "@/lib/authedFetch";
-import AffirmationsEditor from "@/components/affirmations/AffirmationsEditor";
 import { useLanguage, LOCALE_META, SUPPORTED_LOCALES, type Locale, type DictKey } from "@/lib/i18n";
-import type {
-  DailyMotivation,
-  FutureSelfAnswers,
-} from "@/types";
+import type { DailyMotivation, FutureSelfAnswers } from "@/types";
 
-const GOAL_MAX = 80;
-/** 0 = 언어 선택, 1~3 = 입력 단계, 4 = 미리보기. */
-const TOTAL_STEPS = 5;
-type Step = 0 | 1 | 2 | 3 | 4;
+/* ─────────────────────────────────────────────────────────────────
+ * Anima 온보딩 — "미래의 나 한 문장 + 목표 딱 하나"
+ * ─────────────────────────────────────────────────────────────────
+ *  이전 온보딩은 11개 화면 / 최대 27개 입력칸(미래자아 7문항 + 다짐 10 + 목표 10)을
+ *  요구했다. "입력이 너무 많고 복잡하다"는 피드백에 따라 **입력칸 2개**로 줄였다.
+ *
+ *  0 언어 · 1 미래 서술(1문항) · 2 목표 1개 · 3 미리보기
+ *
+ *  다짐은 따로 받지 않고 목표에서 파생한다(lib/affirmationDerive) — 전사 체크인은
+ *  그대로 유지되지만 사용자가 문장을 두 번 고민하지 않고, 목표와 다짐이 같은 것을
+ *  가리키게 된다. 나머지 6개 미래 차원과 다짐 추가는 설정에서 원하는 사람만 채운다.
+ * ────────────────────────────────────────────────────────────────── */
 
-/** Step 1 몰입형 질문 화면 수 = 차원 수(7). */
-const FUTURE_QUESTION_COUNT = FUTURE_SELF_DIMENSIONS.length;
+/** 0 = 언어, 1 = 미래 서술, 2 = 목표, 3 = 미리보기. */
+const TOTAL_STEPS = 4;
+type Step = 0 | 1 | 2 | 3;
 
-/** 미래자아 앞 N개(일상·일)는 핵심 권장 — 이후 질문엔 "나머지는 나중에" 스킵을 노출한다. */
-const CORE_FUTURE_COUNT = 2;
+/** 미래 서술은 "일상(daily)" 차원 하나만 묻는다 — 나머지는 설정에서 채울 수 있다. */
+const FUTURE_EXAMPLE_KEYS: ReadonlyArray<DictKey> = [
+  "onboarding.futureSelf.daily.example1",
+  "onboarding.futureSelf.daily.example2",
+  "onboarding.futureSelf.daily.example3",
+];
 
-/** 차원 → i18n 질문/placeholder 키. 동적 키 조합 대신 명시 매핑으로 타입 안전 확보. */
-const FUTURE_Q_KEY: Record<FutureSelfDimension, DictKey> = {
-  daily: "onboarding.futureSelf.daily.q",
-  work: "onboarding.futureSelf.work.q",
-  wealth: "onboarding.futureSelf.wealth.q",
-  family: "onboarding.futureSelf.family.q",
-  achievements: "onboarding.futureSelf.achievements.q",
-  respect: "onboarding.futureSelf.respect.q",
-  growth: "onboarding.futureSelf.growth.q",
-};
-const FUTURE_PH_KEY: Record<FutureSelfDimension, DictKey> = {
-  daily: "onboarding.futureSelf.daily.placeholder",
-  work: "onboarding.futureSelf.work.placeholder",
-  wealth: "onboarding.futureSelf.wealth.placeholder",
-  family: "onboarding.futureSelf.family.placeholder",
-  achievements: "onboarding.futureSelf.achievements.placeholder",
-  respect: "onboarding.futureSelf.respect.placeholder",
-  growth: "onboarding.futureSelf.growth.placeholder",
-};
-/** 모든 차원에 구체 예시칩 3개씩 제공 — 빈 화면 앞에서 막히지 않고 톤을 잡을 수 있게. */
-const FUTURE_EXAMPLE_KEYS: Record<FutureSelfDimension, ReadonlyArray<DictKey>> = {
-  daily: [
-    "onboarding.futureSelf.daily.example1",
-    "onboarding.futureSelf.daily.example2",
-    "onboarding.futureSelf.daily.example3",
-  ],
-  work: [
-    "onboarding.futureSelf.work.example1",
-    "onboarding.futureSelf.work.example2",
-    "onboarding.futureSelf.work.example3",
-  ],
-  wealth: [
-    "onboarding.futureSelf.wealth.example1",
-    "onboarding.futureSelf.wealth.example2",
-    "onboarding.futureSelf.wealth.example3",
-  ],
-  family: [
-    "onboarding.futureSelf.family.example1",
-    "onboarding.futureSelf.family.example2",
-    "onboarding.futureSelf.family.example3",
-  ],
-  achievements: [
-    "onboarding.futureSelf.achievements.example1",
-    "onboarding.futureSelf.achievements.example2",
-    "onboarding.futureSelf.achievements.example3",
-  ],
-  respect: [
-    "onboarding.futureSelf.respect.example1",
-    "onboarding.futureSelf.respect.example2",
-    "onboarding.futureSelf.respect.example3",
-  ],
-  growth: [
-    "onboarding.futureSelf.growth.example1",
-    "onboarding.futureSelf.growth.example2",
-    "onboarding.futureSelf.growth.example3",
-  ],
-};
-
-/** Step 5 초상 카드 표시용 — 서버 JSON 응답에서 쓰는 필드만 (Timestamp 직렬화 무관). */
+/** Step 3 초상 카드 표시용 — 서버 JSON 응답에서 쓰는 필드만 (Timestamp 직렬화 무관). */
 interface PortraitPreview {
   title: string;
   portrait: string;
@@ -109,15 +57,19 @@ export default function OnboardingPage() {
   const { t, locale, setLocale } = useLanguage();
 
   const [step, setStep] = useState<Step>(0);
-  /** 몰입형 "10년 후 나의 모습" — 한 화면에 한 질문. 0..FUTURE_QUESTION_COUNT-1. */
-  const [futureStep, setFutureStep] = useState(0);
-  const [futureAnswers, setFutureAnswers] = useState<FutureSelfAnswers>({});
-  const [goals, setGoals] = useState<string[]>([""]);
-  const [affirmations, setAffirmations] = useState<string[]>([]);
+  const [futureAnswer, setFutureAnswer] = useState("");
+  /** 예시 칩 대신 직접 쓰겠다고 연 경우 (칩 선택으로 채워진 답변은 자동 전개된다). */
+  const [customOpen, setCustomOpen] = useState(false);
+
+  const [goal, setGoal] = useState("");
+  /**
+   * 다짐 직접 수정본. null 이면 목표에서 자동 파생한 문장을 그대로 따른다 —
+   * 별도 동기화 이펙트 없이 렌더 시점 파생만으로 항상 목표와 일치한다.
+   */
+  const [affirmationDraft, setAffirmationDraft] = useState<string | null>(null);
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  /** 사용자가 "직접 입력하기"로 서술형 편집을 연 미래자아 차원 (null = 칩 선택 모드). */
-  const [customEditDim, setCustomEditDim] = useState<FutureSelfDimension | null>(null);
 
   const [previewLoading, setPreviewLoading] = useState(false);
   const [preview, setPreview] = useState<DailyMotivation | null>(null);
@@ -126,6 +78,10 @@ export default function OnboardingPage() {
   const [portraitLoading, setPortraitLoading] = useState(false);
   const [portrait, setPortrait] = useState<PortraitPreview | null>(null);
   const [portraitError, setPortraitError] = useState<string | null>(null);
+
+  // 파생 다짐 — affirmationDraft 가 null 이면 항상 목표를 따라간다(동기화 이펙트 불필요).
+  const derivedAffirmation = deriveAffirmation(goal, locale);
+  const affirmationLine = affirmationDraft ?? derivedAffirmation;
 
   useEffect(() => {
     if (authLoading) return;
@@ -138,49 +94,14 @@ export default function OnboardingPage() {
     }
   }, [authLoading, firebaseUser, user?.onboardedAt, router]);
 
-  const handleGoalChange = (idx: number, value: string) => {
-    setGoals((prev) => prev.map((g, i) => (i === idx ? value.slice(0, GOAL_MAX) : g)));
-  };
-  const handleAddGoalRow = () => {
-    setGoals((prev) => (prev.length >= MAX_USER_GOALS ? prev : [...prev, ""]));
-  };
-  const handleRemoveGoalRow = (idx: number) => {
-    setGoals((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== idx)));
-  };
-
-  const handleFutureAnswerChange = (dim: FutureSelfDimension, value: string) => {
-    setFutureAnswers((prev) => ({ ...prev, [dim]: value.slice(0, FUTURE_SELF_FIELD_MAX) }));
-  };
-
   /** 예시 카드 선택 = 해당 문구로 답변을 채우고, 열려 있던 직접입력 편집을 접는다. */
-  const handleSelectExample = (dim: FutureSelfDimension, example: string) => {
-    handleFutureAnswerChange(dim, example);
-    setCustomEditDim((cur) => (cur === dim ? null : cur));
+  const handleSelectExample = (example: string) => {
+    setFutureAnswer(example.slice(0, FUTURE_SELF_FIELD_MAX));
+    setCustomOpen(false);
   };
 
-  /** 핵심 이후 미래자아 질문을 건너뛰고 다음 섹션(다짐)으로. 입력된 답변은 state 에 보존된다. */
-  const skipRemainingFuture = () => {
-    setStep(2);
-  };
-
-  /**
-   * 다음/이전 버튼이 Step 1 안에서는 몰입형 질문(futureStep)을 먼저 구동한다.
-   * 마지막 질문에서 "다음" → step 2, 첫 질문에서 "이전" → step 0 (언어 선택).
-   */
-  const goNext = () => {
-    if (step === 1 && futureStep < FUTURE_QUESTION_COUNT - 1) {
-      setFutureStep((fs) => fs + 1);
-      return;
-    }
-    setStep((s) => (s < (TOTAL_STEPS - 1) ? ((s + 1) as Step) : s));
-  };
-  const goBack = () => {
-    if (step === 1 && futureStep > 0) {
-      setFutureStep((fs) => fs - 1);
-      return;
-    }
-    setStep((s) => (s > 0 ? ((s - 1) as Step) : s));
-  };
+  const goNext = () => setStep((s) => (s < (TOTAL_STEPS - 1) ? ((s + 1) as Step) : s));
+  const goBack = () => setStep((s) => (s > 0 ? ((s - 1) as Step) : s));
 
   /**
    * Step 0 → 1 진입 시 선택한 언어를 즉시 Firestore 에 저장.
@@ -199,7 +120,7 @@ export default function OnboardingPage() {
   };
 
   /**
-   * Step 1·2·3 입력을 한 번에 저장하고 step 4 진입 시 첫 카드를 즉시 생성.
+   * Step 1·2 입력을 한 번에 저장하고 step 3 진입 시 첫 카드를 즉시 생성.
    * 환불 윈도우 2시간 안에 "이 앱을 산 이유" 를 체감하게 하는 것이 핵심 — 카드가 보이기 전엔 끝내지 않는다.
    */
   const saveAndPreview = async () => {
@@ -212,17 +133,24 @@ export default function OnboardingPage() {
       // 언어를 한 번 더 동기화 (step0 저장이 어떤 이유로 누락된 경우 보호)
       try { await updateUserLanguage(uid, locale); } catch {}
 
-      const hasFutureAnswers = hasAnyFutureSelfAnswer(futureAnswers);
+      // 미래 서술 1문항은 daily 차원에 담는다 — composeFuturePersona 를 거쳐 기존
+      // futurePersona 필드에도 함께 기록되므로 AI 소비처(카드/비전/정체성/작가추천)는 무수정 동작.
+      const answers: FutureSelfAnswers = {};
+      const futureTrimmed = futureAnswer.trim();
+      if (futureTrimmed.length > 0) answers.daily = futureTrimmed;
+      const hasFutureAnswers = hasAnyFutureSelfAnswer(answers);
       if (hasFutureAnswers) {
-        // 구조화 답변 + 합성 futurePersona 를 함께 저장 (기존 AI 소비처 호환).
-        await updateFutureSelf(uid, futureAnswers);
+        await updateFutureSelf(uid, answers);
       }
-      const cleanedGoals = goals.map((g) => g.trim()).filter((g) => g.length > 0);
-      if (cleanedGoals.length > 0) {
-        await updateUserGoals(uid, cleanedGoals);
+
+      const cleanedGoal = normalizeGoalText(goal);
+      if (cleanedGoal.length > 0) {
+        await updateUserGoals(uid, [cleanedGoal]);
       }
-      // 다짐은 비어 있어도 저장(빈 배열로 정규화) — 사용자가 의도적으로 안 적었을 수 있다.
-      await updateSuccessAffirmations(uid, affirmations);
+      // 다짐은 비어 있어도 저장(빈 배열로 정규화) — 목표를 건너뛴 사용자도 있다.
+      const line = affirmationLine.trim();
+      await updateSuccessAffirmations(uid, line.length > 0 ? [line] : []);
+
       // 인물 고정 없이 자동 회전을 기본값으로 저장 — 온보딩에서 더 묻지 않는다.
       // (설정에서 언제든 특정 인물을 고정할 수 있다.)
       await updateQuotePreference(uid, {
@@ -232,7 +160,7 @@ export default function OnboardingPage() {
       await refreshUser().catch(() => {});
 
       // 핵심 입력이 모두 저장된 이 시점에 온보딩 완료 플래그를 박는다.
-      // Step 5 미리보기에서 카드 생성 실패나 앱 종료로 finish 버튼을 못 눌러도
+      // 미리보기에서 카드 생성 실패나 앱 종료로 finish 버튼을 못 눌러도
       // 다음 로그인 때 다시 온보딩으로 튕기지 않도록 보호.
       // refreshUser 재호출은 생략 — user.onboardedAt 이 즉시 truthy 가 되면
       // 상단 useEffect 가 /home 으로 튕겨 미리보기를 못 본다. 갱신은 finish() 가 한다.
@@ -243,7 +171,7 @@ export default function OnboardingPage() {
       }
 
       // "10년 후 나의 모습" 초상 생성 — 데일리 카드와 병렬로 발사하고 결과를 기다리지 않는다.
-      // (답변이 하나도 없으면 그릴 재료가 없으므로 호출 자체를 생략 — Step 5 에 섹션 미노출.)
+      // (답변이 없으면 그릴 재료가 없으므로 호출 자체를 생략 — 미리보기에 섹션 미노출.)
       if (hasFutureAnswers) {
         setPortraitLoading(true);
         setPortraitError(null);
@@ -295,7 +223,7 @@ export default function OnboardingPage() {
       }
 
       setSaving(false);
-      setStep(4);
+      setStep(3);
     } catch (err) {
       console.error("[onboarding] 저장 실패:", err);
       const msg = err instanceof Error ? err.message : String(err);
@@ -340,16 +268,14 @@ export default function OnboardingPage() {
     );
   }
 
-  const currentDimension = FUTURE_SELF_DIMENSIONS[futureStep];
-  const currentExampleKeys = FUTURE_EXAMPLE_KEYS[currentDimension];
-  const currentExampleTexts = currentExampleKeys.map((key) => t(key));
-  const currentAnswer = futureAnswers[currentDimension] ?? "";
+  const exampleTexts = FUTURE_EXAMPLE_KEYS.map((key) => t(key));
   // 답변이 예시 문구와 다르면(비어있지 않음) 커스텀으로 간주 — 재진입 시 서술형을 자동 전개.
-  const isCustomAnswer = currentAnswer.length > 0 && !currentExampleTexts.includes(currentAnswer);
-  const showCustomInput = customEditDim === currentDimension || isCustomAnswer;
+  const showCustomInput =
+    customOpen || (futureAnswer.length > 0 && !exampleTexts.includes(futureAnswer));
 
   // 통합 진행바 — 언어 선택/미리보기에서는 null(미표시).
-  const progress = computeOnboardingProgress(step, futureStep);
+  const progress = computeOnboardingProgress(step);
+  const goalHintVisible = needsMoreSpecificGoal(goal);
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F0EDE6]">
@@ -374,7 +300,7 @@ export default function OnboardingPage() {
           ) : (
             <div className="flex-1" />
           )}
-          {step > 0 && step < 4 && (
+          {step > 0 && step < 3 && (
             <button
               type="button"
               onClick={handleSkip}
@@ -434,14 +360,13 @@ export default function OnboardingPage() {
           )}
 
           {step === 1 && (
-            <div key={currentDimension}>
-              {/* 몰입형: 한 화면에 한 질문. 진행 표시는 상단 통합 바로 일원화. */}
+            <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#1E1B4B]/60">
                 {t("onboarding.futureSelf.sectionLabel")}
               </p>
 
               <h1 className="mt-4 text-[26px] font-semibold leading-[1.2] tracking-[-0.003em] text-[#1E1B4B] sm:text-[30px]">
-                {t(FUTURE_Q_KEY[currentDimension])}
+                {t("onboarding.futureSelf.daily.q")}
               </h1>
               <p className="mt-2 text-[14px] leading-[1.5] tracking-[-0.022em] text-black/55">
                 {t("onboarding.futureSelf.chooseHint")}
@@ -449,14 +374,14 @@ export default function OnboardingPage() {
 
               {/* 주 선택지: 예시 3개를 탭 한 번으로 답변 채우기 — 타이핑 없이 완주 가능. */}
               <div className="mt-6 space-y-2.5">
-                {currentExampleKeys.map((key, i) => {
-                  const ex = currentExampleTexts[i];
-                  const selected = currentAnswer === ex;
+                {FUTURE_EXAMPLE_KEYS.map((key, i) => {
+                  const ex = exampleTexts[i];
+                  const selected = futureAnswer === ex;
                   return (
                     <button
                       key={key}
                       type="button"
-                      onClick={() => handleSelectExample(currentDimension, ex)}
+                      onClick={() => handleSelectExample(ex)}
                       aria-pressed={selected}
                       className={`flex w-full items-start gap-3 rounded-[14px] border px-4 py-3 text-left transition-all ${
                         selected
@@ -488,87 +413,26 @@ export default function OnboardingPage() {
               {showCustomInput ? (
                 <div className="mt-3">
                   <textarea
-                    value={currentAnswer}
-                    onChange={(e) => handleFutureAnswerChange(currentDimension, e.target.value)}
+                    value={futureAnswer}
+                    onChange={(e) =>
+                      setFutureAnswer(e.target.value.slice(0, FUTURE_SELF_FIELD_MAX))
+                    }
                     rows={5}
                     maxLength={FUTURE_SELF_FIELD_MAX}
-                    placeholder={t(FUTURE_PH_KEY[currentDimension])}
+                    placeholder={t("onboarding.futureSelf.daily.placeholder")}
                     className="w-full resize-none rounded-[14px] border border-black/10 bg-white px-4 py-3 text-[15px] leading-[1.6] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
                   />
                   <div className="mt-2 text-right text-[11px] tracking-[-0.01em] text-black/40">
-                    {currentAnswer.length}/{FUTURE_SELF_FIELD_MAX}
+                    {futureAnswer.length}/{FUTURE_SELF_FIELD_MAX}
                   </div>
                 </div>
               ) : (
                 <button
                   type="button"
-                  onClick={() => setCustomEditDim(currentDimension)}
+                  onClick={() => setCustomOpen(true)}
                   className="mt-3 rounded-pill border border-dashed border-black/15 bg-white px-4 py-2 text-[12px] font-medium tracking-[-0.01em] text-black/60 transition-colors hover:border-[#1E1B4B] hover:text-[#1E1B4B]"
                 >
                   {t("onboarding.futureSelf.writeMyOwn")}
-                </button>
-              )}
-
-              {/* 핵심(앞 CORE_FUTURE_COUNT개) 이후엔 나머지를 다음에 채우도록 허용. */}
-              {futureStep >= CORE_FUTURE_COUNT && (
-                <button
-                  type="button"
-                  onClick={skipRemainingFuture}
-                  className="mt-6 block text-[13px] font-medium tracking-[-0.01em] text-[#1E1B4B]/70 transition-colors hover:text-[#1E1B4B]"
-                >
-                  {t("onboarding.futureSelf.skipRest")}
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* 표시 순서: 다짐(step===2) → 행동(이 블록 step===3). i18n 키 이름의 숫자는
-              콘텐츠 식별자일 뿐 표시 순서와 무관 — 다짐을 먼저 적고 그 다음 행동을 적게 한다. */}
-          {step === 3 && (
-            <div>
-              <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.003em] text-[#1E1B4B] sm:text-[32px]">
-                {t("onboarding.step2.title")}
-              </h1>
-              <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
-                {t("onboarding.step2.subtitle")}
-              </p>
-
-              <ul className="mt-6 space-y-2">
-                {goals.map((goal, idx) => (
-                  <li key={idx} className="flex items-center gap-2">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#1E1B4B]/10 text-[12px] font-semibold text-[#1E1B4B]">
-                      {idx + 1}
-                    </span>
-                    <input
-                      value={goal}
-                      maxLength={GOAL_MAX}
-                      onChange={(e) => handleGoalChange(idx, e.target.value)}
-                      placeholder={t("onboarding.step2.placeholder")}
-                      className="min-w-0 flex-1 rounded-[10px] border border-black/10 bg-white px-3 py-2 text-[14px] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
-                    />
-                    {goals.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveGoalRow(idx)}
-                        aria-label={t("onboarding.step2.removeGoalAria")}
-                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-black/40 transition-colors hover:bg-black/[0.04] hover:text-black/80"
-                      >
-                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M18 6L6 18M6 6l12 12" />
-                        </svg>
-                      </button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-
-              {goals.length < MAX_USER_GOALS && (
-                <button
-                  type="button"
-                  onClick={handleAddGoalRow}
-                  className="mt-3 rounded-pill border border-dashed border-black/15 bg-white px-4 py-2 text-[12px] font-medium tracking-[-0.01em] text-black/60 transition-colors hover:border-[#1E1B4B] hover:text-[#1E1B4B]"
-                >
-                  {t("onboarding.step2.addGoal")}
                 </button>
               )}
             </div>
@@ -577,22 +441,78 @@ export default function OnboardingPage() {
           {step === 2 && (
             <div>
               <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.003em] text-[#1E1B4B] sm:text-[32px]">
-                {t("onboarding.step3.title")}
+                {t("onboarding.goal.title")}
               </h1>
               <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
-                {t("onboarding.step3.subtitle")}
+                {t("onboarding.goal.subtitle")}
               </p>
 
               <div className="mt-6">
-                <AffirmationsEditor
-                  value={affirmations}
-                  onChange={setAffirmations}
+                <input
+                  value={goal}
+                  maxLength={GOAL_TEXT_MAX}
+                  onChange={(e) => setGoal(e.target.value)}
+                  placeholder={t("onboarding.goal.placeholder")}
+                  className="w-full rounded-[14px] border border-black/10 bg-white px-4 py-3.5 text-[17px] leading-[1.4] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/35 focus:border-[#1E1B4B] focus:outline-none"
                 />
+                <p className="mt-2 text-[12px] leading-[1.5] tracking-[-0.01em] text-black/48">
+                  {goalHintVisible ? t("goal.specific.hint") : t("onboarding.goal.hint")}
+                </p>
               </div>
+
+              {/* 파생 다짐 — 목표를 적는 순간 나타난다. 입력칸이 아니라 "결과 미리보기". */}
+              {derivedAffirmation.length > 0 && (
+                <div className="mt-6 rounded-[14px] border border-[#1E1B4B]/12 bg-white px-4 py-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#1E1B4B]/55">
+                    {t("onboarding.goal.affirmationLabel")}
+                  </p>
+
+                  {affirmationDraft === null ? (
+                    <>
+                      <p className="mt-2 text-[17px] font-medium leading-[1.45] tracking-[-0.01em] text-[#1E1B4B]">
+                        {derivedAffirmation}
+                      </p>
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <span className="text-[12px] leading-[1.5] tracking-[-0.01em] text-black/48">
+                          {t("onboarding.goal.affirmationHint")}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setAffirmationDraft(derivedAffirmation)}
+                          className="shrink-0 text-[13px] font-medium tracking-[-0.01em] text-[#1E1B4B]/75 hover:text-[#1E1B4B]"
+                        >
+                          {t("onboarding.goal.affirmationEdit")}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <input
+                        value={affirmationDraft}
+                        maxLength={SUCCESS_AFFIRMATION_MAX_LEN}
+                        onChange={(e) => setAffirmationDraft(e.target.value)}
+                        className="mt-2 w-full border-b border-black/10 bg-transparent pb-1.5 text-[17px] font-medium leading-[1.45] tracking-[-0.01em] text-[#1E1B4B] focus:border-[#1E1B4B] focus:outline-none"
+                      />
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <span className="text-[11px] tracking-[-0.01em] text-black/40">
+                          {affirmationDraft.length}/{SUCCESS_AFFIRMATION_MAX_LEN}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setAffirmationDraft(null)}
+                          className="shrink-0 text-[13px] font-medium tracking-[-0.01em] text-[#1E1B4B]/75 hover:text-[#1E1B4B]"
+                        >
+                          {t("onboarding.goal.affirmationReset")}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
-          {step === 4 && (
+          {step === 3 && (
             <div>
               <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.003em] text-[#1E1B4B] sm:text-[32px]">
                 {previewLoading ? t("onboarding.step5.titleLoading") : t("onboarding.step5.titleDone")}
@@ -759,12 +679,12 @@ export default function OnboardingPage() {
           <button
             type="button"
             onClick={goBack}
-            disabled={step === 0 || saving || step === 4}
+            disabled={step === 0 || saving || step === 3}
             className="rounded-pill px-4 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-black/70 transition-colors hover:bg-black/[0.04] disabled:opacity-30"
           >
             {t("common.prev")}
           </button>
-          {step < 3 && (
+          {step < 2 && (
             <button
               type="button"
               onClick={goNext}
@@ -774,7 +694,7 @@ export default function OnboardingPage() {
               {t("common.next")}
             </button>
           )}
-          {step === 3 && (
+          {step === 2 && (
             <button
               type="button"
               onClick={saveAndPreview}
@@ -784,7 +704,7 @@ export default function OnboardingPage() {
               {saving ? t("onboarding.step4.preparing") : t("onboarding.step4.cta")}
             </button>
           )}
-          {step === 4 && (
+          {step === 3 && (
             <button
               type="button"
               onClick={finish}

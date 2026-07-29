@@ -40,14 +40,10 @@ const dict: Record<DictKey, string> = {
   // Onboarding
   // "Mi yo dentro de 10 años" — flujo inmersivo de una pregunta por pantalla.
   "onboarding.futureSelf.sectionLabel": "Mi yo dentro de 10 años",
-  "onboarding.futureSelf.progress": "{current} / {total}",
   "onboarding.progress.remaining": "Quedan {remaining}",
   "onboarding.progress.lastStep": "Último paso",
   "onboarding.futureSelf.chooseHint": "Elige lo más parecido a ti · o escríbelo tú",
   "onboarding.futureSelf.writeMyOwn": "Escribir el mío",
-  "onboarding.futureSelf.skipRest": "Completaré el resto más tarde →",
-  "onboarding.futureSelf.hint":
-    "Escribe tan concreto como te salga. Si una pregunta se te hace difícil ahora, déjala en blanco y sigue.",
   "onboarding.futureSelf.daily.q": "Dentro de 10 años, ¿cómo fluye un día normal de tu vida?",
   "onboarding.futureSelf.daily.placeholder":
     "Dónde despiertas, qué llena tu mañana, cómo termina tu tarde.",
@@ -115,16 +111,17 @@ const dict: Record<DictKey, string> = {
   "onboarding.futureSelf.growth.example3":
     "Estoy más sano que a los veinte, aprendo un instrumento los fines de semana: cada día un poco mejor que ayer.",
 
-  "onboarding.step2.title": "Escribe las acciones concretas que necesitas para alcanzar tus metas",
-  "onboarding.step2.subtitle":
-    "Tus 3 metas principales aparecen en la tarjeta diaria y en la pantalla de bloqueo, en orden de prioridad.",
-  "onboarding.step2.placeholder": "Ej.: Leer 30 minutos cada día",
-  "onboarding.step2.addGoal": "+ Añadir meta",
-  "onboarding.step2.removeGoalAria": "Quitar esta meta",
-
-  "onboarding.step3.title": "Escribe tu yo exitoso, una línea por afirmación",
-  "onboarding.step3.subtitle":
-    "Tus afirmaciones aparecen como texto tenue en cada tarjeta diaria. Vuelve a escribirlas exactamente para construir una racha. Puedes dejarlo vacío y añadirlas más tarde en Ajustes.",
+  // Una sola meta para empezar — la afirmación se deriva de ella (lib/affirmationDerive).
+  "onboarding.goal.title": "Una sola cosa para llegar allí",
+  "onboarding.goal.subtitle":
+    "Con una basta. Si la mantienes, se abrirá sitio para otra meta.",
+  "onboarding.goal.placeholder": "leo 30 minutos cada día",
+  "onboarding.goal.hint":
+    "Escríbela como una acción que hoy hiciste o no hiciste: así se puede marcar.",
+  "onboarding.goal.affirmationLabel": "Lo que escribirás cada día",
+  "onboarding.goal.affirmationHint": "Creada desde tu meta. Puedes dejarla tal cual.",
+  "onboarding.goal.affirmationEdit": "Editar esta línea",
+  "onboarding.goal.affirmationReset": "Volver a ajustarla a mi meta",
 
   "onboarding.step4.cta": "Recibir la frase de hoy →",
   "onboarding.step4.preparing": "Preparando…",
@@ -544,6 +541,59 @@ const dict: Record<DictKey, string> = {
   "home.wins.addRow": "Añadir otra línea",
   "home.record.footer": "Lo que escribas se guarda solo.",
   "home.plans.manage": "Gestionar diseños de ejecución",
+  // En Inicio solo quedan la frase, la tarjeta de hoy y el anillo de 7 días.
+  "home.section.more": "Ver más",
+  "home.more.summary": "Yo futuro · Notas · Planes",
+
+  // ── Marcar la meta de hoy (misma tarjeta que la transcripción) ──
+  "home.todayGoal.title": "Meta de hoy",
+  "home.todayGoal.question": "¿La cumpliste hoy?",
+  "home.todayGoal.did": "Sí, la cumplí",
+  "home.todayGoal.notYet": "Todavía no",
+  "home.todayGoal.doneToday": "Cumplida hoy",
+  "home.todayGoal.undo": "Deshacer",
+  "home.todayGoal.empty": "Aún no has fijado una meta.",
+  "home.todayGoal.setCta": "Fijar una meta",
+  "home.todayGoal.afterCheckin": "Escrita. Ahora solo dinos si hoy la cumpliste de verdad.",
+
+  // ── Yo futuro, una línea ──
+  "home.futureLine.label": "Mi yo futuro",
+  "home.futureLine.empty": "Aún no has escrito nada.",
+  "home.futureLine.write": "Escribirlo ahora",
+
+  // ── Espacios para metas ──
+  "goalSlot.unlock.title": "Has abierto sitio para otra meta",
+  "goalSlot.unlock.body":
+    "{days} días seguidos. Añade una meta nueva o haz más nítida la que ya tienes.",
+  "goalSlot.unlock.addGoal": "Añadir meta",
+  "goalSlot.unlock.refine": "Afinar mi meta actual",
+  "goalSlot.unlock.later": "Más tarde",
+  "goalSlot.locked": "🔒 Se abre a los {days} días seguidos",
+  "goalSlot.lockedProgress": "{progress} hasta ahora",
+  "goalSlot.maxed": "Hasta {max} metas. Cuantas menos lleves, mejor las cumples.",
+  "goalSlot.hint": "Mantén una y se abrirá sitio para la siguiente.",
+
+  // ── Concreción de la meta ──
+  "goal.specific.hint": "Un poco más concreta y será más fácil cumplirla",
+  "goal.specific.count": "un número",
+  "goal.specific.cadence": "cada cuánto",
+  "goal.specific.unit": "una unidad",
+  "goal.specific.countExample": "30",
+  "goal.specific.cadenceExample": "cada día",
+  "goal.specific.unitExample": "minutos",
+  "goal.refine.title": "Hazla más nítida",
+  "goal.refine.subtitle": "Toca la pieza que falta para añadirla. Dejarla así también vale.",
+  "goal.refine.apply": "Usar esta meta",
+
+  // ── Sincronizar la afirmación tras cambiar la meta ──
+  "settings.goals.sync.title": "¿Actualizamos también tu línea diaria?",
+  "settings.goals.sync.desc":
+    "Tu meta cambió. La línea que escribes cada día puede seguirla.",
+  "settings.goals.sync.current": "Línea actual",
+  "settings.goals.sync.next": "Línea nueva",
+  "settings.goals.sync.apply": "Usar la nueva línea",
+  "settings.goals.sync.keep": "Dejar la mía",
+  "settings.futureSelf.moreDetail": "Añadir más detalle",
 };
 
 export default dict;
