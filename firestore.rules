@@ -13,7 +13,7 @@ service cloud.firestore {
     // 서버(Admin SDK)만 갱신해야 하는 필드 — 클라이언트가 직접 조작하면 스트릭 위조,
     // 정체성/초상/명언 히스토리 변조가 가능하므로 클라이언트 write 에서 차단한다.
     function serverOwnedUserFields() {
-      return ['identities', 'futureSelfPortrait', 'seenQuoteTexts', 'seenQuotes', 'affirmationStreak'];
+      return ['identities', 'futureSelfPortrait', 'seenQuoteTexts', 'seenQuotes', 'affirmationStreak', 'goalStreak', 'growth'];
     }
 
     // ── users ──

@@ -25,7 +25,7 @@
  *   여기서는 절대 건드리지 않는다(lib/missionResponse.ts 의 원칙 준수).
  */
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
-import type { Transaction } from "firebase-admin/firestore";
+import type { DocumentSnapshot, Transaction } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { yesterdayKstYmd } from "@/lib/kstDate";
 import { fnv1a } from "@/lib/planRotation";
@@ -100,9 +100,14 @@ export async function prepareEvidence(
     labels: string[];
     /** true = 이번 체크인이 전량 전사(depth="full") — deep 보너스 1표를 함께 적립한다. */
     deep?: boolean;
+    /**
+     * 어제의 dailyEntries/{어제} 스냅샷 — 호출부(체크인 트랜잭션)가 goalStreak 정산과
+     * 공유하려고 한 번만 읽어 주입한다(중복 읽기 제거). 여기서 다시 읽지 않는다.
+     */
+    yesterdayEntrySnap: DocumentSnapshot;
   },
 ): Promise<PreparedEvidence | null> {
-  const { uid, ymd } = opts;
+  const { uid, ymd, yesterdayEntrySnap: entrySnap } = opts;
   const labels = opts.labels
     .filter((l): l is string => typeof l === "string")
     .map((l) => l.trim())
@@ -112,9 +117,8 @@ export async function prepareEvidence(
   const db = getAdminDb();
   const yesterday = yesterdayKstYmd(ymd);
 
-  // ── 어제의 행동 + 어제/오늘 장부 + 실행설계(goal→라벨 매핑) 읽기 ──
-  const [entrySnap, evidenceSnap, todayEvidenceSnap, plansSnap] = await Promise.all([
-    tx.get(db.doc(`users/${uid}/dailyEntries/${yesterday}`)),
+  // ── 어제/오늘 장부 + 실행설계(goal→라벨 매핑) 읽기 (어제 행동은 주입받은 스냅샷) ──
+  const [evidenceSnap, todayEvidenceSnap, plansSnap] = await Promise.all([
     tx.get(db.doc(`users/${uid}/identityEvidence/${yesterday}`)),
     tx.get(db.doc(`users/${uid}/identityEvidence/${ymd}`)),
     tx.get(db.collection(`users/${uid}/executionPlans`)),

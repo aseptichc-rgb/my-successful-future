@@ -38,6 +38,10 @@ export interface CheckinSubmitResult {
   evidenceVotes?: number;
   evidenceTag?: string;
   freezeUsed?: number;
+  /** 목표 달성 스트릭 현재 연속일 — 서버 정산 반영 후 값. */
+  goalStreakCount?: number;
+  /** 누적 증거 표 총합(성장 단계 원천) — 보상 카드의 단계·진행바에 쓴다. */
+  growthVotes?: number;
 }
 
 export default function AffirmationCheckin({

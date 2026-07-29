@@ -441,6 +441,7 @@ const dict: Record<DictKey, string> = {
   "progress.streak.current": "Current streak",
   "progress.streak.days": "{count} days",
   "progress.streak.best": "Best {count} days",
+  "progress.goalDays": "{count} days with a goal achieved",
   "progress.freeze.label": "Freezes left this month",
   "progress.freeze.desc": "Miss a day and a freeze bridges your streak automatically ({max}/month)",
   "progress.heatmap.title": "Last 30 days",
@@ -557,6 +558,8 @@ const dict: Record<DictKey, string> = {
   "goalSlot.unlock.title": "You've earned room for another goal",
   "goalSlot.unlock.body":
     "{days} days in a row. Add a new goal, or make the one you have sharper.",
+  "goalSlot.unlock.bodyGoal":
+    "You kept your goal {days} days. Add a new goal, or make the one you have sharper.",
   "goalSlot.unlock.addGoal": "Add a goal",
   "goalSlot.unlock.refine": "Sharpen my current goal",
   "goalSlot.unlock.later": "Later",
@@ -564,6 +567,24 @@ const dict: Record<DictKey, string> = {
   "goalSlot.lockedProgress": "{progress} so far",
   "goalSlot.maxed": "Up to {max} goals. The fewer you carry, the better you keep them.",
   "goalSlot.hint": "Keep one, and room for the next one opens up.",
+
+  // ── Growth stage (accumulated evidence votes) ──
+  "growth.title": "Growth stage",
+  "growth.subtitle": "Check-ins, full transcriptions, achieved goals, and wins become votes that raise your stage.",
+  "growth.votes": "{count} votes",
+  "growth.toNext": "{count} votes to the next stage",
+  "growth.stage.0": "Seed",
+  "growth.stage.1": "Sprout",
+  "growth.stage.2": "Stem",
+  "growth.stage.3": "Branch",
+  "growth.stage.4": "Tree",
+  "growth.stage.5": "Forest",
+
+  // ── Step-up suggestion ──
+  "stepUp.title": "You've been keeping it up",
+  "stepUp.body": "Ready to raise it a little? e.g. {draft}",
+  "stepUp.apply": "Open settings",
+  "stepUp.later": "Later",
 
   // ── Goal specificity ──
   "goal.specific.hint": "A little more concrete makes it easier to keep",

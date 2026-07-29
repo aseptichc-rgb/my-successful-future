@@ -22,8 +22,8 @@ export type GoalSignal = "count" | "cadence" | "unit";
 /** 신호 검사 순서 = 힌트 칩 노출 순서. */
 export const GOAL_SIGNALS: ReadonlyArray<GoalSignal> = ["count", "cadence", "unit"];
 
-/** 수량 — 아라비아 숫자 또는 한자 수사. */
-const RE_COUNT = /[0-9]|[一二三四五六七八九十百千萬万]/;
+/** 수량 — 아라비아 숫자 또는 한자 수사. 스텝업 초안(lib/goalStepUp)도 이 정의를 공유한다. */
+export const RE_COUNT = /[0-9]|[一二三四五六七八九十百千萬万]/;
 
 /** 주기·시점 — 매일/every day/cada día/每天, 그리고 "~까지" 류의 기한. */
 const RE_CADENCE =

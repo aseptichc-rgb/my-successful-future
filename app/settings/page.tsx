@@ -463,10 +463,10 @@ export default function SettingsPage() {
 
   const goalCount = useMemo(() => goals.filter((g) => g.trim().length > 0).length, [goals]);
   const authorGroups = useMemo(() => getAllKnownAuthorsGrouped(locale), [locale]);
-  // 목표 칸 수는 꾸준함으로 열린다. 기존 사용자는 지금 가진 목표 수만큼 자동 인정된다.
+  // 목표 칸 수는 꾸준함으로 열린다(전사·달성 두 축). 기존 사용자는 지금 가진 목표 수만큼 자동 인정된다.
   const goalSlots = useMemo(
-    () => computeGoalSlots(user?.affirmationStreak, user?.goals?.length ?? 0),
-    [user?.affirmationStreak, user?.goals?.length],
+    () => computeGoalSlots(user?.affirmationStreak, user?.goalStreak, user?.goals?.length ?? 0),
+    [user?.affirmationStreak, user?.goalStreak, user?.goals?.length],
   );
 
   if (authLoading || !firebaseUser) {

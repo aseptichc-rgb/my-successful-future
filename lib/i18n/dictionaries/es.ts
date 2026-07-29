@@ -447,6 +447,7 @@ const dict: Record<DictKey, string> = {
   "progress.streak.current": "Racha actual",
   "progress.streak.days": "{count} días",
   "progress.streak.best": "Mejor {count} días",
+  "progress.goalDays": "{count} días con una meta lograda",
   "progress.freeze.label": "Hielos restantes este mes",
   "progress.freeze.desc": "Si fallas un día, un hielo une tu racha automáticamente ({max}/mes)",
   "progress.heatmap.title": "Últimos 30 días",
@@ -565,6 +566,8 @@ const dict: Record<DictKey, string> = {
   "goalSlot.unlock.title": "Has abierto sitio para otra meta",
   "goalSlot.unlock.body":
     "{days} días seguidos. Añade una meta nueva o haz más nítida la que ya tienes.",
+  "goalSlot.unlock.bodyGoal":
+    "Cumpliste tu meta {days} días. Añade una meta nueva o haz más nítida la que ya tienes.",
   "goalSlot.unlock.addGoal": "Añadir meta",
   "goalSlot.unlock.refine": "Afinar mi meta actual",
   "goalSlot.unlock.later": "Más tarde",
@@ -572,6 +575,24 @@ const dict: Record<DictKey, string> = {
   "goalSlot.lockedProgress": "{progress} hasta ahora",
   "goalSlot.maxed": "Hasta {max} metas. Cuantas menos lleves, mejor las cumples.",
   "goalSlot.hint": "Mantén una y se abrirá sitio para la siguiente.",
+
+  // ── Etapa de crecimiento (votos de evidencia acumulados) ──
+  "growth.title": "Etapa de crecimiento",
+  "growth.subtitle": "Los check-ins, las transcripciones completas, las metas logradas y los logros se vuelven votos que suben tu etapa.",
+  "growth.votes": "{count} votos",
+  "growth.toNext": "{count} votos para la siguiente etapa",
+  "growth.stage.0": "Semilla",
+  "growth.stage.1": "Brote",
+  "growth.stage.2": "Tallo",
+  "growth.stage.3": "Rama",
+  "growth.stage.4": "Árbol",
+  "growth.stage.5": "Bosque",
+
+  // ── Sugerencia de subir el reto ──
+  "stepUp.title": "Lo estás cumpliendo muy bien",
+  "stepUp.body": "¿Subimos un poco? p. ej. {draft}",
+  "stepUp.apply": "Ir a ajustes",
+  "stepUp.later": "Después",
 
   // ── Concreción de la meta ──
   "goal.specific.hint": "Un poco más concreta y será más fácil cumplirla",

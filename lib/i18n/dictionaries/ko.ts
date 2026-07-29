@@ -424,6 +424,7 @@ const dict = {
   "progress.streak.current": "현재 연속",
   "progress.streak.days": "{count}일",
   "progress.streak.best": "최고 {count}일",
+  "progress.goalDays": "목표 지킨 날 {count}일",
   "progress.freeze.label": "이번 달 남은 얼음",
   "progress.freeze.desc": "하루 놓쳐도 얼음이 자동으로 스트릭을 이어줘요 (월 {max}개)",
   "progress.heatmap.title": "최근 30일",
@@ -539,6 +540,8 @@ const dict = {
   "goalSlot.unlock.title": "목표 하나를 더 담을 수 있어요",
   "goalSlot.unlock.body":
     "{days}일을 이어왔어요. 새 목표를 더할지, 지금 목표를 더 또렷하게 만들지 골라보세요.",
+  "goalSlot.unlock.bodyGoal":
+    "목표를 {days}일 지켰어요. 새 목표를 더할지, 지금 목표를 더 또렷하게 만들지 골라보세요.",
   "goalSlot.unlock.addGoal": "새 목표 추가",
   "goalSlot.unlock.refine": "지금 목표를 더 구체적으로",
   "goalSlot.unlock.later": "나중에",
@@ -546,6 +549,24 @@ const dict = {
   "goalSlot.lockedProgress": "지금 {progress}일",
   "goalSlot.maxed": "목표는 최대 {max}개까지예요. 하나에 집중할수록 잘 지켜져요.",
   "goalSlot.hint": "하나를 지키는 힘이 쌓이면 칸이 하나씩 열려요.",
+
+  // ── 성장 단계 (누적 증거 표) ───────────────────────
+  "growth.title": "성장 단계",
+  "growth.subtitle": "체크인·전체 새김·목표 달성·잘한 일이 표가 되어 단계를 올려요.",
+  "growth.votes": "{count}표",
+  "growth.toNext": "다음 단계까지 {count}표",
+  "growth.stage.0": "씨앗",
+  "growth.stage.1": "새싹",
+  "growth.stage.2": "줄기",
+  "growth.stage.3": "가지",
+  "growth.stage.4": "나무",
+  "growth.stage.5": "숲",
+
+  // ── 스텝업 제안 ────────────────────────────────────
+  "stepUp.title": "요즘 잘 지키고 있어요",
+  "stepUp.body": "조금 올려볼까요? 예: {draft}",
+  "stepUp.apply": "설정으로 이동",
+  "stepUp.later": "나중에",
 
   // ── 목표 구체화 ────────────────────────────────────
   "goal.specific.hint": "조금 더 구체적으로 적으면 지키기 쉬워요",

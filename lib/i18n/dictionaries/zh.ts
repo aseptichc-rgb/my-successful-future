@@ -432,6 +432,7 @@ const dict: Record<DictKey, string> = {
   "progress.streak.current": "当前连续",
   "progress.streak.days": "{count}天",
   "progress.streak.best": "最高 {count}天",
+  "progress.goalDays": "达成目标的日子 {count} 天",
   "progress.freeze.label": "本月剩余冰冻",
   "progress.freeze.desc": "错过一天，冰冻会自动接上你的连续记录（每月{max}个）",
   "progress.heatmap.title": "最近30天",
@@ -545,6 +546,7 @@ const dict: Record<DictKey, string> = {
   // ── 目标格子解锁 ──
   "goalSlot.unlock.title": "你又赢得了一个目标位",
   "goalSlot.unlock.body": "已经坚持 {days} 天。可以添加新目标,也可以把现在的目标写得更清楚。",
+  "goalSlot.unlock.bodyGoal": "你已达成目标 {days} 天。可以添加新目标,也可以把现在的目标写得更清楚。",
   "goalSlot.unlock.addGoal": "添加新目标",
   "goalSlot.unlock.refine": "让现在的目标更具体",
   "goalSlot.unlock.later": "以后再说",
@@ -552,6 +554,24 @@ const dict: Record<DictKey, string> = {
   "goalSlot.lockedProgress": "目前 {progress} 天",
   "goalSlot.maxed": "最多 {max} 个目标。带得越少,越容易做到。",
   "goalSlot.hint": "守住一个,下一个格子就会打开。",
+
+  // ── 成长阶段(累计证据票) ──
+  "growth.title": "成长阶段",
+  "growth.subtitle": "打卡、全文刻写、达成目标和做得好的事都会变成票,推动阶段成长。",
+  "growth.votes": "{count}票",
+  "growth.toNext": "距下一阶段还差 {count} 票",
+  "growth.stage.0": "种子",
+  "growth.stage.1": "新芽",
+  "growth.stage.2": "茎干",
+  "growth.stage.3": "枝叶",
+  "growth.stage.4": "大树",
+  "growth.stage.5": "森林",
+
+  // ── 提升建议 ──
+  "stepUp.title": "最近你坚持得很好",
+  "stepUp.body": "要稍微提高一点吗?例如:{draft}",
+  "stepUp.apply": "前往设置",
+  "stepUp.later": "以后再说",
 
   // ── 目标具体化 ──
   "goal.specific.hint": "写得再具体一点,更容易坚持",

@@ -20,11 +20,16 @@
  */
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
-import { todayKstYmd, diffKstDays, kstMonth } from "@/lib/kstDate";
+import { todayKstYmd, yesterdayKstYmd, diffKstDays, kstMonth } from "@/lib/kstDate";
 import { prepareEvidence, applyEvidence, type PreparedEvidence } from "@/lib/identityEvidence";
+import {
+  nextGoalStreak,
+  normalizeGoalStreak,
+  type GoalStreakState,
+} from "@/lib/goalStreak";
 import { pickTodayAffirmationIndex } from "@/lib/planRotation";
 import { FREEZES_PER_MONTH } from "@/lib/constants/streak";
-import type { AffirmationCheckinDepth } from "@/types";
+import type { AffirmationCheckinDepth, GoalStreak } from "@/types";
 
 // 체크인 라우트가 기존 경로로 계속 임포트할 수 있도록 재수출(단일 정의는 lib/kstDate).
 export { todayKstYmd };
@@ -96,6 +101,10 @@ export interface CheckinResult {
   freezeUsed?: number;
   /** 프리즈로도 못 막아 스트릭이 1로 리셋됐는지 — 클라 재약속 문구 트리거. */
   streakBroken?: boolean;
+  /** 목표 달성 스트릭 현재 연속일 — 어제분 정산 반영 후 값. 성장 루프 준비 실패 시 생략. */
+  goalStreakCount?: number;
+  /** 누적 증거 표 총합(성장 단계의 원천) — 이번 적립 반영 후 값. 준비 실패 시 생략. */
+  growthVotes?: number;
 }
 
 /**
@@ -255,17 +264,60 @@ export async function checkinAffirmations(opts: {
     }
     const bestCount = Math.max(prevBest, nextCount);
 
-    // ── 정체성 증거 적립 준비 (트랜잭션 읽기 단계 — 모든 쓰기 전에 완료해야 한다) ──
-    // 증거 실패가 체크인을 실패시키면 안 되므로 자체 try-catch 로 격리한다.
+    // ── 성장 루프 준비 (트랜잭션 읽기 단계 — 모든 쓰기 전에 완료해야 한다) ──
+    // 어제 dailyEntry 는 goalStreak 정산과 증거 표(goal/win) 정산이 공유하므로 여기서
+    // 한 번만 읽어 prepareEvidence 에 주입한다 — 중복 읽기 제거이자, 라벨이 없어
+    // prepareEvidence 가 null 을 돌려주는 사용자도 goalStreak 은 정상적으로 오르게 한다.
+    // 카운터 실패가 체크인을 실패시키면 안 되므로 전체를 자체 try-catch 로 격리한다.
+    const yesterdayYmd = yesterdayKstYmd(ymd);
     let evidence: PreparedEvidence | null = null;
+    let prevGoal: GoalStreakState | null = null;
+    let nextGoal: GoalStreakState | null = null;
+    let growthPrevVotes = 0;
+    let growthBackfillSum: number | null = null;
+    let growthReady = false;
     try {
+      const yesterdaySnap = await tx.get(db.doc(`users/${uid}/dailyEntries/${yesterdayYmd}`));
+
+      // 목표 달성 스트릭 — 어제 달성한 목표 수로 정산 (증거 표와 같은 하루 지연 트레이드오프).
+      const yesterdayData = yesterdaySnap.exists ? (yesterdaySnap.data() ?? {}) : {};
+      const achievedCount = (
+        Array.isArray(yesterdayData.achievedGoals) ? yesterdayData.achievedGoals : []
+      ).filter((g: unknown) => typeof g === "string" && g.trim().length > 0).length;
+      const prevGoalRaw = userData.goalStreak as Partial<GoalStreak> | undefined;
+      prevGoal = normalizeGoalStreak(prevGoalRaw);
+      nextGoal = nextGoalStreak(prevGoalRaw, yesterdayYmd, achievedCount);
+
       const labels = Array.isArray(userData.identities?.labels)
         ? (userData.identities.labels as string[])
         : [];
-      evidence = await prepareEvidence(tx, { uid, ymd, labels, deep: depth === "full" });
+      evidence = await prepareEvidence(tx, {
+        uid,
+        ymd,
+        labels,
+        deep: depth === "full",
+        yesterdayEntrySnap: yesterdaySnap,
+      });
+
+      // 성장 카운터 — 백필이 필요한 최초 1회만 identityProgress 를 읽는다(라벨 수는 한 자릿수).
+      const growthRaw = userData.growth as { votes?: unknown; backfilledAt?: unknown } | undefined;
+      const rawVotes = Number(growthRaw?.votes);
+      growthPrevVotes = Number.isFinite(rawVotes) && rawVotes > 0 ? Math.floor(rawVotes) : 0;
+      if (!growthRaw?.backfilledAt) {
+        const progressSnap = await tx.get(db.collection(`users/${uid}/identityProgress`));
+        growthBackfillSum = progressSnap.docs.reduce((sum, doc) => {
+          const n = Number(doc.get("count"));
+          return sum + (Number.isFinite(n) && n > 0 ? Math.floor(n) : 0);
+        }, 0);
+      }
+      growthReady = true;
     } catch (err) {
-      console.error("[affirmationCheckin] 증거 적립 준비 실패(체크인은 계속):", err);
+      console.error("[affirmationCheckin] 성장 루프 준비 실패(체크인은 계속):", err);
       evidence = null;
+      prevGoal = null;
+      nextGoal = null;
+      growthBackfillSum = null;
+      growthReady = false;
     }
 
     // ── 쓰기 단계 ──
@@ -299,7 +351,42 @@ export async function checkinAffirmations(opts: {
         nextStreak.lastBrokenCount = prevStreak.lastBrokenCount;
       }
     }
-    tx.update(userRef, { affirmationStreak: nextStreak });
+
+    // ── 성장 루프 쓰기 — userRef 쓰기는 한 번으로 병합한다(같은 문서 다중 update 회피).
+    // 계산·읽기는 위 try-catch 에서 이미 격리됐고, 실패 시 성장 필드만 조용히 빠진다.
+    const userUpdate: Record<string, unknown> = { affirmationStreak: nextStreak };
+    let growthVotesTotal: number | null = null;
+    if (prevGoal && nextGoal) {
+      const goalChanged =
+        nextGoal.count !== prevGoal.count ||
+        nextGoal.bestCount !== prevGoal.bestCount ||
+        nextGoal.totalDays !== prevGoal.totalDays ||
+        nextGoal.lastYmd !== prevGoal.lastYmd;
+      // 변화 없는 날(어제 달성 0 + 이미 정산됨 등)은 쓰지 않는다 — serverTimestamp 공회전 방지.
+      if (goalChanged) {
+        userUpdate.goalStreak = { ...nextGoal, updatedAt: FieldValue.serverTimestamp() };
+      }
+    }
+    if (growthReady) {
+      // 이번 트랜잭션이 적립하는 표 총수 = 오늘 checkin(1) + deep 보너스 + 어제분 goal/win.
+      const earnedVotes = evidence
+        ? 1 + (evidence.deepEntry ? 1 : 0) + evidence.yesterdayEntries.length
+        : 0;
+      if (growthBackfillSum !== null) {
+        // 최초 1회 백필 — 기존 identityProgress 합계 + 이번 적립분을 절대값으로 세팅.
+        growthVotesTotal = growthBackfillSum + earnedVotes;
+        userUpdate.growth = {
+          votes: growthVotesTotal,
+          backfilledAt: FieldValue.serverTimestamp(),
+        };
+      } else {
+        growthVotesTotal = growthPrevVotes + earnedVotes;
+        if (earnedVotes > 0) {
+          userUpdate["growth.votes"] = FieldValue.increment(earnedVotes);
+        }
+      }
+    }
+    tx.update(userRef, userUpdate);
 
     if (evidence) {
       try {
@@ -325,6 +412,9 @@ export async function checkinAffirmations(opts: {
             evidenceTag: evidence.checkinEntry.identityTag,
           }
         : {}),
+      // 성장 루프 — 준비 실패 시 키 자체를 생략(Firestore/undefined 컨벤션과 동일 패턴).
+      ...(nextGoal ? { goalStreakCount: nextGoal.count } : {}),
+      ...(growthVotesTotal !== null ? { growthVotes: growthVotesTotal } : {}),
       bestCount,
       freezeUsed,
       streakBroken,

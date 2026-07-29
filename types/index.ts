@@ -48,6 +48,16 @@ export interface User {
   /** 다짐 따라쓰기 연속일 진행도. lastYmd 가 어제(KST)면 +1, 아니면 1로 리셋. */
   affirmationStreak?: AffirmationStreak;
   /**
+   * 목표 달성 스트릭(하루에 목표 1개 이상 달성한 날의 연속/누적). 체크인 트랜잭션이
+   * 어제 dailyEntry 를 정산해 갱신 — 서버 전용 필드(firestore.rules 에서 클라 write 차단).
+   */
+  goalStreak?: GoalStreak;
+  /**
+   * 성장 단계의 유일한 원천 — 정체성 증거 표 누적 총합. 체크인 트랜잭션이 갱신하고
+   * 최초 1회 identityProgress 합계로 백필한다 — 서버 전용 필드(클라 write 차단).
+   */
+  growth?: UserGrowth;
+  /**
    * 무료 체험 종료 시점 (Firestore Timestamp 미러).
    * 실제 게이트 판정은 Firebase custom claim 의 trialEndsAt(ms) 으로 수행하고,
    * 이 필드는 UI 의 D-day 카운트다운/안내 문구에 사용한다.
@@ -78,6 +88,34 @@ export interface AffirmationStreak {
   lastBrokenYmd?: string;
   /** 끊기기 직전의 연속일 — "n일을 이어온 기록" 문구용. */
   lastBrokenCount?: number;
+}
+
+/**
+ * 목표 달성 스트릭 카운터. 서버(체크인 트랜잭션)로만 갱신 — lib/goalStreak.ts 가 계산.
+ * 판정 대상은 언제나 "어제"의 dailyEntry.achievedGoals 라 하루 지연으로 반영된다.
+ * 프리즈 없음 — 슬롯 해금(lib/goalSlots)은 bestCount 만 보므로 끊김이 칸을 뺏지 않는다.
+ */
+export interface GoalStreak {
+  /** 현재 연속일. 달성 없는 날이 정산되면 0으로 끊긴다. */
+  count: number;
+  /** 마지막으로 달성이 정산된 날짜 (KST YYYY-MM-DD). */
+  lastYmd: string;
+  /** 역대 최고 연속일 — 슬롯 해금의 유일한 판정값. 누락(레거시) 시 count 로 폴백해 읽는다. */
+  bestCount?: number;
+  /** 목표를 1개 이상 달성한 날의 누적 수 (연속과 무관 — /progress "목표 지킨 날" 문구용). */
+  totalDays?: number;
+  updatedAt?: Timestamp;
+}
+
+/**
+ * 성장 단계의 원천 카운터. 서버(체크인 트랜잭션)로만 갱신.
+ * votes = 정체성 증거 표(checkin/deep/goal/win) 누적 총합 — lib/growthStage.ts 가
+ * 단계(씨앗→…→숲)로 환산한다. 새 화폐가 아니라 이미 돌던 표의 승격이다.
+ */
+export interface UserGrowth {
+  votes: number;
+  /** 최초 1회 identityProgress 합계 백필이 끝난 시각 — 있으면 다시 백필하지 않는다. */
+  backfilledAt?: Timestamp;
 }
 
 /**

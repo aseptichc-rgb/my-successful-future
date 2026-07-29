@@ -21,6 +21,9 @@ import { kstWeekday, yesterdayKstYmd, addKstDays } from "@/lib/kstDate";
 import { currentHomeMode, WEEKLY_REVIEW_WEEKDAY } from "@/lib/homeMode";
 import { pickTodayPlan, pickTodayAffirmationIndex } from "@/lib/planRotation";
 import { computeGoalSlots } from "@/lib/goalSlots";
+import { computeGrowthStage, GROWTH_STAGE_LABEL_KEY } from "@/lib/growthStage";
+import { GROWTH_STAGE_EMOJI } from "@/lib/constants/growth";
+import { suggestStepUp } from "@/lib/goalStepUp";
 import {
   buildWeeklyReview,
   weeklyReviewFrom,
@@ -34,6 +37,7 @@ import MotivationCard from "@/components/home/MotivationCard";
 import TodayCard from "@/components/home/TodayCard";
 import MoreSection from "@/components/home/MoreSection";
 import SlotUnlockBanner from "@/components/home/SlotUnlockBanner";
+import StepUpCard from "@/components/home/StepUpCard";
 import RecommitCard from "@/components/home/RecommitCard";
 import WeekRhythmRing from "@/components/home/WeekRhythmRing";
 import type { CheckinSubmitResult } from "@/components/affirmations/AffirmationCheckin";
@@ -482,6 +486,8 @@ export default function HomeDashboardPage() {
         evidenceVotes?: number;
         evidenceTag?: string;
         freezeUsed?: number;
+        goalStreakCount?: number;
+        growthVotes?: number;
         error?: string;
       };
       if (!res.ok || !data.ok) throw new Error(data.error || "체크인을 저장하지 못했어요.");
@@ -499,6 +505,8 @@ export default function HomeDashboardPage() {
         evidenceVotes: data.evidenceVotes,
         evidenceTag: data.evidenceTag,
         freezeUsed: data.freezeUsed,
+        goalStreakCount: data.goalStreakCount,
+        growthVotes: data.growthVotes,
       };
     },
     [ymd, refreshUser],
@@ -555,7 +563,15 @@ export default function HomeDashboardPage() {
   // 오늘 확인할 목표는 첫 칸 하나. 나머지(해금분)는 "더 보기" 안에서 다룬다.
   const primaryGoal = (goals[0] ?? "").trim();
   const extraGoals = goals.slice(1);
-  const slots = computeGoalSlots(user?.affirmationStreak, goals.length);
+  // 해금 게이지는 다짐 전사·목표 달성 두 축 중 큰 값으로 찬다.
+  const slots = computeGoalSlots(user?.affirmationStreak, user?.goalStreak, goals.length);
+
+  // 성장 단계 칩 — 증거 표가 1표라도 쌓인 뒤에만 그린다(레거시/빈 계정은 조용히 생략).
+  const growthVotes = user?.growth?.votes ?? 0;
+  const growthStage = growthVotes > 0 ? computeGrowthStage(growthVotes) : null;
+
+  // 스텝업 초안 — 첫 목표에 숫자가 있고 목표 달성 스트릭이 이어졌을 때만 나온다.
+  const stepUpDraft = suggestStepUp(primaryGoal, user?.goalStreak?.count ?? 0);
 
   // 여정을 시작한 날(KST) — 리듬 링의 사전 적립 칸. Timestamp 형태가 깨져 있으면 생략한다.
   const onboardedYmd = (() => {
@@ -581,6 +597,23 @@ export default function HomeDashboardPage() {
         <div className="mx-auto flex max-w-3xl items-center justify-between px-2 min-h-[44px]">
           <div className="w-[44px]" />
           <div className="flex items-center gap-2">
+            {/* 성장 단계 칩 — 누적 증거 표의 현재 단계. 탭하면 /progress (입력 요구 0). */}
+            {growthStage && (
+              <button
+                type="button"
+                onClick={() => router.push("/progress")}
+                aria-label={t("growth.title")}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:opacity-80 transition-opacity"
+                style={{ background: "rgba(30,27,75,0.08)" }}
+              >
+                <span className="text-[12px] leading-none" aria-hidden>
+                  {GROWTH_STAGE_EMOJI[growthStage.index]}
+                </span>
+                <span className="text-[12px] font-semibold tracking-[0.4px] text-[#1E1B4B] tabular-nums">
+                  {t(GROWTH_STAGE_LABEL_KEY[growthStage.index])} · {growthVotes}
+                </span>
+              </button>
+            )}
             {/* 스트릭 칩 — 탭하면 /progress (히트맵·최고기록·정체성 장부) 로 이동 */}
             <button
               type="button"
@@ -625,8 +658,15 @@ export default function HomeDashboardPage() {
         <SlotUnlockBanner
           earned={slots.earned}
           progress={slots.progress}
+          source={slots.source}
           onAddGoal={() => router.push("/settings?sheet=goals")}
           onRefineGoal={() => router.push("/settings?sheet=goals&refine=1")}
+        />
+
+        {/* ── 목표 달성이 이어졌을 때 한 번만 뜨는 스텝업 제안 ── */}
+        <StepUpCard
+          draft={stepUpDraft}
+          onApply={() => router.push("/settings?sheet=goals&refine=1")}
         />
 
         {/* ─── ① 오늘의 한마디 (명언 hero) ─── */}

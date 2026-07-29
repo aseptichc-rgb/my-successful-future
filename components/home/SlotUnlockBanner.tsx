@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { GOAL_SLOT_MAX } from "@/lib/constants/goal";
+import type { GoalSlotSource } from "@/lib/goalSlots";
 import { useT } from "@/lib/i18n";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -68,6 +69,7 @@ function acknowledge(value: number): void {
 export default function SlotUnlockBanner({
   earned,
   progress,
+  source = "affirmation",
   onAddGoal,
   onRefineGoal,
 }: {
@@ -75,6 +77,8 @@ export default function SlotUnlockBanner({
   earned: number;
   /** 현재 최고 연속일 — 문구에 그대로 쓴다. */
   progress: number;
+  /** 게이지를 끌고 있는 축 — 달성 축이면 "목표를 지켰어요" 문구로 바꾼다. */
+  source?: GoalSlotSource;
   onAddGoal: () => void;
   onRefineGoal: () => void;
 }) {
@@ -92,7 +96,9 @@ export default function SlotUnlockBanner({
         {t("goalSlot.unlock.title")}
       </p>
       <p className="mt-1.5 text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label-2)]">
-        {t("goalSlot.unlock.body", { days: progress })}
+        {t(source === "goal" ? "goalSlot.unlock.bodyGoal" : "goalSlot.unlock.body", {
+          days: progress,
+        })}
       </p>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">

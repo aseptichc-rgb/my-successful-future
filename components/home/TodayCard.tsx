@@ -64,6 +64,7 @@ export default function TodayCard({
           evidenceVotes={reward.evidenceVotes}
           evidenceTag={reward.evidenceTag}
           freezeUsed={reward.freezeUsed}
+          growthVotes={reward.growthVotes}
           extraMismatchCount={reward.mismatchedIndices?.length ?? 0}
         />
       ) : (
