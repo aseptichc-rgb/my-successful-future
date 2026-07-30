@@ -106,15 +106,20 @@ const dict: Record<DictKey, string> = {
   "onboarding.futureSelf.growth.example3":
     "保持着比二十多岁更健康的身体,周末学习乐器,每天都比昨天更好一点。",
 
-  // 只从一个目标开始 —— 誓言由它自动生成(lib/affirmationDerive)。
-  "onboarding.goal.title": "抵达那里的,唯一一件事",
+  // 第 2 步上方 —— 用第一人称现在式写「已经成为」的自己。每天照抄这一句。
+  "onboarding.declaration.title": "用一句话写下成功的未来的我",
+  "onboarding.declaration.subtitle": "像已经成为的人那样写。这就是你每天要抄的那一句。",
+  "onboarding.declaration.example1": "我是不被金钱追赶的人",
+  "onboarding.declaration.example2": "我是身心都健康的人",
+  "onboarding.declaration.example3": "我是用工作帮助别人的人",
+  "onboarding.declaration.placeholder": "我是……的人",
+  "onboarding.declaration.writeMyOwn": "自己来写",
+
+  // 第 2 步下方 —— 为了成为那个人,今天要做的行动。与上面那一句彼此独立。
+  "onboarding.goal.title": "为了成为那个人,今天只做一件事",
   "onboarding.goal.subtitle": "一个就够了。坚持下去,就能多放一个目标。",
   "onboarding.goal.placeholder": "每天读书 30 分钟",
   "onboarding.goal.hint": "写成「今天做了或没做」的行动,才能一眼判断有没有做到。",
-  "onboarding.goal.affirmationLabel": "每天要写的一句",
-  "onboarding.goal.affirmationHint": "根据目标自动生成,保持原样也可以。",
-  "onboarding.goal.affirmationEdit": "修改这一句",
-  "onboarding.goal.affirmationReset": "重新对齐目标",
 
   "onboarding.step4.cta": "获取今日的一句话 →",
   "onboarding.step4.preparing": "准备中…",
@@ -156,8 +161,6 @@ const dict: Record<DictKey, string> = {
   "home.subtitle": "用一句新写给你的话开始一天。",
   "home.dateFormat": "{year} 年 {month} 月 {day} 日",
   "home.settingsAria": "设置",
-  "home.tab.future": "未来的我",
-  "home.tab.actions": "今日行动",
 
   "home.future.title": "10 年后的你",
   "home.future.subtitle":
@@ -468,9 +471,9 @@ const dict: Record<DictKey, string> = {
   "coach.quota": "今天的教练建议次数已用完，明天见。",
 
   // ── 今日誓言（每天只需一行，全部抄写为可选）──────────
-  "affirmations.focus.title": "今日誓言",
+  "affirmations.focus.title": "成功的未来的我",
   "affirmations.focus.rotation": "第 {index}/{total} 条",
-  "affirmations.focus.hint": "把这一行照原样写下来，今天的打卡就完成了。",
+  "affirmations.focus.hint": "像已经成为的人那样,把这一行照原样写下来。",
   "affirmations.focus.placeholder": "照着写一遍…",
   "affirmations.focus.expand": "刻下全部 {count} 行",
   "affirmations.focus.collapse": "只写今天这一行",
@@ -585,14 +588,14 @@ const dict: Record<DictKey, string> = {
   "goal.refine.subtitle": "点一下缺少的部分补进去。保持原样也没关系。",
   "goal.refine.apply": "改成这个目标",
 
-  // ── 修改目标后同步誓言 ──
-  "settings.goals.sync.title": "誓言也要一起改吗?",
-  "settings.goals.sync.desc": "目标变了。每天要写的那一句可以跟着一起变。",
-  "settings.goals.sync.current": "现在的誓言",
-  "settings.goals.sync.next": "新的誓言",
-  "settings.goals.sync.apply": "改成新的誓言",
-  "settings.goals.sync.keep": "保持原样",
   "settings.futureSelf.moreDetail": "写得更详细",
+
+  // ── 只对「自动生成时代」的账号显示一次的提示(首页 DeclarationNudgeCard) ──
+  "declarationNudge.title": "这一句和目标是同一句话",
+  "declarationNudge.body":
+    "以前我们会用目标自动生成每天要写的那一句。把它改写成「我已经是」,每天早上的感觉会不一样。",
+  "declarationNudge.cta": "改写这一句",
+  "declarationNudge.dismiss": "不用了",
 };
 
 export default dict;

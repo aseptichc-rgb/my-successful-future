@@ -111,17 +111,23 @@ const dict: Record<DictKey, string> = {
   "onboarding.futureSelf.growth.example3":
     "Estoy más sano que a los veinte, aprendo un instrumento los fines de semana: cada día un poco mejor que ayer.",
 
-  // Una sola meta para empezar — la afirmación se deriva de ella (lib/affirmationDerive).
-  "onboarding.goal.title": "Una sola cosa para llegar allí",
+  // Paso 2, campo superior — una línea en primera persona y presente. Se copia cada día.
+  "onboarding.declaration.title": "Tu yo futuro y exitoso, en una línea",
+  "onboarding.declaration.subtitle":
+    "Escríbela como quien ya llegó. Es la línea que copiarás cada día.",
+  "onboarding.declaration.example1": "Soy alguien a quien el dinero no persigue",
+  "onboarding.declaration.example2": "Soy alguien fuerte de cuerpo y mente",
+  "onboarding.declaration.example3": "Soy alguien cuyo trabajo ayuda a otros",
+  "onboarding.declaration.placeholder": "Soy alguien que…",
+  "onboarding.declaration.writeMyOwn": "Escribir la mía",
+
+  // Paso 2, campo inferior — la acción de hoy hacia esa persona. Independiente de la línea.
+  "onboarding.goal.title": "Una sola cosa hoy, para ser esa persona",
   "onboarding.goal.subtitle":
     "Con una basta. Si la mantienes, se abrirá sitio para otra meta.",
   "onboarding.goal.placeholder": "leo 30 minutos cada día",
   "onboarding.goal.hint":
     "Escríbela como una acción que hoy hiciste o no hiciste: así se puede marcar.",
-  "onboarding.goal.affirmationLabel": "Lo que escribirás cada día",
-  "onboarding.goal.affirmationHint": "Creada desde tu meta. Puedes dejarla tal cual.",
-  "onboarding.goal.affirmationEdit": "Editar esta línea",
-  "onboarding.goal.affirmationReset": "Volver a ajustarla a mi meta",
 
   "onboarding.step4.cta": "Recibir la frase de hoy →",
   "onboarding.step4.preparing": "Preparando…",
@@ -164,8 +170,6 @@ const dict: Record<DictKey, string> = {
   "home.subtitle": "Empieza el día con una frase nueva escrita para ti.",
   "home.dateFormat": "{day}/{month}/{year}",
   "home.settingsAria": "Ajustes",
-  "home.tab.future": "Yo futuro",
-  "home.tab.actions": "Acciones de hoy",
 
   "home.future.title": "Tú, dentro de 10 años",
   "home.future.subtitle":
@@ -484,9 +488,9 @@ const dict: Record<DictKey, string> = {
   "coach.quota": "Agotaste las sugerencias del coach de hoy. Hasta mañana.",
 
   // ── Afirmación de hoy (una línea obligatoria, el resto opcional) ──
-  "affirmations.focus.title": "La afirmación de hoy",
+  "affirmations.focus.title": "Tu yo futuro y exitoso",
   "affirmations.focus.rotation": "{index} de {total}",
-  "affirmations.focus.hint": "Copia esta única línea tal cual y el registro de hoy queda hecho.",
+  "affirmations.focus.hint": "Copia esta línea tal cual, como quien ya llegó.",
   "affirmations.focus.placeholder": "Escríbela igual…",
   "affirmations.focus.expand": "Grabar las {count} líneas",
   "affirmations.focus.collapse": "Solo la línea de hoy",
@@ -606,15 +610,14 @@ const dict: Record<DictKey, string> = {
   "goal.refine.subtitle": "Toca la pieza que falta para añadirla. Dejarla así también vale.",
   "goal.refine.apply": "Usar esta meta",
 
-  // ── Sincronizar la afirmación tras cambiar la meta ──
-  "settings.goals.sync.title": "¿Actualizamos también tu línea diaria?",
-  "settings.goals.sync.desc":
-    "Tu meta cambió. La línea que escribes cada día puede seguirla.",
-  "settings.goals.sync.current": "Línea actual",
-  "settings.goals.sync.next": "Línea nueva",
-  "settings.goals.sync.apply": "Usar la nueva línea",
-  "settings.goals.sync.keep": "Dejar la mía",
   "settings.futureSelf.moreDetail": "Añadir más detalle",
+
+  // ── Aviso único para cuentas de la época derivada (DeclarationNudgeCard) ──
+  "declarationNudge.title": "Tu línea y tu meta son la misma frase",
+  "declarationNudge.body":
+    "Antes creábamos tu línea diaria desde tu meta. Reescribirla como “ya lo soy” cambia cómo te llega cada mañana.",
+  "declarationNudge.cta": "Reescribir mi línea",
+  "declarationNudge.dismiss": "No, gracias",
 };
 
 export default dict;

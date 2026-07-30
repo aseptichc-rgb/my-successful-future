@@ -108,16 +108,22 @@ const dict = {
   "onboarding.futureSelf.growth.example3":
     "20대보다 건강한 몸을 유지하고, 주말엔 악기를 배우며 어제보다 나은 나를 만든다.",
 
-  // 목표는 딱 하나로 시작한다 — 다짐은 이 문장에서 자동으로 파생된다(lib/affirmationDerive).
-  "onboarding.goal.title": "그 모습에 닿기 위한, 딱 하나",
+  // Step 2 위 칸 — 이미 이룬 상태의 1인칭 선언. 매일 이 문장을 그대로 전사한다.
+  "onboarding.declaration.title": "성공한 미래의 나를 한 줄로",
+  "onboarding.declaration.subtitle":
+    "이미 그렇게 된 사람처럼 적어요. 매일 이 한 줄을 새기게 돼요.",
+  "onboarding.declaration.example1": "나는 돈에 쫓기지 않는 사람이다",
+  "onboarding.declaration.example2": "나는 몸과 마음이 건강한 사람이다",
+  "onboarding.declaration.example3": "나는 내 일로 누군가를 돕는 사람이다",
+  "onboarding.declaration.placeholder": "나는 …한 사람이다",
+  "onboarding.declaration.writeMyOwn": "직접 쓰기",
+
+  // Step 2 아래 칸 — 그 사람이 되기 위해 오늘 옮기는 행동. 선언과 독립된 문장이다.
+  "onboarding.goal.title": "그 사람이 되기 위해, 오늘 딱 하나",
   "onboarding.goal.subtitle":
     "하나면 충분해요. 꾸준히 지키면 담을 수 있는 목표가 하나씩 늘어나요.",
   "onboarding.goal.placeholder": "매일 30분 책을 읽는다",
   "onboarding.goal.hint": "“~한다”로 끝나는 행동 문장으로 적으면 매일 지켰는지 바로 알 수 있어요.",
-  "onboarding.goal.affirmationLabel": "매일 새길 다짐",
-  "onboarding.goal.affirmationHint": "목표에서 자동으로 만들었어요. 그대로 두셔도 돼요.",
-  "onboarding.goal.affirmationEdit": "다짐 고치기",
-  "onboarding.goal.affirmationReset": "목표에 맞춰 되돌리기",
 
   "onboarding.step4.cta": "오늘의 한 마디 받기 →",
   "onboarding.step4.preparing": "준비 중…",
@@ -157,8 +163,6 @@ const dict = {
   "home.subtitle": "매일 새로 도착하는 한 마디로 하루를 시작하세요.",
   "home.dateFormat": "{year}년 {month}월 {day}일",
   "home.settingsAria": "설정",
-  "home.tab.future": "미래의 나",
-  "home.tab.actions": "오늘의 행동",
 
   "home.future.title": "10년 후의 나의 모습",
   "home.future.subtitle": "되고 싶은 모습이 구체적일수록, 매일 도착하는 한 마디도 더 명확해져요.",
@@ -460,10 +464,10 @@ const dict = {
   "coach.failed": "제안을 불러오지 못했어요.",
   "coach.quota": "오늘의 코치 제안 한도를 다 썼어요. 내일 다시 만나요.",
 
-  // ── 오늘의 다짐 (하루 1줄 필수 + 전량은 선택) ───────
-  "affirmations.focus.title": "오늘의 다짐",
+  // ── 성공한 미래의 나 (하루 1줄 필수 + 전량은 선택) ───────
+  "affirmations.focus.title": "성공한 미래의 나",
   "affirmations.focus.rotation": "{index}/{total}번째",
-  "affirmations.focus.hint": "이 한 줄만 그대로 적으면 오늘 체크인이 완성돼요.",
+  "affirmations.focus.hint": "이미 그렇게 된 사람처럼, 이 한 줄을 그대로 적어보세요.",
   "affirmations.focus.placeholder": "따라 적어주세요…",
   "affirmations.focus.expand": "{count}줄 전체 새기기",
   "affirmations.focus.collapse": "오늘 한 줄만 쓰기",
@@ -580,14 +584,14 @@ const dict = {
   "goal.refine.subtitle": "빠진 조각을 눌러 넣어보세요. 그대로 두셔도 괜찮아요.",
   "goal.refine.apply": "이 목표로 바꾸기",
 
-  // ── 목표 수정 시 다짐 동기화 ─────────────────────────
-  "settings.goals.sync.title": "다짐도 바꿀까요?",
-  "settings.goals.sync.desc": "목표가 바뀌었어요. 매일 새길 다짐도 새 목표에 맞출 수 있어요.",
-  "settings.goals.sync.current": "지금 다짐",
-  "settings.goals.sync.next": "새 다짐",
-  "settings.goals.sync.apply": "새 다짐으로 바꾸기",
-  "settings.goals.sync.keep": "그대로 둘게요",
   "settings.futureSelf.moreDetail": "더 자세히 쓰기",
+
+  // ── 파생 시절 계정에만 뜨는 1회성 안내 (홈 DeclarationNudgeCard) ───────
+  "declarationNudge.title": "선언과 목표가 같은 문장이에요",
+  "declarationNudge.body":
+    "예전에는 목표에서 선언을 자동으로 만들었어요. 선언은 “이미 그렇게 된 나”로 바꾸면 매일 새기는 맛이 달라져요.",
+  "declarationNudge.cta": "선언 바꾸기",
+  "declarationNudge.dismiss": "괜찮아요",
 } as const;
 
 export type DictKey = keyof typeof dict;

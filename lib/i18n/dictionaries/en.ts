@@ -108,17 +108,23 @@ const dict: Record<DictKey, string> = {
   "onboarding.futureSelf.growth.example3":
     "I'm healthier than in my twenties, learning an instrument on weekends — a little better than yesterday, every day.",
 
-  // One goal to start — the affirmation is derived from it (lib/affirmationDerive).
-  "onboarding.goal.title": "One thing to get you there",
+  // Step 2, top field — a first-person line in the present tense. Copied every day.
+  "onboarding.declaration.title": "Your successful future self, in one line",
+  "onboarding.declaration.subtitle":
+    "Write it as someone who is already there. This is the line you'll copy each day.",
+  "onboarding.declaration.example1": "I am someone money never chases",
+  "onboarding.declaration.example2": "I am someone strong in body and mind",
+  "onboarding.declaration.example3": "I am someone whose work helps others",
+  "onboarding.declaration.placeholder": "I am someone who…",
+  "onboarding.declaration.writeMyOwn": "Write my own",
+
+  // Step 2, bottom field — today's action toward that person. Independent of the line above.
+  "onboarding.goal.title": "One thing today, to become that person",
   "onboarding.goal.subtitle":
     "One is enough. Keep it up and you'll earn room for another goal.",
   "onboarding.goal.placeholder": "read for 30 minutes every day",
   "onboarding.goal.hint":
     "Write it as an action you either did or didn't do today — that's what makes it checkable.",
-  "onboarding.goal.affirmationLabel": "What you'll write each day",
-  "onboarding.goal.affirmationHint": "Built from your goal. Feel free to leave it as is.",
-  "onboarding.goal.affirmationEdit": "Edit this line",
-  "onboarding.goal.affirmationReset": "Match my goal again",
 
   "onboarding.step4.cta": "Get today's quote →",
   "onboarding.step4.preparing": "Preparing…",
@@ -160,8 +166,6 @@ const dict: Record<DictKey, string> = {
   "home.subtitle": "Start the day with a fresh line written for you.",
   "home.dateFormat": "{month}/{day}/{year}",
   "home.settingsAria": "Settings",
-  "home.tab.future": "Future me",
-  "home.tab.actions": "Today's actions",
 
   "home.future.title": "You, 10 years from now",
   "home.future.subtitle":
@@ -478,9 +482,9 @@ const dict: Record<DictKey, string> = {
   "coach.quota": "You've used today's coach suggestions. See you tomorrow.",
 
   // ── Today's affirmation (one line required, all lines optional) ──
-  "affirmations.focus.title": "Today's affirmation",
+  "affirmations.focus.title": "Your successful future self",
   "affirmations.focus.rotation": "{index} of {total}",
-  "affirmations.focus.hint": "Copy this one line exactly and today's check-in is done.",
+  "affirmations.focus.hint": "Copy this line exactly, as someone who is already there.",
   "affirmations.focus.placeholder": "Write it out…",
   "affirmations.focus.expand": "Engrave all {count} lines",
   "affirmations.focus.collapse": "Just today's line",
@@ -598,15 +602,14 @@ const dict: Record<DictKey, string> = {
   "goal.refine.subtitle": "Tap a missing piece to add it. Leaving it as is works too.",
   "goal.refine.apply": "Use this goal",
 
-  // ── Syncing the affirmation after a goal edit ──
-  "settings.goals.sync.title": "Update your daily line too?",
-  "settings.goals.sync.desc":
-    "Your goal changed. The line you write each day can follow it.",
-  "settings.goals.sync.current": "Current line",
-  "settings.goals.sync.next": "New line",
-  "settings.goals.sync.apply": "Use the new line",
-  "settings.goals.sync.keep": "Keep mine",
   "settings.futureSelf.moreDetail": "Add more detail",
+
+  // ── One-time notice for accounts from the derived era (home DeclarationNudgeCard) ──
+  "declarationNudge.title": "Your line and your goal are the same sentence",
+  "declarationNudge.body":
+    "We used to build your daily line from your goal. Rewriting it as “I already am” changes how it lands each morning.",
+  "declarationNudge.cta": "Rewrite my line",
+  "declarationNudge.dismiss": "No thanks",
 };
 
 export default dict;

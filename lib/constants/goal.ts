@@ -2,20 +2,30 @@
  * 목표·다짐 정책 상수 — 클라이언트 안전 모듈.
  *
  * 온보딩(app/onboarding)·홈(app/home)·설정(app/settings)·순수 계산 모듈
- * (lib/goalSlots, lib/affirmationDerive, lib/goalQuality)이 모두 같은 값을 봐야 한다.
+ * (lib/goalSlots, lib/goalText, lib/goalQuality)이 모두 같은 값을 봐야 한다.
  * lib/firebase.ts 는 Firebase SDK 를 끌고 오므로 순수 모듈이 그쪽을 import 할 수 없어
  * 상수만 여기로 분리했다(lib/constants/streak.ts 와 동일한 이유·패턴).
  */
 
-/** 다짐 1줄 저장 상한. 매일 그대로 따라 적어야 하므로 길면 앵커 행동이 비싸진다. */
+/** 성공 선언 1줄 저장 상한. 매일 그대로 따라 적어야 하므로 길면 앵커 행동이 비싸진다. */
 export const SUCCESS_AFFIRMATION_MAX_LEN = 60;
 
 /**
- * 목표 1줄 입력 상한.
- * 다짐은 목표 앞에 1인칭 접두사(최대 3자, "나는 "/"Yo ")를 붙여 파생되므로
- * `SUCCESS_AFFIRMATION_MAX_LEN - 4` 로 잡아야 파생 결과가 잘리지 않는다.
+ * 옛 파생 로직이 목표 앞에 붙였던 1인칭 접두사의 최대 길이("나는 " / "Yo " / "I ").
+ *
+ * 파생 자체는 사라졌지만(성공 선언과 목표는 이제 각각 입력받는다) 이 값은 두 곳에서
+ * 여전히 의미가 있다:
+ *  · GOAL_TEXT_MAX 의 여유분 — 기존 사용자의 목표 길이 상한을 바꾸지 않기 위해 유지.
+ *  · 홈의 DeclarationNudgeCard — "선언이 목표의 파생본인가" 를 접두사 길이로 판정한다.
  */
-export const GOAL_TEXT_MAX = SUCCESS_AFFIRMATION_MAX_LEN - 4;
+export const LEGACY_AFFIRMATION_PREFIX_MAX = 4;
+
+/**
+ * 목표 1줄 입력 상한.
+ * 파생 시절의 값을 그대로 유지한다 — 상한을 올리면 이미 저장된 목표와 새 목표의
+ * 허용 길이가 갈려 "왜 어제는 됐는데" 류의 혼란만 생긴다.
+ */
+export const GOAL_TEXT_MAX = SUCCESS_AFFIRMATION_MAX_LEN - LEGACY_AFFIRMATION_PREFIX_MAX;
 
 /**
  * 꾸준함으로 열 수 있는 목표 슬롯 상한.

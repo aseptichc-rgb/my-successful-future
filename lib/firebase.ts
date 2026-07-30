@@ -336,7 +336,7 @@ export async function updateUserLanguage(uid: string, language: UserLanguage): P
 
 // ── "성공한 나의 모습" 다짐 ────────────────────────
 export const MAX_SUCCESS_AFFIRMATIONS = 10;
-// 길이 상한은 lib/constants/goal.ts 가 단일 정의 — 순수 모듈(lib/affirmationDerive)이
+// 길이 상한은 lib/constants/goal.ts 가 단일 정의 — 순수 모듈(lib/goalText 등)이
 // Firebase SDK 를 끌어오지 않고도 같은 값을 봐야 하기 때문이다. 기존 import 경로 호환을 위해 재수출한다.
 export { SUCCESS_AFFIRMATION_MAX_LEN };
 

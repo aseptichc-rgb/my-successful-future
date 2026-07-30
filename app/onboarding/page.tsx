@@ -13,7 +13,7 @@ import {
 } from "@/lib/firebase";
 import { FUTURE_SELF_FIELD_MAX, hasAnyFutureSelfAnswer } from "@/lib/futureSelf";
 import { computeOnboardingProgress } from "@/lib/onboardingProgress";
-import { deriveAffirmation, normalizeGoalText } from "@/lib/affirmationDerive";
+import { normalizeGoalText } from "@/lib/goalText";
 import { needsMoreSpecificGoal } from "@/lib/goalQuality";
 import { GOAL_TEXT_MAX, SUCCESS_AFFIRMATION_MAX_LEN } from "@/lib/constants/goal";
 import { authedFetch } from "@/lib/authedFetch";
@@ -21,19 +21,25 @@ import { useLanguage, LOCALE_META, SUPPORTED_LOCALES, type Locale, type DictKey 
 import type { DailyMotivation, FutureSelfAnswers } from "@/types";
 
 /* ─────────────────────────────────────────────────────────────────
- * Anima 온보딩 — "미래의 나 한 문장 + 목표 딱 하나"
+ * Anima 온보딩 — "미래의 나 한 문장 + 선언 1줄 + 목표 딱 하나"
  * ─────────────────────────────────────────────────────────────────
  *  이전 온보딩은 11개 화면 / 최대 27개 입력칸(미래자아 7문항 + 다짐 10 + 목표 10)을
- *  요구했다. "입력이 너무 많고 복잡하다"는 피드백에 따라 **입력칸 2개**로 줄였다.
+ *  요구했다. "입력이 너무 많고 복잡하다"는 피드백에 따라 화면 4개로 줄였다.
  *
- *  0 언어 · 1 미래 서술(1문항) · 2 목표 1개 · 3 미리보기
+ *  0 언어 · 1 미래 서술(1문항) · 2 성공 선언 + 오늘의 목표 · 3 미리보기
  *
- *  다짐은 따로 받지 않고 목표에서 파생한다(lib/affirmationDerive) — 전사 체크인은
- *  그대로 유지되지만 사용자가 문장을 두 번 고민하지 않고, 목표와 다짐이 같은 것을
- *  가리키게 된다. 나머지 6개 미래 차원과 다짐 추가는 설정에서 원하는 사람만 채운다.
+ *  Step 2 는 성격이 다른 두 문장을 한 화면에 위아래로 받는다:
+ *    · 성공 선언(successAffirmations) — 이미 이룬 상태의 1인칭 문장. 매일 전사한다.
+ *    · 오늘의 목표(goals)           — 그 사람이 되기 위해 오늘 옮기는 행동. 매일 체크한다.
+ *  예전에는 목표에서 다짐을 자동 파생했지만, 두 문장이 같은 것을 가리켜 홈에 같은
+ *  문장이 두 번 보였다. 이제 각각 받는다 — 다만 두 칸 모두
+ *  **예시 칩으로 타이핑 0 완주**가 가능해 입력 부담은 늘지 않는다.
+ *
+ *  두 칸 모두 선택 입력이다. 건너뛰어도 온보딩은 완료되고, 나머지 6개 미래 차원과
+ *  다짐 추가는 설정에서 원하는 사람만 채운다.
  * ────────────────────────────────────────────────────────────────── */
 
-/** 0 = 언어, 1 = 미래 서술, 2 = 목표, 3 = 미리보기. */
+/** 0 = 언어, 1 = 미래 서술, 2 = 선언 + 목표, 3 = 미리보기. */
 const TOTAL_STEPS = 4;
 type Step = 0 | 1 | 2 | 3;
 
@@ -42,6 +48,13 @@ const FUTURE_EXAMPLE_KEYS: ReadonlyArray<DictKey> = [
   "onboarding.futureSelf.daily.example1",
   "onboarding.futureSelf.daily.example2",
   "onboarding.futureSelf.daily.example3",
+];
+
+/** 성공 선언 예시 — 경제적 자유 · 건강 · 기여 세 축을 덮어 탭 한 번으로 채울 수 있게. */
+const DECLARATION_EXAMPLE_KEYS: ReadonlyArray<DictKey> = [
+  "onboarding.declaration.example1",
+  "onboarding.declaration.example2",
+  "onboarding.declaration.example3",
 ];
 
 /** Step 3 초상 카드 표시용 — 서버 JSON 응답에서 쓰는 필드만 (Timestamp 직렬화 무관). */
@@ -61,12 +74,12 @@ export default function OnboardingPage() {
   /** 예시 칩 대신 직접 쓰겠다고 연 경우 (칩 선택으로 채워진 답변은 자동 전개된다). */
   const [customOpen, setCustomOpen] = useState(false);
 
+  /** 성공 선언 1줄 — 목표에서 파생하지 않고 사용자가 직접 고른다/적는다. */
+  const [declaration, setDeclaration] = useState("");
+  /** 예시 칩 대신 직접 쓰겠다고 연 경우 (칩으로 채워진 선언은 자동 전개된다). */
+  const [declarationCustomOpen, setDeclarationCustomOpen] = useState(false);
+
   const [goal, setGoal] = useState("");
-  /**
-   * 다짐 직접 수정본. null 이면 목표에서 자동 파생한 문장을 그대로 따른다 —
-   * 별도 동기화 이펙트 없이 렌더 시점 파생만으로 항상 목표와 일치한다.
-   */
-  const [affirmationDraft, setAffirmationDraft] = useState<string | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,10 +91,6 @@ export default function OnboardingPage() {
   const [portraitLoading, setPortraitLoading] = useState(false);
   const [portrait, setPortrait] = useState<PortraitPreview | null>(null);
   const [portraitError, setPortraitError] = useState<string | null>(null);
-
-  // 파생 다짐 — affirmationDraft 가 null 이면 항상 목표를 따라간다(동기화 이펙트 불필요).
-  const derivedAffirmation = deriveAffirmation(goal, locale);
-  const affirmationLine = affirmationDraft ?? derivedAffirmation;
 
   useEffect(() => {
     if (authLoading) return;
@@ -98,6 +107,12 @@ export default function OnboardingPage() {
   const handleSelectExample = (example: string) => {
     setFutureAnswer(example.slice(0, FUTURE_SELF_FIELD_MAX));
     setCustomOpen(false);
+  };
+
+  /** 성공 선언 예시 선택 — 미래 서술과 같은 규칙(선택 시 직접입력 접기). */
+  const handleSelectDeclaration = (example: string) => {
+    setDeclaration(example.slice(0, SUCCESS_AFFIRMATION_MAX_LEN));
+    setDeclarationCustomOpen(false);
   };
 
   const goNext = () => setStep((s) => (s < (TOTAL_STEPS - 1) ? ((s + 1) as Step) : s));
@@ -147,8 +162,8 @@ export default function OnboardingPage() {
       if (cleanedGoal.length > 0) {
         await updateUserGoals(uid, [cleanedGoal]);
       }
-      // 다짐은 비어 있어도 저장(빈 배열로 정규화) — 목표를 건너뛴 사용자도 있다.
-      const line = affirmationLine.trim();
+      // 선언은 비어 있어도 저장(빈 배열로 정규화) — 두 칸 모두 건너뛴 사용자도 있다.
+      const line = declaration.trim().slice(0, SUCCESS_AFFIRMATION_MAX_LEN);
       await updateSuccessAffirmations(uid, line.length > 0 ? [line] : []);
 
       // 인물 고정 없이 자동 회전을 기본값으로 저장 — 온보딩에서 더 묻지 않는다.
@@ -272,6 +287,12 @@ export default function OnboardingPage() {
   // 답변이 예시 문구와 다르면(비어있지 않음) 커스텀으로 간주 — 재진입 시 서술형을 자동 전개.
   const showCustomInput =
     customOpen || (futureAnswer.length > 0 && !exampleTexts.includes(futureAnswer));
+
+  const declarationExamples = DECLARATION_EXAMPLE_KEYS.map((key) => t(key));
+  // 미래 서술과 같은 규칙 — 예시에 없는 문장을 갖고 되돌아오면 입력칸을 자동 전개.
+  const showDeclarationInput =
+    declarationCustomOpen ||
+    (declaration.length > 0 && !declarationExamples.includes(declaration));
 
   // 통합 진행바 — 언어 선택/미리보기에서는 null(미표시).
   const progress = computeOnboardingProgress(step);
@@ -440,14 +461,88 @@ export default function OnboardingPage() {
 
           {step === 2 && (
             <div>
-              <h1 className="text-[28px] font-semibold leading-[1.14] tracking-[-0.003em] text-[#1E1B4B] sm:text-[32px]">
-                {t("onboarding.goal.title")}
+              {/* ── 위: 성공한 미래의 나 — 이미 이룬 상태의 1인칭 선언 ── */}
+              <h1 className="text-[26px] font-semibold leading-[1.2] tracking-[-0.003em] text-[#1E1B4B] sm:text-[30px]">
+                {t("onboarding.declaration.title")}
               </h1>
-              <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
+              <p className="mt-2 text-[14px] leading-[1.5] tracking-[-0.022em] text-black/55">
+                {t("onboarding.declaration.subtitle")}
+              </p>
+
+              {/* 예시 칩 — Step 1 과 같은 규칙/마크업. 탭 한 번으로 채워 타이핑 0 완주. */}
+              <div className="mt-6 space-y-2.5">
+                {DECLARATION_EXAMPLE_KEYS.map((key, i) => {
+                  const ex = declarationExamples[i];
+                  const selected = declaration === ex;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => handleSelectDeclaration(ex)}
+                      aria-pressed={selected}
+                      className={`flex w-full items-start gap-3 rounded-[14px] border px-4 py-3 text-left transition-all ${
+                        selected
+                          ? "border-[#1E1B4B] bg-[#1E1B4B]/[0.04]"
+                          : "border-black/10 bg-white hover:border-[#1E1B4B]/40"
+                      }`}
+                    >
+                      <span
+                        aria-hidden
+                        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors ${
+                          selected
+                            ? "border-[#1E1B4B] bg-[#1E1B4B] text-white"
+                            : "border-black/20 text-transparent"
+                        }`}
+                      >
+                        <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M20 6L9 17l-5-5" />
+                        </svg>
+                      </span>
+                      <span className="text-[15px] font-medium leading-[1.5] tracking-[-0.01em] text-[#1E1B4B]">
+                        {ex}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {showDeclarationInput ? (
+                <div className="mt-3">
+                  <input
+                    value={declaration}
+                    maxLength={SUCCESS_AFFIRMATION_MAX_LEN}
+                    onChange={(e) =>
+                      setDeclaration(e.target.value.slice(0, SUCCESS_AFFIRMATION_MAX_LEN))
+                    }
+                    placeholder={t("onboarding.declaration.placeholder")}
+                    className="w-full rounded-[14px] border border-black/10 bg-white px-4 py-3.5 text-[17px] leading-[1.4] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/35 focus:border-[#1E1B4B] focus:outline-none"
+                  />
+                  <div className="mt-2 text-right text-[11px] tracking-[-0.01em] text-black/40">
+                    {declaration.length}/{SUCCESS_AFFIRMATION_MAX_LEN}
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setDeclarationCustomOpen(true)}
+                  className="mt-3 rounded-pill border border-dashed border-black/15 bg-white px-4 py-2 text-[12px] font-medium tracking-[-0.01em] text-black/60 transition-colors hover:border-[#1E1B4B] hover:text-[#1E1B4B]"
+                >
+                  {t("onboarding.declaration.writeMyOwn")}
+                </button>
+              )}
+
+              {/* 선언 → 목표 사이의 인과를 눈으로 보이게 하는 구분선 */}
+              <div className="my-8 h-px bg-black/[0.08]" />
+
+              {/* ── 아래: 오늘의 목표 — 그 사람이 되기 위해 오늘 옮기는 행동 ── */}
+              <h2 className="text-[20px] font-semibold leading-[1.2] tracking-[-0.003em] text-[#1E1B4B] sm:text-[22px]">
+                {t("onboarding.goal.title")}
+              </h2>
+              <p className="mt-2 text-[14px] leading-[1.5] tracking-[-0.022em] text-black/55">
                 {t("onboarding.goal.subtitle")}
               </p>
 
-              <div className="mt-6">
+              <div className="mt-5">
                 <input
                   value={goal}
                   maxLength={GOAL_TEXT_MAX}
@@ -459,56 +554,6 @@ export default function OnboardingPage() {
                   {goalHintVisible ? t("goal.specific.hint") : t("onboarding.goal.hint")}
                 </p>
               </div>
-
-              {/* 파생 다짐 — 목표를 적는 순간 나타난다. 입력칸이 아니라 "결과 미리보기". */}
-              {derivedAffirmation.length > 0 && (
-                <div className="mt-6 rounded-[14px] border border-[#1E1B4B]/12 bg-white px-4 py-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#1E1B4B]/55">
-                    {t("onboarding.goal.affirmationLabel")}
-                  </p>
-
-                  {affirmationDraft === null ? (
-                    <>
-                      <p className="mt-2 text-[17px] font-medium leading-[1.45] tracking-[-0.01em] text-[#1E1B4B]">
-                        {derivedAffirmation}
-                      </p>
-                      <div className="mt-3 flex items-center justify-between gap-3">
-                        <span className="text-[12px] leading-[1.5] tracking-[-0.01em] text-black/48">
-                          {t("onboarding.goal.affirmationHint")}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setAffirmationDraft(derivedAffirmation)}
-                          className="shrink-0 text-[13px] font-medium tracking-[-0.01em] text-[#1E1B4B]/75 hover:text-[#1E1B4B]"
-                        >
-                          {t("onboarding.goal.affirmationEdit")}
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <input
-                        value={affirmationDraft}
-                        maxLength={SUCCESS_AFFIRMATION_MAX_LEN}
-                        onChange={(e) => setAffirmationDraft(e.target.value)}
-                        className="mt-2 w-full border-b border-black/10 bg-transparent pb-1.5 text-[17px] font-medium leading-[1.45] tracking-[-0.01em] text-[#1E1B4B] focus:border-[#1E1B4B] focus:outline-none"
-                      />
-                      <div className="mt-3 flex items-center justify-between gap-3">
-                        <span className="text-[11px] tracking-[-0.01em] text-black/40">
-                          {affirmationDraft.length}/{SUCCESS_AFFIRMATION_MAX_LEN}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setAffirmationDraft(null)}
-                          className="shrink-0 text-[13px] font-medium tracking-[-0.01em] text-[#1E1B4B]/75 hover:text-[#1E1B4B]"
-                        >
-                          {t("onboarding.goal.affirmationReset")}
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
             </div>
           )}
 

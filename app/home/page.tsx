@@ -38,6 +38,7 @@ import MoreSection from "@/components/home/MoreSection";
 import SlotUnlockBanner from "@/components/home/SlotUnlockBanner";
 import StepUpCard from "@/components/home/StepUpCard";
 import RecommitCard from "@/components/home/RecommitCard";
+import DeclarationNudgeCard from "@/components/home/DeclarationNudgeCard";
 import WeekRhythmRing from "@/components/home/WeekRhythmRing";
 import type { CheckinSubmitResult } from "@/components/affirmations/AffirmationCheckin";
 import Logo from "@/components/ui/Logo";
@@ -675,6 +676,13 @@ export default function HomeDashboardPage() {
           todayYmd={ymd}
           alreadyCheckedInToday={alreadyCheckedInToday}
           onCheckinCta={handleCheckinCta}
+        />
+
+        {/* ── 선언이 목표의 파생본인 레거시 계정에만 뜨는 1회성 안내 ── */}
+        <DeclarationNudgeCard
+          declaration={affirmations[0] ?? ""}
+          goal={primaryGoal}
+          onEdit={() => router.push("/settings?sheet=affirmations")}
         />
 
         {/* ── 목표 칸이 열린 그 순간에만 뜨는 1회성 배너 ── */}
