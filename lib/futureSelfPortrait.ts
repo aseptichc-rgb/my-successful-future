@@ -43,6 +43,7 @@ const PERSONA_EXCERPT = 120;
 
 /** 프롬프트에 붙일 차원별 영어 라벨 (프롬프트는 영어, 출력 언어만 강제). */
 const DIMENSION_PROMPT_LABELS: Record<FutureSelfDimension, string> = {
+  dream: "The dream they truly want to reach",
   daily: "An ordinary day in their life",
   work: "Their work and standing among people",
   wealth: "Their assets and financial life",

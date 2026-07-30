@@ -13,8 +13,12 @@ import type { FutureSelfAnswers } from "@/types";
 /** 차원별 답변 1개의 최대 길이 (UI maxLength 와 저장 클램프에 공용). */
 export const FUTURE_SELF_FIELD_MAX = 200;
 
-/** 몰입형 질문 표시 순서 — i18n 키(`onboarding.futureSelf.<key>.*`)와 1:1 대응. */
+/**
+ * 몰입형 질문 표시 순서 — i18n 키(`onboarding.futureSelf.<key>.*`)와 1:1 대응.
+ * 첫 항목(dream)이 온보딩에서 묻는 유일한 차원이고, 나머지는 설정의 선택 항목이다.
+ */
 export const FUTURE_SELF_DIMENSIONS = [
+  "dream",
   "daily",
   "work",
   "wealth",
@@ -32,6 +36,9 @@ export type FutureSelfDimension = (typeof FUTURE_SELF_DIMENSIONS)[number];
  * (프롬프트는 영어·출력 언어는 별도 강제) 한국어 태그로 충분하다.
  */
 const DIMENSION_TAGS: Record<FutureSelfDimension, string> = {
+  // 온보딩이 묻는 단 하나의 질문. "일상" 태그에 우겨넣으면 Gemini 가 꿈 문장을
+  // 하루 묘사로 읽으므로 별도 차원·별도 태그로 둔다.
+  dream: "꿈",
   daily: "일상",
   work: "일·위치",
   wealth: "자산",

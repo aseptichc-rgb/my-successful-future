@@ -39,80 +39,42 @@ const dict: Record<DictKey, string> = {
 
   // Onboarding
   // "Mi yo dentro de 10 años" — flujo inmersivo de una pregunta por pantalla.
-  "onboarding.futureSelf.sectionLabel": "Mi yo dentro de 10 años",
+  "onboarding.futureSelf.sectionLabel": "Lo que de verdad quiero",
   "onboarding.progress.remaining": "Quedan {remaining}",
   "onboarding.progress.lastStep": "Último paso",
-  "onboarding.futureSelf.chooseHint": "Elige lo más parecido a ti · o escríbelo tú",
-  "onboarding.futureSelf.writeMyOwn": "Escribir el mío",
+  "onboarding.futureSelf.dream.q": "¿Cuál es el sueño que de verdad quieres alcanzar?",
+  "onboarding.futureSelf.dream.hint": "Solo uno. Nadie más va a leer esto.",
+  "onboarding.futureSelf.dream.placeholder":
+    "Ej.: Abrir un taller con mi nombre, ganar 3.000 € al mes de forma estable y recoger a mi hijo del colegio tres días por semana.",
+  "onboarding.futureSelf.dream.why":
+    "Números, plazos, nombres: cuanto más concreto, mejor. Esta frase será la materia prima de cada tarjeta que recibas.",
   "onboarding.futureSelf.daily.q": "Dentro de 10 años, ¿cómo fluye un día normal de tu vida?",
   "onboarding.futureSelf.daily.placeholder":
     "Dónde despiertas, qué llena tu mañana, cómo termina tu tarde.",
-  "onboarding.futureSelf.daily.example1":
-    "Despierto a las 6 en una casa con vistas al río, abro el día con ejercicio, trabajo concentrado toda la mañana y paso la tarde con mi familia.",
-  "onboarding.futureSelf.daily.example2":
-    "Sin trayectos al trabajo: dos horas de escritura en mi estudio con café, y por la tarde camino mientras doy forma al siguiente proyecto.",
-  "onboarding.futureSelf.daily.example3":
-    "Desde mi estudio con vistas al mar, dirijo a mi equipo por videollamada por la mañana y por la tarde cocino la cena con mi hijo escuchando las olas.",
   "onboarding.futureSelf.work.q":
     "¿En qué trabajas entonces y qué lugar ocupas entre la gente?",
   "onboarding.futureSelf.work.placeholder":
     "Tu rol, tu lugar en el equipo, por qué la gente te busca.",
-  "onboarding.futureSelf.work.example1":
-    "Dirijo una empresa de 10 personas y la gente del sector me busca primero para pedir consejo.",
-  "onboarding.futureSelf.work.example2":
-    "Soy una de las voces de referencia en mi área y amplío mi alcance con charlas y libros.",
-  "onboarding.futureSelf.work.example3":
-    "Trabajo por mi cuenta y elijo solo los proyectos que quiero: los clientes esperan meses para trabajar conmigo.",
   "onboarding.futureSelf.wealth.q": "¿Cómo están tus finanzas y tu patrimonio?",
   "onboarding.futureSelf.wealth.placeholder":
     "Ingresos mensuales, lo que has construido, dónde vives, las decisiones que el dinero ya no limita.",
-  "onboarding.futureSelf.wealth.example1":
-    "Construí ingresos que me pagan 8.000 € al mes trabaje o no, y vivo en una casa sin hipoteca.",
-  "onboarding.futureSelf.wealth.example2":
-    "Hago la compra sin mirar precios y planeo los viajes eligiendo primero las fechas: mi cuenta ya no me quita el sueño.",
-  "onboarding.futureSelf.wealth.example3":
-    "Cubro los gastos de mis padres cada mes y aun así llevo a toda la familia al extranjero dos veces al año.",
   "onboarding.futureSelf.family.q": "¿Cómo es la vida con tu familia?",
   "onboarding.futureSelf.family.placeholder":
     "El tiempo que compartís, lo que les das, la calidez de esos lazos.",
-  "onboarding.futureSelf.family.example1":
-    "Acampadas con los niños cada fin de semana, y cenas donde nos contamos el día — sin móviles en la mesa.",
-  "onboarding.futureSelf.family.example2":
-    "Cada primavera llevo a mis padres de viaje a ver flores, y con mi pareja seguimos guardando nuestra cita de los viernes.",
-  "onboarding.futureSelf.family.example3":
-    "En una casa con jardín, los niños y el perro juegan juntos, y una vez al mes toda la familia cocina una gran comida.",
   "onboarding.futureSelf.achievements.q": "¿Qué has logrado para entonces?",
   "onboarding.futureSelf.achievements.placeholder":
     "Lo que has creado, las metas alcanzadas, los logros que más te enorgullecen.",
-  "onboarding.futureSelf.achievements.example1":
-    "Un libro con mi nombre y un servicio que usan 10.000 personas.",
-  "onboarding.futureSelf.achievements.example2":
-    "Empezando de cero, construí una casa sin deudas y un negocio sólido.",
-  "onboarding.futureSelf.achievements.example3":
-    "Alcancé la libertad financiera, y una beca con mi nombre financia cada año los sueños de diez estudiantes.",
   "onboarding.futureSelf.respect.q":
     "¿Cómo te ve la gente y qué respetan de ti?",
   "onboarding.futureSelf.respect.placeholder":
     "La confianza, la reputación y el respeto que te dan — y por qué.",
-  "onboarding.futureSelf.respect.example1":
-    "Se sabe que mi palabra vale: antes de una decisión importante, la gente pregunta primero mi opinión.",
-  "onboarding.futureSelf.respect.example2":
-    "Los más jóvenes me buscan diciendo que quieren llegar a ser como yo, y con gusto les dedico tiempo para mostrarles el camino.",
-  "onboarding.futureSelf.respect.example3":
-    "Me recuerdan por la constancia más que por el brillo: 'la persona que cumplió cada día durante diez años'.",
   "onboarding.futureSelf.growth.q":
     "¿Cómo están tu cuerpo y tu mente, y cómo sigues creciendo?",
   "onboarding.futureSelf.growth.placeholder":
     "Tu salud, lo que estás aprendiendo, cómo sigues avanzando.",
-  "onboarding.futureSelf.growth.example1":
-    "Corro 5 km cada mañana y me siento ligero, leo 50 libros al año y sigo entrando en campos nuevos.",
-  "onboarding.futureSelf.growth.example2":
-    "Una mente firme forjada con meditación, y un idioma nuevo con el que converso con la gente local cuando viajo.",
-  "onboarding.futureSelf.growth.example3":
-    "Estoy más sano que a los veinte, aprendo un instrumento los fines de semana: cada día un poco mejor que ayer.",
 
   // Paso 2, campo superior — una línea en primera persona y presente. Se copia cada día.
-  "onboarding.declaration.title": "Tu yo futuro y exitoso, en una línea",
+  "onboarding.declaration.title": "El tú que alcanzó ese sueño, en una línea",
   "onboarding.declaration.subtitle":
     "Escríbela como quien ya llegó. Es la línea que copiarás cada día.",
   "onboarding.declaration.example1": "Soy alguien a quien el dinero no persigue",

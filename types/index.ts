@@ -147,6 +147,8 @@ export type AffirmationCheckinDepth = "focus" | "full";
  * 사용자는 원하는 문항만 답하고 넘어갈 수 있다. 각 답변은 FUTURE_SELF_FIELD_MAX(200자)로 클램프.
  */
 export interface FutureSelfAnswers {
+  /** 진정 이루고 싶은 꿈 — 온보딩이 묻는 단 하나의 문항. */
+  dream?: string;
   /** 평범한 하루의 흐름. */
   daily?: string;
   /** 하는 일과 사람들 사이에서의 위치. */

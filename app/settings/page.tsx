@@ -57,7 +57,7 @@ import { useLanguage, LOCALE_META, SUPPORTED_LOCALES, type Locale } from "@/lib/
  * ───────────────────────────────────────────────────────────────── */
 
 /** 미래 서술의 기본 질문 — 온보딩에서 유일하게 묻는 차원. 나머지는 "더 자세히" 뒤로. */
-const PRIMARY_FUTURE_DIMENSION: FutureSelfDimension = "daily";
+const PRIMARY_FUTURE_DIMENSION: FutureSelfDimension = "dream";
 
 /** 구체성 신호 → i18n 라벨/예시 키. 빠진 신호만 칩으로 보여준다. */
 const GOAL_SIGNAL_LABEL_KEY: Record<GoalSignal, DictKey> = {
@@ -73,6 +73,7 @@ const GOAL_SIGNAL_EXAMPLE_KEY: Record<GoalSignal, DictKey> = {
 
 /** 차원 → i18n 질문/placeholder 키 (온보딩과 동일 키 재사용). */
 const FUTURE_Q_KEY: Record<FutureSelfDimension, DictKey> = {
+  dream: "onboarding.futureSelf.dream.q",
   daily: "onboarding.futureSelf.daily.q",
   work: "onboarding.futureSelf.work.q",
   wealth: "onboarding.futureSelf.wealth.q",
@@ -82,6 +83,7 @@ const FUTURE_Q_KEY: Record<FutureSelfDimension, DictKey> = {
   growth: "onboarding.futureSelf.growth.q",
 };
 const FUTURE_PH_KEY: Record<FutureSelfDimension, DictKey> = {
+  dream: "onboarding.futureSelf.dream.placeholder",
   daily: "onboarding.futureSelf.daily.placeholder",
   work: "onboarding.futureSelf.work.placeholder",
   wealth: "onboarding.futureSelf.wealth.placeholder",

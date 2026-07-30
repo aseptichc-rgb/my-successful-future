@@ -37,77 +37,39 @@ const dict: Record<DictKey, string> = {
 
   // Onboarding
   // 「十年后的我」— 沉浸式提问流程,一屏一个问题。
-  "onboarding.futureSelf.sectionLabel": "十年后的我",
+  "onboarding.futureSelf.sectionLabel": "我真正想要的",
   "onboarding.progress.remaining": "还剩 {remaining} 个",
   "onboarding.progress.lastStep": "最后一步",
-  "onboarding.futureSelf.chooseHint": "选择最接近你的一项 · 也可以自己写",
-  "onboarding.futureSelf.writeMyOwn": "自己填写",
+  "onboarding.futureSelf.dream.q": "你真正想实现的梦想是什么?",
+  "onboarding.futureSelf.dream.hint": "只写一个。这不会给别人看。",
+  "onboarding.futureSelf.dream.placeholder":
+    "例:开一间挂着自己名字的工作室,每月稳定赚 2 万元,每周有三天亲自去接孩子放学。",
+  "onboarding.futureSelf.dream.why":
+    "写上数字、期限和人名,越具体越好。这句话会成为你每天收到的卡片的原料。",
   "onboarding.futureSelf.daily.q": "10 年后,你平常的一天是怎样度过的?",
   "onboarding.futureSelf.daily.placeholder":
     "在哪里醒来、上午做什么、傍晚如何度过。",
-  "onboarding.futureSelf.daily.example1":
-    "在能看到江景的家里 6 点醒来,先锻炼开启一天,上午专注工作,晚上陪伴家人。",
-  "onboarding.futureSelf.daily.example2":
-    "不用通勤的早晨,在书房伴着咖啡写作两小时,下午散步构思下一个项目。",
-  "onboarding.futureSelf.daily.example3":
-    "在看得见海的工作室里,上午通过视频带领团队,下午听着海浪声和孩子一起做晚饭。",
   "onboarding.futureSelf.work.q": "那时你在做什么工作,在人们中处于怎样的位置?",
   "onboarding.futureSelf.work.placeholder":
     "职业与角色、在团队中的位置、人们来找你的原因。",
-  "onboarding.futureSelf.work.example1":
-    "我经营着一家 10 人的公司,业内的人有事会先来找我请教。",
-  "onboarding.futureSelf.work.example2":
-    "我成为所在领域的代表声音之一,通过演讲与写作扩大影响力。",
-  "onboarding.futureSelf.work.example3":
-    "我自由执业,只接自己想做的项目——客户宁愿等上几个月也要和我合作。",
   "onboarding.futureSelf.wealth.q": "你的资产和经济状况如何?",
   "onboarding.futureSelf.wealth.placeholder":
     "月收入、积累的资产、住的房子、金钱不再限制的选择。",
-  "onboarding.futureSelf.wealth.example1":
-    "我建立了不工作也每月进账 5 万元的收入系统,住在没有贷款的自己的房子里。",
-  "onboarding.futureSelf.wealth.example2":
-    "买东西不看价签,旅行先定日期再定预算——账户余额从不让我焦虑。",
-  "onboarding.futureSelf.wealth.example3":
-    "每月给父母生活费,仍有余力一年带全家出国旅行两次。",
   "onboarding.futureSelf.family.q": "与家人在一起的生活是什么样子?",
   "onboarding.futureSelf.family.placeholder":
     "一起度过的时光、你为他们做的事、关系的温度。",
-  "onboarding.futureSelf.family.example1":
-    "每个周末带孩子去露营,晚餐桌上不碰手机,彼此分享一天的故事。",
-  "onboarding.futureSelf.family.example2":
-    "每年春天带父母去看花,和伴侣依然保留着每周五的二人约会。",
-  "onboarding.futureSelf.family.example3":
-    "在带院子的房子里,孩子和狗一起奔跑,每月一次全家人聚在一起做一顿大餐。",
   "onboarding.futureSelf.achievements.q": "到那时你已经取得了哪些成就?",
   "onboarding.futureSelf.achievements.placeholder":
     "你创造的东西、达成的目标、最自豪的成就。",
-  "onboarding.futureSelf.achievements.example1":
-    "出版了署名的书,做出了 1 万人在用的服务。",
-  "onboarding.futureSelf.achievements.example2":
-    "白手起家,拥有了无贷款的房子和稳固的事业。",
-  "onboarding.futureSelf.achievements.example3":
-    "实现了财务自由,以我名字设立的奖学金每年资助 10 名学生的梦想。",
   "onboarding.futureSelf.respect.q": "人们如何看待你,尊敬你哪些方面?",
   "onboarding.futureSelf.respect.placeholder":
     "周围人给予你的信任、声誉与尊敬,以及原因。",
-  "onboarding.futureSelf.respect.example1":
-    "大家都说'这个人的话可以信'——遇到重要决定,人们会先来问我的看法。",
-  "onboarding.futureSelf.respect.example2":
-    "后辈们说'想成为你这样的人'而来找我,我也乐意抽时间为他们指路。",
-  "onboarding.futureSelf.respect.example3":
-    "人们记住我的不是耀眼,而是坚持——'十年如一日做到的人'。",
   "onboarding.futureSelf.growth.q": "你的身心状态如何,又在如何继续成长?",
   "onboarding.futureSelf.growth.placeholder":
     "健康状况、正在学习的东西、持续前进的样子。",
-  "onboarding.futureSelf.growth.example1":
-    "每天清晨跑 5 公里依然轻松,一年读 50 本书,不断挑战新的领域。",
-  "onboarding.futureSelf.growth.example2":
-    "通过冥想练就沉稳的内心,新学的外语已能在旅行时与当地人畅聊。",
-  "onboarding.futureSelf.growth.example3":
-    "保持着比二十多岁更健康的身体,周末学习乐器,每天都比昨天更好一点。",
 
   // 第 2 步上方 —— 用第一人称现在式写「已经成为」的自己。每天照抄这一句。
-  "onboarding.declaration.title": "用一句话写下成功的未来的我",
+  "onboarding.declaration.title": "用一句话写下实现了那个梦想的我",
   "onboarding.declaration.subtitle": "像已经成为的人那样写。这就是你每天要抄的那一句。",
   "onboarding.declaration.example1": "我是不被金钱追赶的人",
   "onboarding.declaration.example2": "我是身心都健康的人",

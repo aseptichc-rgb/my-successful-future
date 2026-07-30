@@ -37,79 +37,43 @@ const dict = {
 
   // ── 온보딩 ───────────────────────────────────────
   // "10년 후 나의 모습" 몰입형 질문 — 한 화면에 한 질문씩(키 순서 = lib/futureSelf.ts 차원 순서).
-  "onboarding.futureSelf.sectionLabel": "10년 후 나의 모습",
+  "onboarding.futureSelf.sectionLabel": "내가 진짜 원하는 것",
   // 통합 진행바 라벨 (언어·미리보기 제외한 실제 입력 화면 기준).
   "onboarding.progress.remaining": "{remaining}개 남음",
   "onboarding.progress.lastStep": "마지막 단계",
-  // 칩 우선 미래자아 — 탭으로 답변, 원하면 직접 입력.
-  "onboarding.futureSelf.chooseHint": "가장 가까운 모습을 골라보세요 · 원하면 직접 쓸 수 있어요",
-  "onboarding.futureSelf.writeMyOwn": "직접 입력하기",
+  /* dream — 온보딩이 묻는 단 하나의 문항. 예시 칩을 두지 않으므로 placeholder 가
+     "얼마나 구체적으로 적어야 하는가"의 기준을 대신한다. hint 는 남의 시선을 지워
+     상투적인 답을 막고, why 는 구체성이 왜 필요한지(= AI 재료)를 알려준다. */
+  "onboarding.futureSelf.dream.q": "당신이 진정 이루고 싶은 꿈은 무엇인가요?",
+  "onboarding.futureSelf.dream.hint": "딱 하나만 적어주세요. 남에게 보여줄 답이 아니에요.",
+  "onboarding.futureSelf.dream.placeholder":
+    "예: 내 이름을 건 공방을 열어 월 300만 원을 안정적으로 벌고, 주 3일은 아이 하원을 직접 하는 것.",
+  "onboarding.futureSelf.dream.why":
+    "숫자·기한·사람까지 적을수록 좋아요. 이 문장이 매일 도착할 카드의 재료가 돼요.",
   "onboarding.futureSelf.daily.q": "10년 후, 당신의 평범한 하루는 어떻게 흘러가나요?",
   "onboarding.futureSelf.daily.placeholder":
     "아침에 눈뜨는 곳, 오전에 하는 일, 저녁을 보내는 방식까지 그려보세요.",
-  "onboarding.futureSelf.daily.example1":
-    "한강이 보이는 집에서 6시에 일어나 운동으로 하루를 열고, 오전엔 몰입해서 일한 뒤 저녁은 가족과 보낸다.",
-  "onboarding.futureSelf.daily.example2":
-    "출근 없는 아침, 서재에서 커피와 함께 두 시간 글을 쓰고 오후엔 산책하며 다음 프로젝트를 구상한다.",
-  "onboarding.futureSelf.daily.example3":
-    "바다가 보이는 작업실에서 오전엔 화상으로 팀을 이끌고, 오후엔 파도 소리를 들으며 아이와 저녁을 짓는다.",
   "onboarding.futureSelf.work.q": "그때 당신은 어떤 일을 하고, 사람들 사이에서 어떤 위치에 있나요?",
   "onboarding.futureSelf.work.placeholder":
     "직업·역할, 팀에서의 위치, 사람들이 당신을 찾는 이유를 적어보세요.",
-  "onboarding.futureSelf.work.example1":
-    "10명 규모 회사를 이끄는 대표로, 업계 사람들이 조언을 구하러 먼저 찾아온다.",
-  "onboarding.futureSelf.work.example2":
-    "분야에서 손꼽히는 전문가가 되어 강연과 집필로도 영향력을 넓히고 있다.",
-  "onboarding.futureSelf.work.example3":
-    "원하는 프로젝트만 골라 맡는 프리랜서가 되어, 클라이언트가 몇 달을 기다려서라도 나와 일하고 싶어 한다.",
   "onboarding.futureSelf.wealth.q": "자산과 경제적 형편은 어느 정도인가요?",
   "onboarding.futureSelf.wealth.placeholder":
     "월 수입, 모은 자산, 사는 집, 돈 걱정 없이 할 수 있게 된 선택들.",
-  "onboarding.futureSelf.wealth.example1":
-    "일하지 않아도 매달 1,000만 원이 들어오는 시스템을 만들었고, 대출 없는 내 집에 산다.",
-  "onboarding.futureSelf.wealth.example2":
-    "가격표를 보지 않고 장을 보고, 가고 싶은 여행은 날짜부터 정한다. 통장 잔고가 불안하지 않다.",
-  "onboarding.futureSelf.wealth.example3":
-    "부모님 생활비를 매달 보내드리고도 1년에 두 번 가족 해외여행을 갈 만큼 여유가 있다.",
   "onboarding.futureSelf.family.q": "가족과 함께하는 삶은 어떤 모습인가요?",
   "onboarding.futureSelf.family.placeholder":
     "함께 보내는 시간, 해주고 있는 것, 관계의 온도를 적어보세요.",
-  "onboarding.futureSelf.family.example1":
-    "주말마다 아이들과 캠핑을 떠나고, 저녁 식탁에선 휴대폰 없이 서로의 하루를 나눈다.",
-  "onboarding.futureSelf.family.example2":
-    "매년 봄 부모님을 모시고 벚꽃 여행을 가고, 배우자와는 여전히 금요일마다 둘만의 데이트를 한다.",
-  "onboarding.futureSelf.family.example3":
-    "마당 있는 집에서 아이와 강아지가 함께 뛰어놀고, 한 달에 한 번 온 가족이 모여 같이 요리한다.",
   "onboarding.futureSelf.achievements.q": "그때까지 이루어낸 것들은 무엇인가요?",
   "onboarding.futureSelf.achievements.placeholder":
     "만든 것, 도달한 목표, 스스로 가장 자랑스러운 성취.",
-  "onboarding.futureSelf.achievements.example1":
-    "내 이름으로 낸 책 한 권과, 1만 명이 쓰는 서비스를 만들었다.",
-  "onboarding.futureSelf.achievements.example2":
-    "무일푼에서 시작해 대출 없는 내 집과 탄탄한 사업체를 일궜다.",
-  "onboarding.futureSelf.achievements.example3":
-    "경제적 자유를 이뤘고, 내 이름을 건 장학금으로 매년 학생 10명의 꿈을 후원한다.",
   "onboarding.futureSelf.respect.q": "사람들은 당신을 어떻게 바라보고, 어떤 점을 존경하나요?",
   "onboarding.futureSelf.respect.placeholder":
     "주변이 당신에게 보내는 신뢰, 평판, 존경의 이유.",
-  "onboarding.futureSelf.respect.example1":
-    "'그 사람 말은 믿어도 된다'는 평판이 있어, 중요한 결정 앞에서 사람들이 내 의견부터 묻는다.",
-  "onboarding.futureSelf.respect.example2":
-    "후배들이 '당신처럼 되고 싶다'며 찾아오고, 나는 기꺼이 시간을 내어 길을 알려준다.",
-  "onboarding.futureSelf.respect.example3":
-    "화려함보다 꾸준함으로 기억된다 — '10년을 하루같이 해낸 사람'이라는 말을 듣는다.",
   "onboarding.futureSelf.growth.q": "몸과 마음은 어떤 상태이고, 여전히 어떻게 성장하고 있나요?",
   "onboarding.futureSelf.growth.placeholder":
     "건강, 배우고 있는 것, 계속 나아가는 모습.",
-  "onboarding.futureSelf.growth.example1":
-    "매일 아침 5km를 뛰어도 가뿐한 몸으로, 1년에 책 50권을 읽으며 새로운 분야에 도전한다.",
-  "onboarding.futureSelf.growth.example2":
-    "명상으로 다져진 단단한 마음을 갖고, 새로 배운 외국어로 여행지에서 현지인과 대화한다.",
-  "onboarding.futureSelf.growth.example3":
-    "20대보다 건강한 몸을 유지하고, 주말엔 악기를 배우며 어제보다 나은 나를 만든다.",
 
   // Step 2 위 칸 — 이미 이룬 상태의 1인칭 선언. 매일 이 문장을 그대로 전사한다.
-  "onboarding.declaration.title": "성공한 미래의 나를 한 줄로",
+  "onboarding.declaration.title": "그 꿈을 이룬 나를 한 줄로",
   "onboarding.declaration.subtitle":
     "이미 그렇게 된 사람처럼 적어요. 매일 이 한 줄을 새기게 돼요.",
   "onboarding.declaration.example1": "나는 돈에 쫓기지 않는 사람이다",

@@ -26,7 +26,12 @@ import type { DailyMotivation, FutureSelfAnswers } from "@/types";
  *  이전 온보딩은 11개 화면 / 최대 27개 입력칸(미래자아 7문항 + 다짐 10 + 목표 10)을
  *  요구했다. "입력이 너무 많고 복잡하다"는 피드백에 따라 화면 4개로 줄였다.
  *
- *  0 언어 · 1 미래 서술(1문항) · 2 성공 선언 + 오늘의 목표 · 3 미리보기
+ *  0 언어 · 1 꿈 1문항 · 2 성공 선언 + 오늘의 목표 · 3 미리보기
+ *
+ *  Step 1 은 예시 칩 없이 직접 쓰게 한다. 예시를 주면 사람들이 그걸 고르고 끝내는데,
+ *  이 한 문장이 카드·비전·정체성·작가추천 4개 AI 소비처의 유일한 재료라 모두가 같은
+ *  문장을 쓰면 모두의 생성물이 같은 곳으로 수렴한다. 대신 placeholder 가 무엇을 얼마나
+ *  구체적으로 적어야 하는지 안내한다. (선택 입력이라 건너뛰기는 그대로 가능하다.)
  *
  *  Step 2 는 성격이 다른 두 문장을 한 화면에 위아래로 받는다:
  *    · 성공 선언(successAffirmations) — 이미 이룬 상태의 1인칭 문장. 매일 전사한다.
@@ -42,13 +47,6 @@ import type { DailyMotivation, FutureSelfAnswers } from "@/types";
 /** 0 = 언어, 1 = 미래 서술, 2 = 선언 + 목표, 3 = 미리보기. */
 const TOTAL_STEPS = 4;
 type Step = 0 | 1 | 2 | 3;
-
-/** 미래 서술은 "일상(daily)" 차원 하나만 묻는다 — 나머지는 설정에서 채울 수 있다. */
-const FUTURE_EXAMPLE_KEYS: ReadonlyArray<DictKey> = [
-  "onboarding.futureSelf.daily.example1",
-  "onboarding.futureSelf.daily.example2",
-  "onboarding.futureSelf.daily.example3",
-];
 
 /** 성공 선언 예시 — 경제적 자유 · 건강 · 기여 세 축을 덮어 탭 한 번으로 채울 수 있게. */
 const DECLARATION_EXAMPLE_KEYS: ReadonlyArray<DictKey> = [
@@ -70,9 +68,8 @@ export default function OnboardingPage() {
   const { t, locale, setLocale } = useLanguage();
 
   const [step, setStep] = useState<Step>(0);
-  const [futureAnswer, setFutureAnswer] = useState("");
-  /** 예시 칩 대신 직접 쓰겠다고 연 경우 (칩 선택으로 채워진 답변은 자동 전개된다). */
-  const [customOpen, setCustomOpen] = useState(false);
+  /** Step 1 — 진정 이루고 싶은 꿈. 예시 없이 직접 쓴다. */
+  const [dreamAnswer, setDreamAnswer] = useState("");
 
   /** 성공 선언 1줄 — 목표에서 파생하지 않고 사용자가 직접 고른다/적는다. */
   const [declaration, setDeclaration] = useState("");
@@ -103,13 +100,7 @@ export default function OnboardingPage() {
     }
   }, [authLoading, firebaseUser, user?.onboardedAt, router]);
 
-  /** 예시 카드 선택 = 해당 문구로 답변을 채우고, 열려 있던 직접입력 편집을 접는다. */
-  const handleSelectExample = (example: string) => {
-    setFutureAnswer(example.slice(0, FUTURE_SELF_FIELD_MAX));
-    setCustomOpen(false);
-  };
-
-  /** 성공 선언 예시 선택 — 미래 서술과 같은 규칙(선택 시 직접입력 접기). */
+  /** 성공 선언 예시 선택 — 고르면 열려 있던 직접입력 편집을 접는다. */
   const handleSelectDeclaration = (example: string) => {
     setDeclaration(example.slice(0, SUCCESS_AFFIRMATION_MAX_LEN));
     setDeclarationCustomOpen(false);
@@ -148,11 +139,12 @@ export default function OnboardingPage() {
       // 언어를 한 번 더 동기화 (step0 저장이 어떤 이유로 누락된 경우 보호)
       try { await updateUserLanguage(uid, locale); } catch {}
 
-      // 미래 서술 1문항은 daily 차원에 담는다 — composeFuturePersona 를 거쳐 기존
-      // futurePersona 필드에도 함께 기록되므로 AI 소비처(카드/비전/정체성/작가추천)는 무수정 동작.
+      // 꿈 1문항은 dream 차원에 담는다 — composeFuturePersona 가 "· 꿈: …" 로 붙여
+      // 기존 futurePersona 필드에도 함께 기록하므로 AI 소비처(카드/비전/정체성/작가추천)는
+      // 무수정 동작한다. daily 로 저장하면 Gemini 가 꿈 문장을 하루 묘사로 읽는다.
       const answers: FutureSelfAnswers = {};
-      const futureTrimmed = futureAnswer.trim();
-      if (futureTrimmed.length > 0) answers.daily = futureTrimmed;
+      const dreamTrimmed = dreamAnswer.trim();
+      if (dreamTrimmed.length > 0) answers.dream = dreamTrimmed;
       const hasFutureAnswers = hasAnyFutureSelfAnswer(answers);
       if (hasFutureAnswers) {
         await updateFutureSelf(uid, answers);
@@ -283,11 +275,6 @@ export default function OnboardingPage() {
     );
   }
 
-  const exampleTexts = FUTURE_EXAMPLE_KEYS.map((key) => t(key));
-  // 답변이 예시 문구와 다르면(비어있지 않음) 커스텀으로 간주 — 재진입 시 서술형을 자동 전개.
-  const showCustomInput =
-    customOpen || (futureAnswer.length > 0 && !exampleTexts.includes(futureAnswer));
-
   const declarationExamples = DECLARATION_EXAMPLE_KEYS.map((key) => t(key));
   // 미래 서술과 같은 규칙 — 예시에 없는 문장을 갖고 되돌아오면 입력칸을 자동 전개.
   const showDeclarationInput =
@@ -387,75 +374,32 @@ export default function OnboardingPage() {
               </p>
 
               <h1 className="mt-4 text-[26px] font-semibold leading-[1.2] tracking-[-0.003em] text-[#1E1B4B] sm:text-[30px]">
-                {t("onboarding.futureSelf.daily.q")}
+                {t("onboarding.futureSelf.dream.q")}
               </h1>
               <p className="mt-2 text-[14px] leading-[1.5] tracking-[-0.022em] text-black/55">
-                {t("onboarding.futureSelf.chooseHint")}
+                {t("onboarding.futureSelf.dream.hint")}
               </p>
 
-              {/* 주 선택지: 예시 3개를 탭 한 번으로 답변 채우기 — 타이핑 없이 완주 가능. */}
-              <div className="mt-6 space-y-2.5">
-                {FUTURE_EXAMPLE_KEYS.map((key, i) => {
-                  const ex = exampleTexts[i];
-                  const selected = futureAnswer === ex;
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => handleSelectExample(ex)}
-                      aria-pressed={selected}
-                      className={`flex w-full items-start gap-3 rounded-[14px] border px-4 py-3 text-left transition-all ${
-                        selected
-                          ? "border-[#1E1B4B] bg-[#1E1B4B]/[0.04]"
-                          : "border-black/10 bg-white hover:border-[#1E1B4B]/40"
-                      }`}
-                    >
-                      <span
-                        aria-hidden
-                        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors ${
-                          selected
-                            ? "border-[#1E1B4B] bg-[#1E1B4B] text-white"
-                            : "border-black/20 text-transparent"
-                        }`}
-                      >
-                        <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M20 6L9 17l-5-5" />
-                        </svg>
-                      </span>
-                      <span className="text-[14px] leading-[1.55] tracking-[-0.01em] text-[#1E1B4B]">
-                        {ex}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* 직접 입력 — 원하는 사람만 서술형으로. 커스텀 답변이 있으면 자동 전개. */}
-              {showCustomInput ? (
-                <div className="mt-3">
-                  <textarea
-                    value={futureAnswer}
-                    onChange={(e) =>
-                      setFutureAnswer(e.target.value.slice(0, FUTURE_SELF_FIELD_MAX))
-                    }
-                    rows={5}
-                    maxLength={FUTURE_SELF_FIELD_MAX}
-                    placeholder={t("onboarding.futureSelf.daily.placeholder")}
-                    className="w-full resize-none rounded-[14px] border border-black/10 bg-white px-4 py-3 text-[15px] leading-[1.6] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
-                  />
-                  <div className="mt-2 text-right text-[11px] tracking-[-0.01em] text-black/40">
-                    {futureAnswer.length}/{FUTURE_SELF_FIELD_MAX}
-                  </div>
+              {/* 예시 칩 없이 직접 쓴다 — placeholder 가 구체성의 기준을 안내한다. */}
+              <div className="mt-6">
+                <textarea
+                  value={dreamAnswer}
+                  onChange={(e) =>
+                    setDreamAnswer(e.target.value.slice(0, FUTURE_SELF_FIELD_MAX))
+                  }
+                  rows={6}
+                  maxLength={FUTURE_SELF_FIELD_MAX}
+                  placeholder={t("onboarding.futureSelf.dream.placeholder")}
+                  className="w-full resize-none rounded-[14px] border border-black/10 bg-white px-4 py-3 text-[15px] leading-[1.6] tracking-[-0.01em] text-[#1E1B4B] placeholder:text-black/40 focus:border-[#1E1B4B] focus:outline-none"
+                />
+                {/* 카운터는 자기 줄에 둔다 — 안내 문장과 한 줄에 두면 문장 중간을 파고든다. */}
+                <div className="mt-2 text-right text-[11px] tracking-[-0.01em] text-black/40">
+                  {dreamAnswer.length}/{FUTURE_SELF_FIELD_MAX}
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setCustomOpen(true)}
-                  className="mt-3 rounded-pill border border-dashed border-black/15 bg-white px-4 py-2 text-[12px] font-medium tracking-[-0.01em] text-black/60 transition-colors hover:border-[#1E1B4B] hover:text-[#1E1B4B]"
-                >
-                  {t("onboarding.futureSelf.writeMyOwn")}
-                </button>
-              )}
+                <p className="mt-1 text-[12px] leading-[1.5] tracking-[-0.01em] text-black/48">
+                  {t("onboarding.futureSelf.dream.why")}
+                </p>
+              </div>
             </div>
           )}
 
