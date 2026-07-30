@@ -337,6 +337,28 @@ const dict: Record<DictKey, string> = {
     "All your data will be permanently deleted. Type \"DELETE\" below to confirm.",
   "settings.streakLabel": "STREAK {count}",
 
+  // Notification settings (local reminders)
+  "settings.notifications.header": "Notifications",
+  "settings.notifications.row": "Daily reminders",
+  "settings.notifications.off": "Off",
+  "settings.notifications.footer":
+    "Reminders are scheduled on this device only. At most 2 a day — never for things you've already done.",
+  "settings.notifications.morning.title": "Morning affirmation reminder",
+  "settings.notifications.morning.desc": "A cue to start the day by writing your declaration.",
+  "settings.notifications.evening.title": "Evening check-in reminder",
+  "settings.notifications.evening.desc": "Arrives only if today's goal isn't checked yet.",
+  "settings.notifications.weekly.title": "Sunday review",
+  "settings.notifications.weekly.desc": "An evening nudge when your weekly review is ready.",
+  "settings.notifications.time": "Time",
+
+  // Notification copy (iOS local notification body — Android uses native resources)
+  "notify.morning.title": "One step closer to your future self",
+  "notify.morning.body": "Start the day by writing your affirmation.",
+  "notify.evening.title": "Today's goal is still waiting",
+  "notify.evening.body": "It only takes a moment — check off today's step.",
+  "notify.weekly.title": "Time to look back on your week",
+  "notify.weekly.body": "Your week's record is ready. Take a moment to review it.",
+
   // Anima Pro (in-app purchase)
   "settings.pro.header": "ANIMA PRO",
   "settings.pro.footerActive": "All features are unlocked.",

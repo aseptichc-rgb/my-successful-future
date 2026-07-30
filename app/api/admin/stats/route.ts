@@ -50,15 +50,41 @@ export async function GET(req: NextRequest) {
     const since30d = new Date(now - 30 * day);
 
     // 2. 가입자 — 전체 컬렉션 스캔 대신 count() 집계로 산출(사용자 수에 비례한 비용 회피).
+    //    알림 지표도 같은 방식: 명시적으로 켠/끈 사용자만 센다(미설정 = 기본 켜짐이므로
+    //    "끔" 카운트가 곧 opt-out — docs/roadmap.md P1 지표 "알림 전체 off 비율 < 15%" 의 기반).
     const usersCol = db.collection("users");
-    const [totalSnap, s7Snap, s30Snap] = await Promise.all([
+    const notifCount = (field: string, value: boolean) =>
+      usersCol.where(`notificationPrefs.${field}`, "==", value).count().get();
+    const [
+      totalSnap,
+      s7Snap,
+      s30Snap,
+      morningOnSnap,
+      morningOffSnap,
+      eveningOnSnap,
+      eveningOffSnap,
+      weeklyOnSnap,
+      weeklyOffSnap,
+    ] = await Promise.all([
       usersCol.count().get(),
       usersCol.where("createdAt", ">=", Timestamp.fromDate(since7d)).count().get(),
       usersCol.where("createdAt", ">=", Timestamp.fromDate(since30d)).count().get(),
+      notifCount("morningEnabled", true),
+      notifCount("morningEnabled", false),
+      notifCount("eveningEnabled", true),
+      notifCount("eveningEnabled", false),
+      notifCount("weeklyReviewEnabled", true),
+      notifCount("weeklyReviewEnabled", false),
     ]);
     const totalUsers = totalSnap.data().count;
     const signups7d = s7Snap.data().count;
     const signups30d = s30Snap.data().count;
+    const notifications = {
+      // 설정을 명시적으로 저장한 사용자 수 기준 — 미설정 사용자는 기본 켜짐으로 동작한다.
+      morning: { on: morningOnSnap.data().count, off: morningOffSnap.data().count },
+      evening: { on: eveningOnSnap.data().count, off: eveningOffSnap.data().count },
+      weeklyReview: { on: weeklyOnSnap.data().count, off: weeklyOffSnap.data().count },
+    };
 
     // 3. 토큰 사용량 (전체 기간) — byModel/byUser/시간 버킷 집계.
     const usageSnap = await db.collection("tokenUsage").get();
@@ -151,6 +177,7 @@ export async function GET(req: NextRequest) {
         signups7d,
         signups30d,
       },
+      notifications,
       usage: {
         total: {
           tokens: totalUsage.tokens,

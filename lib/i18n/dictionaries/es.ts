@@ -343,6 +343,28 @@ const dict: Record<DictKey, string> = {
     "Todos tus datos se eliminarán permanentemente. Escribe \"ELIMINAR\" abajo para confirmar.",
   "settings.streakLabel": "RACHA {count}",
 
+  // Ajustes de notificaciones (recordatorios locales)
+  "settings.notifications.header": "Notificaciones",
+  "settings.notifications.row": "Recordatorios diarios",
+  "settings.notifications.off": "Desactivado",
+  "settings.notifications.footer":
+    "Los recordatorios se programan solo en este dispositivo. Máximo 2 al día — nunca por lo que ya hiciste.",
+  "settings.notifications.morning.title": "Recordatorio matutino de afirmación",
+  "settings.notifications.morning.desc": "Una señal para empezar el día escribiendo tu declaración.",
+  "settings.notifications.evening.title": "Recordatorio nocturno de registro",
+  "settings.notifications.evening.desc": "Llega solo si aún no marcaste la meta de hoy.",
+  "settings.notifications.weekly.title": "Repaso del domingo",
+  "settings.notifications.weekly.desc": "Un aviso por la tarde cuando tu repaso semanal esté listo.",
+  "settings.notifications.time": "Hora",
+
+  // Textos de notificación (iOS — Android usa recursos nativos)
+  "notify.morning.title": "Un paso más hacia tu yo futuro",
+  "notify.morning.body": "Empieza el día escribiendo tu afirmación.",
+  "notify.evening.title": "La meta de hoy sigue esperando",
+  "notify.evening.body": "Solo toma un momento — marca el paso de hoy.",
+  "notify.weekly.title": "Hora de repasar tu semana",
+  "notify.weekly.body": "El registro de tu semana está listo. Tómate un momento para verlo.",
+
   // Anima Pro (compra dentro de la app)
   "settings.pro.header": "ANIMA PRO",
   "settings.pro.footerActive": "Todas las funciones están activas.",

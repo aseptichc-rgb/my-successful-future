@@ -51,10 +51,12 @@ import type {
   FutureVision,
   IdentityEvidenceDay,
   IdentityProgress,
+  NotificationPrefs,
   QuotePreference,
   UserLanguage,
 } from "@/types";
 import { composeFuturePersona, normalizeFutureSelfAnswers } from "@/lib/futureSelf";
+import { normalizeNotificationPrefs } from "@/lib/notificationPolicy";
 import { SUCCESS_AFFIRMATION_MAX_LEN } from "@/lib/constants/goal";
 
 const SUPPORTED_LANGUAGES: ReadonlyArray<UserLanguage> = ["ko", "en", "es", "zh"];
@@ -408,6 +410,19 @@ export async function updateQuotePreference(uid: string, pref: QuotePreference) 
   await setDoc(
     doc(db, "users", uid),
     { quotePreference: next, quotePreferenceUpdatedAt: serverTimestamp() },
+    { merge: true },
+  );
+}
+
+// ── 알림 설정 ─────────────────────────────────────
+export async function updateNotificationPrefs(uid: string, prefs: NotificationPrefs) {
+  const db = getDbInstance();
+  // 정규화는 lib/notificationPolicy 단일 정의 — 임의 시각/타입이 저장돼 Android 워커가
+  // 엉뚱한 시각에 예약되는 것을 저장 시점에 차단한다.
+  const clean = normalizeNotificationPrefs(prefs);
+  await setDoc(
+    doc(db, "users", uid),
+    { notificationPrefs: clean, notificationPrefsUpdatedAt: serverTimestamp() },
     { merge: true },
   );
 }

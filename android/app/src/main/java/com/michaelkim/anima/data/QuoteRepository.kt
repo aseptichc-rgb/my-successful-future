@@ -15,7 +15,9 @@ import android.content.Context
 import android.util.Log
 import com.michaelkim.anima.data.api.ApiClient
 import com.michaelkim.anima.data.auth.AuthRepository
+import com.michaelkim.anima.data.local.NotificationPrefsStore
 import com.michaelkim.anima.data.local.QuoteCache
+import com.michaelkim.anima.work.WorkScheduler
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -57,7 +59,26 @@ object QuoteRepository {
             ts = System.currentTimeMillis(),
         )
         QuoteCache.save(context, response)
+        syncNotificationPrefs(context, response)
         return response
+    }
+
+    /**
+     * 응답에 실려 온 알림 설정을 로컬 캐시에 동기화하고, 값이 바뀌었으면 리마인더를 재예약한다.
+     * 설정 화면(웹)에서 저장 → 다음 refresh(포그라운드 복귀·정주기·리마인더 발화 시점) 때
+     * 자동 반영 — 별도 API/인텐트 브릿지 없이 기존 위젯 파이프라인 하나로 정책이 흐른다.
+     * 실패해도 위젯 갱신 본연의 흐름은 깨지 않는다.
+     */
+    private fun syncNotificationPrefs(context: Context, response: WidgetTodayResponse) {
+        val prefs = response.notificationPrefs ?: return
+        try {
+            if (NotificationPrefsStore.write(context, prefs)) {
+                WorkScheduler.scheduleDailyWinsReminder(context)
+                WorkScheduler.scheduleDailyAffirmationsReminder(context)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "알림 설정 동기화 실패 — 다음 refresh 에서 재시도", e)
+        }
     }
 
     /**

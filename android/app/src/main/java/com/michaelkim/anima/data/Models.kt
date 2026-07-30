@@ -52,6 +52,20 @@ data class WidgetFutureVision(
     val teaser: String,
 )
 
+/**
+ * 로컬 알림 설정 — 정책의 단일 소스는 웹(lib/notificationPolicy.ts)이고, 이 클래스는
+ * `/api/widget/today` 응답으로 실려 온 값을 담아 WorkScheduler 에 전달만 한다.
+ * 기본값(전부 켜짐, 08/21시)은 옛 서버 응답/캐시와의 호환이자 기존 동작 보존.
+ */
+@Serializable
+data class WidgetNotificationPrefs(
+    val morningEnabled: Boolean = true,
+    val morningHour: Int = 8,
+    val eveningEnabled: Boolean = true,
+    val eveningHour: Int = 21,
+    val weeklyReviewEnabled: Boolean = true,
+)
+
 @Serializable
 data class WidgetTodayResponse(
     val generatedAt: String,
@@ -80,6 +94,11 @@ data class WidgetTodayResponse(
      */
     val goalsAchievedCount: Int = 0,
     val goalsTotalCount: Int = 0,
+    /**
+     * 알림 설정. 옛 캐시/옛 서버 응답이면 null → 리마인더는 기본값으로 동작.
+     * QuoteRepository 가 응답 저장 시 NotificationPrefsStore 에 동기화하고 재예약한다.
+     */
+    val notificationPrefs: WidgetNotificationPrefs? = null,
 )
 
 /** DataStore 캐시 직렬화용 — 마지막 응답 + 디스크 기록 시각. */

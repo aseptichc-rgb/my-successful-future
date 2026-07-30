@@ -18,15 +18,23 @@
     <string name="purchase_error_verify_failed">결제 확인에 실패했습니다. 이미 결제하셨다면 \'구매 복원\'을 눌러 주세요.</string>
     <string name="purchase_error_generic">결제 처리 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.</string>
 
-    <!-- 잘한 일 저녁 알림 (매일 21:00 KST 로컬 알림) -->
-    <string name="wins_reminder_channel_name">오늘 잘한 일 알림</string>
-    <string name="wins_reminder_channel_description">매일 저녁 9시에 오늘 잘한 일 3가지를 적어보도록 알려드려요.</string>
-    <string name="wins_reminder_title">오늘 잘한 일 3가지</string>
-    <string name="wins_reminder_body">오늘 잘한 일 3가지를 적어보세요.</string>
+    <!-- 저녁 기록 알림 (기본 21:00, 기기 타임존 — 시각·on/off 는 앱 설정을 따름) -->
+    <string name="wins_reminder_channel_name">저녁 기록 알림</string>
+    <string name="wins_reminder_channel_description">저녁에 오늘의 목표와 잘한 일을 기록하도록 알려드려요. 이미 체크한 날은 보내지 않아요.</string>
+    <string name="wins_reminder_title">오늘의 목표, 아직 남아 있어요</string>
+    <string name="wins_reminder_body">잠깐이면 돼요 — 오늘 한 걸음을 체크해 주세요.</string>
+    <!-- 오늘의 목표 문구를 실을 수 있을 때의 본문 변형 -->
+    <string name="wins_reminder_body_goal">잠깐이면 돼요 — "%1$s" 를 체크해 주세요.</string>
 
-    <!-- 다짐 따라쓰기 아침 알림 (매일 08:00 KST 로컬 알림) -->
+    <!-- 다짐 따라쓰기 아침 알림 (기본 08:00, 기기 타임존 — 시각·on/off 는 앱 설정을 따름) -->
     <string name="affirmations_reminder_channel_name">성공한 나에게 한 발 더 알림</string>
-    <string name="affirmations_reminder_channel_description">매일 아침 8시에 \"성공한 나의 모습\" 다짐을 따라 적어보도록 알려드려요.</string>
+    <string name="affirmations_reminder_channel_description">아침에 \"성공한 나의 모습\" 다짐을 따라 적어보도록 알려드려요.</string>
     <string name="affirmations_reminder_title">성공한 나에게 한 발 더</string>
     <string name="affirmations_reminder_body">오늘도 다짐을 따라 적으며 하루를 시작해요.</string>
+
+    <!-- 일요일 주간 회고 알림 (저녁 시각에 기록 알림 대신 도착) -->
+    <string name="weekly_review_channel_name">주간 회고 알림</string>
+    <string name="weekly_review_channel_description">일요일 저녁, 한 주를 돌아보도록 알려드려요.</string>
+    <string name="weekly_review_title">이번 주를 돌아볼 시간</string>
+    <string name="weekly_review_body">일주일의 기록이 정리됐어요. 잠깐 돌아보세요.</string>
 </resources>

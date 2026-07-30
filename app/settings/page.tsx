@@ -6,6 +6,7 @@ import { useAuth, fetchNativeBridgeToken } from "@/lib/auth-context";
 import {
   updateFutureSelf,
   updateUserGoals,
+  updateNotificationPrefs,
   updateQuotePreference,
   updateSuccessAffirmations,
   updateUserLanguage,
@@ -13,6 +14,15 @@ import {
   MAX_SUCCESS_AFFIRMATIONS,
   type ExecutionPlanWithId,
 } from "@/lib/firebase";
+import {
+  DEFAULT_NOTIFICATION_PREFS,
+  MORNING_HOUR_CHOICES,
+  EVENING_HOUR_CHOICES,
+  buildNotificationTexts,
+  normalizeNotificationPrefs,
+  summarizeNotificationHours,
+} from "@/lib/notificationPolicy";
+import { syncIosNotifications } from "@/lib/notificationBridge";
 import {
   FUTURE_SELF_DIMENSIONS,
   FUTURE_SELF_FIELD_MAX,
@@ -22,7 +32,7 @@ import {
 import { computeGoalSlots } from "@/lib/goalSlots";
 import { missingGoalSignals, needsMoreSpecificGoal, type GoalSignal } from "@/lib/goalQuality";
 import { GOAL_SLOT_MAX, GOAL_TEXT_MAX } from "@/lib/constants/goal";
-import type { FutureSelfAnswers } from "@/types";
+import type { FutureSelfAnswers, NotificationPrefs } from "@/types";
 import type { DictKey } from "@/lib/i18n";
 import { authedFetch } from "@/lib/authedFetch";
 import {
@@ -240,6 +250,12 @@ const G = {
       <path d="M5 7h14l-1 13H6L5 7zM9 4h6v3H9z" />
     </svg>
   ),
+  bell: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="white" aria-hidden>
+      <path d="M12 2a6 6 0 00-6 6v4l-2 4h16l-2-4V8a6 6 0 00-6-6z" />
+      <path d="M10 19a2 2 0 004 0" />
+    </svg>
+  ),
 };
 
 function IconChevron() {
@@ -306,6 +322,91 @@ function SettingsRow({
   );
 }
 
+/** 알림 시트의 토글 행 — 제목 + 설명 + iOS 스타일 스위치. */
+function NotifToggleRow({
+  title,
+  desc,
+  checked,
+  onChange,
+  isLast,
+}: {
+  title: string;
+  desc: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  isLast?: boolean;
+}) {
+  return (
+    <div className="relative flex items-center gap-3 px-4 py-3">
+      <div className="flex-1 min-w-0">
+        <div className="text-[17px] leading-[22px] tracking-[-0.43px] text-[var(--label)]">
+          {title}
+        </div>
+        <div className="mt-0.5 text-[13px] tracking-[-0.08px] text-[var(--label-2)]">{desc}</div>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={title}
+        onClick={() => onChange(!checked)}
+        className="relative flex-shrink-0 w-[51px] h-[31px] rounded-full transition-colors"
+        style={{ background: checked ? "#34C759" : "var(--sep)" }}
+      >
+        <span
+          className="absolute top-[2px] w-[27px] h-[27px] rounded-full bg-white transition-transform"
+          style={{
+            left: 2,
+            transform: checked ? "translateX(20px)" : "translateX(0)",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+          }}
+        />
+      </button>
+      {!isLast && (
+        <div className="absolute bottom-0 left-4 right-0 h-[0.5px] bg-[var(--sep)]" />
+      )}
+    </div>
+  );
+}
+
+/** 알림 시트의 시각 선택 행 — 정시만 제공(lib/notificationPolicy 의 선택지). */
+function NotifHourRow({
+  label,
+  hour,
+  choices,
+  onChange,
+  isLast,
+}: {
+  label: string;
+  hour: number;
+  choices: ReadonlyArray<number>;
+  onChange: (hour: number) => void;
+  isLast?: boolean;
+}) {
+  // 레거시/비정상 값이 선택지 밖이면 그 값도 목록에 넣어 UI 가 현재 상태를 숨기지 않게 한다.
+  const options = choices.includes(hour) ? choices : [...choices, hour].sort((a, b) => a - b);
+  return (
+    <div className="relative flex items-center gap-3 px-4 py-2.5">
+      <div className="flex-1 text-[15px] tracking-[-0.23px] text-[var(--label-2)]">{label}</div>
+      <select
+        value={hour}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="text-[17px] tracking-[-0.43px] text-[var(--label)] bg-transparent text-right"
+        aria-label={label}
+      >
+        {options.map((h) => (
+          <option key={h} value={h}>
+            {`${String(h).padStart(2, "0")}:00`}
+          </option>
+        ))}
+      </select>
+      {!isLast && (
+        <div className="absolute bottom-0 left-4 right-0 h-[0.5px] bg-[var(--sep)]" />
+      )}
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const { user, firebaseUser, loading: authLoading, signOut, refreshUser } = useAuth();
@@ -333,6 +434,12 @@ export default function SettingsPage() {
   const [pinnedAuthor, setPinnedAuthor] = useState<string>("");
   const [pinnedDays, setPinnedDays] = useState<number>(0);
   const [authorOpen, setAuthorOpen] = useState(false);
+
+  const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>({
+    ...DEFAULT_NOTIFICATION_PREFS,
+  });
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifSaving, setNotifSaving] = useState(false);
 
   const [languageOpen, setLanguageOpen] = useState(false);
 
@@ -423,6 +530,7 @@ export default function SettingsPage() {
     setGoals(user.goals && user.goals.length > 0 ? [...user.goals] : []);
     setPinnedAuthor(user.quotePreference?.pinnedAuthor || "");
     setPinnedDays(user.quotePreference?.pinnedDaysPerWeek ?? 0);
+    setNotifPrefs(normalizeNotificationPrefs(user.notificationPrefs));
     setAffirmations(
       user.successAffirmations && user.successAffirmations.length > 0
         ? [...user.successAffirmations]
@@ -594,6 +702,30 @@ export default function SettingsPage() {
     } catch (err) {
       console.error("[settings] 인물 저장 실패:", err);
       window.alert(t("common.saveFailed"));
+    }
+  };
+
+  const handleSaveNotificationPrefs = async () => {
+    setNotifSaving(true);
+    try {
+      await updateNotificationPrefs(uid, notifPrefs);
+      await refreshUser().catch(() => {});
+      // iOS: 네이티브 예약 동기화. 첫 활성화면 이 시점(저장이라는 가치 맥락)에 권한 요청이 뜬다.
+      // Android 는 다음 위젯 refresh(포그라운드 복귀·정주기·알림 발화 시점)에 서버 응답으로 동기화.
+      // todayGoalDone=false: 설정 화면은 오늘 진척도를 모른다 — 홈 방문 시 재동기화로 보정된다.
+      void syncIosNotifications({
+        prefs: notifPrefs,
+        todayGoalDone: false,
+        // 사용자가 방금 알림을 켜고 저장했다 — 권한 프롬프트에 가장 맥락 있는 순간.
+        allowPrompt: true,
+        texts: buildNotificationTexts(t),
+      });
+      setNotifOpen(false);
+    } catch (err) {
+      console.error("[settings] 알림 설정 저장 실패:", err);
+      window.alert(t("common.saveFailed"));
+    } finally {
+      setNotifSaving(false);
     }
   };
 
@@ -860,6 +992,23 @@ export default function SettingsPage() {
             title={t("settings.language.header") || "언어"}
             detail={LOCALE_META[locale]?.label || locale}
             onClick={() => setLanguageOpen(true)}
+            isLast
+          />
+        </GroupedSection>
+
+        {/* 알림 — 정책은 lib/notificationPolicy 단일 소스 (하루 최대 2건, 한 일에는 침묵) */}
+        <GroupedSection
+          header={t("settings.notifications.header") || "알림"}
+          footer={t("settings.notifications.footer")}
+        >
+          <SettingsRow
+            color="#FF9500"
+            glyph={G.bell}
+            title={t("settings.notifications.row") || "데일리 리마인더"}
+            detail={
+              summarizeNotificationHours(notifPrefs) ?? (t("settings.notifications.off") || "꺼짐")
+            }
+            onClick={() => setNotifOpen(true)}
             isLast
           />
         </GroupedSection>
@@ -1255,6 +1404,62 @@ export default function SettingsPage() {
               className="text-[17px] font-semibold text-[var(--soul)]"
             >
               {t("common.save")}
+            </button>
+          </div>
+        </Sheet>
+      )}
+
+      {/* ── Notification sheet — 리마인더 토글·시각 ── */}
+      {notifOpen && (
+        <Sheet
+          onClose={() => setNotifOpen(false)}
+          title={t("settings.notifications.row") || "데일리 리마인더"}
+        >
+          <div className="mt-2 bg-[var(--bg-grouped-2)] rounded-[12px] overflow-hidden">
+            <NotifToggleRow
+              title={t("settings.notifications.morning.title")}
+              desc={t("settings.notifications.morning.desc")}
+              checked={notifPrefs.morningEnabled}
+              onChange={(next) => setNotifPrefs((p) => ({ ...p, morningEnabled: next }))}
+            />
+            {notifPrefs.morningEnabled && (
+              <NotifHourRow
+                label={t("settings.notifications.time")}
+                hour={notifPrefs.morningHour}
+                choices={MORNING_HOUR_CHOICES}
+                onChange={(hour) => setNotifPrefs((p) => ({ ...p, morningHour: hour }))}
+              />
+            )}
+            <NotifToggleRow
+              title={t("settings.notifications.evening.title")}
+              desc={t("settings.notifications.evening.desc")}
+              checked={notifPrefs.eveningEnabled}
+              onChange={(next) => setNotifPrefs((p) => ({ ...p, eveningEnabled: next }))}
+            />
+            {(notifPrefs.eveningEnabled || notifPrefs.weeklyReviewEnabled) && (
+              <NotifHourRow
+                label={t("settings.notifications.time")}
+                hour={notifPrefs.eveningHour}
+                choices={EVENING_HOUR_CHOICES}
+                onChange={(hour) => setNotifPrefs((p) => ({ ...p, eveningHour: hour }))}
+              />
+            )}
+            <NotifToggleRow
+              title={t("settings.notifications.weekly.title")}
+              desc={t("settings.notifications.weekly.desc")}
+              checked={notifPrefs.weeklyReviewEnabled}
+              onChange={(next) => setNotifPrefs((p) => ({ ...p, weeklyReviewEnabled: next }))}
+              isLast
+            />
+          </div>
+          <div className="flex justify-end mt-3">
+            <button
+              type="button"
+              onClick={handleSaveNotificationPrefs}
+              disabled={notifSaving}
+              className="text-[17px] font-semibold text-[var(--soul)] disabled:opacity-40"
+            >
+              {notifSaving ? t("common.saving") : t("common.save")}
             </button>
           </div>
         </Sheet>

@@ -3,8 +3,13 @@
  *
  * - schedulePeriodicRefresh: 3시간 주기, KEEP 정책 (이미 있으면 그대로).
  * - scheduleOneTimeRefresh: 즉시 1회 — 위젯 첫 추가 / 사용자가 "지금 갱신" 누를 때.
- * - scheduleDailyWinsReminder: 매일 21:00 KST 로컬 알림. OneTime + 자기 재예약 패턴.
- * - scheduleDailyAffirmationsReminder: 매일 08:00 KST 로컬 알림. 동일 패턴.
+ * - scheduleDailyWinsReminder: 매일 저녁(기본 21:00, 기기 타임존) 로컬 알림.
+ *   OneTime + 자기 재예약 패턴. 시각·on/off 는 NotificationPrefsStore(서버 설정 캐시)를 따른다.
+ * - scheduleDailyAffirmationsReminder: 매일 아침(기본 08:00, 기기 타임존) 로컬 알림. 동일 패턴.
+ *
+ * 타임존 정책: 리마인더는 **기기 로컬 타임존** — 습관은 사용자의 하루 리듬(현지 아침/저녁)에
+ * 붙어야 한다. 반면 자정 위젯 갱신은 KST 고정 — 서버의 ymd(하루 경계)가 KST 라서
+ * 데이터가 갈리는 시각과 정렬해야 한다. (정책 단일 소스: 웹 lib/notificationPolicy.ts)
  *
  * 안드로이드 PeriodicWorkRequest 의 최소 주기는 15분. 3시간은 충분히 안전.
  */
@@ -18,6 +23,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.michaelkim.anima.data.local.NotificationPrefsStore
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -31,9 +37,8 @@ object WorkScheduler {
     private const val MIDNIGHT_REFRESH_NAME = "anima_quote_midnight_daily"
     private const val PERIODIC_HOURS = 3L
 
+    /** 서버 데이터의 하루 경계(ymd) 전용 — 리마인더에는 쓰지 않는다. */
     private val KST: ZoneId = ZoneId.of("Asia/Seoul")
-    private val WINS_REMINDER_AT: LocalTime = LocalTime.of(21, 0)
-    private val AFFIRMATIONS_REMINDER_AT: LocalTime = LocalTime.of(8, 0)
     // 자정 정각이 아니라 +1 분 — 서버의 ymd 가 자정 0분에 갈리는 race 를 피한다.
     private val MIDNIGHT_REFRESH_AT: LocalTime = LocalTime.of(0, 1)
 
@@ -66,13 +71,24 @@ object WorkScheduler {
     }
 
     /**
-     * 다음 21:00 KST 까지의 지연으로 OneTime Worker 를 enqueue.
-     * - 같은 날 21:00 이 아직 안 지났으면 오늘 21:00, 지났으면 내일 21:00.
+     * 다음 저녁 알림 시각(기기 타임존, NotificationPrefsStore 의 eveningHour)까지의 지연으로
+     * OneTime Worker 를 enqueue.
+     * - 저녁 리마인더와 일요일 회고가 모두 꺼져 있으면 예약을 취소한다 (Worker 가 이 이름을
+     *   자기 재예약하므로 취소가 곧 루프 종료).
+     * - 같은 날 시각이 아직 안 지났으면 오늘, 지났으면 내일.
      * - REPLACE 정책: 앱이 다시 열리거나 Worker 가 자기 재예약을 호출해도 항상 단 하나만 큐잉.
      * - 네트워크 제약 없음 — 로컬 알림이라 오프라인에서도 떠야 함.
      */
     fun scheduleDailyWinsReminder(context: Context) {
-        val delayMillis = computeMillisUntilNext(WINS_REMINDER_AT)
+        val prefs = NotificationPrefsStore.read(context)
+        if (!prefs.eveningEnabled && !prefs.weeklyReviewEnabled) {
+            WorkManager.getInstance(context).cancelUniqueWork(WINS_REMINDER_NAME)
+            return
+        }
+        val delayMillis = computeMillisUntilNext(
+            LocalTime.of(prefs.eveningHour.coerceIn(0, 23), 0),
+            ZoneId.systemDefault(),
+        )
         val request = OneTimeWorkRequestBuilder<WinsReminderWorker>()
             .setInitialDelay(delayMillis, TimeUnit.MILLISECONDS)
             .build()
@@ -84,13 +100,22 @@ object WorkScheduler {
     }
 
     /**
-     * 다음 08:00 KST 까지의 지연으로 OneTime Worker 를 enqueue.
-     * "성공한 나에게 한 발 더" 다짐을 아침에 따라쓰도록 유도한다.
+     * 다음 아침 알림 시각(기기 타임존, NotificationPrefsStore 의 morningHour)까지의 지연으로
+     * OneTime Worker 를 enqueue. "성공한 나에게 한 발 더" 다짐을 아침에 따라쓰도록 유도한다.
+     * - 꺼져 있으면 예약을 취소한다.
      * - REPLACE 정책 + 자기 재예약: 항상 단 하나만 큐잉.
      * - 네트워크 제약 없음 — 로컬 알림이라 오프라인에서도 떠야 함.
      */
     fun scheduleDailyAffirmationsReminder(context: Context) {
-        val delayMillis = computeMillisUntilNext(AFFIRMATIONS_REMINDER_AT)
+        val prefs = NotificationPrefsStore.read(context)
+        if (!prefs.morningEnabled) {
+            WorkManager.getInstance(context).cancelUniqueWork(AFFIRMATIONS_REMINDER_NAME)
+            return
+        }
+        val delayMillis = computeMillisUntilNext(
+            LocalTime.of(prefs.morningHour.coerceIn(0, 23), 0),
+            ZoneId.systemDefault(),
+        )
         val request = OneTimeWorkRequestBuilder<AffirmationsReminderWorker>()
             .setInitialDelay(delayMillis, TimeUnit.MILLISECONDS)
             .build()
@@ -122,13 +147,13 @@ object WorkScheduler {
         )
     }
 
-    private fun computeMillisUntilNext(at: LocalTime): Long {
-        val nowKst: ZonedDateTime = ZonedDateTime.now(KST)
-        var nextKst: ZonedDateTime = nowKst.with(at).withSecond(0).withNano(0)
-        if (!nextKst.isAfter(nowKst)) {
-            nextKst = nextKst.plusDays(1)
+    private fun computeMillisUntilNext(at: LocalTime, zone: ZoneId = KST): Long {
+        val now: ZonedDateTime = ZonedDateTime.now(zone)
+        var next: ZonedDateTime = now.with(at).withSecond(0).withNano(0)
+        if (!next.isAfter(now)) {
+            next = next.plusDays(1)
         }
-        val millis = nextKst.toInstant().toEpochMilli() - nowKst.toInstant().toEpochMilli()
+        val millis = next.toInstant().toEpochMilli() - now.toInstant().toEpochMilli()
         return if (millis < 0L) 0L else millis
     }
 }

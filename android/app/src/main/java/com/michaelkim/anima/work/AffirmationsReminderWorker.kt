@@ -23,6 +23,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.michaelkim.anima.MainActivity
 import com.michaelkim.anima.R
+import com.michaelkim.anima.data.local.NotificationPrefsStore
 import com.michaelkim.anima.util.CrashReporter
 
 class AffirmationsReminderWorker(
@@ -34,10 +35,12 @@ class AffirmationsReminderWorker(
         val ctx = applicationContext
         try {
             ensureChannel(ctx)
-            if (hasNotificationPermission(ctx)) {
+            // 발화 직전에도 설정을 확인한다 — 예약 후 사용자가 껐다면(다음 refresh 전) 침묵.
+            if (hasNotificationPermission(ctx) && NotificationPrefsStore.read(ctx).morningEnabled) {
                 postAffirmationsReminder(ctx)
             }
-            // 권한 유무와 무관하게 다음 08:00 으로 재예약 — 끊기면 영영 안 옴.
+            // 권한 유무와 무관하게 다음 아침으로 재예약 — 끊기면 영영 안 옴.
+            // (꺼져 있으면 scheduleDailyAffirmationsReminder 가 취소로 처리한다.)
             WorkScheduler.scheduleDailyAffirmationsReminder(ctx)
             return Result.success()
         } catch (e: Exception) {

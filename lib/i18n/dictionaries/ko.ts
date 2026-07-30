@@ -322,6 +322,28 @@ const dict = {
     "모든 데이터가 영구 삭제됩니다. 아래에 \"삭제\"를 입력해주세요.",
   "settings.streakLabel": "연속 {count}일",
 
+  // ── 알림 설정 (로컬 리마인더) ─────────────────────
+  "settings.notifications.header": "알림",
+  "settings.notifications.row": "데일리 리마인더",
+  "settings.notifications.off": "꺼짐",
+  "settings.notifications.footer":
+    "알림은 이 기기에서만 예약돼요. 하루 최대 2건 — 이미 한 일에는 보내지 않아요.",
+  "settings.notifications.morning.title": "아침 다짐 리마인더",
+  "settings.notifications.morning.desc": "성공 선언을 따라 쓰며 하루를 여는 신호예요.",
+  "settings.notifications.evening.title": "저녁 기록 리마인더",
+  "settings.notifications.evening.desc": "오늘 목표를 아직 체크하지 않았을 때만 도착해요.",
+  "settings.notifications.weekly.title": "일요일 회고 알림",
+  "settings.notifications.weekly.desc": "한 주를 닫는 회고가 준비되면 저녁에 알려드려요.",
+  "settings.notifications.time": "시각",
+
+  // ── 알림 문구 (iOS 로컬 알림 본문 — Android 는 네이티브 리소스) ──
+  "notify.morning.title": "성공한 나에게 한 발 더",
+  "notify.morning.body": "오늘도 다짐을 따라 적으며 하루를 시작해요.",
+  "notify.evening.title": "오늘의 목표, 아직 남아 있어요",
+  "notify.evening.body": "잠깐이면 돼요 — 오늘 한 걸음을 체크해 주세요.",
+  "notify.weekly.title": "이번 주를 돌아볼 시간",
+  "notify.weekly.body": "일주일의 기록이 정리됐어요. 잠깐 돌아보세요.",
+
   // ── Anima Pro (인앱결제) ──────────────────────────
   "settings.pro.header": "ANIMA PRO",
   "settings.pro.footerActive": "모든 기능이 활성화되어 있습니다.",

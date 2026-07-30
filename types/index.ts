@@ -36,6 +36,9 @@ export interface User {
   /** 오늘의 명언 큐레이션 설정. */
   quotePreference?: QuotePreference;
   quotePreferenceUpdatedAt?: Timestamp;
+  /** 로컬 알림 설정 — 미설정이면 lib/notificationPolicy 기본값(전부 켜짐, 08/21시). */
+  notificationPrefs?: NotificationPrefs;
+  notificationPrefsUpdatedAt?: Timestamp;
   /** 미션 응답이 강화하는 정체성 라벨 풀. futurePersona 변경 시 서버에서 재생성. */
   identities?: UserIdentities;
   /**
@@ -198,6 +201,24 @@ export interface UserIdentities {
 export interface QuotePreference {
   pinnedAuthor?: string;
   pinnedDaysPerWeek?: number;
+}
+
+/**
+ * 로컬 알림(리마인더) 사용자 설정 — 정책·기본값·정규화는 lib/notificationPolicy.ts 가
+ * 단일 소스로 소유하고, Android WorkManager / iOS UNUserNotificationCenter 는 실행만 한다.
+ * 미설정(레거시 사용자)이면 전부 켜짐 + 08:00/21:00 — 기존 Android 동작과 동일.
+ */
+export interface NotificationPrefs {
+  /** 아침 다짐 리마인더 (매일). */
+  morningEnabled: boolean;
+  /** 아침 알림 시각 (0~23, 로컬 타임존). */
+  morningHour: number;
+  /** 저녁 기록 리마인더 — 오늘 목표를 이미 체크했으면 침묵(조건부). */
+  eveningEnabled: boolean;
+  /** 저녁 알림 시각 (0~23, 로컬 타임존). */
+  eveningHour: number;
+  /** 일요일 주간 회고 알림 (저녁 시각에 기록 리마인더 대신 도착). */
+  weeklyReviewEnabled: boolean;
 }
 
 // ── 홈 대시보드: 일일 체크리스트/회고 ───────────────
@@ -521,4 +542,10 @@ export interface WidgetTodayResponse {
    * "오늘의 if-then" 실행설계. 누락 시 위젯은 해당 섹션을 자연 생략 — 옛 클라이언트도 안전.
    */
   executionPlan?: WidgetExecutionPlan;
+  /**
+   * 알림 설정(정규화 완료본). Android 가 이 응답을 저장할 때 로컬 스케줄에 동기화한다 —
+   * 별도 API/브릿지 없이 기존 위젯 파이프라인 하나로 정책이 흐른다.
+   * 응답 호환성: 누락 시 클라이언트는 기본값(전부 켜짐, 08/21시)으로 동작.
+   */
+  notificationPrefs?: NotificationPrefs;
 }

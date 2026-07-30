@@ -24,8 +24,10 @@ import {
 } from "@/lib/dailyMotivation";
 import { ensureFutureVision } from "@/lib/futureVision";
 import { pickTodayPlan, pickTodayAffirmationIndex } from "@/lib/planRotation";
+import { normalizeNotificationPrefs } from "@/lib/notificationPolicy";
 import type {
   FutureVision,
+  NotificationPrefs,
   WidgetExecutionPlan,
   WidgetFutureVision,
   WidgetSlot,
@@ -211,6 +213,9 @@ export async function GET(request: NextRequest) {
     let userGoals: string[] | undefined;
     let streakCount = 0;
     let affirmations: string[] = [];
+    // 알림 설정 — Android 가 이 응답을 캐시에 쓸 때 로컬 스케줄로 동기화한다(별도 API 없음).
+    // 조회 실패 시에도 기본값을 실어 보내 클라이언트가 항상 완전한 정책을 받게 한다.
+    let notificationPrefs: NotificationPrefs = normalizeNotificationPrefs(undefined);
     /**
      * 오늘 새길 다짐 인덱스 — 앱 체크인이 요구하는 그 한 줄을 위젯도 같이 가리키게 한다.
      * ⚠️ 회전은 **잘라내기 전 전체 목록 길이**로 계산해야 서버 체크인 판정과 일치한다.
@@ -223,6 +228,7 @@ export async function GET(request: NextRequest) {
       if (data && Array.isArray(data.goals)) {
         userGoals = data.goals as string[];
       }
+      notificationPrefs = normalizeNotificationPrefs(data?.notificationPrefs);
       const rawStreak = (data?.affirmationStreak as { count?: unknown } | undefined)?.count;
       const n = Number(rawStreak ?? 0);
       streakCount = Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
@@ -291,6 +297,7 @@ export async function GET(request: NextRequest) {
       goalsTotalCount: progressResult.goalsTotalCount,
       // 응답 호환성: 플랜 미설정/조회 실패 시 필드 생략 — 옛 클라이언트는 무시, 신 클라이언트는 섹션 생략.
       ...(executionPlan ? { executionPlan } : {}),
+      notificationPrefs,
     };
 
     // 캐시 정책: `_t` 쿼리(클라 측 cache-buster) 가 실려 있거나 Cache-Control: no-cache

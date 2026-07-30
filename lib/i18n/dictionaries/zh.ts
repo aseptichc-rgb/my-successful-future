@@ -328,6 +328,28 @@ const dict: Record<DictKey, string> = {
     "您的所有数据将被永久删除。请在下方输入 \"删除\" 以确认。",
   "settings.streakLabel": "连续 {count} 天",
 
+  // 通知设置（本地提醒）
+  "settings.notifications.header": "通知",
+  "settings.notifications.row": "每日提醒",
+  "settings.notifications.off": "已关闭",
+  "settings.notifications.footer":
+    "提醒仅在本设备上安排。每天最多 2 条 — 已完成的事不会再提醒。",
+  "settings.notifications.morning.title": "早晨誓言提醒",
+  "settings.notifications.morning.desc": "以抄写成功宣言开启一天的信号。",
+  "settings.notifications.evening.title": "晚间记录提醒",
+  "settings.notifications.evening.desc": "仅当今天的目标尚未打卡时才会送达。",
+  "settings.notifications.weekly.title": "周日回顾提醒",
+  "settings.notifications.weekly.desc": "每周回顾准备好后，晚间提醒你回看一周。",
+  "settings.notifications.time": "时间",
+
+  // 通知文案（iOS 本地通知 — Android 使用原生资源）
+  "notify.morning.title": "向成功的自己更近一步",
+  "notify.morning.body": "以抄写誓言开始今天吧。",
+  "notify.evening.title": "今天的目标还在等你",
+  "notify.evening.body": "只需片刻 — 为今天的一步打卡吧。",
+  "notify.weekly.title": "该回顾这一周了",
+  "notify.weekly.body": "一周的记录已整理好，花一点时间回看吧。",
+
   // Anima Pro (应用内购买)
   "settings.pro.header": "ANIMA PRO",
   "settings.pro.footerActive": "所有功能均已解锁。",

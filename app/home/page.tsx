@@ -32,6 +32,8 @@ import {
 import { authedFetch } from "@/lib/authedFetch";
 import { notifyAndroidWidgetRefresh } from "@/lib/widgetBridge";
 import { refreshIosWidget } from "@/lib/iosWidget";
+import { syncIosNotifications } from "@/lib/notificationBridge";
+import { buildNotificationTexts, normalizeNotificationPrefs } from "@/lib/notificationPolicy";
 import MotivationCard from "@/components/home/MotivationCard";
 import TodayCard from "@/components/home/TodayCard";
 import MoreSection from "@/components/home/MoreSection";
@@ -221,6 +223,25 @@ export default function HomeDashboardPage() {
     });
     return unsub;
   }, [firebaseUser]);
+
+  // iOS 로컬 알림 재동기화 — 홈 방문/목표 체크 때마다 14일 예약 창을 앞으로 밀고,
+  // 오늘 목표를 모두 체크했으면 오늘 저녁 리마인더만 침묵시킨다("한 일에는 침묵",
+  // lib/notificationPolicy). 권한 프롬프트는 여기서 띄우지 않는다(allowPrompt=false) —
+  // 목표를 방금 다 채운 순간(가치 체감 직후)에만 허용해 맥락 없는 권한 요청을 막는다.
+  // 웹/Android 에서는 no-op. entryLoaded 전에는 achievedGoals 가 비어 "미완료"로 오판하므로 대기.
+  const allGoalsDoneToday =
+    goals.length > 0 && goals.every((g) => achievedGoals.includes(g));
+  useEffect(() => {
+    if (!user || !entryLoaded) return;
+    void syncIosNotifications({
+      prefs: normalizeNotificationPrefs(user.notificationPrefs),
+      todayGoalDone: allGoalsDoneToday,
+      allowPrompt: allGoalsDoneToday,
+      texts: buildNotificationTexts(t),
+    });
+    // goals 배열 자체는 렌더마다 새 참조라 deps 에 넣지 않는다 — 완료 여부(boolean)로 충분.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, entryLoaded, allGoalsDoneToday, t]);
 
   // 어제 저녁에 적은 "내일 첫 행동" — 아침 카드 보조 행. 실패해도 카드만 생략.
   useEffect(() => {
