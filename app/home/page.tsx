@@ -21,6 +21,7 @@ import { kstWeekday, yesterdayKstYmd, addKstDays } from "@/lib/kstDate";
 import { currentHomeMode, WEEKLY_REVIEW_WEEKDAY } from "@/lib/homeMode";
 import { pickTodayPlan, pickTodayAffirmationIndex } from "@/lib/planRotation";
 import { computeGoalSlots } from "@/lib/goalSlots";
+import { computePlanUnlock } from "@/lib/planUnlock";
 import { growthStageOf } from "@/lib/growthStage";
 import { suggestStepUp } from "@/lib/goalStepUp";
 import {
@@ -169,6 +170,8 @@ export default function HomeDashboardPage() {
 
   // WOOP 실행설계 목록 + 아침 카드의 "어젯밤의 내가 정한 첫 행동".
   const [plans, setPlans] = useState<ExecutionPlanWithId[]>([]);
+  /** 플랜 첫 스냅샷 도착 여부 — 도착 전 planCount 0 으로 해금을 오판하지 않기 위한 게이트. */
+  const [plansLoaded, setPlansLoaded] = useState(false);
   const [yesterdayFirstAction, setYesterdayFirstAction] = useState<string | null>(null);
 
   // 7일 리듬 링 — 최근 7일 체크인 날짜. null = 아직 로딩(또는 실패 → 링 생략).
@@ -214,13 +217,23 @@ export default function HomeDashboardPage() {
     return unsub;
   }, [firebaseUser, ymd]);
 
-  // WOOP 실행설계 목록 구독 — "오늘의 if-then" 회전에 쓴다.
+  // WOOP 실행설계 목록 구독 — "오늘의 if-then" 회전 + 해금 판정에 쓴다.
   useEffect(() => {
     if (!firebaseUser) return;
-    const unsub = onExecutionPlansSnapshot(firebaseUser.uid, setPlans, () => {
-      // 구독 실패(규칙 미배포 등) 시 섹션만 비운다 — 홈 나머지는 정상 동작.
-      setPlans([]);
-    });
+    // 계정이 바뀌면 새 첫 스냅샷을 기다린다 — 이전 계정의 plans 로 해금을 오판하지 않도록.
+    setPlansLoaded(false);
+    const unsub = onExecutionPlansSnapshot(
+      firebaseUser.uid,
+      (next) => {
+        setPlans(next);
+        setPlansLoaded(true);
+      },
+      () => {
+        // 구독 실패(규칙 미배포 등) 시 섹션만 비운다 — 홈 나머지는 정상 동작.
+        setPlans([]);
+        setPlansLoaded(true);
+      },
+    );
     return unsub;
   }, [firebaseUser]);
 
@@ -608,13 +621,22 @@ export default function HomeDashboardPage() {
 
   // 오늘 확인할 목표는 첫 칸 하나. 나머지(해금분)는 "더 보기" 안에서 다룬다.
   const primaryGoal = (goals[0] ?? "").trim();
-  const extraGoals = goals.slice(1);
   // 해금 게이지는 다짐 전사·목표 달성 두 축 중 큰 값으로 찬다.
   const slots = computeGoalSlots({
     affirmation: user?.affirmationStreak,
     goal: user?.goalStreak,
     currentGoalCount: goals.length,
   });
+
+  // 실행 설계 해금 — 플랜 첫 스냅샷 전(null)에는 카드를 그리지 않는다(깜빡임 방지).
+  const planUnlock = plansLoaded
+    ? computePlanUnlock({
+        affirmation: user?.affirmationStreak,
+        goal: user?.goalStreak,
+        goalCount: goals.filter((g) => g.trim().length > 0).length,
+        planCount: plans.length,
+      })
+    : null;
 
   // 성장 단계 칩 — 증거 표가 1표라도 쌓인 뒤에만 그린다(레거시/빈 계정은 조용히 생략).
   const growthStage = growthStageOf(user?.growth?.votes);
@@ -780,7 +802,9 @@ export default function HomeDashboardPage() {
           onRegenerateVision={handleRegenerateFutureVision}
           todayPlan={todayPlan}
           yesterdayFirstAction={yesterdayFirstAction}
-          extraGoals={extraGoals}
+          goals={goals}
+          identityLabels={user?.identities?.labels ?? []}
+          unlock={planUnlock}
           achievedGoals={achievedGoals}
           onToggleGoalAchieved={(g) => void handleToggleGoalAchieved(g)}
           weeklyReview={showWeeklyReview ? weeklyReview : null}

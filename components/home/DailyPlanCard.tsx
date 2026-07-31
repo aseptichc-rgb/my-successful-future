@@ -1,6 +1,7 @@
 "use client";
 
 import { useT } from "@/lib/i18n";
+import type { PlanUnlockState } from "@/lib/planUnlock";
 import type { ExecutionPlan } from "@/types";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -9,22 +10,63 @@ import type { ExecutionPlan } from "@/types";
  *  · full   : 아침 모드 — if/then 두 줄 + 연결 목표 캡션 + "어젯밤의 내가 정한
  *             첫 행동"(있을 때). 하루의 첫 화면에서 결정 순간의 행동 큐를 준다.
  *  · compact: 중립/저녁 모드 — 한 줄 축약(카드 존재감만 유지).
- *  · 플랜이 없으면 CTA 행 — 탭하면 "나의 행동" 탭(실행 설계 섹션)으로 이동.
+ *  · 플랜이 없으면 CTA 행 — 탭하면 홈 위로 설계 시트가 바로 열린다.
+ *  · locked : 잠금 예고 행(탭 불가) — 실행 설계는 꾸준함으로 벌어서 연다.
+ *  · hidden : 첫 행동 회수 행만(그마저 없으면 null — 래퍼가 통째로 생략).
  * ───────────────────────────────────────────────────────────────── */
 
 export default function DailyPlanCard({
   plan,
   yesterdayFirstAction,
   compact,
+  unlock,
   onCreateCta,
 }: {
   plan: Pick<ExecutionPlan, "goal" | "ifText" | "thenText"> | null;
   /** 어제 저녁에 적은 "내일 첫 행동" — 아침(full)에서만 의미 있으므로 compact 면 무시. */
   yesterdayFirstAction: string | null;
   compact: boolean;
+  /** 해금 상태 (lib/planUnlock) — 잠금/숨김 분기는 플랜 유무보다 먼저 본다. */
+  unlock: PlanUnlockState;
   onCreateCta: () => void;
 }) {
   const t = useT();
+
+  if (unlock.kind === "hidden") {
+    // 설계할 목표가 없다 — 첫 행동 회수 행만 남기고, 그마저 없으면 카드 자체를 접는다.
+    if (!compact && yesterdayFirstAction) {
+      return (
+        <div className="bg-[var(--bg-grouped-2)] rounded-[12px] overflow-hidden">
+          <FirstActionRow text={yesterdayFirstAction} />
+        </div>
+      );
+    }
+    return null;
+  }
+
+  if (unlock.kind === "locked") {
+    // 아직 잠김 — 조건·진행도만 예고한다. 눌러도 아무 일이 없는 행은 button 이 아니다.
+    return (
+      <div className="bg-[var(--bg-grouped-2)] rounded-[12px] overflow-hidden">
+        {!compact && yesterdayFirstAction && (
+          <FirstActionRow text={yesterdayFirstAction} withSeparator />
+        )}
+        <div className="flex items-center gap-3 px-5 py-4">
+          <span className="text-[17px]" aria-hidden>
+            🔒
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-[15px] font-medium text-[var(--label-2)]">
+              {t("plan.locked.title")}
+            </span>
+            <span className="block mt-0.5 text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label-3)]">
+              {t("plan.locked.body", { days: unlock.threshold, progress: unlock.progress })}
+            </span>
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   if (!plan) {
     // 플랜 없음 — 가벼운 CTA 행 (첫 행동만 있으면 그것만이라도 보여준다).

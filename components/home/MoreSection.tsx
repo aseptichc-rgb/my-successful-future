@@ -11,12 +11,14 @@ import { notifyAndroidWidgetRefresh } from "@/lib/widgetBridge";
 import { refreshIosWidget } from "@/lib/iosWidget";
 import { useT } from "@/lib/i18n";
 import type { HomeMode } from "@/lib/homeMode";
+import type { PlanUnlockState } from "@/lib/planUnlock";
 import type { WeeklyReview } from "@/lib/weeklyReview";
 import type { DailyEntry, ExecutionPlan, FutureVision } from "@/types";
 import DisclosureSection from "@/components/ui/DisclosureSection";
 import FutureSelfLine from "@/components/home/FutureSelfLine";
 import FutureVisionCard from "@/components/home/FutureVisionCard";
 import DailyPlanCard from "@/components/home/DailyPlanCard";
+import ExecutionPlanSheet from "@/components/woop/ExecutionPlanSheet";
 import WeeklyReviewCard from "@/components/home/WeeklyReviewCard";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -60,7 +62,9 @@ export default function MoreSection({
   onRegenerateVision,
   todayPlan,
   yesterdayFirstAction,
-  extraGoals,
+  goals,
+  identityLabels,
+  unlock,
   achievedGoals,
   onToggleGoalAchieved,
   weeklyReview,
@@ -81,8 +85,12 @@ export default function MoreSection({
   onRegenerateVision: () => Promise<void>;
   todayPlan: Pick<ExecutionPlan, "goal" | "ifText" | "thenText"> | null;
   yesterdayFirstAction: string | null;
-  /** 오늘 카드에 이미 보여준 첫 목표를 뺀 나머지 — 같은 목표를 두 번 보여주지 않는다. */
-  extraGoals: string[];
+  /** 전체 목표 (User.goals) — 첫 목표는 오늘 카드 몫이라 여기선 나머지만 그린다. */
+  goals: string[];
+  /** 설계 시트의 정체성 칩 풀 (User.identities.labels — 없으면 시트가 섹션 숨김). */
+  identityLabels: string[];
+  /** 실행 설계 해금 상태. null = 플랜 첫 스냅샷 전 — 영역을 그리지 않는다(깜빡임 방지). */
+  unlock: PlanUnlockState | null;
   achievedGoals: string[];
   onToggleGoalAchieved: (goal: string) => void;
   /** 일요일 저녁이 아니면 null — 카드 자체가 생략된다. */
@@ -91,6 +99,10 @@ export default function MoreSection({
   onOpenWinsHistory: () => void;
 }) {
   const t = useT();
+
+  // 첫 목표는 오늘 카드가 이미 보여주므로 여기서는 나머지만 그린다.
+  const extraGoals = goals.slice(1);
+  const [planSheetOpen, setPlanSheetOpen] = useState(false);
 
   const [wins, setWins] = useState<string[]>(["", "", ""]);
   const [savedWins, setSavedWins] = useState<string[]>(["", "", ""]);
@@ -216,6 +228,7 @@ export default function MoreSection({
   const winRowCount = Math.min(MAX_DAILY_WINS, Math.max(winsVisible, winsFilled));
 
   return (
+    <>
     <DisclosureSection
       id="home.more"
       header={t("home.section.more")}
@@ -238,15 +251,23 @@ export default function MoreSection({
         />
       </div>
 
-      {/* 오늘의 if-then — 아침엔 전체, 그 외엔 한 줄 축약. */}
-      <div className="border-b border-[var(--sep)]">
-        <DailyPlanCard
-          plan={todayPlan}
-          yesterdayFirstAction={homeMode === "morning" ? yesterdayFirstAction : null}
-          compact={homeMode !== "morning"}
-          onCreateCta={onOpenSettings}
-        />
-      </div>
+      {/* 오늘의 if-then — 아침엔 전체, 그 외엔 한 줄 축약. 잠김/로딩 전엔 래퍼(구분선)째 생략. */}
+      {(() => {
+        if (!unlock) return null;
+        const firstAction = homeMode === "morning" ? yesterdayFirstAction : null;
+        if (unlock.kind === "hidden" && !firstAction) return null;
+        return (
+          <div className="border-b border-[var(--sep)]">
+            <DailyPlanCard
+              plan={todayPlan}
+              yesterdayFirstAction={firstAction}
+              compact={homeMode !== "morning"}
+              unlock={unlock}
+              onCreateCta={() => setPlanSheetOpen(true)}
+            />
+          </div>
+        );
+      })()}
 
       {/* 추가로 해금한 목표 — 배지를 탭해 달성 토글(추가/삭제는 설정). */}
       {extraGoals.map((goal, idx) => {
@@ -303,7 +324,8 @@ export default function MoreSection({
         );
       })}
 
-      {/* 목표·실행 설계 관리 — 홈은 읽기 전용, 편집은 설정에서 (홈의 자유입력 진입점 0) */}
+      {/* 목표 관리 — 홈 첫 화면에 자유입력이 깔리지 않는다. 편집은 시트/설정에서.
+          잠긴 동안엔 문구에서 실행 설계 이름을 뺀다(예고는 잠금 행 한 곳으로 충분). */}
       <button
         type="button"
         onClick={onOpenSettings}
@@ -313,7 +335,7 @@ export default function MoreSection({
           ⚡
         </span>
         <span className="flex-1 text-[15px] leading-[20px] font-medium text-[var(--soul)]">
-          {t("home.plans.manage")}
+          {t(unlock?.kind === "open" ? "home.plans.manage" : "home.plans.manageLocked")}
         </span>
         <IconChevron />
       </button>
@@ -433,5 +455,17 @@ export default function MoreSection({
         </div>
       )}
     </DisclosureSection>
+
+    {/* 설계 시트 — DisclosureSection 바깥에 마운트해 섹션을 접어도 시트가 살아 있다.
+        기본은 빠른 설계(quick, 키보드 0회) — 자유입력은 "직접 다듬기" 두 단계 뒤. */}
+    {planSheetOpen && (
+      <ExecutionPlanSheet
+        uid={uid}
+        goals={goals}
+        identityLabels={identityLabels}
+        onClose={() => setPlanSheetOpen(false)}
+      />
+    )}
+    </>
   );
 }
