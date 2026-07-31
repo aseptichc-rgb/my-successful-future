@@ -87,7 +87,7 @@ const dict: Record<DictKey, string> = {
   "onboarding.goal.title": "Una sola cosa hoy, para ser esa persona",
   "onboarding.goal.subtitle":
     "Con una basta. Si la mantienes, se abrirá sitio para otra meta.",
-  "onboarding.goal.placeholder": "leo 30 minutos cada día",
+  "onboarding.goal.placeholder": "leo 30 páginas cada día y anoto una línea",
   "onboarding.goal.hint":
     "Escríbela como una acción que hoy hiciste o no hiciste: así se puede marcar.",
 
@@ -151,7 +151,7 @@ const dict: Record<DictKey, string> = {
   "home.goals.subtitle":
     "Una pequeña acción que te acerca a tu yo futuro.",
   "home.goals.todayProgress": "Hoy {done}/{total}",
-  "home.goals.placeholder": "Ej.: Leer 30 minutos cada día",
+  "home.goals.placeholder": "Ej.: Probar 1 cosa que nunca he hecho, cada día",
   "home.goals.maxAlert": "Puedes añadir hasta {max} metas.",
   "home.goals.deleteAria": "Eliminar meta",
   "home.goals.toggleAchievedAria": "Marcar como hecho hoy",
@@ -490,7 +490,7 @@ const dict: Record<DictKey, string> = {
   "affirmations.focus.title": "Tu yo futuro y exitoso",
   "affirmations.focus.rotation": "{index} de {total}",
   "affirmations.focus.hint": "Escribe, con detalle, al tú que ya vive ese sueño.",
-  "affirmations.focus.placeholder": "Escríbela igual…",
+  "affirmations.focus.placeholder": "Cada línea lo hace más real…",
   "affirmations.focus.expand": "Grabar las {count} líneas",
   "affirmations.focus.collapse": "Solo la línea de hoy",
   "affirmations.focus.deepHint": "Si las grabas todas, ganas un voto de identidad más.",

@@ -84,7 +84,7 @@ const dict: Record<DictKey, string> = {
   "onboarding.goal.title": "One thing today, to become that person",
   "onboarding.goal.subtitle":
     "One is enough. Keep it up and you'll earn room for another goal.",
-  "onboarding.goal.placeholder": "read for 30 minutes every day",
+  "onboarding.goal.placeholder": "read 30 pages every day and write one line about it",
   "onboarding.goal.hint":
     "Write it as an action you either did or didn't do today — that's what makes it checkable.",
 
@@ -147,7 +147,7 @@ const dict: Record<DictKey, string> = {
   "home.goals.subtitle":
     "One small action that moves you toward the future you.",
   "home.goals.todayProgress": "Today {done}/{total}",
-  "home.goals.placeholder": "e.g., Read for 30 minutes every day",
+  "home.goals.placeholder": "e.g., Try 1 thing I've never done, every day",
   "home.goals.maxAlert": "You can add up to {max} goals.",
   "home.goals.deleteAria": "Delete goal",
   "home.goals.toggleAchievedAria": "Mark as done today",
@@ -484,7 +484,7 @@ const dict: Record<DictKey, string> = {
   "affirmations.focus.title": "Your successful future self",
   "affirmations.focus.rotation": "{index} of {total}",
   "affirmations.focus.hint": "Write out, vividly, the you who has already lived the dream.",
-  "affirmations.focus.placeholder": "Write it out…",
+  "affirmations.focus.placeholder": "Each line makes it more real…",
   "affirmations.focus.expand": "Engrave all {count} lines",
   "affirmations.focus.collapse": "Just today's line",
   "affirmations.focus.deepHint": "Engrave them all and you earn one more identity vote.",

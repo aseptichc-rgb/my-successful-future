@@ -80,7 +80,7 @@ const dict: Record<DictKey, string> = {
   // 第 2 步下方 —— 为了成为那个人,今天要做的行动。与上面那一句彼此独立。
   "onboarding.goal.title": "为了成为那个人,今天只做一件事",
   "onboarding.goal.subtitle": "一个就够了。坚持下去,就能多放一个目标。",
-  "onboarding.goal.placeholder": "每天读书 30 分钟",
+  "onboarding.goal.placeholder": "每天读 30 页书,并写下一行心得",
   "onboarding.goal.hint": "写成「今天做了或没做」的行动,才能一眼判断有没有做到。",
 
   "onboarding.step4.cta": "获取今日的一句话 →",
@@ -142,7 +142,7 @@ const dict: Record<DictKey, string> = {
   "home.goals.subtitle":
     "向未来的你迈出的一小步。",
   "home.goals.todayProgress": "今日 {done}/{total}",
-  "home.goals.placeholder": "例:每天读书 30 分钟",
+  "home.goals.placeholder": "例:每天挑战一件没做过的事",
   "home.goals.maxAlert": "最多可添加 {max} 个目标。",
   "home.goals.deleteAria": "删除目标",
   "home.goals.toggleAchievedAria": "标记为今日已完成",
@@ -473,7 +473,7 @@ const dict: Record<DictKey, string> = {
   "affirmations.focus.title": "成功的未来的我",
   "affirmations.focus.rotation": "第 {index}/{total} 条",
   "affirmations.focus.hint": "把已经实现梦想的自己，生动地写下来。",
-  "affirmations.focus.placeholder": "照着写一遍…",
+  "affirmations.focus.placeholder": "写得越多，那个未来越真实…",
   "affirmations.focus.expand": "刻下全部 {count} 行",
   "affirmations.focus.collapse": "只写今天这一行",
   "affirmations.focus.deepHint": "全部刻下，会多得一票身份证据。",

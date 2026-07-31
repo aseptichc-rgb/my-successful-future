@@ -86,7 +86,7 @@ const dict = {
   "onboarding.goal.title": "그 사람이 되기 위해, 오늘 딱 하나",
   "onboarding.goal.subtitle":
     "하나면 충분해요. 꾸준히 지키면 담을 수 있는 목표가 하나씩 늘어나요.",
-  "onboarding.goal.placeholder": "매일 30분 책을 읽는다",
+  "onboarding.goal.placeholder": "매일 책 30쪽을 읽고 한 줄을 남긴다",
   "onboarding.goal.hint": "“~한다”로 끝나는 행동 문장으로 적으면 매일 지켰는지 바로 알 수 있어요.",
 
   "onboarding.step4.cta": "오늘의 한 마디 받기 →",
@@ -145,7 +145,7 @@ const dict = {
   "home.goals.subtitle":
     "성공한 나의 모습으로 다가가기 위해 오늘 옮겨볼 한 가지 행동.",
   "home.goals.todayProgress": "오늘 {done}/{total}",
-  "home.goals.placeholder": "예: 매일 30분 책 읽기",
+  "home.goals.placeholder": "예: 매일 안 해본 일 1가지 도전하기",
   "home.goals.maxAlert": "목표는 최대 {max}개까지 추가할 수 있어요.",
   "home.goals.deleteAria": "목표 삭제",
   "home.goals.toggleAchievedAria": "오늘 달성으로 표시",
@@ -469,7 +469,7 @@ const dict = {
   "affirmations.focus.title": "성공한 미래의 나",
   "affirmations.focus.rotation": "{index}/{total}번째",
   "affirmations.focus.hint": "이미 꿈을 이룬 나의 모습을 생생히 적어주세요.",
-  "affirmations.focus.placeholder": "따라 적어주세요…",
+  "affirmations.focus.placeholder": "적을수록 그 미래가 현실이 돼요…",
   "affirmations.focus.expand": "{count}줄 전체 새기기",
   "affirmations.focus.collapse": "오늘 한 줄만 쓰기",
   "affirmations.focus.deepHint": "전체를 새기면 정체성 증거가 한 표 더 쌓여요.",

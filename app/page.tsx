@@ -116,9 +116,9 @@ export default function LandingPage() {
                   너의 오늘 목표
                 </p>
                 <ul className="space-y-1.5 text-[13px] tracking-[-0.005em] text-black/72">
-                  <li>• 매일 30분 책 읽기</li>
-                  <li>• 새 사업 아이디어 1개 정리</li>
-                  <li>• 운동 30분</li>
+                  <li>• 매일 책 30쪽 읽고 한 줄 남기기</li>
+                  <li>• 새벽 6시에 일어나 1시간 몰입</li>
+                  <li>• 매일 안 해본 일 1가지 도전</li>
                 </ul>
               </div>
             </div>
