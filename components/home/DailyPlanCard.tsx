@@ -60,7 +60,7 @@ export default function DailyPlanCard({
               {t("plan.locked.title")}
             </span>
             <span className="block mt-0.5 text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label-3)]">
-              {t("plan.locked.body", { days: unlock.threshold, progress: unlock.progress })}
+              {t("unlock.locked.body", { days: unlock.threshold, progress: unlock.progress })}
             </span>
           </span>
         </div>

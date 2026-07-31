@@ -436,7 +436,7 @@ const dict: Record<DictKey, string> = {
   "plan.today.emptyCta": "Crea el plan de ejecución de hoy",
   "plan.today.firstAction": "La primera acción que eligió mi yo de anoche",
   "plan.locked.title": "Diseño de ejecución (if-then)",
-  "plan.locked.body": "Se abre con {days} días seguidos · ahora {progress} días",
+  "unlock.locked.body": "Se abre con {days} días seguidos · ahora {progress} días",
 
   // ── Modo noche: primera acción de mañana ──────────
   "home.evening.firstAction.title": "Una primera acción para mañana",

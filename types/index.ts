@@ -61,6 +61,12 @@ export interface User {
    */
   growth?: UserGrowth;
   /**
+   * "오늘 잘한 일" 기록 보존 표식 — 해금 게이트(lib/winsUnlock) 도입 전부터 쓰던 계정에
+   * 홈이 한 번만 찍는다. 값(시각) 자체는 쓰지 않고 "존재 여부"만 판정에 쓴다.
+   * 스트릭으로 연 사용자에겐 필요 없다(bestCount 는 줄지 않아 판정이 스스로 유지된다).
+   */
+  winsUnlockedAt?: Timestamp;
+  /**
    * 무료 체험 종료 시점 (Firestore Timestamp 미러).
    * 실제 게이트 판정은 Firebase custom claim 의 trialEndsAt(ms) 으로 수행하고,
    * 이 필드는 UI 의 D-day 카운트다운/안내 문구에 사용한다.

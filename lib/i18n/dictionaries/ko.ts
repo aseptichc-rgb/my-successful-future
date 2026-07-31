@@ -415,7 +415,8 @@ const dict = {
   "plan.today.emptyCta": "오늘의 실행 설계를 만들어보세요",
   "plan.today.firstAction": "어젯밤의 내가 정한 첫 행동",
   "plan.locked.title": "실행 설계 (if-then)",
-  "plan.locked.body": "{days}일 연속이면 열려요 · 지금 {progress}일",
+  // 잠금 예고 문구는 실행 설계·잘한 일 기록이 공유한다 — 같은 규칙이라 문장도 하나다.
+  "unlock.locked.body": "{days}일 연속이면 열려요 · 지금 {progress}일",
 
   // ── 저녁 모드: 내일 첫 행동 ───────────────────────
   "home.evening.firstAction.title": "내일 첫 행동 1개",

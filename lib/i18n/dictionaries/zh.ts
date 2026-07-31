@@ -420,7 +420,7 @@ const dict: Record<DictKey, string> = {
   "plan.today.emptyCta": "创建今天的执行计划",
   "plan.today.firstAction": "昨晚的我定下的第一个行动",
   "plan.locked.title": "执行设计 (if-then)",
-  "plan.locked.body": "连续{days}天即可解锁 · 目前{progress}天",
+  "unlock.locked.body": "连续{days}天即可解锁 · 目前{progress}天",
 
   // ── 夜晚模式：明天的第一个行动 ────────────────────
   "home.evening.firstAction.title": "明天的第一个行动",

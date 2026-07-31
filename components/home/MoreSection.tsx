@@ -12,6 +12,7 @@ import { refreshIosWidget } from "@/lib/iosWidget";
 import { useT } from "@/lib/i18n";
 import type { HomeMode } from "@/lib/homeMode";
 import type { PlanUnlockState } from "@/lib/planUnlock";
+import type { WinsUnlockState } from "@/lib/winsUnlock";
 import type { WeeklyReview } from "@/lib/weeklyReview";
 import type { DailyEntry, ExecutionPlan } from "@/types";
 import DisclosureSection from "@/components/ui/DisclosureSection";
@@ -63,6 +64,7 @@ export default function MoreSection({
   goals,
   identityLabels,
   unlock,
+  winsUnlock,
   achievedGoals,
   onToggleGoalAchieved,
   weeklyReview,
@@ -85,6 +87,8 @@ export default function MoreSection({
   identityLabels: string[];
   /** 실행 설계 해금 상태. null = 플랜 첫 스냅샷 전 — 영역을 그리지 않는다(깜빡임 방지). */
   unlock: PlanUnlockState | null;
+  /** 잘한 일 기록 해금 상태. null = 오늘 문서 첫 스냅샷 전 — 잠금 행조차 그리지 않는다. */
+  winsUnlock: WinsUnlockState | null;
   achievedGoals: string[];
   onToggleGoalAchieved: (goal: string) => void;
   /** 일요일 저녁이 아니면 null — 카드 자체가 생략된다. */
@@ -115,6 +119,8 @@ export default function MoreSection({
   const winsAutosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tomorrowAutosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tomorrowToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** 저장을 이미 건 값 — Enter → blur 로 flush 가 두 번 불려도 같은 값을 두 번 쓰지 않는다. */
+  const tomorrowSavingValueRef = useRef<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -184,6 +190,7 @@ export default function MoreSection({
   };
 
   const doAutoSaveTomorrowAction = async (snapshot: string) => {
+    tomorrowSavingValueRef.current = snapshot;
     setTomorrowSaving(true);
     setTomorrowError(null);
     try {
@@ -197,6 +204,7 @@ export default function MoreSection({
       );
     } catch (err) {
       console.error("[home] 내일 첫 행동 자동 저장 실패:", err);
+      tomorrowSavingValueRef.current = null; // 실패한 값은 다시 저장 대상으로 되돌린다.
       setTomorrowError(t("home.wins.saveFailed"));
     } finally {
       setTomorrowSaving(false);
@@ -215,6 +223,20 @@ export default function MoreSection({
     tomorrowAutosaveTimerRef.current = setTimeout(() => {
       void doAutoSaveTomorrowAction(next);
     }, WINS_AUTOSAVE_MS);
+  };
+
+  /* 대기 중인 디바운스를 취소하고 지금 저장 — Enter(완료) · 포커스 아웃에서 쓴다.
+   * "한 줄짜리 행동"이라 Enter 는 줄바꿈이 아니라 저장/닫기여야 한다. */
+  const flushTomorrowAction = () => {
+    if (tomorrowAutosaveTimerRef.current) {
+      clearTimeout(tomorrowAutosaveTimerRef.current);
+      tomorrowAutosaveTimerRef.current = null;
+    }
+    const next = tomorrowAction.trim();
+    if (next !== tomorrowAction) setTomorrowAction(next);
+    if (next.length === 0) return;
+    if (next === savedTomorrowAction || next === tomorrowSavingValueRef.current) return;
+    void doAutoSaveTomorrowAction(next);
   };
 
   // 이미 적어둔 잘한 일은 접지 않는다 — 별도 state 동기화 없이 렌더 시점에 파생한다.
@@ -322,76 +344,87 @@ export default function MoreSection({
         <IconChevron />
       </button>
 
-      {/* ── 오늘의 기록 — 전부 선택 입력 ── */}
-      <div className="flex items-center justify-between px-4 pt-3 pb-1">
-        <span className="text-[13px] uppercase tracking-[-0.08px] text-[var(--label-2)]">
-          {t("home.wins.title", { max: MAX_DAILY_WINS })}
-        </span>
-        <div className="flex items-center gap-4">
-          {winsError ? (
-            <span className="text-[13px] text-[#FF3B30]">{winsError}</span>
-          ) : winsJustSaved ? (
-            <span className="text-[13px] font-medium text-[#D85A30]">{t("common.saved")}</span>
-          ) : winsAutoSaving ? (
-            <span className="text-[13px] text-[var(--label-3)]">{t("common.saving")}</span>
-          ) : null}
-          <button
-            type="button"
-            onClick={onOpenWinsHistory}
-            className="text-[15px] font-medium text-[var(--soul)]"
-          >
-            {t("home.wins.history")}
-          </button>
-        </div>
-      </div>
+      {/* ── 오늘의 기록 — 전부 선택 입력 ──
+          잘한 일 3칸도 꾸준함으로 벌어서 연다(lib/winsUnlock). 필수 루틴이 붙기 전의 빈 칸
+          여러 개는 격려가 아니라 숙제로 읽힌다. 첫 스냅샷 전(null)에는 잠금 행조차 그리지
+          않는다 — 열려 있던 기록이 한 프레임 잠겼다 풀리는 편이 더 나쁘다. */}
+      {winsUnlock?.kind === "locked" && (
+        <WinsLockedRow progress={winsUnlock.progress} threshold={winsUnlock.threshold} />
+      )}
 
-      {Array.from({ length: winRowCount }, (_, idx) => {
-        const num = String(idx + 1).padStart(2, "0");
-        const placeholder =
-          idx === 0
-            ? t("home.wins.placeholder1")
-            : idx === 1
-              ? t("home.wins.placeholder2")
-              : t("home.wins.placeholder3");
-        return (
-          <div key={idx} className="relative flex items-start gap-3 px-4 py-3">
-            <div
-              className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0 mt-0.5"
-              style={{ background: SLOT_COLOR + "1A" }}
-            >
-              <span className="text-[15px] font-bold tracking-[-0.3px]" style={{ color: SLOT_COLOR }}>
-                {num}
-              </span>
+      {winsUnlock?.kind === "open" && (
+        <>
+          <div className="flex items-center justify-between px-4 pt-3 pb-1">
+            <span className="text-[13px] uppercase tracking-[-0.08px] text-[var(--label-2)]">
+              {t("home.wins.title", { max: MAX_DAILY_WINS })}
+            </span>
+            <div className="flex items-center gap-4">
+              {winsError ? (
+                <span className="text-[13px] text-[#FF3B30]">{winsError}</span>
+              ) : winsJustSaved ? (
+                <span className="text-[13px] font-medium text-[#D85A30]">{t("common.saved")}</span>
+              ) : winsAutoSaving ? (
+                <span className="text-[13px] text-[var(--label-3)]">{t("common.saving")}</span>
+              ) : null}
+              <button
+                type="button"
+                onClick={onOpenWinsHistory}
+                className="text-[15px] font-medium text-[var(--soul)]"
+              >
+                {t("home.wins.history")}
+              </button>
             </div>
-            <textarea
-              value={wins[idx] || ""}
-              rows={1}
-              maxLength={WIN_MAX}
-              onChange={(e) => handleChangeWin(idx, e.target.value)}
-              placeholder={placeholder}
-              className="flex-1 min-h-[24px] resize-none bg-transparent text-[17px] leading-[24px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none py-2"
-            />
-            <div
-              className="absolute bottom-0 right-0 h-[0.5px]"
-              style={{ left: 60, background: "var(--sep)" }}
-            />
           </div>
-        );
-      })}
 
-      {winRowCount < MAX_DAILY_WINS && (
-        <button
-          type="button"
-          onClick={() => setWinsVisible((n) => Math.min(MAX_DAILY_WINS, n + 1))}
-          className="w-full flex items-center gap-3 px-4 py-3 text-left"
-        >
-          <span className="w-9 flex-shrink-0 text-center text-[17px] text-[var(--soul)]" aria-hidden>
-            ＋
-          </span>
-          <span className="flex-1 text-[15px] leading-[20px] font-medium text-[var(--soul)]">
-            {t("home.wins.addRow")}
-          </span>
-        </button>
+          {Array.from({ length: winRowCount }, (_, idx) => {
+            const num = String(idx + 1).padStart(2, "0");
+            const placeholder =
+              idx === 0
+                ? t("home.wins.placeholder1")
+                : idx === 1
+                  ? t("home.wins.placeholder2")
+                  : t("home.wins.placeholder3");
+            return (
+              <div key={idx} className="relative flex items-start gap-3 px-4 py-3">
+                <div
+                  className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0 mt-0.5"
+                  style={{ background: SLOT_COLOR + "1A" }}
+                >
+                  <span className="text-[15px] font-bold tracking-[-0.3px]" style={{ color: SLOT_COLOR }}>
+                    {num}
+                  </span>
+                </div>
+                <textarea
+                  value={wins[idx] || ""}
+                  rows={1}
+                  maxLength={WIN_MAX}
+                  onChange={(e) => handleChangeWin(idx, e.target.value)}
+                  placeholder={placeholder}
+                  className="flex-1 min-h-[24px] resize-none bg-transparent text-[17px] leading-[24px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none py-2"
+                />
+                <div
+                  className="absolute bottom-0 right-0 h-[0.5px]"
+                  style={{ left: 60, background: "var(--sep)" }}
+                />
+              </div>
+            );
+          })}
+
+          {winRowCount < MAX_DAILY_WINS && (
+            <button
+              type="button"
+              onClick={() => setWinsVisible((n) => Math.min(MAX_DAILY_WINS, n + 1))}
+              className="w-full flex items-center gap-3 px-4 py-3 text-left"
+            >
+              <span className="w-9 flex-shrink-0 text-center text-[17px] text-[var(--soul)]" aria-hidden>
+                ＋
+              </span>
+              <span className="flex-1 text-[15px] leading-[20px] font-medium text-[var(--soul)]">
+                {t("home.wins.addRow")}
+              </span>
+            </button>
+          )}
+        </>
       )}
 
       {/* 내일 첫 행동 1개 — 저녁에만 나타난다(위치는 항상 기록 끝) */}
@@ -418,14 +451,28 @@ export default function MoreSection({
                 <span className="text-[13px] text-[var(--label-3)]">{t("common.saving")}</span>
               ) : null}
             </div>
-            <textarea
+            {/* 여러 줄이 아니라 한 줄 입력 — textarea 는 Enter 마다 줄이 늘어 스크롤을 만든다.
+                Enter/완료는 곧바로 저장하고 키보드를 내린다(조합 중 Enter 는 한글 확정이라 통과). */}
+            <input
+              type="text"
               value={tomorrowAction}
-              rows={1}
               maxLength={TOMORROW_FIRST_ACTION_MAX}
+              enterKeyHint="done"
               onChange={(e) => handleChangeTomorrowAction(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+                e.preventDefault();
+                flushTomorrowAction();
+                e.currentTarget.blur();
+              }}
+              onBlur={flushTomorrowAction}
               placeholder={t("home.evening.firstAction.placeholder")}
-              className="mt-1 w-full min-h-[24px] resize-none bg-transparent text-[17px] leading-[24px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none"
+              className="mt-1 w-full bg-transparent text-[17px] leading-[24px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none"
             />
+            {/* 저장 버튼이 없다는 사실 자체를 알려준다 — 안 그러면 "저장을 못 했다"고 읽힌다. */}
+            <p className="mt-1 text-[12px] leading-[16px] text-[var(--label-3)]">
+              {t("home.evening.firstAction.footer")}
+            </p>
           </div>
         </div>
       )}
@@ -449,5 +496,28 @@ export default function MoreSection({
       />
     )}
     </>
+  );
+}
+
+/**
+ * 잘한 일 기록 잠금 예고 행 — 조건과 진행도만 알린다.
+ * 눌러도 아무 일이 없으므로 button 이 아니다(DailyPlanCard 의 잠금 행과 같은 규칙).
+ */
+function WinsLockedRow({ progress, threshold }: { progress: number; threshold: number }) {
+  const t = useT();
+  return (
+    <div className="flex items-start gap-3 px-4 py-4">
+      <span className="w-9 flex-shrink-0 text-center text-[17px] leading-[22px]" aria-hidden>
+        🔒
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-[15px] leading-[20px] font-medium text-[var(--label-2)]">
+          {t("home.wins.title", { max: MAX_DAILY_WINS })}
+        </p>
+        <p className="mt-0.5 text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label-3)]">
+          {t("unlock.locked.body", { days: threshold, progress })}
+        </p>
+      </div>
+    </div>
   );
 }

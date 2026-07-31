@@ -478,6 +478,16 @@ export async function saveDailyWins(uid: string, ymd: string, wins: string[]) {
 }
 
 /**
+ * "잘한 일 기록을 이미 쓰던 계정" 보존 표식 — 해금 게이트(lib/winsUnlock) 도입 전부터
+ * 기록이 있는 사용자에게 홈이 딱 한 번 찍는다. 이후로는 스트릭과 무관하게 열린다.
+ * 값은 읽지 않고 존재 여부만 판정에 쓰므로 merge 로 필드 하나만 얹는다.
+ */
+export async function markWinsUnlocked(uid: string) {
+  const db = getDbInstance();
+  await setDoc(doc(db, "users", uid), { winsUnlockedAt: serverTimestamp() }, { merge: true });
+}
+
+/**
  * 잘한 일(wins) 기록 히스토리 조회.
  * `ymd` 필드(YYYY-MM-DD KST) 내림차순으로 최신 날짜부터 가져온다.
  * 빈 문자열만 있는 날짜는 제외해서 "기록한 날"만 보여준다.

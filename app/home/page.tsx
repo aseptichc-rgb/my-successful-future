@@ -14,6 +14,7 @@ import {
   getAffirmationLogYmds,
   getIdentityEvidenceRange,
   getDailyWinsHistory,
+  markWinsUnlocked,
   getKstYmd,
   type ExecutionPlanWithId,
 } from "@/lib/firebase";
@@ -22,6 +23,7 @@ import { currentHomeMode, WEEKLY_REVIEW_WEEKDAY } from "@/lib/homeMode";
 import { pickTodayPlan, pickTodayAffirmationIndex } from "@/lib/planRotation";
 import { computeGoalSlots } from "@/lib/goalSlots";
 import { computePlanUnlock } from "@/lib/planUnlock";
+import { computeWinsUnlock, hasAnyWin } from "@/lib/winsUnlock";
 import { growthStageOf } from "@/lib/growthStage";
 import { suggestStepUp } from "@/lib/goalStepUp";
 import {
@@ -65,6 +67,11 @@ import type { DailyEntry, DailyMotivation, FutureVision } from "@/types";
  * ────────────────────────────────────────────────────────────────── */
 
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** 어제 문서 조회 결과가 "지금 화면의 계정·날짜" 것인지 판정하는 키. */
+function yesterdayWinsKey(uid: string | undefined, ymd: string): string {
+  return `${uid ?? ""}:${ymd}`;
+}
 
 function readQDateFromUrl(): string | null {
   if (typeof window === "undefined") return null;
@@ -174,6 +181,15 @@ export default function HomeDashboardPage() {
   /** 플랜 첫 스냅샷 도착 여부 — 도착 전 planCount 0 으로 해금을 오판하지 않기 위한 게이트. */
   const [plansLoaded, setPlansLoaded] = useState(false);
   const [yesterdayFirstAction, setYesterdayFirstAction] = useState<string | null>(null);
+  /**
+   * 어제 문서에 잘한 일 기록이 있었는가 — 잘한 일 해금의 "기존 사용자 보존" 신호.
+   * 어제 문서는 첫 행동 때문에 이미 읽으므로 추가 조회 비용은 0이다.
+   * 조회한 키(uid:ymd)를 값과 함께 담아 둔다 — 계정·날짜가 바뀌면 파생값이 저절로
+   * null(판정 보류)이 되므로, 효과 본문에서 초기화 setState 를 부르지 않아도 된다.
+   */
+  const [yesterdayWins, setYesterdayWins] = useState<{ key: string; hadWins: boolean } | null>(
+    null,
+  );
 
   // 7일 리듬 링 — 최근 7일 체크인 날짜. null = 아직 로딩(또는 실패 → 링 생략).
   const [weekCheckedYmds, setWeekCheckedYmds] = useState<Set<string> | null>(null);
@@ -258,23 +274,54 @@ export default function HomeDashboardPage() {
   }, [user, entryLoaded, allGoalsDoneToday, t]);
 
   // 어제 저녁에 적은 "내일 첫 행동" — 아침 카드 보조 행. 실패해도 카드만 생략.
+  // 같은 문서에서 "어제 잘한 일을 적었는가"도 함께 읽는다(잘한 일 해금의 보존 신호).
   useEffect(() => {
     if (!firebaseUser) return;
     let cancelled = false;
+    const key = yesterdayWinsKey(firebaseUser.uid, ymd);
     getDailyEntryOnce(firebaseUser.uid, yesterdayKstYmd(ymd))
       .then((prev) => {
         if (cancelled) return;
         const txt = (prev?.tomorrowFirstAction ?? "").trim();
         setYesterdayFirstAction(txt.length > 0 ? txt : null);
+        setYesterdayWins({ key, hadWins: hasAnyWin(prev?.wins) });
       })
       .catch((err) => {
         console.error("[home] 어제 첫 행동 조회 실패(생략):", err);
-        if (!cancelled) setYesterdayFirstAction(null);
+        if (cancelled) return;
+        setYesterdayFirstAction(null);
+        // 조회 실패는 보존 신호만 포기하고 판정은 진행 — 잠금 화면에 갇히지 않게.
+        setYesterdayWins({ key, hadWins: false });
       });
     return () => {
       cancelled = true;
     };
   }, [firebaseUser, ymd]);
+
+  /** 어제 조회 결과 — 지금 보고 있는 계정·날짜의 것일 때만 유효(아니면 null = 판정 보류). */
+  const yesterdayHadWins =
+    yesterdayWins && yesterdayWins.key === yesterdayWinsKey(firebaseUser?.uid, ymd)
+      ? yesterdayWins.hadWins
+      : null;
+
+  /** 어제·오늘 문서에 기록이 있는가 — 잘한 일 해금의 "이미 쓰던 계정" 신호(추가 조회 없음). */
+  const winsRecordedRecently = hasAnyWin(entry?.wins) || yesterdayHadWins === true;
+
+  /* 잘한 일 보존 표식 — 해금 게이트 도입 전부터 기록을 쓰던 계정에 딱 한 번 찍는다.
+   * 표식이 없고 최근 기록이 확인될 때만 쓰므로 계정당 최대 1회 쓰기이고, 그 뒤로는
+   * 어제·오늘 문서와 무관하게 영구히 열린다(기록을 하루 걸렀다고 다시 잠그지 않는다).
+   * 실패해도 화면은 이미 열려 있으므로 조용히 넘기고 다음 홈 방문에서 다시 시도한다. */
+  const winsUnlockMarkedRef = useRef(false);
+  useEffect(() => {
+    if (!firebaseUser || !user || user.winsUnlockedAt) return;
+    if (!entryLoaded || !winsRecordedRecently) return;
+    if (winsUnlockMarkedRef.current) return;
+    winsUnlockMarkedRef.current = true;
+    markWinsUnlocked(firebaseUser.uid).catch((err) => {
+      console.error("[home] 잘한 일 보존 표식 저장 실패(다음 방문에 재시도):", err);
+      winsUnlockMarkedRef.current = false;
+    });
+  }, [firebaseUser, user, entryLoaded, winsRecordedRecently]);
 
   useEffect(() => {
     if (!firebaseUser) return;
@@ -639,6 +686,16 @@ export default function HomeDashboardPage() {
       })
     : null;
 
+  // 잘한 일 기록 해금 — 오늘/어제 문서가 도착하기 전에는 판정을 미룬다(잠금 깜빡임 방지).
+  const winsUnlock =
+    entryLoaded && yesterdayHadWins !== null
+      ? computeWinsUnlock({
+          affirmation: user?.affirmationStreak,
+          goal: user?.goalStreak,
+          alreadyRecorded: Boolean(user?.winsUnlockedAt) || winsRecordedRecently,
+        })
+      : null;
+
   // 성장 단계 칩 — 증거 표가 1표라도 쌓인 뒤에만 그린다(레거시/빈 계정은 조용히 생략).
   const growthStage = growthStageOf(user?.growth?.votes);
 
@@ -812,6 +869,7 @@ export default function HomeDashboardPage() {
           goals={goals}
           identityLabels={user?.identities?.labels ?? []}
           unlock={planUnlock}
+          winsUnlock={winsUnlock}
           achievedGoals={achievedGoals}
           onToggleGoalAchieved={(g) => void handleToggleGoalAchieved(g)}
           weeklyReview={showWeeklyReview ? weeklyReview : null}
