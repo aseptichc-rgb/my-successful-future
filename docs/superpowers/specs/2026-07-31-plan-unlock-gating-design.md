@@ -49,6 +49,10 @@ export function computePlanUnlock(opts: {
 }): PlanUnlockState;
 ```
 
+`goalCount`는 **trim 후 비어있지 않은 목표 수**다. `users.goals` 배열에는 빈 문자열
+슬롯이 남을 수 있으므로(설정의 빈 칸), 호출부는 `ExecutionPlansSection`의 `cleanGoals`와
+같은 규칙(`goals.map(g => g.trim()).filter(g => g.length > 0).length`)으로 세어 넘긴다.
+
 판정 순서:
 
 1. `goalCount === 0 && planCount === 0` → `hidden`.
@@ -81,6 +85,19 @@ export const PLAN_UNLOCK_STREAK = 7;
 해금 시점은 지금 우연히 같을 뿐 서로 다른 정책이다. 배열 인덱스로 묶으면 한쪽을 조정할 때
 다른 쪽이 조용히 따라 움직인다.
 
+### 플랜 목록 로딩과 깜빡임 방지
+
+홈·설정의 `plans`는 `onSnapshot` 구독이고 초기값이 `[]`다. 스냅샷 도착 전에
+`planCount: 0`으로 판정하면, **플랜은 있지만 최고 연속이 7일 미만인 기존 사용자**에게
+잠금 행이 한 프레임 떴다가 플랜 카드로 바뀌는 깜빡임이 난다(설정에서는 섹션이 숨었다
+나타난다). 스트릭 쪽은 문제없다 — `useAuth().loading`은 `getUserProfile`이 끝난 뒤에야
+풀리므로 `user`의 두 스트릭은 첫 렌더부터 최종값이다.
+
+따라서 홈·설정 모두 `plansLoaded: boolean` state를 추가한다(첫 스냅샷 콜백에서 true —
+오류 콜백에서도 true, `entryLoaded`와 같은 패턴). `plansLoaded`가 false인 동안에는
+실행 설계 영역(홈의 카드 영역·설정의 섹션)을 **렌더하지 않는다** — 지금도 스냅샷 도착
+전에는 빈 목록이므로 사용자가 보던 것과 달라지지 않는다.
+
 ## 2. 홈 표시 — `DailyPlanCard` 3-상태
 
 `DailyPlanCard`의 props에서 `onCreateCta: () => void`는 유지하고 `unlock: PlanUnlockState`를
@@ -110,6 +127,11 @@ export const PLAN_UNLOCK_STREAK = 7;
 
 `FirstActionRow`(어젯밤의 내가 정한 첫 행동)는 세 상태 모두에서 지금 규칙 그대로 렌더된다.
 그건 실행 설계와 무관한 기능이므로 게이트에 걸리면 안 된다.
+
+카드가 `null`을 반환할 수 있게 되므로(`hidden` + 첫 행동 없음, 또는 `plansLoaded` 전),
+`MoreSection`의 래퍼 `<div className="border-b …">`를 그대로 두면 **빈 구분선 한 줄**이
+남는다. 렌더 여부 판정을 래퍼 바깥으로 올린다 — 카드가 그려질 때만 래퍼째 그린다
+(`weeklyReview && <div>…</div>` 와 같은 패턴).
 
 ## 3. CTA 목적지 — 홈에서 설계 시트를 연다
 
@@ -142,9 +164,10 @@ export const PLAN_UNLOCK_STREAK = 7;
 
 ### "목표·실행 설계 관리" 행
 
-`MoreSection` 아래쪽의 설정 진입 행(`home.plans.manage`)은 잠긴 동안 문구를
-`home.plans.manageLocked`("목표 관리")로 바꾼다. 잠긴 기능의 이름이 화면에 두 번 남으면
-잠금 행의 예고 효과가 흐려진다. 동작(설정으로 이동)은 그대로다.
+`MoreSection` 아래쪽의 설정 진입 행(`home.plans.manage`)은 `unlock.kind !== "open"`일 때
+문구를 `home.plans.manageLocked`("목표 관리")로 바꾼다 — `locked`뿐 아니라 목표가 없는
+`hidden`에서도, 아직 쓸 수 없는 기능의 이름이 화면에 남으면 안 된다. 동작(설정으로 이동)은
+그대로다.
 
 ## 4. 뇌과학 인트로 — `ExecutionPlanSheet` 상단, 기본 접힘
 
@@ -191,11 +214,12 @@ export const PLAN_UNLOCK_STREAK = 7;
 
 ## 5. 설정 화면
 
-`app/settings/page.tsx`는 `computePlanUnlock(...).kind === "open"`일 때만
+`app/settings/page.tsx`는 `plansLoaded && computePlanUnlock(...).kind === "open"`일 때만
 `<ExecutionPlansSection>`을 렌더한다. 잠긴 동안에는 **섹션 자체를 숨긴다** — 예고(잠금 행)는
 홈 한 곳이면 충분하고, 설정에 잠긴 섹션을 두면 탭해도 아무 일이 없는 죽은 행이 하나 더 생긴다.
 
 설정에는 `user`(→ 두 스트릭) · `goals` · `plans`가 이미 있어 추가 구독이 없다.
+`plansLoaded` state 하나만 추가된다(§1의 깜빡임 방지).
 
 ## 6. i18n
 
@@ -235,6 +259,10 @@ export const PLAN_UNLOCK_STREAK = 7;
 `.spec.ts` 파일이 0개이고 `test` 스크립트도 없다). 이 작업에서 **`vitest`를 devDependency로
 추가하고 `"test": "vitest run"` 스크립트를 넣는다.** 런타임 번들에는 영향이 없다.
 
+`vitest.config.ts`도 함께 만든다 — vitest는 tsconfig의 `@/*` 경로 별칭을 스스로 읽지
+않으므로 `resolve.alias`에 `@` → 프로젝트 루트를 등록해야 한다(`lib/planUnlock.ts`가
+import 하는 `@/lib/goalSlots` 체인이 이 별칭을 쓴다).
+
 `lib/planUnlock.test.ts` — 순수 함수 하나만 대상으로 한다:
 
 | 케이스 | 입력 | 기대 |
@@ -262,12 +290,13 @@ UI(잠금 행 렌더·시트 마운트)는 러너가 없으므로 수동 확인�
 | `lib/planUnlock.test.ts` | 신규 — 순수 함수 테스트 10케이스 |
 | `lib/constants/growth.ts` | `PLAN_UNLOCK_STREAK = 7` 추가 |
 | `components/home/DailyPlanCard.tsx` | `unlock` props 추가, 잠금 행 렌더 |
-| `components/home/MoreSection.tsx` | 시트 마운트, `extraGoals`→`goals`, `identityLabels` 추가, 관리 행 문구 분기 |
-| `app/home/page.tsx` | `computePlanUnlock` 호출, 새 props 전달, `extraGoals` 파생 제거 |
-| `app/settings/page.tsx` | `kind === "open"`일 때만 `ExecutionPlansSection` 렌더 |
+| `components/home/MoreSection.tsx` | 시트 마운트, `extraGoals`→`goals`, `identityLabels` 추가, 관리 행 문구 분기, 카드 래퍼 조건 렌더 |
+| `app/home/page.tsx` | `computePlanUnlock` 호출, `plansLoaded` state, 새 props 전달, `extraGoals` 파생 제거 |
+| `app/settings/page.tsx` | `plansLoaded && kind === "open"`일 때만 `ExecutionPlansSection` 렌더 |
 | `components/woop/ExecutionPlanSheet.tsx` | `WhyIntro` 로컬 컴포넌트 추가 |
 | `lib/i18n/dictionaries/{ko,en,es,zh}.ts` | 신규 키 9개 |
 | `package.json` | `vitest` devDependency + `test` 스크립트 |
+| `vitest.config.ts` | 신규 — `@` 경로 별칭 등록 |
 
 ## 하지 않는 것
 
