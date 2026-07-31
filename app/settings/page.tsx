@@ -49,6 +49,7 @@ import {
   restoreAndroidPro,
 } from "@/lib/androidPurchase";
 import { readEntitlement } from "@/lib/entitlement";
+import { computePlanUnlock } from "@/lib/planUnlock";
 import { isAndroidApp, notifyAndroidPurchase, notifyAndroidRestore } from "@/lib/widgetBridge";
 import { getAllKnownAuthorsGrouped } from "@/lib/famousQuoteCatalog";
 import AffirmationsEditor from "@/components/affirmations/AffirmationsEditor";
@@ -426,6 +427,8 @@ export default function SettingsPage() {
   const [futureDetailOpen, setFutureDetailOpen] = useState(false);
   // WOOP 실행설계 목록 — 홈과 동일한 섹션/시트를 설정에서도 노출.
   const [plans, setPlans] = useState<ExecutionPlanWithId[]>([]);
+  /** 플랜 첫 스냅샷 도착 여부 — 도착 전 planCount 0 으로 해금을 오판하지 않기 위한 게이트. */
+  const [plansLoaded, setPlansLoaded] = useState(false);
 
   const [affirmations, setAffirmations] = useState<string[]>([]);
   const [affirmationsOpen, setAffirmationsOpen] = useState(false);
@@ -474,7 +477,19 @@ export default function SettingsPage() {
   // WOOP 실행설계 구독 — 실패 시 섹션만 비운다(설정 나머지는 정상 동작).
   useEffect(() => {
     if (!firebaseUser) return;
-    const unsub = onExecutionPlansSnapshot(firebaseUser.uid, setPlans, () => setPlans([]));
+    // 계정이 바뀌면 새 첫 스냅샷을 기다린다 — 이전 계정의 plans 로 해금을 오판하지 않도록.
+    setPlansLoaded(false);
+    const unsub = onExecutionPlansSnapshot(
+      firebaseUser.uid,
+      (next) => {
+        setPlans(next);
+        setPlansLoaded(true);
+      },
+      () => {
+        setPlans([]);
+        setPlansLoaded(true);
+      },
+    );
     return unsub;
   }, [firebaseUser]);
 
@@ -573,6 +588,15 @@ export default function SettingsPage() {
 
   const goalCount = useMemo(() => goals.filter((g) => g.trim().length > 0).length, [goals]);
   const authorGroups = useMemo(() => getAllKnownAuthorsGrouped(locale), [locale]);
+  // 실행 설계 섹션은 해금된 사용자에게만 — 잠금 예고는 홈 한 곳으로 충분하다(홈과 동일 판정).
+  const planUnlockOpen =
+    plansLoaded &&
+    computePlanUnlock({
+      affirmation: user?.affirmationStreak,
+      goal: user?.goalStreak,
+      goalCount,
+      planCount: plans.length,
+    }).kind === "open";
   // 목표 칸 수는 꾸준함으로 열린다(전사·달성 두 축). 기존 사용자는 지금 가진 목표 수만큼 자동 인정된다.
   const goalSlots = useMemo(
     () =>
@@ -967,8 +991,8 @@ export default function SettingsPage() {
           />
         </GroupedSection>
 
-        {/* 실행 설계 (if-then) — 홈 "나의 행동" 탭과 동일 컴포넌트/시트 재사용 */}
-        {firebaseUser && (
+        {/* 실행 설계 (if-then) — 홈과 동일 컴포넌트/시트 재사용. 해금 전엔 섹션 숨김. */}
+        {firebaseUser && planUnlockOpen && (
           <ExecutionPlansSection
             uid={firebaseUser.uid}
             goals={goals}
