@@ -662,6 +662,8 @@ export default function HomeDashboardPage() {
   const longDate = formatLongDate(ymd, locale);
   // 오늘의 if-then — 홈과 위젯이 같은 순수 회전(lib/planRotation)을 써 항상 일치한다.
   const todayPlan = pickTodayPlan(plans, uid, ymd);
+  // 회전 대상 개수 — 카드의 "매일 하나씩 돌아가며" 안내 조건(회전과 같은 active 판정).
+  const activePlanCount = plans.filter((p) => p.active !== false).length;
 
   const affirmations = user?.successAffirmations ?? [];
   // 오늘 새길 다짐 — 서버 체크인 트랜잭션과 같은 순수 함수를 공유하므로 판정이 어긋나지 않는다.
@@ -865,6 +867,7 @@ export default function HomeDashboardPage() {
           homeMode={homeMode}
           futureText={futureText}
           todayPlan={todayPlan}
+          activePlanCount={activePlanCount}
           yesterdayFirstAction={yesterdayFirstAction}
           goals={goals}
           identityLabels={user?.identities?.labels ?? []}

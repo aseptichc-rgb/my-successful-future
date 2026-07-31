@@ -60,6 +60,7 @@ export default function MoreSection({
   homeMode,
   futureText,
   todayPlan,
+  activePlanCount,
   yesterdayFirstAction,
   goals,
   identityLabels,
@@ -80,6 +81,8 @@ export default function MoreSection({
   homeMode: HomeMode;
   futureText: string;
   todayPlan: Pick<ExecutionPlan, "goal" | "ifText" | "thenText"> | null;
+  /** 활성 플랜 개수 — 카드가 "매일 하나씩 돌아간다"는 안내를 켤지 판단한다. */
+  activePlanCount: number;
   yesterdayFirstAction: string | null;
   /** 전체 목표 (User.goals) — 첫 목표는 오늘 카드 몫이라 여기선 나머지만 그린다. */
   goals: string[];
@@ -264,6 +267,7 @@ export default function MoreSection({
           <div className="border-b border-[var(--sep)]">
             <DailyPlanCard
               plan={todayPlan}
+              activePlanCount={activePlanCount}
               yesterdayFirstAction={firstAction}
               compact={homeMode !== "morning"}
               unlock={unlock}

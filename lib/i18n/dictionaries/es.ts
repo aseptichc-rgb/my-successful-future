@@ -433,9 +433,16 @@ const dict: Record<DictKey, string> = {
   "plan.today.title": "El if-then de hoy",
   "plan.today.if": "Si",
   "plan.today.then": "Entonces",
+  "plan.today.desc":
+    "La acción de hoy, decidida antes de que llegue el momento. Cuando llegue, hazla sin pensarlo.",
+  "plan.today.rotation": "Tus {count} planes se turnan: cada día aparece uno distinto.",
   "plan.today.emptyCta": "Crea el plan de ejecución de hoy",
+  "plan.today.emptyDesc":
+    "Una frase: «Si pasa A, hago B» · Elige un borrador de la IA y listo, sin escribir",
   "plan.today.firstAction": "La primera acción que eligió mi yo de anoche",
   "plan.locked.title": "Diseño de ejecución (if-then)",
+  "plan.locked.desc":
+    "Anticipa el momento en que lo dejarías para después y únelo a una acción, en una sola frase.",
   "unlock.locked.body": "Se abre con {days} días seguidos · ahora {progress} días",
 
   // ── Modo noche: primera acción de mañana ──────────

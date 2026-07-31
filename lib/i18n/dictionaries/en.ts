@@ -427,9 +427,16 @@ const dict: Record<DictKey, string> = {
   "plan.today.title": "Today's if-then",
   "plan.today.if": "If",
   "plan.today.then": "Then",
+  "plan.today.desc":
+    "Today's action, decided before the moment of choice arrives. When it does, just do it — no deliberating.",
+  "plan.today.rotation": "Your {count} saved plans take turns — a different one each day.",
   "plan.today.emptyCta": "Create today's execution plan",
+  "plan.today.emptyDesc":
+    "One sentence: \"If A happens, I do B.\" Pick an AI draft and you're done — no typing",
   "plan.today.firstAction": "The first action last-night-me chose",
   "plan.locked.title": "Execution plan (if-then)",
+  "plan.locked.desc":
+    "Name the moment you'd likely put things off, and tie it to one action — in a single sentence.",
   "unlock.locked.body": "Unlocks after a {days}-day streak · now {progress} days",
 
   // ── Evening mode: tomorrow's first action ─────────

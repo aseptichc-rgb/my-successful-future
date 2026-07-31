@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Sheet from "@/components/ui/Sheet";
+import WhyIfThen from "@/components/woop/WhyIfThen";
 import {
   saveExecutionPlan,
   deleteExecutionPlan,
@@ -251,7 +252,7 @@ export default function ExecutionPlanSheet({
   if (mode === "quick") {
     return (
       <Sheet onClose={onClose} title={t("woop.quick.title")}>
-        <WhyIntro />
+        <WhyIfThen />
         <p className="text-[13px] leading-[18px] text-[var(--label-2)] pb-3">
           {suggestions ? t("woop.quick.pickDraft") : t("woop.quick.pickGoal")}
         </p>
@@ -350,7 +351,7 @@ export default function ExecutionPlanSheet({
   /* ───── 경로 2: 4단계 위저드 (직접 작성 / 기존 플랜 수정) ───── */
   return (
     <Sheet onClose={onClose} title={t("woop.sheet.title")}>
-      <WhyIntro />
+      <WhyIfThen />
       {/* 단계 도트 + 단계명 */}
       <div className="flex items-center gap-2 pb-3">
         {STEPS.map((s, i) => (
@@ -562,69 +563,5 @@ export default function ExecutionPlanSheet({
         )}
       </div>
     </Sheet>
-  );
-}
-
-/**
- * WhyIntro — "왜 미리 정해두나요?" 접힘 인트로.
- * 시트의 설계 목표는 3탭 저장이라 기본 접힘 — 궁금한 사람만 연다. 열림 상태는
- * 저장하지 않는다(시트는 매번 새로 뜬다). 근거: Gollwitzer 1999 · Gollwitzer &
- * Sheeran 2006(d=0.65) · Gilbert et al. 2009 · Kappes & Oettingen 2011.
- */
-function WhyIntro() {
-  const t = useT();
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="mb-3 rounded-[12px] bg-[var(--bg-grouped-2)] overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="w-full flex items-center gap-2.5 px-4 py-3 text-left"
-      >
-        <span className="text-[15px]" aria-hidden>
-          🧠
-        </span>
-        <span className="flex-1 text-[15px] font-medium tracking-[-0.24px] text-[var(--label)]">
-          {t("woop.why.toggle")}
-        </span>
-        <svg
-          width="8"
-          height="14"
-          viewBox="0 0 8 14"
-          fill="none"
-          aria-hidden
-          className="transition-transform duration-200"
-          style={{ transform: open ? "rotate(90deg)" : "none" }}
-        >
-          <path
-            d="M1 1l6 6-6 6"
-            stroke="rgba(60,60,67,0.3)"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
-      {open && (
-        <div className="px-4 pb-4 space-y-2">
-          <p className="text-[13px] leading-[19px] tracking-[-0.08px] text-[var(--label-2)]">
-            {t("woop.why.p1")}
-          </p>
-          <p className="text-[13px] leading-[19px] tracking-[-0.08px] text-[var(--label-2)]">
-            {t("woop.why.p2")}
-          </p>
-          <p className="text-[13px] leading-[19px] tracking-[-0.08px] text-[var(--label-2)]">
-            {t("woop.why.p3")}
-          </p>
-          <p className="text-[13px] leading-[19px] tracking-[-0.08px] text-[var(--label-2)]">
-            {t("woop.why.p4")}
-          </p>
-          <p className="text-[11px] leading-[16px] text-[var(--label-3)]">
-            {t("woop.why.source")}
-          </p>
-        </div>
-      )}
-    </div>
   );
 }

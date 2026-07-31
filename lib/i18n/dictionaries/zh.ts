@@ -417,9 +417,13 @@ const dict: Record<DictKey, string> = {
   "plan.today.title": "今日 if-then",
   "plan.today.if": "如果",
   "plan.today.then": "那么",
+  "plan.today.desc": "在做决定的那一刻到来之前就定好的今日行动。情境一出现，别再犹豫，照做就好。",
+  "plan.today.rotation": "已保存的 {count} 个计划每天轮流出现一个。",
   "plan.today.emptyCta": "创建今天的执行计划",
+  "plan.today.emptyDesc": "一句话：「如果 A，我就做 B」· 选一个 AI 草稿即可完成，无需打字",
   "plan.today.firstAction": "昨晚的我定下的第一个行动",
   "plan.locked.title": "执行设计 (if-then)",
+  "plan.locked.desc": "先想好自己可能拖延的那一刻，再用一句话把它和当下要做的行动绑在一起。",
   "unlock.locked.body": "连续{days}天即可解锁 · 目前{progress}天",
 
   // ── 夜晚模式：明天的第一个行动 ────────────────────

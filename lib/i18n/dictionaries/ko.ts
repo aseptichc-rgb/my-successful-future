@@ -412,9 +412,14 @@ const dict = {
   "plan.today.title": "오늘의 if-then",
   "plan.today.if": "만약",
   "plan.today.then": "그러면",
+  // 카드에 상시 남는 유일한 설명 — "이 두 줄이 뭔지" 한 문장. 근거는 woop.why.* 접힘 안.
+  "plan.today.desc": "결정의 순간이 오기 전에 미리 정해둔 오늘의 행동이에요. 그 상황이 오면 고민하지 말고 그대로.",
+  "plan.today.rotation": "설계해둔 계획 {count}개가 매일 하나씩 돌아가며 올라와요.",
   "plan.today.emptyCta": "오늘의 실행 설계를 만들어보세요",
+  "plan.today.emptyDesc": "'만약 A면, 나는 B 한다' 한 문장 · AI 초안을 고르면 키보드 없이 끝나요",
   "plan.today.firstAction": "어젯밤의 내가 정한 첫 행동",
   "plan.locked.title": "실행 설계 (if-then)",
+  "plan.locked.desc": "미룰 것 같은 순간을 미리 정해두고, 그때 할 행동을 한 문장으로 묶어두는 기능이에요.",
   // 잠금 예고 문구는 실행 설계·잘한 일 기록이 공유한다 — 같은 규칙이라 문장도 하나다.
   "unlock.locked.body": "{days}일 연속이면 열려요 · 지금 {progress}일",
 
