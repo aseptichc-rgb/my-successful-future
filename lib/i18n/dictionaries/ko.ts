@@ -395,12 +395,27 @@ const dict = {
   "woop.saveFailed": "실행 설계를 저장하지 못했어요.",
   "woop.suggestFailed": "제안을 불러오지 못했어요.",
 
+  // ── 설계 시트: "왜 미리 정해두나요?" 인트로 (기본 접힘) ──
+  "woop.why.toggle": "왜 미리 정해두나요?",
+  "woop.why.p1":
+    "결정의 순간엔 의지력이 가장 약해요. 피곤한 저녁, 손에 잡힌 휴대폰 — 그때 무엇을 할지 고민하면 대개 져요.",
+  "woop.why.p2":
+    "'만약 A면, 나는 B 한다'를 미리 한 문장으로 정해두면 행동을 부르는 주체가 '나'에서 '상황'으로 바뀌어요. 뇌영상 연구에서도 실행의도를 세운 뒤에는 스스로 떠올리는 데 쓰이는 안쪽 전전두엽 대신, 단서에 반응하는 회로가 일을 맡았어요.",
+  "woop.why.p3":
+    "그래서 효과가 커요 — 94개 연구를 모은 메타분석에서 목표 달성 효과크기 d = 0.65였어요.",
+  "woop.why.p4":
+    "그리고 반드시 '내 안의 장애물'을 함께 적어요. 좋은 결과만 상상하면 오히려 실행 에너지가 떨어진다는 게 반복해서 확인됐어요.",
+  "woop.why.source":
+    "Gollwitzer 1999 · Gollwitzer & Sheeran 2006 · Gilbert et al. 2009 · Kappes & Oettingen 2011",
+
   // ── 오늘의 if-then 카드 (아침 모드) ───────────────
   "plan.today.title": "오늘의 if-then",
   "plan.today.if": "만약",
   "plan.today.then": "그러면",
   "plan.today.emptyCta": "오늘의 실행 설계를 만들어보세요",
   "plan.today.firstAction": "어젯밤의 내가 정한 첫 행동",
+  "plan.locked.title": "실행 설계 (if-then)",
+  "plan.locked.body": "{days}일 연속이면 열려요 · 지금 {progress}일",
 
   // ── 저녁 모드: 내일 첫 행동 ───────────────────────
   "home.evening.firstAction.title": "내일 첫 행동 1개",
@@ -506,6 +521,7 @@ const dict = {
   "home.wins.addRow": "한 줄 더 적기",
   "home.record.footer": "적은 내용은 자동으로 저장돼요.",
   "home.plans.manage": "실행 설계 관리",
+  "home.plans.manageLocked": "목표 관리",
   // 홈에 남는 건 명언·오늘 카드·7일 링뿐 — 나머지는 전부 이 한 섹션 뒤로 접힌다.
   "home.section.more": "더 보기",
   "home.more.summary": "미래의 나 · 기록 · 실행 설계",

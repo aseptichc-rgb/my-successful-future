@@ -410,12 +410,27 @@ const dict: Record<DictKey, string> = {
   "woop.saveFailed": "Couldn't save the execution plan.",
   "woop.suggestFailed": "Couldn't load suggestions.",
 
+  // ── Plan sheet: "Why decide in advance?" intro (collapsed) ──
+  "woop.why.toggle": "Why decide in advance?",
+  "woop.why.p1":
+    "Willpower is weakest at the moment of decision. A tired evening, a phone already in your hand — deliberate then, and you usually lose.",
+  "woop.why.p2":
+    "Setting one sentence in advance — 'If A, then I do B' — hands the trigger from 'me' to the situation. In brain-imaging research, once an implementation intention was set, cue-driven circuits took over from the medial prefrontal regions used for self-initiated recall.",
+  "woop.why.p3":
+    "That is why the effect is large — a meta-analysis of 94 studies found an effect size of d = 0.65 on goal attainment.",
+  "woop.why.p4":
+    "And always name the obstacle inside you. Imagining only the good outcome has repeatedly been shown to drain the energy to act.",
+  "woop.why.source":
+    "Gollwitzer 1999 · Gollwitzer & Sheeran 2006 · Gilbert et al. 2009 · Kappes & Oettingen 2011",
+
   // ── Today's if-then card (morning mode) ───────────
   "plan.today.title": "Today's if-then",
   "plan.today.if": "If",
   "plan.today.then": "Then",
   "plan.today.emptyCta": "Create today's execution plan",
   "plan.today.firstAction": "The first action last-night-me chose",
+  "plan.locked.title": "Execution plan (if-then)",
+  "plan.locked.body": "Unlocks after a {days}-day streak · now {progress} days",
 
   // ── Evening mode: tomorrow's first action ─────────
   "home.evening.firstAction.title": "One first action for tomorrow",
@@ -522,6 +537,7 @@ const dict: Record<DictKey, string> = {
   "home.wins.addRow": "Add another line",
   "home.record.footer": "Anything you write saves itself.",
   "home.plans.manage": "Manage execution plans",
+  "home.plans.manageLocked": "Manage goals",
   // Home keeps only the quote, today's card and the 7-day ring — the rest folds in here.
   "home.section.more": "More",
   "home.more.summary": "Future self · Notes · Plans",

@@ -416,12 +416,27 @@ const dict: Record<DictKey, string> = {
   "woop.saveFailed": "No se pudo guardar el plan de ejecución.",
   "woop.suggestFailed": "No se pudieron cargar las sugerencias.",
 
+  // ── Hoja de diseño: intro "¿Por qué decidirlo por adelantado?" (plegada) ──
+  "woop.why.toggle": "¿Por qué decidirlo por adelantado?",
+  "woop.why.p1":
+    "La fuerza de voluntad es más débil en el momento de decidir. Una noche cansada, el teléfono ya en la mano — si lo piensas entonces, sueles perder.",
+  "woop.why.p2":
+    "Fijar de antemano una frase — 'Si A, entonces hago B' — pasa el disparador de 'yo' a la situación. En estudios de neuroimagen, con una intención de implementación fijada, los circuitos guiados por señales asumieron el trabajo de las regiones prefrontales mediales usadas para el recuerdo autoiniciado.",
+  "woop.why.p3":
+    "Por eso el efecto es grande: un metaanálisis de 94 estudios halló un tamaño de efecto de d = 0.65 en el logro de metas.",
+  "woop.why.p4":
+    "Y nombra siempre el obstáculo dentro de ti. Se ha comprobado una y otra vez que imaginar solo el buen resultado drena la energía para actuar.",
+  "woop.why.source":
+    "Gollwitzer 1999 · Gollwitzer & Sheeran 2006 · Gilbert et al. 2009 · Kappes & Oettingen 2011",
+
   // ── Tarjeta if-then de hoy (modo mañana) ──────────
   "plan.today.title": "El if-then de hoy",
   "plan.today.if": "Si",
   "plan.today.then": "Entonces",
   "plan.today.emptyCta": "Crea el plan de ejecución de hoy",
   "plan.today.firstAction": "La primera acción que eligió mi yo de anoche",
+  "plan.locked.title": "Diseño de ejecución (if-then)",
+  "plan.locked.body": "Se abre con {days} días seguidos · ahora {progress} días",
 
   // ── Modo noche: primera acción de mañana ──────────
   "home.evening.firstAction.title": "Una primera acción para mañana",
@@ -530,6 +545,7 @@ const dict: Record<DictKey, string> = {
   "home.wins.addRow": "Añadir otra línea",
   "home.record.footer": "Lo que escribas se guarda solo.",
   "home.plans.manage": "Gestionar diseños de ejecución",
+  "home.plans.manageLocked": "Gestionar objetivos",
   // En Inicio solo quedan la frase, la tarjeta de hoy y el anillo de 7 días.
   "home.section.more": "Ver más",
   "home.more.summary": "Yo futuro · Notas · Planes",

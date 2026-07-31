@@ -400,12 +400,27 @@ const dict: Record<DictKey, string> = {
   "woop.saveFailed": "无法保存执行计划。",
   "woop.suggestFailed": "无法加载建议。",
 
+  // ── 设计面板："为什么要提前定好？"介绍（默认折叠）──
+  "woop.why.toggle": "为什么要提前定好？",
+  "woop.why.p1":
+    "做决定的那一刻，意志力最薄弱。疲惫的夜晚、已经拿在手里的手机——那时才思考做什么，往往会输。",
+  "woop.why.p2":
+    "提前写下一句'如果A，我就做B'，触发行动的主体就从'我'变成了'情境'。脑成像研究也显示，设定执行意图后，接管工作的是对线索作出反应的回路，而不是自主回想所依赖的内侧前额叶。",
+  "woop.why.p3":
+    "所以效果显著——汇总94项研究的元分析发现，目标达成的效应量为 d = 0.65。",
+  "woop.why.p4":
+    "还要写下'我内心的障碍'。只想象好结果反而会削弱行动的能量——这一点被反复验证。",
+  "woop.why.source":
+    "Gollwitzer 1999 · Gollwitzer & Sheeran 2006 · Gilbert et al. 2009 · Kappes & Oettingen 2011",
+
   // ── 今日 if-then 卡片（早晨模式）──────────────────
   "plan.today.title": "今日 if-then",
   "plan.today.if": "如果",
   "plan.today.then": "那么",
   "plan.today.emptyCta": "创建今天的执行计划",
   "plan.today.firstAction": "昨晚的我定下的第一个行动",
+  "plan.locked.title": "执行设计 (if-then)",
+  "plan.locked.body": "连续{days}天即可解锁 · 目前{progress}天",
 
   // ── 夜晚模式：明天的第一个行动 ────────────────────
   "home.evening.firstAction.title": "明天的第一个行动",
@@ -510,6 +525,7 @@ const dict: Record<DictKey, string> = {
   "home.wins.addRow": "再写一行",
   "home.record.footer": "写下的内容会自动保存。",
   "home.plans.manage": "管理执行设计",
+  "home.plans.manageLocked": "管理目标",
   // 首页只留名言、今天的卡片和 7 天节奏环,其余全部折叠到这里。
   "home.section.more": "查看更多",
   "home.more.summary": "未来的我 · 记录 · 执行设计",
