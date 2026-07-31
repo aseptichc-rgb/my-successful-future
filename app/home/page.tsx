@@ -37,6 +37,7 @@ import { syncIosNotifications } from "@/lib/notificationBridge";
 import { buildNotificationTexts, normalizeNotificationPrefs } from "@/lib/notificationPolicy";
 import MotivationCard from "@/components/home/MotivationCard";
 import TodayCard from "@/components/home/TodayCard";
+import FutureVisionCard from "@/components/home/FutureVisionCard";
 import MoreSection from "@/components/home/MoreSection";
 import SlotUnlockBanner from "@/components/home/SlotUnlockBanner";
 import StepUpCard from "@/components/home/StepUpCard";
@@ -758,7 +759,7 @@ export default function HomeDashboardPage() {
           <p className="mx-5 mt-3 text-[13px] text-[#FF3B30]">{motivationError}</p>
         )}
 
-        {/* ─── ② 오늘 — 다짐 1줄 전사 + 목표 실행 체크(하루의 유일한 필수) ─── */}
+        {/* ─── ② 오늘 — 선언 1줄 전사 + 그 꿈을 사는 하루 + 목표 실행 체크(하루의 유일한 필수) ─── */}
         <div className="px-4 pt-5" ref={checkinAnchorRef}>
           <TodayCard
             affirmations={affirmations}
@@ -773,6 +774,16 @@ export default function HomeDashboardPage() {
             goalSaving={goalSaving}
             onToggleGoal={() => void handleToggleGoalAchieved(primaryGoal)}
             onSetGoal={() => router.push("/settings?sheet=goals")}
+            visionSlot={
+              <FutureVisionCard
+                vision={vision}
+                loading={visionLoading}
+                errorMessage={visionError}
+                onRegenerate={handleRegenerateFutureVision}
+                hasFuturePersona={futureText.trim().length > 0}
+                onWriteFuturePersona={openSettings}
+              />
+            }
           />
         </div>
 
@@ -796,10 +807,6 @@ export default function HomeDashboardPage() {
           entryLoaded={entryLoaded}
           homeMode={homeMode}
           futureText={futureText}
-          vision={vision}
-          visionLoading={visionLoading}
-          visionError={visionError}
-          onRegenerateVision={handleRegenerateFutureVision}
           todayPlan={todayPlan}
           yesterdayFirstAction={yesterdayFirstAction}
           goals={goals}

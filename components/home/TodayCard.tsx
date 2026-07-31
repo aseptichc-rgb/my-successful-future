@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useT } from "@/lib/i18n";
 import AffirmationCheckin, {
   type CheckinSubmitResult,
@@ -9,12 +10,15 @@ import CheckinReward from "@/components/home/CheckinReward";
 /* ─────────────────────────────────────────────────────────────────
  * TodayCard — 하루의 유일한 필수 행동 묶음.
  *
- *  ① 성공 선언 1줄 전사(또는 이미 했으면 보상 카드)
- *  ② 바로 아래 붙는 "오늘의 목표, 지켰나요?" 1탭
+ *  ① 성공한 미래의 나 — 선언 1줄 전사(또는 이미 했으면 보상 카드)
+ *  ② 그 꿈을 사는 하루 — 선언이 이뤄진 하루의 장면(visionSlot)
+ *  ③ 바로 아래 붙는 "오늘의 목표, 지켰나요?" 1탭
  *
  * 왜 한 묶음인가: 전사와 실행 체크가 화면 여기저기에 흩어지면 하루에 두 번 결심해야
  * 한다. 두 문장의 성격은 다르지만(선언 = 이미 이룬 상태 / 목표 = 그 사람이 되기 위한
  * 오늘의 행동) 가리키는 방향이 같으므로, 붙여 두면 "적고 → 눌렀다"로 한 번에 끝난다.
+ * 그 사이에 "그 꿈을 사는 하루"를 두는 이유: 선언(이미 이룬 상태)과 오늘의 행동 사이를
+ * 잇는 다리라서, 선언 직후 그 하루를 보고 나면 목표 체크가 그 하루의 첫 걸음으로 읽힌다.
  *
  * 홈 페이지가 이 조합을 매번 조립하지 않도록 여기서 한 번만 정의한다.
  * 저장은 전부 홈이 넘겨준 핸들러가 하고(기존 saveDailyAchievedGoals 재사용),
@@ -36,6 +40,7 @@ export default function TodayCard({
   goalSaving,
   onToggleGoal,
   onSetGoal,
+  visionSlot,
 }: {
   affirmations: string[];
   focusIndex: number;
@@ -51,6 +56,12 @@ export default function TodayCard({
   goalSaving: boolean;
   onToggleGoal: () => void;
   onSetGoal: () => void;
+  /**
+   * "그 꿈을 사는 하루" 카드 — 선언과 오늘의 목표 사이에 끼워 넣는다.
+   * 노드로 받는 이유: 비전 상태(로딩·에러·재생성)는 전부 홈이 쥐고 있어서, 그 6개를
+   * 여기로 흘려보내면 이 카드가 비전 뷰모델까지 떠안는다. 자리만 정의하고 내용은 위임.
+   */
+  visionSlot?: ReactNode;
 }) {
   const t = useT();
   const checkedIn = alreadyCheckedIn || reward !== null;
@@ -79,6 +90,9 @@ export default function TodayCard({
           />
         )
       )}
+
+      {/* ② 그 꿈을 사는 하루 — 선언이 이뤄진 하루. 미제공이면 자연 생략. */}
+      {visionSlot}
 
       <div className="bg-[var(--bg-grouped-2)] rounded-[12px] overflow-hidden">
         <div className="flex items-center justify-between gap-2 px-5 pt-4 pb-1">

@@ -13,10 +13,9 @@ import { useT } from "@/lib/i18n";
 import type { HomeMode } from "@/lib/homeMode";
 import type { PlanUnlockState } from "@/lib/planUnlock";
 import type { WeeklyReview } from "@/lib/weeklyReview";
-import type { DailyEntry, ExecutionPlan, FutureVision } from "@/types";
+import type { DailyEntry, ExecutionPlan } from "@/types";
 import DisclosureSection from "@/components/ui/DisclosureSection";
 import FutureSelfLine from "@/components/home/FutureSelfLine";
-import FutureVisionCard from "@/components/home/FutureVisionCard";
 import DailyPlanCard from "@/components/home/DailyPlanCard";
 import ExecutionPlanSheet from "@/components/woop/ExecutionPlanSheet";
 import WeeklyReviewCard from "@/components/home/WeeklyReviewCard";
@@ -27,8 +26,11 @@ import WeeklyReviewCard from "@/components/home/WeeklyReviewCard";
  * 홈에 상시 노출되는 것은 명언 · 오늘 카드 · 7일 링 셋뿐이고, 나머지는 전부 여기로
  * 내려왔다. 선택 입력이 첫 화면에 깔려 있으면 필수 행동조차 밀린다(choice overload).
  *
- * 안에 든 것: 미래의 나 · 그 꿈을 사는 하루 · 오늘의 if-then / 추가 목표 ·
+ * 안에 든 것: 미래의 나 · 오늘의 if-then / 추가 목표 ·
  *             오늘의 기록(잘한 일 · 내일 첫 행동) · 주간 회고.
+ *
+ * "그 꿈을 사는 하루"는 여기 있었지만 오늘 카드(선언 ↔ 오늘의 목표 사이)로 올라갔다 —
+ * 접힌 채로는 선언과 행동을 잇는 다리 역할을 못 한다.
  *
  * "잘한 일 / 내일 첫 행동"의 600ms 디바운스 자동 저장은 이 섹션에서만 쓰이므로
  * 상태와 핸들러를 홈에서 통째로 옮겨 왔다 — 홈 페이지가 다시 비대해지지 않게.
@@ -56,10 +58,6 @@ export default function MoreSection({
   entryLoaded,
   homeMode,
   futureText,
-  vision,
-  visionLoading,
-  visionError,
-  onRegenerateVision,
   todayPlan,
   yesterdayFirstAction,
   goals,
@@ -79,10 +77,6 @@ export default function MoreSection({
   entryLoaded: boolean;
   homeMode: HomeMode;
   futureText: string;
-  vision: FutureVision | null;
-  visionLoading: boolean;
-  visionError: string | null;
-  onRegenerateVision: () => Promise<void>;
   todayPlan: Pick<ExecutionPlan, "goal" | "ifText" | "thenText"> | null;
   yesterdayFirstAction: string | null;
   /** 전체 목표 (User.goals) — 첫 목표는 오늘 카드 몫이라 여기선 나머지만 그린다. */
@@ -237,18 +231,6 @@ export default function MoreSection({
       {/* 미래의 나 — 한 줄, 탭하면 펼침. 수정은 설정에서. */}
       <div className="border-b border-[var(--sep)]">
         <FutureSelfLine text={futureText} onWrite={onOpenSettings} />
-      </div>
-
-      {/* 그 꿈을 사는 하루 (읽기 전용) */}
-      <div className="border-b border-[var(--sep)]">
-        <FutureVisionCard
-          vision={vision}
-          loading={visionLoading}
-          errorMessage={visionError}
-          onRegenerate={onRegenerateVision}
-          hasFuturePersona={futureText.trim().length > 0}
-          onWriteFuturePersona={onOpenSettings}
-        />
       </div>
 
       {/* 오늘의 if-then — 아침엔 전체, 그 외엔 한 줄 축약. 잠김/로딩 전엔 래퍼(구분선)째 생략. */}
