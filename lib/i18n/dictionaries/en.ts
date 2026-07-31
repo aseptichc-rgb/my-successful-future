@@ -483,7 +483,7 @@ const dict: Record<DictKey, string> = {
   // ── Today's affirmation (one line required, all lines optional) ──
   "affirmations.focus.title": "Your successful future self",
   "affirmations.focus.rotation": "{index} of {total}",
-  "affirmations.focus.hint": "Copy this line exactly, as someone who is already there.",
+  "affirmations.focus.hint": "Write out, vividly, the you who has already lived the dream.",
   "affirmations.focus.placeholder": "Write it out…",
   "affirmations.focus.expand": "Engrave all {count} lines",
   "affirmations.focus.collapse": "Just today's line",

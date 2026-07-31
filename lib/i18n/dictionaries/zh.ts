@@ -472,7 +472,7 @@ const dict: Record<DictKey, string> = {
   // ── 今日誓言（每天只需一行，全部抄写为可选）──────────
   "affirmations.focus.title": "成功的未来的我",
   "affirmations.focus.rotation": "第 {index}/{total} 条",
-  "affirmations.focus.hint": "像已经成为的人那样,把这一行照原样写下来。",
+  "affirmations.focus.hint": "把已经实现梦想的自己，生动地写下来。",
   "affirmations.focus.placeholder": "照着写一遍…",
   "affirmations.focus.expand": "刻下全部 {count} 行",
   "affirmations.focus.collapse": "只写今天这一行",

@@ -468,7 +468,7 @@ const dict = {
   // ── 성공한 미래의 나 (하루 1줄 필수 + 전량은 선택) ───────
   "affirmations.focus.title": "성공한 미래의 나",
   "affirmations.focus.rotation": "{index}/{total}번째",
-  "affirmations.focus.hint": "이미 그렇게 된 사람처럼, 이 한 줄을 그대로 적어보세요.",
+  "affirmations.focus.hint": "이미 꿈을 이룬 나의 모습을 생생히 적어주세요.",
   "affirmations.focus.placeholder": "따라 적어주세요…",
   "affirmations.focus.expand": "{count}줄 전체 새기기",
   "affirmations.focus.collapse": "오늘 한 줄만 쓰기",
