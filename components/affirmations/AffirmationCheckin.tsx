@@ -22,6 +22,21 @@ import type { AffirmationCheckinDepth } from "@/types";
 const AFFIRMATION_INPUT_MAX = 72;
 const ROW_COLOR = "#1E1B4B";
 
+/* 입력칸 — 카드(--bg-grouped-2) 안에 한 톤 눌러앉는 inset 필드.
+   과거엔 border-b + inline borderWidth:1 이 네 변 전부에 먹어 각진 상자가 됐고,
+   완료 상태에서 테두리가 ROW_COLOR 원색이라 크림 카드와 부딪혔다.
+   색·모양은 클래스로만 정한다 — inline style 은 focus 변형을 이기므로 쓰지 않는다. */
+const INPUT_BASE =
+  "w-full rounded-[10px] border px-3.5 py-2.5 text-[17px] leading-[22px] tracking-[-0.43px] " +
+  "text-[var(--label)] placeholder:text-[var(--label-3)] transition-colors " +
+  "focus:outline-none focus:border-[var(--soul)] focus:bg-[var(--bg-grouped-2)] " +
+  "disabled:opacity-50";
+/** 완료 — 통과 신호는 배지 체크가 맡고, 입력칸은 옅은 indigo 로 가라앉힌다. */
+const INPUT_TONE_DONE = "border-[rgba(30,27,75,0.16)] bg-[rgba(30,27,75,0.05)]";
+/** 어긋남 — 빨강이 아니라 한 단계 진한 회색 실선("다시 볼 문장"). */
+const INPUT_TONE_BAD = "border-[var(--sep-opaque)] bg-[var(--bg-grouped)]";
+const INPUT_TONE_IDLE = "border-[var(--sep)] bg-[var(--bg-grouped)]";
+
 function normalizeForCompare(s: string): string {
   return s.trim().replace(/\s+/g, " ").slice(0, AFFIRMATION_INPUT_MAX);
 }
@@ -238,12 +253,9 @@ export default function AffirmationCheckin({
                   aria-invalid={isBad || undefined}
                   /* autoFocus 는 쓰지 않는다 — 홈 진입만으로 키보드가 올라오면 훑어보기를 방해한다.
                      재약속 카드의 "지금 체크인하기" 는 홈이 스크롤 후 이 input 에 포커스를 준다. */
-                  className="w-full bg-transparent border-b py-1 text-[17px] leading-[22px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none transition-colors"
-                  style={{
-                    // 어긋난 줄도 빨간 점선이 아니라 회색 실선 — 오류가 아니라 "다시 볼 문장".
-                    borderColor: done ? ROW_COLOR : isBad ? "var(--label-3)" : "var(--sep)",
-                    borderWidth: 1,
-                  }}
+                  className={`${INPUT_BASE} ${
+                    done ? INPUT_TONE_DONE : isBad ? INPUT_TONE_BAD : INPUT_TONE_IDLE
+                  }`}
                 />
 
                 {isBad && !alreadyCheckedIn && (
