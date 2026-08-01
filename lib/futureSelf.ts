@@ -14,6 +14,13 @@ import type { FutureSelfAnswers } from "@/types";
 export const FUTURE_SELF_FIELD_MAX = 200;
 
 /**
+ * 이 길이 미만의 꿈 문장은 개인화의 재료가 되지 못한다("돈"·"행복" 수준).
+ * 온보딩 클라이언트는 이 기준 미만이면 맞춤 제안 API 를 아예 호출하지 않고,
+ * 라우트도 같은 기준으로 400 을 돌려준다 — 둘이 같은 값을 봐야 "호출했는데 거절"이 없다.
+ */
+export const DREAM_MIN_LEN_FOR_SUGGEST = 10;
+
+/**
  * 몰입형 질문 표시 순서 — i18n 키(`onboarding.futureSelf.<key>.*`)와 1:1 대응.
  * 첫 항목(dream)이 온보딩에서 묻는 유일한 차원이고, 나머지는 설정의 선택 항목이다.
  */

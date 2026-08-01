@@ -14,9 +14,11 @@ const YMD = "2026-08-01";
 const UID = "test-uid";
 
 describe("getCuratedQuotePool", () => {
-  it("언어마다 잠언 풀이 채워져 있다", () => {
+  it("언어마다 같은 수의 잠언이 들어있다 (CSV 한 행 = 4개 언어)", () => {
+    const koCount = getCuratedQuotePool("ko").length;
+    expect(koCount).toBeGreaterThan(900);
     for (const lang of LANGUAGES) {
-      expect(getCuratedQuotePool(lang).length).toBeGreaterThan(400);
+      expect(getCuratedQuotePool(lang).length).toBe(koCount);
     }
   });
 

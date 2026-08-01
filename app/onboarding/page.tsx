@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -11,7 +11,11 @@ import {
   updateUserLanguage,
   markOnboarded,
 } from "@/lib/firebase";
-import { FUTURE_SELF_FIELD_MAX, hasAnyFutureSelfAnswer } from "@/lib/futureSelf";
+import {
+  FUTURE_SELF_FIELD_MAX,
+  DREAM_MIN_LEN_FOR_SUGGEST,
+  hasAnyFutureSelfAnswer,
+} from "@/lib/futureSelf";
 import { computeOnboardingProgress } from "@/lib/onboardingProgress";
 import { normalizeGoalText } from "@/lib/goalText";
 import { needsMoreSpecificGoal } from "@/lib/goalQuality";
@@ -40,6 +44,11 @@ import type { DailyMotivation, FutureSelfAnswers } from "@/types";
  *  문장이 두 번 보였다. 이제 각각 받는다 — 다만 두 칸 모두
  *  **예시 칩으로 타이핑 0 완주**가 가능해 입력 부담은 늘지 않는다.
  *
+ *  그 칩은 Step 1 의 꿈 문장에서 만든다(/api/onboarding/suggest). 방금 자기 꿈을 적었는데
+ *  다음 화면이 모두에게 같은 예시를 보여주면 "내 이야기를 듣고 있다"는 감각이 끊기기 때문이다.
+ *  생성이 늦거나 실패하면 사전의 정적 예시로 조용히 되돌아간다 — 온보딩은 어떤 경우에도
+ *  이 API 때문에 멈추지 않는다.
+ *
  *  두 칸 모두 선택 입력이다. 건너뛰어도 온보딩은 완료되고, 나머지 6개 미래 차원과
  *  다짐 추가는 설정에서 원하는 사람만 채운다.
  * ────────────────────────────────────────────────────────────────── */
@@ -55,11 +64,79 @@ const DECLARATION_EXAMPLE_KEYS: ReadonlyArray<DictKey> = [
   "onboarding.declaration.example3",
 ];
 
+/** 오늘의 목표 예시 — 맞춤 제안이 없을 때만 쓰는 정적 후보(수량·주기·단위 포함). */
+const GOAL_EXAMPLE_KEYS: ReadonlyArray<DictKey> = [
+  "onboarding.goal.example1",
+  "onboarding.goal.example2",
+  "onboarding.goal.example3",
+];
+
 /** Step 3 초상 카드 표시용 — 서버 JSON 응답에서 쓰는 필드만 (Timestamp 직렬화 무관). */
 interface PortraitPreview {
   title: string;
   portrait: string;
   highlights?: string[];
+}
+
+/** /api/onboarding/suggest 응답 — 두 칸 모두 실패하면 suggestions:null 이 온다. */
+interface OnboardingSuggestResponse {
+  suggestions?: { declarations?: unknown; goals?: unknown } | null;
+  error?: string;
+}
+
+/** 문자열 배열만 남긴다 — 서버가 한쪽 칸만 채워 보내는 경우(부분 성공)도 그대로 쓴다. */
+function toLines(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((v): v is string => typeof v === "string" && v.trim().length > 0);
+}
+
+/**
+ * Step 2 의 두 칸(선언·목표)이 공유하는 선택 칩.
+ * 탭 한 번으로 입력칸을 채우는 것이 목적이라 라디오가 아니라 버튼 + aria-pressed 로 둔다.
+ */
+function ChoiceChip({
+  label,
+  selected,
+  onSelect,
+}: {
+  label: string;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      className={`flex w-full items-start gap-3 rounded-[14px] border px-4 py-3 text-left transition-all ${
+        selected
+          ? "border-[#1E1B4B] bg-[#1E1B4B]/[0.04]"
+          : "border-black/10 bg-white hover:border-[#1E1B4B]/40"
+      }`}
+    >
+      <span
+        aria-hidden
+        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors ${
+          selected ? "border-[#1E1B4B] bg-[#1E1B4B] text-white" : "border-black/20 text-transparent"
+        }`}
+      >
+        <svg
+          className="h-3 w-3"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={3}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M20 6L9 17l-5-5" />
+        </svg>
+      </span>
+      <span className="text-[15px] font-medium leading-[1.5] tracking-[-0.01em] text-[#1E1B4B]">
+        {label}
+      </span>
+    </button>
+  );
 }
 
 export default function OnboardingPage() {
@@ -77,6 +154,17 @@ export default function OnboardingPage() {
   const [declarationCustomOpen, setDeclarationCustomOpen] = useState(false);
 
   const [goal, setGoal] = useState("");
+
+  /** 꿈 문장에서 만든 Step 2 맞춤 후보. null 이면 사전의 정적 예시를 쓴다. */
+  const [suggestions, setSuggestions] = useState<{
+    declarations: string[];
+    goals: string[];
+  } | null>(null);
+  const [suggestLoading, setSuggestLoading] = useState(false);
+  /** 이미 제안을 요청한 꿈 문장 — 같은 문장으로 Step 2 를 다시 열어도 재호출하지 않는다. */
+  const requestedDreamRef = useRef("");
+  /** 요청 일련번호 — 늦게 도착한 이전 응답이 최신 제안을 덮어쓰지 않게 한다. */
+  const suggestRequestIdRef = useRef(0);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,10 +188,63 @@ export default function OnboardingPage() {
     }
   }, [authLoading, firebaseUser, user?.onboardedAt, router]);
 
+  /**
+   * Step 2 진입 시 꿈 문장 → 선언·목표 후보를 받아온다.
+   *
+   * 꿈이 너무 짧으면(개인화 재료가 안 되는 길이) 호출 자체를 생략하고 정적 예시를 쓴다.
+   * 실패·한도초과도 조용히 정적 예시로 떨어뜨린다 — 온보딩은 여기서 막히면 안 된다.
+   * Step 1 로 돌아가 꿈을 고쳐 쓰면 새 문장 기준으로 한 번 더 요청한다.
+   */
+  useEffect(() => {
+    if (step !== 2) return;
+    const dream = dreamAnswer.trim();
+    if (dream.length < DREAM_MIN_LEN_FOR_SUGGEST) return;
+    if (requestedDreamRef.current === dream) return;
+    requestedDreamRef.current = dream;
+
+    // "더 새로운 요청이 떴는가" 로만 무효화한다. effect cleanup 을 취소 신호로 쓰면
+    // 로딩 중 이전 단계로 갔다가 같은 꿈으로 돌아왔을 때(재요청 없음) 로딩 표시가 영영 남는다.
+    const requestId = ++suggestRequestIdRef.current;
+    const isStale = () => suggestRequestIdRef.current !== requestId;
+
+    setSuggestLoading(true);
+    // 꿈을 고쳐 쓰고 돌아온 경우 — 이전 꿈으로 만든 칩을 그대로 두면 남의 문장처럼 보인다.
+    setSuggestions(null);
+    void (async () => {
+      try {
+        const res = await authedFetch("/api/onboarding/suggest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dream, language: locale }),
+        });
+        const data = (await res.json().catch(() => ({}))) as OnboardingSuggestResponse;
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        if (isStale()) return;
+        const declarations = toLines(data.suggestions?.declarations);
+        const goals = toLines(data.suggestions?.goals);
+        setSuggestions(declarations.length + goals.length > 0 ? { declarations, goals } : null);
+      } catch (err) {
+        // 사용자에게는 알리지 않는다 — 화면에는 언제나 정적 예시라는 대안이 있다.
+        console.warn(
+          "[onboarding] 맞춤 제안 실패(정적 예시 사용):",
+          err instanceof Error ? err.message : String(err),
+        );
+        if (!isStale()) setSuggestions(null);
+      } finally {
+        if (!isStale()) setSuggestLoading(false);
+      }
+    })();
+  }, [step, dreamAnswer, locale]);
+
   /** 성공 선언 예시 선택 — 고르면 열려 있던 직접입력 편집을 접는다. */
   const handleSelectDeclaration = (example: string) => {
     setDeclaration(example.slice(0, SUCCESS_AFFIRMATION_MAX_LEN));
     setDeclarationCustomOpen(false);
+  };
+
+  /** 목표 예시 선택 — 입력칸을 채우기만 하므로 이후 자유롭게 고쳐 쓸 수 있다. */
+  const handleSelectGoal = (example: string) => {
+    setGoal(example.slice(0, GOAL_TEXT_MAX));
   };
 
   const goNext = () => setStep((s) => (s < (TOTAL_STEPS - 1) ? ((s + 1) as Step) : s));
@@ -275,7 +416,16 @@ export default function OnboardingPage() {
     );
   }
 
-  const declarationExamples = DECLARATION_EXAMPLE_KEYS.map((key) => t(key));
+  // 맞춤 제안이 있으면 그것을, 없으면 사전의 정적 예시를 칩으로 쓴다(칸별로 독립 판단 —
+  // 서버가 한쪽만 채워 보내는 부분 성공에서도 나머지 칸이 비어 보이지 않게).
+  const declarationExamples =
+    suggestions && suggestions.declarations.length > 0
+      ? suggestions.declarations
+      : DECLARATION_EXAMPLE_KEYS.map((key) => t(key));
+  const goalExamples =
+    suggestions && suggestions.goals.length > 0
+      ? suggestions.goals
+      : GOAL_EXAMPLE_KEYS.map((key) => t(key));
   // 미래 서술과 같은 규칙 — 예시에 없는 문장을 갖고 되돌아오면 입력칸을 자동 전개.
   const showDeclarationInput =
     declarationCustomOpen ||
@@ -413,41 +563,35 @@ export default function OnboardingPage() {
                 {t("onboarding.declaration.subtitle")}
               </p>
 
-              {/* 예시 칩 — Step 1 과 같은 규칙/마크업. 탭 한 번으로 채워 타이핑 0 완주. */}
+              {/* 맞춤 제안 상태 — 두 칸의 칩이 같은 호출에서 나오므로 화면 상단에서 한 번만 알린다. */}
+              {suggestLoading ? (
+                <div className="mt-4 flex items-center gap-2">
+                  <span
+                    aria-hidden
+                    className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-black/10 border-t-[#1E1B4B]"
+                  />
+                  <p className="text-[12px] leading-[1.5] tracking-[-0.01em] text-black/55">
+                    {t("onboarding.suggest.loading")}
+                  </p>
+                </div>
+              ) : (
+                suggestions && (
+                  <p className="mt-4 inline-flex rounded-pill bg-[#1E1B4B]/[0.06] px-3 py-1.5 text-[12px] font-medium tracking-[-0.01em] text-[#1E1B4B]">
+                    {t("onboarding.suggest.personalized")}
+                  </p>
+                )
+              )}
+
+              {/* 예시 칩 — Step 1 과 같은 규칙. 탭 한 번으로 채워 타이핑 0 완주. */}
               <div className="mt-6 space-y-2.5">
-                {DECLARATION_EXAMPLE_KEYS.map((key, i) => {
-                  const ex = declarationExamples[i];
-                  const selected = declaration === ex;
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => handleSelectDeclaration(ex)}
-                      aria-pressed={selected}
-                      className={`flex w-full items-start gap-3 rounded-[14px] border px-4 py-3 text-left transition-all ${
-                        selected
-                          ? "border-[#1E1B4B] bg-[#1E1B4B]/[0.04]"
-                          : "border-black/10 bg-white hover:border-[#1E1B4B]/40"
-                      }`}
-                    >
-                      <span
-                        aria-hidden
-                        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors ${
-                          selected
-                            ? "border-[#1E1B4B] bg-[#1E1B4B] text-white"
-                            : "border-black/20 text-transparent"
-                        }`}
-                      >
-                        <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M20 6L9 17l-5-5" />
-                        </svg>
-                      </span>
-                      <span className="text-[15px] font-medium leading-[1.5] tracking-[-0.01em] text-[#1E1B4B]">
-                        {ex}
-                      </span>
-                    </button>
-                  );
-                })}
+                {declarationExamples.map((ex) => (
+                  <ChoiceChip
+                    key={ex}
+                    label={ex}
+                    selected={declaration === ex}
+                    onSelect={() => handleSelectDeclaration(ex)}
+                  />
+                ))}
               </div>
 
               {showDeclarationInput ? (
@@ -484,6 +628,22 @@ export default function OnboardingPage() {
               </h2>
               <p className="mt-2 text-[14px] leading-[1.5] tracking-[-0.022em] text-black/55">
                 {t("onboarding.goal.subtitle")}
+              </p>
+
+              {/* 제안 칩 → 입력칸을 채운다. 고른 뒤에도 아래에서 그대로 고쳐 쓸 수 있다. */}
+              <div className="mt-5 space-y-2.5">
+                {goalExamples.map((ex) => (
+                  <ChoiceChip
+                    key={ex}
+                    label={ex}
+                    selected={goal === ex}
+                    onSelect={() => handleSelectGoal(ex)}
+                  />
+                ))}
+              </div>
+              {/* 여러 개를 고르게 두면 첫날부터 실패가 예약된다 — "하나만"을 여기서 못박는다. */}
+              <p className="mt-3 text-[12px] leading-[1.5] tracking-[-0.01em] text-black/48">
+                {t("onboarding.goal.pickOne")}
               </p>
 
               <div className="mt-5">

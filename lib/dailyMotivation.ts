@@ -12,7 +12,7 @@
  *      결정론적으로 그 일수만큼 핀 인물의 명언이 우선 노출된다.
  *   3) 환각(가짜 인용)을 막기 위해 큐레이션 시드 `FAMOUS_QUOTES_SEED` 를 후보로 주고,
  *      Gemini 는 그 풀 안에서 한 건의 id 를 고르는 역할만 한다.
- *   4) 후보는 위인 어록만이 아니다 — 저자 없는 큐레이션 잠언 풀(`lib/curatedQuotes`, 언어별 500건)이
+ *   4) 후보는 위인 어록만이 아니다 — 저자 없는 큐레이션 잠언 풀(`lib/curatedQuotes`, 언어별 1,000건)이
  *      매일 결정론적으로 섞여 들어간다. 프롬프트 후보는 두 갈래에서 균형 있게 잘라 보낸다.
  */
 import { FieldValue, Timestamp } from "firebase-admin/firestore";

@@ -1,7 +1,8 @@
 /**
- * motivational_quotes_500_4languages.csv → lib/curatedQuotesSeed.{ko,en,es,zh}.ts 생성기.
+ * 잠언 CSV → lib/curatedQuotesSeed.{ko,en,es,zh}.ts 생성기.
  *
- * 실행: node scripts/gen-curated-quotes.mjs
+ * 실행: node scripts/gen-curated-quotes.mjs [csv 경로]
+ *       (경로를 안 주면 DEFAULT_CSV — 현재 1,000문구 통합본)
  *
  * - CSV 는 한 행에 4개 언어가 함께 들어있고(id,주제,theme,한국어,English,Espanol,中文),
  *   앱은 언어별 풀로 분기하므로 언어마다 파일 하나씩 떨어뜨린다.
@@ -9,11 +10,13 @@
  * - 생성물은 커밋 대상. 문구를 고치려면 CSV 를 고치고 이 스크립트를 다시 돌린다.
  */
 import { readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const CSV_PATH = join(ROOT, "motivational_quotes_500_4languages.csv");
+const DEFAULT_CSV = "motivational_quotes_1000_combined.csv";
+const csvArg = process.argv[2];
+const CSV_PATH = csvArg ? (isAbsolute(csvArg) ? csvArg : join(ROOT, csvArg)) : join(ROOT, DEFAULT_CSV);
 
 /** CSV 열 이름 → 생성 파일 정보. language 필드는 기존 시드 컨벤션(ko 외에는 "en")을 따른다. */
 const TARGETS = [
@@ -81,7 +84,7 @@ function normalizeForDedupe(value) {
   return value.replace(/\s+/g, "").replace(/[.,!?;:'"“”‘’·…]/g, "").toLowerCase();
 }
 
-function buildFile(target, rows, headerIndex) {
+function buildFile(target, rows, headerIndex, idWidth) {
   const textIdx = headerIndex[target.column];
   const themeKoIdx = headerIndex["주제"];
   const themeEnIdx = headerIndex["theme"];
@@ -108,7 +111,7 @@ function buildFile(target, rows, headerIndex) {
     }
     seen.set(key, rowId);
     entries.push({
-      id: `cu_${target.lang}_${String(rowId).padStart(3, "0")}`,
+      id: `cu_${target.lang}_${String(rowId).padStart(idWidth, "0")}`,
       text,
       themeKo: (row[themeKoIdx] ?? "").trim(),
       themeEn: (row[themeEnIdx] ?? "").trim(),
@@ -164,8 +167,13 @@ function main() {
   }
 
   const body = rows.slice(1);
+  // id 자릿수는 가장 큰 행 id 에 맞춘다 — CSV 가 커져도 슬러그 폭이 들쭉날쭉해지지 않게.
+  const idWidth = Math.max(
+    3,
+    ...body.map((r) => (r[headerIndex["id"]] ?? "").trim().length),
+  );
   for (const target of TARGETS) {
-    const { outPath, count, skipped } = buildFile(target, body, headerIndex);
+    const { outPath, count, skipped } = buildFile(target, body, headerIndex, idWidth);
     console.log(`✓ ${outPath.replace(ROOT, ".")} — ${count}건${skipped.length ? ` (제외 ${skipped.length}건)` : ""}`);
     for (const s of skipped) console.log(`   · ${s}`);
   }

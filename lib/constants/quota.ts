@@ -50,6 +50,12 @@ export const DAILY_QUOTA = {
    * 다짐 최대 10개(MAX_SUCCESS_AFFIRMATIONS)와 맞춘다.
    */
   affirmationCoach: 10,
+  /**
+   * 온보딩 Step 2 맞춤 제안 — 꿈 1문장 → 선언 3 + 목표 3 (LLM 1호출).
+   * 온보딩은 원칙적으로 1회지만, 꿈을 고쳐 쓰고 다시 넘어오면 새 제안을 받는다.
+   * 그 왕복을 몇 번 해도 막히지 않을 만큼만 열어둔다(초과해도 정적 예시로 폴백).
+   */
+  onboardingSuggest: 5,
 } as const;
 
 export type QuotaKey = keyof typeof DAILY_QUOTA;
