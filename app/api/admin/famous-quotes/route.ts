@@ -19,6 +19,7 @@ const ALLOWED_CATEGORIES: ReadonlyArray<FamousQuoteCategory> = [
   "leader",
   "scientist",
   "literature",
+  "wisdom",
   "personal",
 ];
 

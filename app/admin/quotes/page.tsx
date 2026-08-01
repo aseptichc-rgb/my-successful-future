@@ -22,6 +22,7 @@ const CATEGORY_LABEL: Record<FamousQuoteCategory, string> = {
   leader: "리더",
   scientist: "과학자",
   literature: "문학",
+  wisdom: "잠언(작자 미상)",
   personal: "본인",
 };
 
@@ -32,6 +33,7 @@ const ALL_CATEGORIES: FamousQuoteCategory[] = [
   "leader",
   "scientist",
   "literature",
+  "wisdom",
   "personal",
 ];
 

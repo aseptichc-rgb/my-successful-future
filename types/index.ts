@@ -430,6 +430,8 @@ export type FamousQuoteCategory =
   | "leader"
   | "scientist"
   | "literature"
+  /** 저자 없는 큐레이션 잠언 (lib/curatedQuotes) — 위인 어록과 함께 후보로 섞인다. */
+  | "wisdom"
   | "personal";
 
 export type FamousQuoteLang = "ko" | "en";

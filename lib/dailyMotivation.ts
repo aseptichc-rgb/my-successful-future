@@ -12,6 +12,8 @@
  *      결정론적으로 그 일수만큼 핀 인물의 명언이 우선 노출된다.
  *   3) 환각(가짜 인용)을 막기 위해 큐레이션 시드 `FAMOUS_QUOTES_SEED` 를 후보로 주고,
  *      Gemini 는 그 풀 안에서 한 건의 id 를 고르는 역할만 한다.
+ *   4) 후보는 위인 어록만이 아니다 — 저자 없는 큐레이션 잠언 풀(`lib/curatedQuotes`, 언어별 500건)이
+ *      매일 결정론적으로 섞여 들어간다. 프롬프트 후보는 두 갈래에서 균형 있게 잘라 보낸다.
  */
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
@@ -19,6 +21,7 @@ import { KST_OFFSET_MS, todayKstYmd, yesterdayKstYmd } from "@/lib/kstDate";
 import { generateText } from "@/lib/gemini";
 import { type FamousQuoteSeed } from "@/lib/famousQuotesSeed";
 import { getQuoteSeedPool } from "@/lib/famousQuoteCatalog";
+import { anonymousAuthorLabel, getCuratedQuotePool } from "@/lib/curatedQuotes";
 import { ensureIdentities } from "@/lib/identities";
 import { geminiLanguageName, normalizeLanguage } from "@/lib/llmLang";
 import { FUTURE_PERSONA_TRUNC } from "@/lib/constants/futurePersona";
@@ -53,6 +56,20 @@ const MAX_SEEN_QUOTE_HISTORY = 600;
 const MAX_HISTORY_HINTS_FOR_PROMPT = 30;
 /** 한 주에 노출되는 인물 풀의 목표 인원수 — 너무 좁으면 단조롭고, 너무 넓으면 회전 효과가 사라진다. */
 const WEEKLY_AUTHOR_POOL_SIZE = 8;
+/**
+ * 하루 후보에 섞어 넣을 무명 잠언 수. 주간 인물 풀에서 나오는 어록이 보통 15~25건이라
+ * 이 정도면 "위인 어록 반, 잠언 반"에 가까운 체감이 된다.
+ */
+const CURATED_DAILY_SAMPLE = 16;
+/**
+ * 프롬프트에 실어 보내는 후보 상한. 풀 소진 등으로 전체 풀(수백 건)이 후보가 되는 경로가
+ * 있어, 상한 없이 두면 프롬프트가 비대해지고 비용/지연이 튄다.
+ */
+export const MAX_PROMPT_CANDIDATES = 40;
+/** 그 상한 안에서 무명 잠언에 보장하는 몫 — 위인 어록이 후보를 독식하지 않도록. */
+const CURATED_PROMPT_RATIO = 0.4;
+/** 후보 목록에서 "저자 없음"을 표시하는 표식. 모델이 사람 이름으로 오해하지 않을 형태여야 한다. */
+const UNATTRIBUTED_MARK = "(unattributed maxim)";
 const MIN_PINNED_DAYS = 0;
 const MAX_PINNED_DAYS = 7;
 const DAYS_PER_WEEK = 7;
@@ -124,10 +141,14 @@ export function pickGradient(seed: string): MotivationGradient {
 
 /**
  * 사용자 언어별 후보 풀 + by-id 룩업 + 인물 목록을 lazy 캐싱.
- * 4개 풀이라 풀당 수십~백건 수준이고, 호출 시점에 1회씩만 만든다.
+ * 4개 풀이라 풀당 수백 건 수준이고, 호출 시점에 1회씩만 만든다.
+ *
+ * candidates 는 (위인 어록 + 무명 잠언) 전체. curated 는 그중 잠언만 따로 들고 있어
+ * 하루 후보를 섞을 때 다시 필터링하지 않아도 되게 한다.
  */
 interface LanguagePoolCache {
   candidates: ReadonlyArray<FamousQuoteSeed>;
+  curated: ReadonlyArray<FamousQuoteSeed>;
   byId: ReadonlyMap<string, FamousQuoteSeed>;
   authors: ReadonlyArray<string>;
 }
@@ -138,7 +159,13 @@ function getLanguagePool(language: UserLanguage): LanguagePoolCache {
   const cached = POOL_CACHE.get(language);
   if (cached) return cached;
   const seedPool = getQuoteSeedPool(language);
-  const candidates = seedPool.filter((q) => !EXCLUDED_CATEGORIES.has(q.category));
+  const curated = getCuratedQuotePool(language).filter(
+    (q) => !EXCLUDED_CATEGORIES.has(q.category),
+  );
+  const candidates = [
+    ...seedPool.filter((q) => !EXCLUDED_CATEGORIES.has(q.category)),
+    ...curated,
+  ];
   const byId = new Map(candidates.map((q) => [q.id, q] as const));
   const authors = Array.from(
     new Set(
@@ -147,7 +174,7 @@ function getLanguagePool(language: UserLanguage): LanguagePoolCache {
         .filter((a) => a.length > 0),
     ),
   ).sort((a, b) => a.localeCompare(b, language === "ko" ? "ko" : language === "zh" ? "zh" : language === "es" ? "es" : "en"));
-  const value = { candidates, byId, authors } as const;
+  const value = { candidates, curated, byId, authors } as const;
   POOL_CACHE.set(language, value);
   return value;
 }
@@ -189,6 +216,13 @@ function deterministicShuffle<T>(arr: ReadonlyArray<T>, seed: number): T[] {
     [out[i], out[j]] = [out[j], out[i]];
   }
   return out;
+}
+
+/** 결정론적으로 n 건만 추린다. 같은 시드면 같은 결과, 풀이 더 작으면 그대로 반환. */
+function deterministicSample<T>(arr: ReadonlyArray<T>, seed: number, n: number): T[] {
+  if (n <= 0) return [];
+  if (arr.length <= n) return arr.slice();
+  return deterministicShuffle(arr, seed).slice(0, n);
 }
 
 /**
@@ -251,16 +285,18 @@ function buildPrompt(opts: {
       ? ctx.goals.map((g, i) => `${i + 1}. ${g}`).join("\n")
       : "(no goals listed yet)";
 
+  // 저자가 없는 항목은 무명 잠언 — 모델이 사람 이름을 지어내지 않도록 표식을 명확히 준다.
   const candidatesBlock = candidates
-    .map((q) => `- ${q.id} | ${q.author ?? "Unknown"} | "${q.text}"`)
+    .map((q) => `- ${q.id} | ${q.author ?? UNATTRIBUTED_MARK} | "${q.text}"`)
     .join("\n");
 
   const identitiesBlock = identityLabels.map((l) => `- ${l}`).join("\n");
 
   // 프롬프트는 영어 + 출력 언어를 명시하는 방식. 카드의 mission/identityTag 가
   // 사용자의 언어로 떨어지면서 후보 id 만 우리 풀의 영문 슬러그를 그대로 가져온다.
-  return `You are a curator who picks one real-person quote that fits a person's goals and future self,
-and a coach who turns that quote into a single active-recall mission line for today.
+  return `You are a curator who picks one line — either a real person's quote or an unattributed maxim —
+that fits a person's goals and future self, and a coach who turns that line into a single
+active-recall mission for today.
 
 Today is ${ymd} (KST). For the user below, (1) pick ONE quote from the candidate list,
 (2) write a single-line mission that turns the quote into a concrete action for today,
@@ -276,6 +312,8 @@ Identity labels are already provided in ${langName}; copy them verbatim.
 ${goalsBlock}
 
 ## Candidate quotes (NEVER fabricate or paraphrase outside this list)
+Lines marked "${UNATTRIBUTED_MARK}" are anonymous maxims curated for this app. They are just as
+valid a pick as a famous name — judge only by fit. Never invent an author for them.
 ${candidatesBlock}
 
 ## Identity label pool (pick exactly one verbatim — do NOT invent new labels)
@@ -283,6 +321,7 @@ ${identitiesBlock}
 
 ## Selection / writing rules
 1. Quote: the line that best resonates with this user's goals and future self. Not a tired cliché.
+   Do not favor famous names over unattributed maxims — pick by resonance alone.
 2. Mission:
    - A concrete question or action prompt the user can answer in one short line (~60 chars).
    - Length ${MISSION_PROMPT_MIN_LEN}-${MISSION_PROMPT_MAX_LEN} characters in ${langName}.
@@ -504,12 +543,13 @@ interface PickedQuote {
   originalLang?: string;
 }
 
-function toPickedQuote(seed: FamousQuoteSeed): PickedQuote {
+function toPickedQuote(seed: FamousQuoteSeed, language: UserLanguage): PickedQuote {
   // tags 첫 항목을 출처 힌트(저작/연설)로 활용 — 시드의 자유 메타.
   const sourceTag = seed.tags && seed.tags.length > 0 ? seed.tags[0] : undefined;
   return {
     text: seed.text,
-    author: seed.author ?? "미상",
+    // 무명 잠언은 카드에 사용자 언어로 "작자 미상"류 라벨이 찍힌다.
+    author: seed.author ?? anonymousAuthorLabel(language),
     source: sourceTag,
     originalText: seed.originalText,
     originalLang: seed.originalLang,
@@ -517,13 +557,46 @@ function toPickedQuote(seed: FamousQuoteSeed): PickedQuote {
 }
 
 /**
+ * 프롬프트에 실을 후보를 상한 안으로 줄인다.
+ * 그냥 잘라내면 한쪽(대개 건수가 많은 무명 잠언)이 후보를 독식하므로, 위인 어록/잠언
+ * 두 갈래에서 각자 몫만큼 뽑고 한쪽이 모자라면 다른 쪽이 남은 자리를 가져간다.
+ *
+ * (export 는 단위 테스트 노출용 — 런타임 호출자는 이 파일 안에만 있다.)
+ */
+export function balancedPromptCandidates(
+  pool: ReadonlyArray<FamousQuoteSeed>,
+  seed: number,
+): ReadonlyArray<FamousQuoteSeed> {
+  if (pool.length <= MAX_PROMPT_CANDIDATES) return pool;
+  const attributed = pool.filter((q) => q.author);
+  const unattributed = pool.filter((q) => !q.author);
+  if (attributed.length === 0 || unattributed.length === 0) {
+    return deterministicSample(pool, seed, MAX_PROMPT_CANDIDATES);
+  }
+  const curatedQuota = Math.min(
+    unattributed.length,
+    Math.round(MAX_PROMPT_CANDIDATES * CURATED_PROMPT_RATIO),
+  );
+  const famousQuota = Math.min(attributed.length, MAX_PROMPT_CANDIDATES - curatedQuota);
+  // 한쪽이 몫을 다 못 채웠으면 남은 자리를 반대쪽에 돌려준다.
+  const curatedFinal = Math.min(unattributed.length, MAX_PROMPT_CANDIDATES - famousQuota);
+  return [
+    ...deterministicSample(attributed, seed, famousQuota),
+    ...deterministicSample(unattributed, seed ^ 0x9e3779b9, curatedFinal),
+  ];
+}
+
+/**
  * 오늘 노출할 후보 풀(이번 한 건을 뽑을 대상)을 결정한다.
  * - overrideAuthor 가 있으면 → 그 인물의 명언만 (즉시 받아보기 버튼 경로).
  * - 핀 인물 + 오늘이 핀 요일이면 → 그 인물의 명언만.
- * - 그 외 → 이번 주 회전 풀에 속한 인물들의 명언.
+ *   (위 둘은 사용자가 인물을 명시한 경로라 무명 잠언을 섞지 않는다.)
+ * - 그 외 → 이번 주 회전 인물들의 어록 + 오늘 몫의 무명 잠언을 섞은 풀.
  * - 어떤 사정으로 풀이 비면 → 전체 후보로 폴백.
+ *
+ * (export 는 단위 테스트 노출용 — 런타임 호출자는 이 파일 안에만 있다.)
  */
-function resolveTodaysPool(
+export function resolveTodaysPool(
   uid: string,
   ymd: string,
   preference: QuotePreference,
@@ -535,7 +608,7 @@ function resolveTodaysPool(
   /** 시드에 없는 free-text 인물명. pool 이 비어있을 때만 채워짐. */
   freeAuthor?: string;
 } {
-  const { candidates, authors } = getLanguagePool(language);
+  const { candidates, curated, authors } = getLanguagePool(language);
   const wk = weekKeyKst(ymd);
   const dow = weekdayKst(ymd);
   const pinnedDays = pinnedWeekdays(uid, wk, preference.pinnedDaysPerWeek ?? 0);
@@ -555,9 +628,17 @@ function resolveTodaysPool(
     return { pool: [], reason: "pinned", freeAuthor: target };
   }
 
+  // 이번 주 인물들의 어록 + 오늘 몫의 무명 잠언. 잠언 표본은 (uid, ymd) 시드라
+  // 날마다 다른 16건이 올라오고, 같은 날 재호출에는 같은 표본이 유지된다.
   const weeklyAuthors = weeklyAuthorPool(uid, wk, authors);
   const weekly = candidates.filter((q) => q.author && weeklyAuthors.has(q.author));
-  if (weekly.length > 0) return { pool: weekly, reason: "weekly" };
+  const curatedToday = deterministicSample(
+    curated,
+    hash32(`${uid}:${ymd}:curated`),
+    CURATED_DAILY_SAMPLE,
+  );
+  const mixed = [...weekly, ...curatedToday];
+  if (mixed.length > 0) return { pool: mixed, reason: "weekly" };
 
   return { pool: candidates, reason: "all" };
 }
@@ -762,6 +843,10 @@ export async function ensureMotivation(opts: {
     ? `regen-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     : `${ymd}`;
 
+  // 실제로 모델에게 보여줄 후보 — 상한 안에서 위인 어록/무명 잠언이 함께 남도록 균형 추출.
+  // 이후 "풀 안의 id 인지" 검증과 폴백도 모두 이 목록 기준이어야 한다(모델이 못 본 건 고를 수 없다).
+  const promptPool = balancedPromptCandidates(pool, hash32(`${uid}:${ymd}:${varietySalt}:prompt`));
+
   let picked: PickedQuote;
   let mission: MotivationMission;
 
@@ -811,7 +896,10 @@ export async function ensureMotivation(opts: {
         );
       } else {
         // 파싱 실패 → 전체 시드 풀에서 폴백
-        picked = toPickedQuote(deterministicFallback(uid, ymd, allCandidates, ctx.language));
+        picked = toPickedQuote(
+          deterministicFallback(uid, ymd, allCandidates, ctx.language),
+          ctx.language,
+        );
         mission = buildFallbackMission(identityLabels, ctx.goals, `${uid}:${ymd}:${varietySalt}`, ctx.language);
       }
     } catch (err) {
@@ -819,7 +907,10 @@ export async function ensureMotivation(opts: {
         "[dailyMotivation] free-author 생성 실패, 시드 폴백:",
         err instanceof Error ? err.message : err,
       );
-      picked = toPickedQuote(deterministicFallback(uid, ymd, allCandidates, ctx.language));
+      picked = toPickedQuote(
+        deterministicFallback(uid, ymd, allCandidates, ctx.language),
+        ctx.language,
+      );
       mission = buildFallbackMission(identityLabels, ctx.goals, `${uid}:${ymd}:${varietySalt}`, ctx.language);
     }
   } else {
@@ -828,7 +919,7 @@ export async function ensureMotivation(opts: {
         buildPrompt({
           ctx,
           ymd,
-          candidates: pool,
+          candidates: promptPool,
           identityLabels,
           varietySalt,
           avoidQuotes: avoidQuotesForPrompt,
@@ -840,9 +931,11 @@ export async function ensureMotivation(opts: {
       const ext = parsePickedExtension(raw);
       const seed = ext ? candidateById.get(ext.id) : undefined;
       // Gemini 가 풀 밖의 id 를 들고와도 풀 안에서만 받아들임. 아니면 폴백.
-      const inPool = seed && pool.some((q) => q.id === seed.id) ? seed : undefined;
+      const inPool = seed && promptPool.some((q) => q.id === seed.id) ? seed : undefined;
       picked = toPickedQuote(
-        inPool ?? deterministicFallback(uid, force ? `${ymd}:${varietySalt}` : ymd, pool, ctx.language),
+        inPool ??
+          deterministicFallback(uid, force ? `${ymd}:${varietySalt}` : ymd, promptPool, ctx.language),
+        ctx.language,
       );
       mission = resolveMission(ext, identityLabels, ctx.goals, `${uid}:${ymd}:${varietySalt}`);
     } catch (err) {
@@ -852,7 +945,8 @@ export async function ensureMotivation(opts: {
       );
       // Gemini 실패 시에도 force 면 가변 시드를 써야 매 호출마다 다른 명언이 떨어진다.
       picked = toPickedQuote(
-        deterministicFallback(uid, force ? `${ymd}:${varietySalt}` : ymd, pool, ctx.language),
+        deterministicFallback(uid, force ? `${ymd}:${varietySalt}` : ymd, promptPool, ctx.language),
+        ctx.language,
       );
       mission = buildFallbackMission(identityLabels, ctx.goals, `${uid}:${ymd}:${varietySalt}`, ctx.language);
     }
@@ -867,7 +961,7 @@ export async function ensureMotivation(opts: {
       : allCandidates.filter((q) => !excludeSet.has(q.text));
     if (altPool.length > 0) {
       const alt = deterministicFallback(uid, `${ymd}:${varietySalt}:retry`, altPool, ctx.language);
-      picked = toPickedQuote(alt);
+      picked = toPickedQuote(alt, ctx.language);
     }
   }
 

@@ -6,6 +6,10 @@
  *
  * dailyMotivation 의 후보 풀, 위젯 큐레이션, 설정 페이지의 "핀할 인물" 셀렉트가
  * 모두 이 함수 한 곳을 통해 사용자의 language 에 맞는 풀로 분기된다.
+ *
+ * ⚠️ 여기는 "인물이 있는 어록"만 다룬다. 저자 없는 큐레이션 잠언은 `lib/curatedQuotes` 에
+ * 따로 있고 dailyMotivation 에서 합쳐진다 — 이 모듈은 클라이언트(설정 페이지)도 임포트하므로
+ * 인물 목록에 기여하지 않는 수천 건을 여기 얹지 않는다.
  */
 import type { FamousQuoteSeed } from "@/lib/famousQuotesSeed";
 import { FAMOUS_QUOTES_SEED } from "@/lib/famousQuotesSeed";
