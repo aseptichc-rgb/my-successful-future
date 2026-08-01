@@ -68,6 +68,10 @@ const dict: Record<DictKey, string> = {
   "onboarding.futureSelf.growth.placeholder":
     "健康状况、正在学习的东西、持续前进的样子。",
 
+  // 第 2 步的个性化建议 —— 从第 1 步写下的梦想中提取。
+  "onboarding.suggest.loading": "正在读你刚写下的梦想,为你挑选合适的句子…",
+  "onboarding.suggest.personalized": "从你刚写下的梦想里挑出来的",
+
   // 第 2 步上方 —— 用第一人称现在式写「已经成为」的自己。每天照抄这一句。
   "onboarding.declaration.title": "用一句话写下实现了那个梦想的我",
   "onboarding.declaration.subtitle": "像已经成为的人那样写。这就是你每天要抄的那一句。",
@@ -82,6 +86,13 @@ const dict: Record<DictKey, string> = {
   "onboarding.goal.subtitle": "一个就够了。坚持下去,就能多放一个目标。",
   "onboarding.goal.placeholder": "每天读 30 页书,并写下一行心得",
   "onboarding.goal.hint": "写成「今天做了或没做」的行动,才能一眼判断有没有做到。",
+  // 静态候选 —— 只在没有个性化建议时使用。
+  // 三条都带数字、频率和可数单位(见 lib/goalQuality)。
+  "onboarding.goal.example1": "每天早上读 20 页书,并写下一行想法",
+  "onboarding.goal.example2": "每天晚上 10 分钟,写下明天要做的 3 件事",
+  "onboarding.goal.example3": "每周 4 次,每次快走 30 分钟",
+  "onboarding.goal.pickOne":
+    "只选一个就好。第一天不必贪多 —— 把选中的那一个每天重复,就是全部。",
 
   "onboarding.step4.cta": "获取今日的一句话 →",
   "onboarding.step4.preparing": "准备中…",
@@ -422,8 +433,8 @@ const dict: Record<DictKey, string> = {
   "plan.today.emptyCta": "创建今天的执行计划",
   "plan.today.emptyDesc": "一句话：「如果 A，我就做 B」· 选一个 AI 草稿即可完成，无需打字",
   "plan.today.firstAction": "昨晚的我定下的第一个行动",
-  "plan.locked.title": "执行设计 (if-then)",
-  "plan.locked.desc": "先想好自己可能拖延的那一刻，再用一句话把它和当下要做的行动绑在一起。",
+  "unlock.teaser.title": "还没解锁的功能",
+  "unlock.teaser.hint": "是什么，等解锁那天再告诉你。",
   "unlock.locked.body": "连续{days}天即可解锁 · 目前{progress}天",
 
   // ── 夜晚模式：明天的第一个行动 ────────────────────
@@ -533,6 +544,7 @@ const dict: Record<DictKey, string> = {
   // 首页只留名言、今天的卡片和 7 天节奏环,其余全部折叠到这里。
   "home.section.more": "查看更多",
   "home.more.summary": "未来的我 · 记录 · 执行设计",
+  "home.more.summaryLocked": "未来的我 · 目标 · 还没解锁的东西",
 
   // ── 今天的目标打卡(与誓言抄写同一张卡片)──
   "home.todayGoal.title": "今天的目标",

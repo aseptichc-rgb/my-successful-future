@@ -13,8 +13,9 @@ import WhyIfThen from "@/components/woop/WhyIfThen";
  *             하루의 첫 화면에서 결정 순간의 행동 큐를 준다.
  *  · compact: 중립/저녁 모드 — 한 줄 축약(카드 존재감만 유지).
  *  · 플랜이 없으면 CTA 행 — 탭하면 홈 위로 설계 시트가 바로 열린다.
- *  · locked : 잠금 예고 행(탭 불가) — 실행 설계는 꾸준함으로 벌어서 연다.
- *  · hidden : 첫 행동 회수 행만(그마저 없으면 null — 래퍼가 통째로 생략).
+ *  · locked / hidden : 첫 행동 회수 행만(그마저 없으면 null — 래퍼가 통째로 생략).
+ *    잠긴 동안 이 카드는 자기 이름조차 내지 않는다 — 예고는 더 보기 맨 아래의
+ *    익명 잠금 행(MoreSection 의 LockedTeaserRow) 한 곳이 전담한다.
  *
  * 설명은 "무엇 → 왜"의 2단이다: 카드에 상시로 있는 건 한 줄(plan.today.desc)뿐이고,
  * 근거·연구는 접힌 WhyIfThen 안에 둔다. 아침 카드의 본래 일은 오늘 할 행동을
@@ -44,8 +45,10 @@ export default function DailyPlanCard({
 }) {
   const t = useT();
 
-  if (unlock.kind === "hidden") {
-    // 설계할 목표가 없다 — 첫 행동 회수 행만 남기고, 그마저 없으면 카드 자체를 접는다.
+  if (unlock.kind !== "open") {
+    /* 설계할 목표가 없거나(hidden) 아직 잠김(locked) — 두 경우 모두 카드는 자신을
+       드러내지 않는다. 이름과 설명을 미리 깔면 "지금은 못 쓰는 기능"의 목록이 되고,
+       그건 기대가 아니라 결핍으로 읽힌다. 첫 행동 회수 행만 남기고 나머지는 접는다. */
     if (!compact && yesterdayFirstAction) {
       return (
         <div className="bg-[var(--bg-grouped-2)] rounded-[12px] overflow-hidden">
@@ -54,34 +57,6 @@ export default function DailyPlanCard({
       );
     }
     return null;
-  }
-
-  if (unlock.kind === "locked") {
-    // 아직 잠김 — 조건·진행도만 예고한다. 눌러도 아무 일이 없는 행은 button 이 아니다.
-    return (
-      <div className="bg-[var(--bg-grouped-2)] rounded-[12px] overflow-hidden">
-        {!compact && yesterdayFirstAction && (
-          <FirstActionRow text={yesterdayFirstAction} withSeparator />
-        )}
-        <div className="flex items-center gap-3 px-5 py-4">
-          <span className="text-[17px]" aria-hidden>
-            🔒
-          </span>
-          <span className="flex-1 min-w-0">
-            <span className="block text-[15px] font-medium text-[var(--label-2)]">
-              {t("plan.locked.title")}
-            </span>
-            {/* 잠긴 동안에도 "무엇이 열리는지"는 알려준다 — 이름만으로는 기다릴 이유가 없다. */}
-            <span className="block mt-0.5 text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label-2)]">
-              {t("plan.locked.desc")}
-            </span>
-            <span className="block mt-1 text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label-3)]">
-              {t("unlock.locked.body", { days: unlock.threshold, progress: unlock.progress })}
-            </span>
-          </span>
-        </div>
-      </div>
-    );
   }
 
   if (!plan) {

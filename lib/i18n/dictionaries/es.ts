@@ -73,6 +73,11 @@ const dict: Record<DictKey, string> = {
   "onboarding.futureSelf.growth.placeholder":
     "Tu salud, lo que estás aprendiendo, cómo sigues avanzando.",
 
+  // Sugerencias personalizadas del paso 2 — sacadas del sueño escrito en el paso 1.
+  "onboarding.suggest.loading":
+    "Leyendo el sueño que acabas de escribir para elegir frases que encajen contigo…",
+  "onboarding.suggest.personalized": "Sacado del sueño que acabas de escribir",
+
   // Paso 2, campo superior — una línea en primera persona y presente. Se copia cada día.
   "onboarding.declaration.title": "El tú que alcanzó ese sueño, en una línea",
   "onboarding.declaration.subtitle":
@@ -90,6 +95,13 @@ const dict: Record<DictKey, string> = {
   "onboarding.goal.placeholder": "leo 30 páginas cada día y anoto una línea",
   "onboarding.goal.hint":
     "Escríbela como una acción que hoy hiciste o no hiciste: así se puede marcar.",
+  // Alternativas estáticas, solo cuando no hay sugerencia personalizada.
+  // Cada una lleva número, frecuencia y unidad contable (ver lib/goalQuality).
+  "onboarding.goal.example1": "Leo 20 páginas cada mañana y anoto una línea",
+  "onboarding.goal.example2": "Escribo cada noche mis 3 tareas en 10 minutos",
+  "onboarding.goal.example3": "Camino 30 minutos 4 veces cada semana",
+  "onboarding.goal.pickOne":
+    "Elige solo una. No hace falta varias desde el primer día: repetir esa única cada día es todo.",
 
   "onboarding.step4.cta": "Recibir la frase de hoy →",
   "onboarding.step4.preparing": "Preparando…",
@@ -440,9 +452,8 @@ const dict: Record<DictKey, string> = {
   "plan.today.emptyDesc":
     "Una frase: «Si pasa A, hago B» · Elige un borrador de la IA y listo, sin escribir",
   "plan.today.firstAction": "La primera acción que eligió mi yo de anoche",
-  "plan.locked.title": "Diseño de ejecución (if-then)",
-  "plan.locked.desc":
-    "Anticipa el momento en que lo dejarías para después y únelo a una acción, en una sola frase.",
+  "unlock.teaser.title": "Algo que todavía no se ha abierto",
+  "unlock.teaser.hint": "Qué es, lo sabrás el día que se abra.",
   "unlock.locked.body": "Se abre con {days} días seguidos · ahora {progress} días",
 
   // ── Modo noche: primera acción de mañana ──────────
@@ -556,6 +567,7 @@ const dict: Record<DictKey, string> = {
   // En Inicio solo quedan la frase, la tarjeta de hoy y el anillo de 7 días.
   "home.section.more": "Ver más",
   "home.more.summary": "Yo futuro · Notas · Planes",
+  "home.more.summaryLocked": "Yo futuro · Objetivos · algo aún bloqueado",
 
   // ── Marcar la meta de hoy (misma tarjeta que la transcripción) ──
   "home.todayGoal.title": "Meta de hoy",

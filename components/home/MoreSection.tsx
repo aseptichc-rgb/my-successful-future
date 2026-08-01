@@ -246,23 +246,38 @@ export default function MoreSection({
   const winsFilled = wins.filter((w) => (w || "").trim().length > 0).length;
   const winRowCount = Math.min(MAX_DAILY_WINS, Math.max(winsVisible, winsFilled));
 
+  /* ── 잠긴 기능 예고: 이름 없이 하나만 ──
+   * 아직 못 여는 기능들을 이름·설명과 함께 줄줄이 세워두면 "앞으로 열릴 것"이 아니라
+   * "지금 못 쓰는 것"의 목록이 된다. 그래서 잠긴 것이 몇 개든 가장 가까운 하나만,
+   * 정체를 감춘 채 조건과 진행도만 보여준다 — 궁금함이 남아야 다시 온다.
+   * 두 스냅샷이 다 도착하기 전(null)에는 그리지 않는다: 나중에 도착한 쪽이 더 가까우면
+   * 남은 일수가 눈앞에서 줄어드는 것처럼 보인다. */
+  const nearestLock =
+    unlock && winsUnlock
+      ? ([unlock, winsUnlock]
+          .filter((state) => state.kind === "locked")
+          .sort((a, b) => a.threshold - b.threshold)[0] ?? null)
+      : null;
+
   return (
     <>
     <DisclosureSection
       id="home.more"
       header={t("home.section.more")}
-      summary={t("home.more.summary")}
+      // 접힌 요약도 잠긴 기능의 이름을 흘리지 않는다(펼침/접힘 어느 쪽도 예고는 한 벌).
+      summary={t(nearestLock ? "home.more.summaryLocked" : "home.more.summary")}
     >
       {/* 미래의 나 — 한 줄, 탭하면 펼침. 수정은 설정에서. */}
       <div className="border-b border-[var(--sep)]">
         <FutureSelfLine text={futureText} onWrite={onOpenSettings} />
       </div>
 
-      {/* 오늘의 if-then — 아침엔 전체, 그 외엔 한 줄 축약. 잠김/로딩 전엔 래퍼(구분선)째 생략. */}
+      {/* 오늘의 if-then — 아침엔 전체, 그 외엔 한 줄 축약. 잠김/로딩 전엔 래퍼(구분선)째 생략.
+          잠긴 동안 남는 건 "어젯밤의 첫 행동" 뿐이다(기능 이름은 아래 잠금 행에서도 감춘다). */}
       {(() => {
         if (!unlock) return null;
         const firstAction = homeMode === "morning" ? yesterdayFirstAction : null;
-        if (unlock.kind === "hidden" && !firstAction) return null;
+        if (unlock.kind !== "open" && !firstAction) return null;
         return (
           <div className="border-b border-[var(--sep)]">
             <DailyPlanCard
@@ -352,8 +367,8 @@ export default function MoreSection({
           잘한 일 3칸도 꾸준함으로 벌어서 연다(lib/winsUnlock). 필수 루틴이 붙기 전의 빈 칸
           여러 개는 격려가 아니라 숙제로 읽힌다. 첫 스냅샷 전(null)에는 잠금 행조차 그리지
           않는다 — 열려 있던 기록이 한 프레임 잠겼다 풀리는 편이 더 나쁘다. */}
-      {winsUnlock?.kind === "locked" && (
-        <WinsLockedRow progress={winsUnlock.progress} threshold={winsUnlock.threshold} />
+      {nearestLock && (
+        <LockedTeaserRow progress={nearestLock.progress} threshold={nearestLock.threshold} />
       )}
 
       {winsUnlock?.kind === "open" && (
@@ -504,10 +519,14 @@ export default function MoreSection({
 }
 
 /**
- * 잘한 일 기록 잠금 예고 행 — 조건과 진행도만 알린다.
- * 눌러도 아무 일이 없으므로 button 이 아니다(DailyPlanCard 의 잠금 행과 같은 규칙).
+ * 잠금 예고 행 — 어떤 기능인지는 밝히지 않고 조건과 진행도만 알린다.
+ *
+ * 실행 설계·잘한 일 기록이 이 한 행을 공유한다(호출부가 가장 가까운 잠금 하나만 넘긴다).
+ * 이름과 설명을 미리 보여주면 "곧 열릴 것"이 아니라 "지금 못 쓰는 것"의 목록이 되고,
+ * 목록은 궁금함을 남기지 않는다 — 정체는 열리는 날의 몫이다.
+ * 눌러도 아무 일이 없으므로 button 이 아니다.
  */
-function WinsLockedRow({ progress, threshold }: { progress: number; threshold: number }) {
+function LockedTeaserRow({ progress, threshold }: { progress: number; threshold: number }) {
   const t = useT();
   return (
     <div className="flex items-start gap-3 px-4 py-4">
@@ -516,9 +535,12 @@ function WinsLockedRow({ progress, threshold }: { progress: number; threshold: n
       </span>
       <div className="flex-1 min-w-0">
         <p className="text-[15px] leading-[20px] font-medium text-[var(--label-2)]">
-          {t("home.wins.title", { max: MAX_DAILY_WINS })}
+          {t("unlock.teaser.title")}
         </p>
-        <p className="mt-0.5 text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label-3)]">
+        <p className="mt-0.5 text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label-2)]">
+          {t("unlock.teaser.hint")}
+        </p>
+        <p className="mt-1 text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label-3)]">
           {t("unlock.locked.body", { days: threshold, progress })}
         </p>
       </div>

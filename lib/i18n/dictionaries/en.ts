@@ -70,6 +70,11 @@ const dict: Record<DictKey, string> = {
   "onboarding.futureSelf.growth.placeholder":
     "Your health, what you're learning, the ways you keep moving forward.",
 
+  // Step 2 personalized suggestions — drawn from the dream written in Step 1.
+  "onboarding.suggest.loading":
+    "Reading the dream you just wrote, picking lines that fit you…",
+  "onboarding.suggest.personalized": "Drawn from the dream you just wrote",
+
   // Step 2, top field — a first-person line in the present tense. Copied every day.
   "onboarding.declaration.title": "The you who reached that dream, in one line",
   "onboarding.declaration.subtitle":
@@ -87,6 +92,13 @@ const dict: Record<DictKey, string> = {
   "onboarding.goal.placeholder": "read 30 pages every day and write one line about it",
   "onboarding.goal.hint":
     "Write it as an action you either did or didn't do today — that's what makes it checkable.",
+  // Static fallbacks, used only when there is no personalized suggestion.
+  // Each carries a number, a cadence and a countable unit (see lib/goalQuality).
+  "onboarding.goal.example1": "Read 20 pages every morning and note one line",
+  "onboarding.goal.example2": "Write tomorrow's 3 tasks every night in 10 min",
+  "onboarding.goal.example3": "Walk 30 minutes 4 times weekly and log it",
+  "onboarding.goal.pickOne":
+    "Pick just one. You don't need several on day one — repeating that single one every day is the whole thing.",
 
   "onboarding.step4.cta": "Get today's quote →",
   "onboarding.step4.preparing": "Preparing…",
@@ -434,9 +446,8 @@ const dict: Record<DictKey, string> = {
   "plan.today.emptyDesc":
     "One sentence: \"If A happens, I do B.\" Pick an AI draft and you're done — no typing",
   "plan.today.firstAction": "The first action last-night-me chose",
-  "plan.locked.title": "Execution plan (if-then)",
-  "plan.locked.desc":
-    "Name the moment you'd likely put things off, and tie it to one action — in a single sentence.",
+  "unlock.teaser.title": "Something not unlocked yet",
+  "unlock.teaser.hint": "What it is, you'll find out the day it opens.",
   "unlock.locked.body": "Unlocks after a {days}-day streak · now {progress} days",
 
   // ── Evening mode: tomorrow's first action ─────────
@@ -548,6 +559,7 @@ const dict: Record<DictKey, string> = {
   // Home keeps only the quote, today's card and the 7-day ring — the rest folds in here.
   "home.section.more": "More",
   "home.more.summary": "Future self · Notes · Plans",
+  "home.more.summaryLocked": "Future self · Goals · something still locked",
 
   // ── Today's goal check (same card as the transcription check-in) ──
   "home.todayGoal.title": "Today's goal",

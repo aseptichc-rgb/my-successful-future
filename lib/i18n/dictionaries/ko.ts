@@ -74,6 +74,12 @@ const dict = {
   "onboarding.futureSelf.growth.placeholder":
     "건강, 배우고 있는 것, 계속 나아가는 모습.",
 
+  /* Step 2 맞춤 제안 — Step 1 의 꿈 문장에서 선언·목표 후보를 뽑아 칩을 채운다.
+     생성 실패/짧은 꿈이면 아래 정적 example* 로 조용히 되돌아가므로, 두 문구 모두
+     "제안이 있을 때만" 노출된다. */
+  "onboarding.suggest.loading": "방금 적은 꿈을 읽고, 당신에게 맞는 문장을 고르고 있어요…",
+  "onboarding.suggest.personalized": "당신이 적은 꿈에서 뽑았어요",
+
   // Step 2 위 칸 — 이미 이룬 상태의 1인칭 선언. 매일 이 문장을 그대로 전사한다.
   "onboarding.declaration.title": "그 꿈을 이룬 나를 한 줄로",
   "onboarding.declaration.subtitle":
@@ -90,6 +96,16 @@ const dict = {
     "하나면 충분해요. 꾸준히 지키면 담을 수 있는 목표가 하나씩 늘어나요.",
   "onboarding.goal.placeholder": "매일 책 30쪽을 읽고 한 줄을 남긴다",
   "onboarding.goal.hint": "“~한다”로 끝나는 행동 문장으로 적으면 매일 지켰는지 바로 알 수 있어요.",
+  /* 목표 예시 — 맞춤 제안이 없을 때만 쓰는 정적 후보. 셋 다 수량·주기·단위를 갖춰
+     lib/goalQuality 의 구체성 기준을 통과해야 한다(앱이 제안한 문장이 앱의 "더
+     구체적으로" 힌트에 걸리면 안 된다). 길이는 GOAL_TEXT_MAX(56자) 안. */
+  "onboarding.goal.example1": "매일 아침 30분 책을 읽고 한 줄 남긴다",
+  "onboarding.goal.example2": "매일 밤 10분, 내일 할 일 3가지를 적는다",
+  "onboarding.goal.example3": "주 4회 30분씩 걷고 기록한다",
+  /* 여러 개를 고르게 두면 온보딩 첫날부터 실패가 예약된다 —
+     "하나만" 을 제안 칩 바로 아래에서 한 번 더 못박는다. */
+  "onboarding.goal.pickOne":
+    "이 중 딱 하나만 고르세요. 처음부터 여러 개를 할 필요 없어요 — 고른 하나를 매일 반복하는 게 전부예요.",
 
   "onboarding.step4.cta": "오늘의 한 마디 받기 →",
   "onboarding.step4.preparing": "준비 중…",
@@ -420,9 +436,11 @@ const dict = {
   "plan.today.emptyCta": "오늘의 실행 설계를 만들어보세요",
   "plan.today.emptyDesc": "'만약 A면, 나는 B 한다' 한 문장 · AI 초안을 고르면 키보드 없이 끝나요",
   "plan.today.firstAction": "어젯밤의 내가 정한 첫 행동",
-  "plan.locked.title": "실행 설계 (if-then)",
-  "plan.locked.desc": "미룰 것 같은 순간을 미리 정해두고, 그때 할 행동을 한 문장으로 묶어두는 기능이에요.",
-  // 잠금 예고 문구는 실행 설계·잘한 일 기록이 공유한다 — 같은 규칙이라 문장도 하나다.
+  /* 잠긴 기능은 이름도 설명도 밝히지 않는다 — 못 쓰는 기능의 목록을 미리 펼쳐두면
+     기대가 아니라 결핍으로 읽힌다. 조건과 진행도만 알리고 정체는 열리는 날 몫으로 남긴다.
+     실행 설계·잘한 일 기록이 이 한 벌을 공유한다 — 같은 규칙이라 문구도 하나다. */
+  "unlock.teaser.title": "아직 열리지 않은 기능",
+  "unlock.teaser.hint": "무엇이 열리는지는 그날 알려드릴게요.",
   "unlock.locked.body": "{days}일 연속이면 열려요 · 지금 {progress}일",
 
   // ── 저녁 모드: 내일 첫 행동 ───────────────────────
@@ -533,6 +551,8 @@ const dict = {
   // 홈에 남는 건 명언·오늘 카드·7일 링뿐 — 나머지는 전부 이 한 섹션 뒤로 접힌다.
   "home.section.more": "더 보기",
   "home.more.summary": "미래의 나 · 기록 · 실행 설계",
+  // 접힌 요약도 아직 못 여는 기능의 이름을 흘리지 않는다 — 잠긴 게 있으면 이쪽을 쓴다.
+  "home.more.summaryLocked": "미래의 나 · 목표 · 아직 잠긴 것",
 
   // ── 오늘의 목표 실행 체크 (전사 체크인과 같은 카드) ──
   "home.todayGoal.title": "오늘의 목표",
