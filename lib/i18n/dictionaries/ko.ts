@@ -42,12 +42,14 @@ const dict = {
   "onboarding.progress.remaining": "{remaining}개 남음",
   "onboarding.progress.lastStep": "마지막 단계",
   /* dream — 온보딩이 묻는 단 하나의 문항. 예시 칩을 두지 않으므로 placeholder 가
-     "얼마나 구체적으로 적어야 하는가"의 기준을 대신한다. hint 는 남의 시선을 지워
-     상투적인 답을 막고, why 는 구체성이 왜 필요한지(= AI 재료)를 알려준다. */
+     "얼마나 크게, 얼마나 구체적으로 적어야 하는가"의 기준을 대신한다. 그래서 예시는
+     기한·금액·규모·장면까지 넣어 원대하게 쓴다(소박한 예시는 답도 소박하게 만든다).
+     hint 는 남의 시선을 지워 상투적인 답을 막고, why 는 구체성이 왜 필요한지(= AI
+     재료)를 알려준다. 예시 길이는 FUTURE_SELF_FIELD_MAX(200자) 안에 들어와야 한다. */
   "onboarding.futureSelf.dream.q": "당신이 진정 이루고 싶은 꿈은 무엇인가요?",
   "onboarding.futureSelf.dream.hint": "딱 하나만 적어주세요. 남에게 보여줄 답이 아니에요.",
   "onboarding.futureSelf.dream.placeholder":
-    "예: 내 이름을 건 공방을 열어 월 300만 원을 안정적으로 벌고, 주 3일은 아이 하원을 직접 하는 것.",
+    "예: 2035년까지 내 이름을 건 브랜드를 연매출 100억 규모로 키워 팀원 20명과 함께 일하고, 바다가 보이는 집에서 가족과 아침을 먹은 뒤 주 4일만 일하며, 매년 한 달은 아이와 해외에서 지내는 것.",
   "onboarding.futureSelf.dream.why":
     "숫자·기한·사람까지 적을수록 좋아요. 이 문장이 매일 도착할 카드의 재료가 돼요.",
   "onboarding.futureSelf.daily.q": "10년 후, 당신의 평범한 하루는 어떻게 흘러가나요?",

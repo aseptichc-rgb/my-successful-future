@@ -43,7 +43,7 @@ const dict: Record<DictKey, string> = {
   "onboarding.futureSelf.dream.q": "你真正想实现的梦想是什么?",
   "onboarding.futureSelf.dream.hint": "只写一个。这不会给别人看。",
   "onboarding.futureSelf.dream.placeholder":
-    "例:开一间挂着自己名字的工作室,每月稳定赚 2 万元,每周有三天亲自去接孩子放学。",
+    "例:到 2035 年,把挂着自己名字的品牌做到年营收 5,000 万元,带着 20 人的团队,住在能看见海的家里,每周只工作四天,每年带孩子在国外住上一个月。",
   "onboarding.futureSelf.dream.why":
     "写上数字、期限和人名,越具体越好。这句话会成为你每天收到的卡片的原料。",
   "onboarding.futureSelf.daily.q": "10 年后,你平常的一天是怎样度过的?",

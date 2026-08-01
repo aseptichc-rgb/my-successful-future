@@ -45,7 +45,7 @@ const dict: Record<DictKey, string> = {
   "onboarding.futureSelf.dream.q": "What is the dream you truly want to reach?",
   "onboarding.futureSelf.dream.hint": "Just one. No one else will read this.",
   "onboarding.futureSelf.dream.placeholder":
-    "e.g. Open a workshop under my own name, earn a steady $3,000 a month from it, and pick my kid up from school three days a week.",
+    "e.g. By 2035, grow a brand in my own name to $10M a year with a team of 20, work four days a week from a house by the ocean, and take a month abroad with my kid every year.",
   "onboarding.futureSelf.dream.why":
     "Numbers, dates, names — the more concrete, the better. This line becomes the raw material for every card you'll get.",
   "onboarding.futureSelf.daily.q": "10 years from now, how does an ordinary day of yours flow?",
