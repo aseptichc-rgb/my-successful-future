@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   saveDailyWins,
   saveTomorrowFirstAction,
@@ -105,18 +105,25 @@ export default function MoreSection({
   const extraGoals = goals.slice(1);
   const [planSheetOpen, setPlanSheetOpen] = useState(false);
 
-  const [wins, setWins] = useState<string[]>(["", "", ""]);
-  const [savedWins, setSavedWins] = useState<string[]>(["", "", ""]);
+  const [wins, setWins] = useState<string[]>(() => Array(MAX_DAILY_WINS).fill(""));
   const [winsAutoSaving, setWinsAutoSaving] = useState(false);
   const [winsJustSaved, setWinsJustSaved] = useState(false);
   const [winsError, setWinsError] = useState<string | null>(null);
   const [winsVisible, setWinsVisible] = useState(WINS_INITIAL_VISIBLE);
 
   const [tomorrowAction, setTomorrowAction] = useState("");
-  const [savedTomorrowAction, setSavedTomorrowAction] = useState("");
   const [tomorrowSaving, setTomorrowSaving] = useState(false);
   const [tomorrowJustSaved, setTomorrowJustSaved] = useState(false);
   const [tomorrowError, setTomorrowError] = useState<string | null>(null);
+
+  /* 저장본 — 오늘 문서에서 그대로 파생한다(Firestore 는 저장 직후 로컬 에코 스냅샷으로
+   * entry 를 갱신하므로 별도 state 동기화가 필요 없다). dirty 판정에만 쓰인다. */
+  const savedWins = useMemo(() => {
+    const raw = Array.isArray(entry?.wins) ? entry.wins : [];
+    return Array.from({ length: MAX_DAILY_WINS }, (_, i) => raw[i] || "");
+  }, [entry]);
+  const savedTomorrowAction =
+    typeof entry?.tomorrowFirstAction === "string" ? entry.tomorrowFirstAction : "";
 
   const winsSavedToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const winsAutosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -134,33 +141,24 @@ export default function MoreSection({
     };
   }, []);
 
-  /* ── 오늘 문서 → 입력 초안 하이드레이션 ──
+  /* ── 오늘 문서 → 입력 초안 하이드레이션 (렌더 중 상태 조정) ──
    * 계정·날짜(uid:ymd)가 바뀌면 새 문서로 다시 채운다. 그렇지 않으면 자정 롤오버 시
    * 전날 기록이 오늘 화면에 남고, 한 글자만 입력해도 전날 내용이 오늘 문서로
    * 자동 저장되는 데이터 오염이 발생한다.
-   * 같은 날 안에서는 "저장본"만 갱신해 타이핑 중인 초안을 덮어쓰지 않는다. */
-  const hydratedKeyRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!entryLoaded) return;
-    const rawWins = Array.isArray(entry?.wins) ? entry.wins : [];
-    const normalized = [0, 1, 2].map((i) => rawWins[i] || "");
-    const tfa = typeof entry?.tomorrowFirstAction === "string" ? entry.tomorrowFirstAction : "";
-    const key = `${uid}:${ymd}`;
-    if (hydratedKeyRef.current !== key) {
-      setWins(normalized);
-      setTomorrowAction(tfa);
-      hydratedKeyRef.current = key;
-    }
-    setSavedWins(normalized);
-    setSavedTomorrowAction(tfa);
-  }, [uid, ymd, entry, entryLoaded]);
+   * 같은 키 안에서는 다시 채우지 않아 타이핑 중인 초안을 덮어쓰지 않는다. */
+  const hydrationKey = `${uid}:${ymd}`;
+  const [hydratedKey, setHydratedKey] = useState<string | null>(null);
+  if (entryLoaded && hydratedKey !== hydrationKey) {
+    setHydratedKey(hydrationKey);
+    setWins(savedWins);
+    setTomorrowAction(savedTomorrowAction);
+  }
 
   const doAutoSaveWins = async (snapshot: string[]) => {
     setWinsAutoSaving(true);
     setWinsError(null);
     try {
       await saveDailyWins(uid, ymd, snapshot);
-      setSavedWins(snapshot);
       setWinsJustSaved(true);
       notifyAndroidWidgetRefresh();
       void refreshIosWidget();
@@ -198,7 +196,6 @@ export default function MoreSection({
     setTomorrowError(null);
     try {
       await saveTomorrowFirstAction(uid, ymd, snapshot);
-      setSavedTomorrowAction(snapshot);
       setTomorrowJustSaved(true);
       if (tomorrowToastTimerRef.current) clearTimeout(tomorrowToastTimerRef.current);
       tomorrowToastTimerRef.current = setTimeout(

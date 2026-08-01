@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Sheet from "@/components/ui/Sheet";
 import WhyIfThen from "@/components/woop/WhyIfThen";
 import {
@@ -81,10 +81,12 @@ export default function ExecutionPlanSheet({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 단계/경로 이동 시 이전 화면의 오류 문구는 무효.
-  useEffect(() => {
+  // 단계/경로 이동 시 이전 화면의 오류 문구는 무효 — 이동을 일으키는 지점에서 함께 지운다.
+  // (호출부가 이미 범위를 지키므로 여기서 다시 clamp 하지 않는다.)
+  const moveToStep = (next: number) => {
+    setStepIdx(next);
     setError(null);
-  }, [stepIdx, mode]);
+  };
 
   const step: Step = STEPS[stepIdx];
   const cleanGoals = goals.map((g) => g.trim()).filter((g) => g.length > 0);
@@ -143,7 +145,7 @@ export default function ExecutionPlanSheet({
   /** 빠른 설계 → 직접 다듬기. 목표가 이미 정해졌으면 소망 단계를 건너뛴다. */
   const switchToWizard = () => {
     setMode("wizard");
-    setStepIdx(goal.trim().length > 0 ? 1 : 0);
+    moveToStep(goal.trim().length > 0 ? 1 : 0);
   };
 
   const handleSave = async () => {
@@ -532,7 +534,7 @@ export default function ExecutionPlanSheet({
         {stepIdx > 0 && (
           <button
             type="button"
-            onClick={() => setStepIdx((i) => Math.max(0, i - 1))}
+            onClick={() => moveToStep(stepIdx - 1)}
             disabled={saving}
             className="rounded-full px-5 py-2.5 text-[15px] font-semibold text-[var(--label-2)]"
             style={{ background: "rgba(0,0,0,0.05)" }}
@@ -543,7 +545,7 @@ export default function ExecutionPlanSheet({
         {step !== "plan" ? (
           <button
             type="button"
-            onClick={() => canNext && setStepIdx((i) => Math.min(STEPS.length - 1, i + 1))}
+            onClick={() => canNext && moveToStep(stepIdx + 1)}
             disabled={!canNext}
             className="rounded-full px-5 py-2.5 text-[15px] font-semibold text-white disabled:opacity-30"
             style={{ background: "#D85A30" }}

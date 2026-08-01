@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import type { FutureVision } from "@/types";
 import { useLanguage } from "@/lib/i18n";
 
@@ -43,10 +43,13 @@ export default function FutureVisionCard({
 
   // 새 하루(ymd 변경)가 오면 다시 접어 호기심 갭을 살린다.
   //   재생성("또 다른 하루")은 ymd 가 그대로라 펼친 상태를 유지한다.
+  //   효과 대신 렌더 중 상태 조정(공식 "props 변경 시 리셋" 패턴)으로 재렌더 낭비를 줄인다.
   const ymd = vision?.ymd;
-  useEffect(() => {
+  const [prevYmd, setPrevYmd] = useState(ymd);
+  if (prevYmd !== ymd) {
+    setPrevYmd(ymd);
     setExpanded(false);
-  }, [ymd]);
+  }
 
   const handleRegenerate = useCallback(async () => {
     if (regenerating || loading) return;

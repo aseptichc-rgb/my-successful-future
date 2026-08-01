@@ -11,7 +11,16 @@
  */
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { useClientValue } from "@/lib/useClientValue";
 import {
   DEFAULT_LOCALE,
   LOCALE_META,
@@ -96,24 +105,30 @@ interface LanguageProviderProps {
   children: ReactNode;
 }
 
-export function LanguageProvider({ serverLocale, children }: LanguageProviderProps) {
-  // SSR 일관성을 위해 초기값은 항상 DEFAULT_LOCALE.
-  // 클라이언트에서 마운트되면 stored → browser 순으로 한번 보정.
-  const [locale, setLocaleState] = useState<Locale>(() => normalizeLocale(serverLocale));
+/** 클라이언트 선호 로케일 — 저장값 → 브라우저 언어 순. 모듈 함수라 참조가 안정적이다. */
+const getPreferredLocale = (): Locale => readStoredLocale() ?? detectBrowserLocale();
 
+export function LanguageProvider({ serverLocale, children }: LanguageProviderProps) {
+  // Firestore 값 방어 — 유효하지 않으면 없음으로 간주하고 아래 fallback 체인을 탄다.
+  const server = serverLocale && isLocale(serverLocale) ? serverLocale : null;
+
+  // SSR/hydration 은 DEFAULT_LOCALE 로 그리고, 클라이언트에선 stored → browser 순으로
+  // 보정한다 — 값이 다르면 React 가 스스로 재렌더하므로 hydration mismatch 가 없다.
+  const clientPreferred = useClientValue(getPreferredLocale, DEFAULT_LOCALE);
+
+  /** 이번 세션에서 사용자가 직접 고른 로케일 — server 프로필이 바뀌면 무효. */
+  const [override, setOverride] = useState<{ server: Locale | null; locale: Locale } | null>(
+    null,
+  );
+
+  // 우선순위: 세션 내 사용자 선택 > 서버 프로필(User.language) > 저장값/브라우저 언어.
+  const locale: Locale =
+    override && override.server === server ? override.locale : (server ?? clientPreferred);
+
+  // 서버 프로필 로케일은 localStorage 에도 남겨 비로그인 화면(로그인 등)과 일치시킨다.
   useEffect(() => {
-    if (serverLocale) {
-      setLocaleState(serverLocale);
-      writeStoredLocale(serverLocale);
-      return;
-    }
-    const stored = readStoredLocale();
-    if (stored) {
-      setLocaleState(stored);
-      return;
-    }
-    setLocaleState(detectBrowserLocale());
-  }, [serverLocale]);
+    if (server) writeStoredLocale(server);
+  }, [server]);
 
   // <html lang="…"> 도 동기화 — 접근성 / 폰트 hinting 도움.
   useEffect(() => {
@@ -121,11 +136,14 @@ export function LanguageProvider({ serverLocale, children }: LanguageProviderPro
     document.documentElement.setAttribute("lang", locale);
   }, [locale]);
 
-  const setLocale = useCallback((next: Locale) => {
-    if (!isLocale(next)) return;
-    setLocaleState(next);
-    writeStoredLocale(next);
-  }, []);
+  const setLocale = useCallback(
+    (next: Locale) => {
+      if (!isLocale(next)) return;
+      setOverride({ server, locale: next });
+      writeStoredLocale(next);
+    },
+    [server],
+  );
 
   const t = useCallback<Translator>(
     (key, vars) => {

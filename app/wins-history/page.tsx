@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { getDailyWinsHistory, WINS_HISTORY_DEFAULT_LIMIT } from "@/lib/firebase";
+import { useRetryableLoad } from "@/lib/useRetryableLoad";
 import { useLanguage } from "@/lib/i18n";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -15,6 +16,9 @@ import { useLanguage } from "@/lib/i18n";
 
 // Day-of-week color rotation (iOS palette).
 const DAY_COLORS = ["#D85A30", "#D85A30", "#1E1B4B", "#1E1B4B", "#1E1B4B", "#1E1B4B", "#FFCC00"];
+
+/** 모듈 함수로 두어 참조가 안정 — useRetryableLoad 가 불필요하게 재조회하지 않는다. */
+const loadWinsHistory = (uid: string) => getDailyWinsHistory(uid, WINS_HISTORY_DEFAULT_LIMIT);
 
 function formatKstDate(ymd: string, locale: string): string {
   const [y, m, d] = ymd.split("-").map((s) => parseInt(s, 10));
@@ -55,36 +59,14 @@ export default function WinsHistoryPage() {
   const { firebaseUser, loading: authLoading } = useAuth();
   const { t, locale } = useLanguage();
 
-  const [entries, setEntries] = useState<{ ymd: string; wins: string[] }[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
     if (authLoading) return;
     if (!firebaseUser) router.replace("/login");
   }, [authLoading, firebaseUser, router]);
 
-  const load = useCallback(
-    async (uid: string) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const list = await getDailyWinsHistory(uid, WINS_HISTORY_DEFAULT_LIMIT);
-        setEntries(list);
-      } catch (err) {
-        console.error("[wins-history] 조회 실패:", err);
-        setError(t("wins.history.loadFailed"));
-      } finally {
-        setLoading(false);
-      }
-    },
-    [t],
-  );
-
-  useEffect(() => {
-    if (!firebaseUser) return;
-    void load(firebaseUser.uid);
-  }, [firebaseUser, load]);
+  const { data, loading, failed, retry } = useRetryableLoad(firebaseUser, loadWinsHistory);
+  const entries = data ?? [];
+  const error = failed ? t("wins.history.loadFailed") : null;
 
   if (authLoading || !firebaseUser) {
     return (
@@ -131,7 +113,7 @@ export default function WinsHistoryPage() {
             <span className="flex-1">{error}</span>
             <button
               type="button"
-              onClick={() => firebaseUser && load(firebaseUser.uid)}
+              onClick={retry}
               className="text-[15px] font-semibold text-[var(--soul)]"
             >
               {t("common.retry")}

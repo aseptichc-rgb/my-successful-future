@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { diffKstDays, kstMonth } from "@/lib/kstDate";
 import { FREEZES_PER_MONTH } from "@/lib/constants/streak";
 import { useT } from "@/lib/i18n";
@@ -49,12 +49,15 @@ export default function RecommitCard({
   onCheckinCta: () => void;
 }) {
   const t = useT();
-  const [dismissed, setDismissed] = useState<boolean>(() => readDismissed(todayYmd));
-
-  // 자정 롤오버(ymd 변경) 시 dismiss 상태를 새 날짜 기준으로 재평가.
-  useEffect(() => {
-    setDismissed(readDismissed(todayYmd));
-  }, [todayYmd]);
+  // 날짜를 함께 저장한다 — 자정 롤오버(ymd 변경) 시 렌더 중 조정으로 새 날짜 기준 재평가.
+  const [dismissal, setDismissal] = useState(() => ({
+    ymd: todayYmd,
+    dismissed: readDismissed(todayYmd),
+  }));
+  if (dismissal.ymd !== todayYmd) {
+    setDismissal({ ymd: todayYmd, dismissed: readDismissed(todayYmd) });
+  }
+  const dismissed = dismissal.dismissed;
 
   const count = streak?.count ?? 0;
   const lastYmd = streak?.lastYmd ?? "";
@@ -107,7 +110,7 @@ export default function RecommitCard({
           aria-label={t("recommit.dismissAria")}
           onClick={() => {
             writeDismissed(todayYmd);
-            setDismissed(true);
+            setDismissal({ ymd: todayYmd, dismissed: true });
           }}
           className="w-7 h-7 -mr-1 flex items-center justify-center text-[var(--label-3)] hover:opacity-70 transition-opacity"
         >

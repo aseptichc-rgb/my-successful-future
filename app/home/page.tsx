@@ -8,7 +8,6 @@ import {
   onDailyMotivationSnapshot,
   onFutureVisionSnapshot,
   onAffirmationCheckinSnapshot,
-  onExecutionPlansSnapshot,
   saveDailyAchievedGoals,
   getDailyEntryOnce,
   getAffirmationLogYmds,
@@ -16,8 +15,8 @@ import {
   getDailyWinsHistory,
   markWinsUnlocked,
   getKstYmd,
-  type ExecutionPlanWithId,
 } from "@/lib/firebase";
+import { useExecutionPlans } from "@/lib/useExecutionPlans";
 import { kstWeekday, yesterdayKstYmd, addKstDays } from "@/lib/kstDate";
 import { currentHomeMode, WEEKLY_REVIEW_WEEKDAY } from "@/lib/homeMode";
 import { pickTodayPlan, pickTodayAffirmationIndex } from "@/lib/planRotation";
@@ -68,8 +67,12 @@ import type { DailyEntry, DailyMotivation, FutureVision } from "@/types";
 
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** 어제 문서 조회 결과가 "지금 화면의 계정·날짜" 것인지 판정하는 키. */
-function yesterdayWinsKey(uid: string | undefined, ymd: string): string {
+/**
+ * 스냅샷/조회 결과가 "지금 화면의 계정·날짜" 것인지 판정하는 키.
+ * 결과를 이 키와 함께 저장해 두면 계정·날짜가 바뀌는 순간 파생값이 저절로
+ * "로딩 전" 상태가 되므로, 효과 본문에서 초기화 setState 를 부를 필요가 없다.
+ */
+function docKey(uid: string | undefined, ymd: string): string {
   return `${uid ?? ""}:${ymd}`;
 }
 
@@ -169,17 +172,19 @@ export default function HomeDashboardPage() {
   const goals = user?.goals ?? [];
 
   const ymd = useResolvedYmd();
+  /** 지금 화면의 계정·날짜 키 — 아래 모든 키 태그 스냅샷이 이 값과 비교한다. */
+  const currentKey = docKey(firebaseUser?.uid, ymd);
 
   // 오늘 문서 — 목표 달성 토글(홈)과 기록 입력(더 보기)이 같은 구독을 공유한다.
-  const [entry, setEntry] = useState<DailyEntry | null>(null);
-  const [entryLoaded, setEntryLoaded] = useState(false);
+  // 키가 어긋나면(계정·날짜 전환 직후) 파생 entry/entryLoaded 가 저절로 "로딩 전"이 된다.
+  const [entrySnap, setEntrySnap] = useState<{ key: string; entry: DailyEntry | null } | null>(
+    null,
+  );
   const [achievedGoals, setAchievedGoals] = useState<string[]>([]);
   const [goalSaving, setGoalSaving] = useState(false);
 
-  // WOOP 실행설계 목록 + 아침 카드의 "어젯밤의 내가 정한 첫 행동".
-  const [plans, setPlans] = useState<ExecutionPlanWithId[]>([]);
-  /** 플랜 첫 스냅샷 도착 여부 — 도착 전 planCount 0 으로 해금을 오판하지 않기 위한 게이트. */
-  const [plansLoaded, setPlansLoaded] = useState(false);
+  // WOOP 실행설계 목록 — "오늘의 if-then" 회전 + 해금 판정. 홈·설정이 같은 훅을 공유한다.
+  const { plans, plansLoaded } = useExecutionPlans(firebaseUser);
   const [yesterdayFirstAction, setYesterdayFirstAction] = useState<string | null>(null);
   /**
    * 어제 문서에 잘한 일 기록이 있었는가 — 잘한 일 해금의 "기존 사용자 보존" 신호.
@@ -198,14 +203,18 @@ export default function HomeDashboardPage() {
   // 주간 회고 (일요일 저녁) — 실패하면 null 로 두고 카드만 생략한다.
   const [weeklyReview, setWeeklyReview] = useState<WeeklyReview | null>(null);
 
-  const [motivation, setMotivation] = useState<DailyMotivation | null>(null);
-  const [motivationLoading, setMotivationLoading] = useState(true);
+  // 오늘의 동기부여/미래 일상 — 키 불일치(= 아직 이 계정·날짜의 스냅샷 없음)가 곧 로딩 상태다.
+  const [motivationSnap, setMotivationSnap] = useState<{
+    key: string;
+    m: DailyMotivation | null;
+  } | null>(null);
   const [motivationError, setMotivationError] = useState<string | null>(null);
   const ensureRequestedYmdRef = useRef<string | null>(null);
   const [alreadyCheckedInToday, setAlreadyCheckedInToday] = useState(false);
 
-  const [vision, setVision] = useState<FutureVision | null>(null);
-  const [visionLoading, setVisionLoading] = useState(true);
+  const [visionSnap, setVisionSnap] = useState<{ key: string; v: FutureVision | null } | null>(
+    null,
+  );
   const [visionError, setVisionError] = useState<string | null>(null);
   const ensureRequestedVisionYmdRef = useRef<string | null>(null);
 
@@ -224,35 +233,19 @@ export default function HomeDashboardPage() {
 
   useEffect(() => {
     if (!firebaseUser) return;
-    // 날짜(ymd)·계정이 바뀌면 새 문서를 기다린다 — 전날 값이 오늘 화면에 남지 않도록.
-    setEntryLoaded(false);
+    // 키를 함께 저장한다 — 계정·날짜가 바뀌면 파생값이 새 문서를 기다린다(전날 값이 남지 않도록).
+    const key = docKey(firebaseUser.uid, ymd);
     const unsub = onDailyEntrySnapshot(firebaseUser.uid, ymd, (next: DailyEntry | null) => {
-      setEntry(next);
+      setEntrySnap({ key, entry: next });
       setAchievedGoals(Array.isArray(next?.achievedGoals) ? next.achievedGoals : []);
-      setEntryLoaded(true);
     });
     return unsub;
   }, [firebaseUser, ymd]);
 
-  // WOOP 실행설계 목록 구독 — "오늘의 if-then" 회전 + 해금 판정에 쓴다.
-  useEffect(() => {
-    if (!firebaseUser) return;
-    // 계정이 바뀌면 새 첫 스냅샷을 기다린다 — 이전 계정의 plans 로 해금을 오판하지 않도록.
-    setPlansLoaded(false);
-    const unsub = onExecutionPlansSnapshot(
-      firebaseUser.uid,
-      (next) => {
-        setPlans(next);
-        setPlansLoaded(true);
-      },
-      () => {
-        // 구독 실패(규칙 미배포 등) 시 섹션만 비운다 — 홈 나머지는 정상 동작.
-        setPlans([]);
-        setPlansLoaded(true);
-      },
-    );
-    return unsub;
-  }, [firebaseUser]);
+  /** 지금 계정·날짜의 스냅샷 — 도착 전(키 불일치)에는 null = 로딩 전. */
+  const curEntry = entrySnap?.key === currentKey ? entrySnap : null;
+  const entryLoaded = curEntry !== null;
+  const entry = curEntry?.entry ?? null;
 
   // iOS 로컬 알림 재동기화 — 홈 방문/목표 체크 때마다 14일 예약 창을 앞으로 밀고,
   // 오늘 목표를 모두 체크했으면 오늘 저녁 리마인더만 침묵시킨다("한 일에는 침묵",
@@ -269,8 +262,6 @@ export default function HomeDashboardPage() {
       allowPrompt: allGoalsDoneToday,
       texts: buildNotificationTexts(t),
     });
-    // goals 배열 자체는 렌더마다 새 참조라 deps 에 넣지 않는다 — 완료 여부(boolean)로 충분.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, entryLoaded, allGoalsDoneToday, t]);
 
   // 어제 저녁에 적은 "내일 첫 행동" — 아침 카드 보조 행. 실패해도 카드만 생략.
@@ -278,7 +269,7 @@ export default function HomeDashboardPage() {
   useEffect(() => {
     if (!firebaseUser) return;
     let cancelled = false;
-    const key = yesterdayWinsKey(firebaseUser.uid, ymd);
+    const key = docKey(firebaseUser.uid, ymd);
     getDailyEntryOnce(firebaseUser.uid, yesterdayKstYmd(ymd))
       .then((prev) => {
         if (cancelled) return;
@@ -300,9 +291,7 @@ export default function HomeDashboardPage() {
 
   /** 어제 조회 결과 — 지금 보고 있는 계정·날짜의 것일 때만 유효(아니면 null = 판정 보류). */
   const yesterdayHadWins =
-    yesterdayWins && yesterdayWins.key === yesterdayWinsKey(firebaseUser?.uid, ymd)
-      ? yesterdayWins.hadWins
-      : null;
+    yesterdayWins && yesterdayWins.key === currentKey ? yesterdayWins.hadWins : null;
 
   /** 어제·오늘 문서에 기록이 있는가 — 잘한 일 해금의 "이미 쓰던 계정" 신호(추가 조회 없음). */
   const winsRecordedRecently = hasAnyWin(entry?.wins) || yesterdayHadWins === true;
@@ -325,15 +314,14 @@ export default function HomeDashboardPage() {
 
   useEffect(() => {
     if (!firebaseUser) return;
-    setMotivationLoading(true);
+    const key = docKey(firebaseUser.uid, ymd);
     let cancelled = false;
     const unsub = onDailyMotivationSnapshot(
       firebaseUser.uid,
       ymd,
       (m) => {
         if (cancelled) return;
-        setMotivation(m);
-        setMotivationLoading(false);
+        setMotivationSnap({ key, m });
         if (m) setMotivationError(null);
         if (!m && ensureRequestedYmdRef.current !== ymd) {
           ensureRequestedYmdRef.current = ymd;
@@ -354,9 +342,10 @@ export default function HomeDashboardPage() {
         }
       },
       // 구독 실패(권한/네트워크) 시 스켈레톤에 갇히지 않도록 로딩을 풀고 에러를 표시한다.
+      // 이 키의 스냅샷이 이미 도착해 있었다면 화면의 카드는 유지한다.
       () => {
         if (cancelled) return;
-        setMotivationLoading(false);
+        setMotivationSnap((cur) => (cur && cur.key === key ? cur : { key, m: null }));
         setMotivationError("동기부여 카드를 불러오지 못했어요.");
       },
     );
@@ -378,7 +367,9 @@ export default function HomeDashboardPage() {
         error?: string;
       };
       if (!res.ok) throw new Error(data.error || "다시 받기에 실패했어요.");
-      if (data.motivation) setMotivation(data.motivation);
+      if (data.motivation) {
+        setMotivationSnap({ key: currentKey, m: data.motivation });
+      }
       // motivation 의 quote/author/goalsSnapshot 이 바뀌었으므로 위젯도 새 카드를 받아가야 한다.
       // 안 호출하면 다음 정주기 Worker(3시간) 까지 위젯과 홈의 명언이 어긋난다.
       notifyAndroidWidgetRefresh();
@@ -386,22 +377,26 @@ export default function HomeDashboardPage() {
     } catch (err) {
       setMotivationError(err instanceof Error ? err.message : String(err));
     }
-  }, [ymd]);
+  }, [currentKey, ymd]);
+
+  /** 지금 계정·날짜의 동기부여 스냅샷 — 도착 전(키 불일치)에는 null = 로딩 중. */
+  const curMotivation = motivationSnap?.key === currentKey ? motivationSnap : null;
+  const motivation = curMotivation?.m ?? null;
+  const motivationLoading = curMotivation === null;
 
   // ── 미래 일상 비전: 구독 + 캐시 미스 시 자동 생성 (동기부여 카드와 동일 패턴) ──
   // futurePersona 가 비어 있으면 빈 비전을 만들지 않고 CTA 만 보여준다(서버 호출 생략).
   useEffect(() => {
     if (!firebaseUser) return;
     const personaWritten = Boolean((user?.futurePersona ?? "").trim());
-    setVisionLoading(true);
+    const key = docKey(firebaseUser.uid, ymd);
     let cancelled = false;
     const unsub = onFutureVisionSnapshot(
       firebaseUser.uid,
       ymd,
       (v) => {
         if (cancelled) return;
-        setVision(v);
-        setVisionLoading(false);
+        setVisionSnap({ key, v });
         // 새 비전이 도착하면(스냅샷/재생성 성공) 직전 재생성 오류 메시지는 더 이상 유효하지 않다.
         if (v) setVisionError(null);
         if (!v && personaWritten && ensureRequestedVisionYmdRef.current !== ymd) {
@@ -427,9 +422,9 @@ export default function HomeDashboardPage() {
       },
       (err) => {
         // 구독 자체가 실패(예: 규칙 미배포로 read 거부)하면 스켈레톤에 갇히지 않도록
-        // 로딩을 풀고 오류 문구를 노출한다.
+        // 로딩을 풀고 오류 문구를 노출한다. 이미 도착한 이 키의 비전은 유지한다.
         if (cancelled) return;
-        setVisionLoading(false);
+        setVisionSnap((cur) => (cur && cur.key === key ? cur : { key, v: null }));
         setVisionError(err instanceof Error ? err.message : t("futureVision.error"));
       },
     );
@@ -451,7 +446,9 @@ export default function HomeDashboardPage() {
         error?: string;
       };
       if (!res.ok) throw new Error(data.error || "또 다른 하루를 그리지 못했어요.");
-      if (data.vision) setVision(data.vision);
+      if (data.vision) {
+        setVisionSnap({ key: currentKey, v: data.vision });
+      }
       // 재생성으로 오늘 비전 문서가 바뀌었으니 위젯도 깨워 같은 하루를 보게 한다
       //  (동기부여 카드 재생성과 동일 — 안 하면 위젯이 옛 비전을 들고 있어 앱과 불일치).
       notifyAndroidWidgetRefresh();
@@ -459,7 +456,12 @@ export default function HomeDashboardPage() {
     } catch (err) {
       setVisionError(err instanceof Error ? err.message : String(err));
     }
-  }, [ymd]);
+  }, [currentKey, ymd]);
+
+  /** 지금 계정·날짜의 비전 스냅샷 — 도착 전(키 불일치)에는 null = 로딩 중. */
+  const curVision = visionSnap?.key === currentKey ? visionSnap : null;
+  const vision = curVision?.v ?? null;
+  const visionLoading = curVision === null;
 
   const handleSubmitMissionResponse = useCallback(
     async (text: string) => {

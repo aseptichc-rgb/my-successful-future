@@ -10,10 +10,10 @@ import {
   updateQuotePreference,
   updateSuccessAffirmations,
   updateUserLanguage,
-  onExecutionPlansSnapshot,
   MAX_SUCCESS_AFFIRMATIONS,
-  type ExecutionPlanWithId,
 } from "@/lib/firebase";
+import { useExecutionPlans } from "@/lib/useExecutionPlans";
+import { useClientValue } from "@/lib/useClientValue";
 import {
   DEFAULT_NOTIFICATION_PREFS,
   MORNING_HOUR_CHOICES,
@@ -408,6 +408,26 @@ function NotifHourRow({
   );
 }
 
+/** 홈에서 넘어온 딥링크(?sheet=goals[&refine=1] | ?sheet=affirmations) — 초기 state 용. */
+function readSheetDeepLink(): { sheet: "goals" | "affirmations" | null; refine: boolean } {
+  if (typeof window === "undefined") return { sheet: null, refine: false };
+  try {
+    const url = new URL(window.location.href);
+    const sheet = url.searchParams.get("sheet");
+    return {
+      sheet: sheet === "goals" || sheet === "affirmations" ? sheet : null,
+      refine: url.searchParams.get("refine") === "1",
+    };
+  } catch {
+    return { sheet: null, refine: false };
+  }
+}
+
+/** 결제 환경은 페이지 수명 동안 불변 — 렌더마다 URL 파싱·스토리지 조회를 반복하지 않게 캐시. */
+let purchaseEnvCache: boolean | null = null;
+const detectPurchaseEnv = (): boolean =>
+  (purchaseEnvCache ??= isIosPurchaseAvailable() || isAndroidApp() || isAndroidPurchaseAvailable());
+
 export default function SettingsPage() {
   const router = useRouter();
   const { user, firebaseUser, loading: authLoading, signOut, refreshUser } = useAuth();
@@ -420,18 +440,20 @@ export default function SettingsPage() {
   const [portraitRegenLoading, setPortraitRegenLoading] = useState(false);
 
   const [goals, setGoals] = useState<string[]>([]);
-  const [goalsOpen, setGoalsOpen] = useState(false);
+  // 시트 초기 열림은 딥링크에서 한 번만 읽는다(효과 없이) — 쿼리 제거는 아래 mount 효과가 담당.
+  const [deepLink] = useState(readSheetDeepLink);
+  const [goalsOpen, setGoalsOpen] = useState(deepLink.sheet === "goals");
   /** 홈의 해금 배너에서 "더 구체적으로"로 들어온 경우 — 해당 줄의 구체성 힌트를 항상 펼친다. */
-  const [refineIdx, setRefineIdx] = useState<number | null>(null);
+  const [refineIdx, setRefineIdx] = useState<number | null>(
+    deepLink.sheet === "goals" && deepLink.refine ? 0 : null,
+  );
   /** 미래 서술 나머지 6문항 펼침 — 기본은 접힘(온보딩에서 묻지 않는 항목들). */
   const [futureDetailOpen, setFutureDetailOpen] = useState(false);
-  // WOOP 실행설계 목록 — 홈과 동일한 섹션/시트를 설정에서도 노출.
-  const [plans, setPlans] = useState<ExecutionPlanWithId[]>([]);
-  /** 플랜 첫 스냅샷 도착 여부 — 도착 전 planCount 0 으로 해금을 오판하지 않기 위한 게이트. */
-  const [plansLoaded, setPlansLoaded] = useState(false);
+  // WOOP 실행설계 목록 — 홈과 동일한 섹션/시트를 설정에서도 노출(같은 훅·같은 게이트 정책).
+  const { plans, plansLoaded } = useExecutionPlans(firebaseUser);
 
   const [affirmations, setAffirmations] = useState<string[]>([]);
-  const [affirmationsOpen, setAffirmationsOpen] = useState(false);
+  const [affirmationsOpen, setAffirmationsOpen] = useState(deepLink.sheet === "affirmations");
   const [affirmationsSaving, setAffirmationsSaving] = useState(false);
 
   const [pinnedAuthor, setPinnedAuthor] = useState<string>("");
@@ -451,7 +473,6 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false);
 
   // Anima Pro(iOS 인앱결제) — 네이티브 플러그인이 있는 iOS 빌드에서만 노출.
-  const [showPro, setShowPro] = useState(false);
   const [proActive, setProActive] = useState(false);
   const [proPrice, setProPrice] = useState<string | null>(null);
   const [purchasing, setPurchasing] = useState(false);
@@ -474,25 +495,6 @@ export default function SettingsPage() {
     if (!firebaseUser) router.replace("/login");
   }, [authLoading, firebaseUser, router]);
 
-  // WOOP 실행설계 구독 — 실패 시 섹션만 비운다(설정 나머지는 정상 동작).
-  useEffect(() => {
-    if (!firebaseUser) return;
-    // 계정이 바뀌면 새 첫 스냅샷을 기다린다 — 이전 계정의 plans 로 해금을 오판하지 않도록.
-    setPlansLoaded(false);
-    const unsub = onExecutionPlansSnapshot(
-      firebaseUser.uid,
-      (next) => {
-        setPlans(next);
-        setPlansLoaded(true);
-      },
-      () => {
-        setPlans([]);
-        setPlansLoaded(true);
-      },
-    );
-    return unsub;
-  }, [firebaseUser]);
-
   // 언마운트 시 진행 중이던 결제/복원 폴링을 중단한다(백그라운드 폴링·토큰 스로틀 방지).
   useEffect(() => {
     return () => pollAbortRef.current?.abort();
@@ -501,12 +503,14 @@ export default function SettingsPage() {
   // iOS(StoreKit) / Android(네이티브 브릿지) 결제 가용 시: 섹션 노출 + 가격/권한 로드.
   //  · 안드로이드는 TWA 웹 Digital Goods 위임이 Android 13+ 에서 깨지므로(clientAppUnavailable)
   //    네이티브 브릿지 결제를 쓴다. 따라서 "앱 안(isAndroidApp)" 이기만 하면 섹션을 노출한다.
+  //  · 섹션 노출 여부는 클라이언트 환경에서 파생한다(서버 렌더는 항상 숨김).
+  const showPro = useClientValue(detectPurchaseEnv, false);
+
   useEffect(() => {
+    if (!showPro) return;
     const iosOk = isIosPurchaseAvailable();
     const digitalGoodsOk = isAndroidPurchaseAvailable();
     const androidApp = isAndroidApp();
-    if (!iosOk && !androidApp && !digitalGoodsOk) return;
-    setShowPro(true);
     if (iosOk) initIosPurchaseListener();
     let cancelled = false;
     void (async () => {
@@ -535,12 +539,14 @@ export default function SettingsPage() {
     return () => {
       cancelled = true;
     };
-  }, [firebaseUser]);
+  }, [showPro, firebaseUser]);
 
-  useEffect(() => {
-    if (!user) return;
-    // 레거시 사용자(구조화 답변 없이 futurePersona 만 있는 경우)는 필드를 공란으로 두고
-    // 기존 원문은 시트 하단에 읽기전용으로 보여준다 — 저장 전까지 원문을 건드리지 않는다.
+  /* 프로필(user) → 편집 초안 하이드레이션 — 렌더 중 상태 조정 패턴.
+   * 레거시 사용자(구조화 답변 없이 futurePersona 만 있는 경우)는 필드를 공란으로 두고
+   * 기존 원문은 시트 하단에 읽기전용으로 보여준다 — 저장 전까지 원문을 건드리지 않는다. */
+  const [hydratedUser, setHydratedUser] = useState<typeof user>(null);
+  if (user && hydratedUser !== user) {
+    setHydratedUser(user);
     setFutureSelfDraft(user.futureSelfAnswers ? { ...user.futureSelfAnswers } : {});
     setGoals(user.goals && user.goals.length > 0 ? [...user.goals] : []);
     setPinnedAuthor(user.quotePreference?.pinnedAuthor || "");
@@ -551,40 +557,36 @@ export default function SettingsPage() {
         ? [...user.successAffirmations]
         : [],
     );
-  }, [user]);
+  }
 
-  /* 홈에서 넘어온 딥링크 — ?sheet=goals[&refine=1] 또는 ?sheet=affirmations.
-     useSearchParams 대신 window.location 을 읽는다 — Suspense 경계 없이도 안전하고,
-     읽은 뒤 쿼리를 지워 뒤로가기/새로고침에 시트가 다시 열리지 않는다. */
+  /* 딥링크 쿼리 제거 — 시트 열림은 초기 state 가 이미 읽었고, 여기서는 뒤로가기/새로고침에
+     시트가 다시 열리지 않도록 쿼리만 지운다(useSearchParams 대신 window.location — Suspense 불필요). */
   useEffect(() => {
     try {
       const url = new URL(window.location.href);
-      const sheet = url.searchParams.get("sheet");
-      if (sheet !== "goals" && sheet !== "affirmations") return;
-      if (sheet === "goals") {
-        setGoalsOpen(true);
-        if (url.searchParams.get("refine") === "1") setRefineIdx(0);
-      } else {
-        setAffirmationsOpen(true);
-      }
+      if (!url.searchParams.has("sheet") && !url.searchParams.has("refine")) return;
       url.searchParams.delete("sheet");
       url.searchParams.delete("refine");
       window.history.replaceState({}, "", url.toString());
     } catch {
-      /* URL 파싱 불가 환경 — 시트를 열지 않을 뿐 나머지는 정상 동작 */
+      /* URL 파싱 불가 환경 — 쿼리만 남을 뿐 나머지는 정상 동작 */
     }
   }, []);
 
   /* 이미 나머지 차원까지 채워둔 사용자(기존 7문항 온보딩 이용자)에게는 접혀 있으면
-     자기가 쓴 글이 사라진 것처럼 보인다 — 시트를 열 때 내용이 있으면 자동으로 펼친다.
-     (state 는 접혀 있어도 보존되므로 저장 자체는 어느 쪽이든 안전하다.) */
-  useEffect(() => {
-    if (!futureOpen) return;
-    const hasDetail = FUTURE_SELF_DIMENSIONS.some(
-      (dim) => dim !== PRIMARY_FUTURE_DIMENSION && (futureSelfDraft[dim] ?? "").trim().length > 0,
-    );
+     자기가 쓴 글이 사라진 것처럼 보인다 — 시트가 "열리는 전이" 순간에만 판정해 자동으로
+     펼친다(타이핑마다 재판정하면 키 입력마다 렌더가 한 번씩 버려진다). 사용자가 손으로
+     접은 상태는 존중한다. */
+  const [prevFutureOpen, setPrevFutureOpen] = useState(futureOpen);
+  if (prevFutureOpen !== futureOpen) {
+    setPrevFutureOpen(futureOpen);
+    const hasDetail =
+      futureOpen &&
+      FUTURE_SELF_DIMENSIONS.some(
+        (dim) => dim !== PRIMARY_FUTURE_DIMENSION && (futureSelfDraft[dim] ?? "").trim().length > 0,
+      );
     if (hasDetail) setFutureDetailOpen(true);
-  }, [futureOpen, futureSelfDraft]);
+  }
 
   const goalCount = useMemo(() => goals.filter((g) => g.trim().length > 0).length, [goals]);
   const authorGroups = useMemo(() => getAllKnownAuthorsGrouped(locale), [locale]);

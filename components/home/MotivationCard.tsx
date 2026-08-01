@@ -197,17 +197,32 @@ export default function MotivationCard({
   const [regenerating, setRegenerating] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
-  const [responseDraft, setResponseDraft] = useState("");
+  const [responseDraft, setResponseDraft] = useState(motivation?.response?.text || "");
   const [responseEditing, setResponseEditing] = useState(false);
   const [responseSaving, setResponseSaving] = useState(false);
   const [responseError, setResponseError] = useState<string | null>(null);
   const [submitFlash, setSubmitFlash] = useState<string | null>(null);
 
-  useEffect(() => {
+  // 오늘 카드(날짜·명언)나 저장된 응답이 바뀌면 초안을 리셋한다 — 렌더 중 상태 조정 패턴.
+  const [prevResponse, setPrevResponse] = useState({
+    ymd: motivation?.ymd,
+    quote: motivation?.quote,
+    text: motivation?.response?.text,
+  });
+  if (
+    prevResponse.ymd !== motivation?.ymd ||
+    prevResponse.quote !== motivation?.quote ||
+    prevResponse.text !== motivation?.response?.text
+  ) {
+    setPrevResponse({
+      ymd: motivation?.ymd,
+      quote: motivation?.quote,
+      text: motivation?.response?.text,
+    });
     setResponseDraft(motivation?.response?.text || "");
     setResponseEditing(false);
     setResponseError(null);
-  }, [motivation?.ymd, motivation?.quote, motivation?.response?.text]);
+  }
 
   useEffect(() => {
     if (!submitFlash) return;

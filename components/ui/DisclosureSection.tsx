@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useT } from "@/lib/i18n";
+import { useClientValue } from "@/lib/useClientValue";
 
 /* ─────────────────────────────────────────────────────────────
  * DisclosureSection — GroupedSection 과 같은 인셋 카드지만 헤더를 눌러 접고 펼친다.
@@ -19,17 +20,25 @@ import { useT } from "@/lib/i18n";
 
 const STORAGE_KEY_PREFIX = "anima.disclosure.";
 
+/** 저장값 캐시 — getSnapshot 이 렌더마다 불려도 localStorage I/O 는 id 당 1회로 막는다. */
+const openCache = new Map<string, boolean>();
+
 function readOpen(id: string, fallback: boolean): boolean {
+  const cached = openCache.get(id);
+  if (cached !== undefined) return cached;
   if (typeof window === "undefined") return fallback;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY_PREFIX + id);
-    return raw === null ? fallback : raw === "1";
+    const value = raw === null ? fallback : raw === "1";
+    openCache.set(id, value);
+    return value;
   } catch {
     return fallback;
   }
 }
 
 function writeOpen(id: string, open: boolean): void {
+  openCache.set(id, open);
   try {
     window.localStorage.setItem(STORAGE_KEY_PREFIX + id, open ? "1" : "0");
   } catch {
@@ -55,18 +64,15 @@ export default function DisclosureSection({
   children: React.ReactNode;
 }) {
   const t = useT();
-  // SSR/최초 렌더는 defaultOpen 으로 그린 뒤 마운트 후 저장값을 반영한다
-  // (localStorage 를 초기 state 로 읽으면 hydration mismatch 가 난다).
-  const [open, setOpen] = useState(defaultOpen);
-
-  useEffect(() => {
-    setOpen(readOpen(id, defaultOpen));
-  }, [id, defaultOpen]);
+  // SSR/hydration 은 defaultOpen 으로 그리고, 클라이언트에선 저장값을 읽는다(useClientValue).
+  const stored = useClientValue(() => readOpen(id, defaultOpen), defaultOpen);
+  // 이번 세션에서 사용자가 직접 토글한 값 — 저장값보다 우선한다.
+  const [override, setOverride] = useState<boolean | null>(null);
+  const open = override ?? stored;
 
   const toggle = () => {
-    const next = !open;
-    setOpen(next);
-    writeOpen(id, next);
+    setOverride(!open);
+    writeOpen(id, !open);
   };
 
   return (

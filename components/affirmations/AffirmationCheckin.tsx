@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useT } from "@/lib/i18n";
 import type { AffirmationCheckinDepth } from "@/types";
 
@@ -87,14 +87,17 @@ export default function AffirmationCheckin({
   /** focus 는 통과했는데 추가로 적은 줄만 틀린 경우 — 오류가 아니라 안내. */
   const [extraNotice, setExtraNotice] = useState(false);
 
-  // 다짐 목록이나 오늘 날짜(=focusIndex)가 바뀌면 입력을 초기화한다.
-  useEffect(() => {
+  // 다짐 목록이나 오늘 날짜(=focusIndex)가 바뀌면 입력을 초기화한다 —
+  // 효과 대신 렌더 중 상태 조정(공식 "props 변경 시 리셋" 패턴)으로 재렌더 낭비를 줄인다.
+  const [prevReset, setPrevReset] = useState({ affirmations, focusIndex });
+  if (prevReset.affirmations !== affirmations || prevReset.focusIndex !== focusIndex) {
+    setPrevReset({ affirmations, focusIndex });
     setDrafts({});
     setMismatched(new Set());
     setExtraNotice(false);
     setErrorMsg(null);
     setExpanded(false);
-  }, [affirmations, focusIndex]);
+  }
 
   const targetNorm = useMemo(
     () => affirmations.map((a) => normalizeForCompare(stripLeadingNumber(a))),

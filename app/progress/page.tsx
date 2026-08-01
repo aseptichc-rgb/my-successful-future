@@ -10,12 +10,13 @@ import {
   onIdentityProgressSnapshot,
 } from "@/lib/firebase";
 import { addKstDays, kstMonth } from "@/lib/kstDate";
+import { useRetryableLoad } from "@/lib/useRetryableLoad";
 import { FREEZES_PER_MONTH } from "@/lib/constants/streak";
 import { growthStageOf } from "@/lib/growthStage";
 import GroupedSection from "@/components/ui/GroupedSection";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { useLanguage, type DictKey } from "@/lib/i18n";
-import type { IdentityEvidenceDay, IdentityProgress } from "@/types";
+import type { IdentityProgress } from "@/types";
 
 /* ─────────────────────────────────────────────────────────────────
  * Progress — 스트릭 회복탄력성 + 정체성 증거 장부
@@ -72,10 +73,7 @@ export default function ProgressPage() {
   const { user, firebaseUser, loading: authLoading } = useAuth();
   const { t, locale } = useLanguage();
 
-  const [checkedYmds, setCheckedYmds] = useState<Set<string> | null>(null);
-  const [evidenceDays, setEvidenceDays] = useState<IdentityEvidenceDay[]>([]);
   const [identityRows, setIdentityRows] = useState<IdentityProgress[]>([]);
-  const [error, setError] = useState<string | null>(null);
 
   const today = getKstYmd();
 
@@ -84,31 +82,24 @@ export default function ProgressPage() {
     if (!firebaseUser) router.replace("/login");
   }, [authLoading, firebaseUser, router]);
 
-  const load = useCallback(
+  // 히트맵 + 증거 피드 — 두 조회를 한 번에. today 가 바뀌면(자정 롤오버) 다시 조회한다.
+  const loadProgress = useCallback(
     async (uid: string) => {
-      setError(null);
-      try {
-        const from = addKstDays(today, -(HEATMAP_DAYS - 1));
-        const evidenceFrom = addKstDays(today, -(EVIDENCE_FEED_DAYS - 1));
-        const [ymds, evidence] = await Promise.all([
-          getAffirmationLogYmds(uid, from, today),
-          getIdentityEvidenceRange(uid, evidenceFrom, today),
-        ]);
-        setCheckedYmds(new Set(ymds));
-        setEvidenceDays(evidence);
-      } catch (err) {
-        console.error("[progress] 조회 실패:", err);
-        setCheckedYmds(new Set());
-        setError(t("progress.loadFailed"));
-      }
+      const from = addKstDays(today, -(HEATMAP_DAYS - 1));
+      const evidenceFrom = addKstDays(today, -(EVIDENCE_FEED_DAYS - 1));
+      const [ymds, evidence] = await Promise.all([
+        getAffirmationLogYmds(uid, from, today),
+        getIdentityEvidenceRange(uid, evidenceFrom, today),
+      ]);
+      return { checkedYmds: new Set(ymds), evidenceDays: evidence };
     },
-    [today, t],
+    [today],
   );
-
-  useEffect(() => {
-    if (!firebaseUser) return;
-    void load(firebaseUser.uid);
-  }, [firebaseUser, load]);
+  const { data, failed, retry } = useRetryableLoad(firebaseUser, loadProgress);
+  // 실패 시에는 빈 히트맵 + 오류 문구(재시도)로 그린다 — 스켈레톤에 갇히지 않게.
+  const checkedYmds = data ? data.checkedYmds : failed ? new Set<string>() : null;
+  const evidenceDays = data?.evidenceDays ?? [];
+  const error = failed ? t("progress.loadFailed") : null;
 
   useEffect(() => {
     if (!firebaseUser) return;
@@ -196,7 +187,7 @@ export default function ProgressPage() {
             <span className="flex-1">{error}</span>
             <button
               type="button"
-              onClick={() => firebaseUser && void load(firebaseUser.uid)}
+              onClick={retry}
               className="text-[15px] font-semibold text-[var(--soul)]"
             >
               {t("common.retry")}
