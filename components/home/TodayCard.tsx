@@ -12,7 +12,7 @@ import CheckinReward from "@/components/home/CheckinReward";
  *
  *  ① 성공한 미래의 나 — 선언 1줄 전사(또는 이미 했으면 보상 카드)
  *  ② 그 꿈을 사는 하루 — 선언이 이뤄진 하루의 장면(visionSlot)
- *  ③ 바로 아래 붙는 "오늘의 목표, 지켰나요?" 1탭
+ *  ③ 바로 아래 붙는 오늘의 목표 — 목표 줄을 탭하면 그대로 체크된다(1탭)
  *
  * 왜 한 묶음인가: 전사와 실행 체크가 화면 여기저기에 흩어지면 하루에 두 번 결심해야
  * 한다. 두 문장의 성격은 다르지만(선언 = 이미 이룬 상태 / 목표 = 그 사람이 되기 위한
@@ -107,40 +107,53 @@ export default function TodayCard({
         </div>
 
         {goal ? (
-          <>
-            <p className="px-5 pb-3 text-[17px] leading-[23px] tracking-[-0.43px] font-medium text-[var(--label)]">
-              {goal}
-            </p>
-
-            <div className="border-t border-[var(--sep)] px-5 py-3">
-              <p className="text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label-2)]">
-                {checkedIn && !goalAchieved
-                  ? t("home.todayGoal.afterCheckin")
-                  : t("home.todayGoal.question")}
-              </p>
-              <div className="mt-3 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={onToggleGoal}
-                  disabled={goalSaving}
-                  aria-pressed={goalAchieved}
-                  className="flex items-center gap-2 rounded-full px-4 py-2 text-[15px] font-semibold transition-opacity disabled:opacity-40"
-                  style={{
-                    background: goalAchieved ? ROW_COLOR : ROW_COLOR + "14",
-                    color: goalAchieved ? "#FFFFFF" : ROW_COLOR,
-                  }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <path d="M5 12l5 5L20 7" />
-                  </svg>
-                  {goalAchieved ? t("home.todayGoal.doneToday") : t("home.todayGoal.did")}
-                </button>
-                <span className="text-[13px] text-[var(--label-3)]">
-                  {goalAchieved ? t("home.todayGoal.undo") : t("home.todayGoal.notYet")}
-                </span>
-              </div>
-            </div>
-          </>
+          /* 목표 줄 자체가 체크 버튼 — 별도 "했어요" 버튼을 누르는 두 번째 결심을 없앤다.
+             체크 배지·취소선은 더 보기의 나머지 목표 행(MoreSection)과 같은 규칙을 쓴다. */
+          <button
+            type="button"
+            onClick={onToggleGoal}
+            disabled={goalSaving}
+            aria-pressed={goalAchieved}
+            className="flex w-full items-start gap-3 px-5 pb-4 text-left transition-opacity disabled:opacity-40 active:opacity-70"
+          >
+            <span
+              className="mt-[1px] flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[10px] transition-colors"
+              style={{ background: goalAchieved ? ROW_COLOR : ROW_COLOR + "1A" }}
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke={goalAchieved ? "#FFFFFF" : ROW_COLOR}
+                strokeWidth="2.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity={goalAchieved ? 1 : 0.35}
+                aria-hidden
+              >
+                <path d="M5 12l5 5L20 7" />
+              </svg>
+            </span>
+            <span className="min-w-0 flex-1 py-[3px]">
+              <span
+                className={`block text-[17px] leading-[23px] tracking-[-0.43px] font-medium ${
+                  goalAchieved
+                    ? "text-[var(--label-2)] line-through decoration-[var(--label-3)]"
+                    : "text-[var(--label)]"
+                }`}
+              >
+                {goal}
+              </span>
+              <span className="mt-1 block text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label-3)]">
+                {goalAchieved
+                  ? t("home.todayGoal.undoHint")
+                  : checkedIn
+                    ? t("home.todayGoal.afterCheckin")
+                    : t("home.todayGoal.tapHint")}
+              </span>
+            </span>
+          </button>
         ) : (
           <button
             type="button"

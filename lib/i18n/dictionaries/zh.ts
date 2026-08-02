@@ -548,14 +548,12 @@ const dict: Record<DictKey, string> = {
 
   // ── 今天的目标打卡(与誓言抄写同一张卡片)──
   "home.todayGoal.title": "今天的目标",
-  "home.todayGoal.question": "今天做到了吗?",
-  "home.todayGoal.did": "做到了",
-  "home.todayGoal.notYet": "还没有",
   "home.todayGoal.doneToday": "今天已完成",
-  "home.todayGoal.undo": "撤销",
+  "home.todayGoal.tapHint": "今天做到了就点一下",
+  "home.todayGoal.undoHint": "再点一次可撤销",
   "home.todayGoal.empty": "还没有设定目标。",
   "home.todayGoal.setCta": "设定目标",
-  "home.todayGoal.afterCheckin": "已经写下了。接下来只要告诉我们今天有没有真的做到。",
+  "home.todayGoal.afterCheckin": "已经写下了。今天做到了就点一下目标。",
 
   // ── 未来的我(一行)──
   "home.futureLine.label": "未来的我",

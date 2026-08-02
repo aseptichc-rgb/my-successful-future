@@ -571,14 +571,12 @@ const dict: Record<DictKey, string> = {
 
   // ── Marcar la meta de hoy (misma tarjeta que la transcripción) ──
   "home.todayGoal.title": "Meta de hoy",
-  "home.todayGoal.question": "¿La cumpliste hoy?",
-  "home.todayGoal.did": "Sí, la cumplí",
-  "home.todayGoal.notYet": "Todavía no",
   "home.todayGoal.doneToday": "Cumplida hoy",
-  "home.todayGoal.undo": "Deshacer",
+  "home.todayGoal.tapHint": "Tócala si hoy la cumpliste",
+  "home.todayGoal.undoHint": "Tócala otra vez para deshacer",
   "home.todayGoal.empty": "Aún no has fijado una meta.",
   "home.todayGoal.setCta": "Fijar una meta",
-  "home.todayGoal.afterCheckin": "Escrita. Ahora solo dinos si hoy la cumpliste de verdad.",
+  "home.todayGoal.afterCheckin": "Escrita. Si hoy la cumpliste, toca la meta.",
 
   // ── Yo futuro, una línea ──
   "home.futureLine.label": "Mi yo futuro",

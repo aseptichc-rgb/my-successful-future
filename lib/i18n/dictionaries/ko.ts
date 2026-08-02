@@ -556,14 +556,13 @@ const dict = {
 
   // ── 오늘의 목표 실행 체크 (전사 체크인과 같은 카드) ──
   "home.todayGoal.title": "오늘의 목표",
-  "home.todayGoal.question": "오늘 지켰나요?",
-  "home.todayGoal.did": "했어요",
-  "home.todayGoal.notYet": "아직이에요",
   "home.todayGoal.doneToday": "오늘 해냈어요",
-  "home.todayGoal.undo": "취소",
+  // 목표 줄 자체가 체크 버튼이라, 안내는 "무엇을 누르면 되는지" 한 줄이면 충분하다.
+  "home.todayGoal.tapHint": "오늘 지켰다면 눌러 주세요",
+  "home.todayGoal.undoHint": "다시 누르면 취소돼요",
   "home.todayGoal.empty": "아직 정한 목표가 없어요.",
   "home.todayGoal.setCta": "목표 정하기",
-  "home.todayGoal.afterCheckin": "다짐을 새겼어요. 이제 오늘 실제로 지켰는지만 알려주세요.",
+  "home.todayGoal.afterCheckin": "다짐을 새겼어요. 오늘 지켰다면 목표를 눌러 주세요.",
 
   // ── 미래의 나 한 줄 ────────────────────────────────
   "home.futureLine.label": "미래의 나",

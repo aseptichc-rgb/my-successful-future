@@ -563,14 +563,12 @@ const dict: Record<DictKey, string> = {
 
   // ── Today's goal check (same card as the transcription check-in) ──
   "home.todayGoal.title": "Today's goal",
-  "home.todayGoal.question": "Did you keep it today?",
-  "home.todayGoal.did": "I did",
-  "home.todayGoal.notYet": "Not yet",
   "home.todayGoal.doneToday": "Done today",
-  "home.todayGoal.undo": "Undo",
+  "home.todayGoal.tapHint": "Tap if you kept it today",
+  "home.todayGoal.undoHint": "Tap again to undo",
   "home.todayGoal.empty": "No goal set yet.",
   "home.todayGoal.setCta": "Set a goal",
-  "home.todayGoal.afterCheckin": "Written. Now just tell us whether you actually kept it today.",
+  "home.todayGoal.afterCheckin": "Written. If you kept it today, tap the goal.",
 
   // ── Future self, one line ──
   "home.futureLine.label": "Future me",
