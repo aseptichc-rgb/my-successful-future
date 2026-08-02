@@ -8,9 +8,9 @@ import "./globals.css";
 // 더 이상 참조되지 않아 제거 (번들 크기 절감).
 
 export const metadata: Metadata = {
-  title: "Anima — daily motivation",
+  title: "Anima — 꿈을 이루는 하루",
   description:
-    "10년 후의 나에게서 매일 도착하는 한 마디. 목표를 적어두면 매일 새 카드로 받아봅니다.",
+    "당신의 꿈을 이루게 해주는 앱. 꿈을 한 줄 적으면 오늘 할 한 걸음이 정해지고, 그 걸음을 밀어줄 한 마디가 매일 도착합니다.",
   applicationName: "Anima",
   formatDetection: { telephone: false },
 };

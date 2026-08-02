@@ -504,7 +504,7 @@ private fun OnboardingGate(
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "먼저 온보딩을 진행해 페르소나와 목표를 설정해 주세요. 다 끝내야 메인 홈이 열립니다.",
+            text = "먼저 온보딩에서 이루고 싶은 꿈과 오늘의 행동을 정해 주세요. 다 끝내야 메인 홈이 열립니다.",
             color = Color(0xFF1E1B4B).copy(alpha = 0.7f),
             fontSize = 14.sp,
         )

@@ -54,13 +54,13 @@ export default function LandingPage() {
               <PlatformText web="매일, 잠금화면에서." ios="매일, 한 줄." />
             </p>
             <h1 className="mt-4 text-[40px] font-bold leading-[1.05] tracking-[-0.025em] text-[#1E1B4B] sm:text-[56px]">
-              10년 후의 너에게서<br />
-              매일 한 마디.
+              당신의 꿈을<br />
+              이루게 해주는 앱.
             </h1>
             <p className="mt-5 max-w-xl text-[16px] leading-[1.55] tracking-[-0.01em] text-black/64 sm:text-[17px]">
               <PlatformText
-                web="네가 적은 미래의 모습과 오늘의 목표를 바탕으로, 실존 멘토의 명언 한 줄이 매일 잠금화면 위젯에 도착합니다. 알림 없이, 광고 없이."
-                ios="네가 적은 미래의 모습과 오늘의 목표를 바탕으로, 실존 멘토의 명언 한 줄이 매일 도착합니다. 알림 없이, 광고 없이."
+                web="꿈을 한 줄 적으면 오늘 할 한 걸음이 정해지고, 그 걸음을 밀어줄 실존 멘토의 한 마디가 매일 잠금화면 위젯에 도착합니다. 알림 없이, 광고 없이."
+                ios="꿈을 한 줄 적으면 오늘 할 한 걸음이 정해지고, 그 걸음을 밀어줄 실존 멘토의 한 마디가 매일 도착합니다. 알림 없이, 광고 없이."
               />
             </p>
 
@@ -113,7 +113,7 @@ export default function LandingPage() {
 
               <div className="mt-12 space-y-2.5">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/40">
-                  너의 오늘 목표
+                  꿈에 다가가는 오늘의 행동
                 </p>
                 <ul className="space-y-1.5 text-[13px] tracking-[-0.005em] text-black/72">
                   <li>• 매일 책 30쪽 읽고 한 줄 남기기</li>
@@ -131,8 +131,8 @@ export default function LandingPage() {
         {/* 가치 포인트 */}
         <section className="mt-20 grid gap-6 sm:grid-cols-3 sm:gap-5">
           <ValueCard
-            title="10년 후의 너가 골라준다"
-            body="네가 적은 미래상과 오늘의 목표가 매일의 인용 선택에 그대로 반영됩니다."
+            title="네 꿈이 오늘을 정한다"
+            body="네가 적은 꿈에서 오늘 할 한 걸음이 나오고, 매일의 인용도 그 걸음에 맞춰 골라집니다."
           />
           <ValueCard
             title="실존 멘토의 한 줄"
@@ -159,7 +159,7 @@ export default function LandingPage() {
               이용약관
             </Link>
           </div>
-          <p>© Anima · made for the future you</p>
+          <p>© Anima · made for the dream you’re chasing</p>
         </footer>
       </main>
     </div>

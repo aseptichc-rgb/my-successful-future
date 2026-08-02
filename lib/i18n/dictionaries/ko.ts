@@ -44,7 +44,7 @@ const dict = {
   "language.settings.note": "언어를 바꾸면 다음 카드부터 새 언어로 도착해요.",
 
   // ── 온보딩 ───────────────────────────────────────
-  // "10년 후 나의 모습" 몰입형 질문 — 한 화면에 한 질문씩(키 순서 = lib/futureSelf.ts 차원 순서).
+  // "내가 이루고 싶은 꿈" 몰입형 질문 — 한 화면에 한 질문씩(키 순서 = lib/futureSelf.ts 차원 순서).
   "onboarding.futureSelf.sectionLabel": "내가 진짜 원하는 것",
   // 통합 진행바 라벨 (언어·미리보기 제외한 실제 입력 화면 기준).
   "onboarding.progress.remaining": "{remaining}개 남음",
@@ -59,8 +59,8 @@ const dict = {
   "onboarding.futureSelf.dream.placeholder":
     "예: 2035년까지 내 이름을 건 브랜드를 연매출 100억 규모로 키워 팀원 20명과 함께 일하고, 바다가 보이는 집에서 가족과 아침을 먹은 뒤 주 4일만 일하며, 매년 한 달은 아이와 해외에서 지내는 것.",
   "onboarding.futureSelf.dream.why":
-    "숫자·기한·사람까지 적을수록 좋아요. 이 문장이 매일 도착할 카드의 재료가 돼요.",
-  "onboarding.futureSelf.daily.q": "10년 후, 당신의 평범한 하루는 어떻게 흘러가나요?",
+    "숫자·기한·사람까지 적을수록 좋아요. 이 꿈이 오늘 할 한 걸음과 매일의 한 마디를 정하는 기준이 돼요.",
+  "onboarding.futureSelf.daily.q": "그 꿈을 이룬 뒤, 당신의 평범한 하루는 어떻게 흘러가나요?",
   "onboarding.futureSelf.daily.placeholder":
     "아침에 눈뜨는 곳, 오전에 하는 일, 저녁을 보내는 방식까지 그려보세요.",
   "onboarding.futureSelf.work.q": "그때 당신은 어떤 일을 하고, 사람들 사이에서 어떤 위치에 있나요?",
@@ -99,7 +99,7 @@ const dict = {
   "onboarding.declaration.writeMyOwn": "직접 쓰기",
 
   // Step 2 아래 칸 — 그 사람이 되기 위해 오늘 옮기는 행동. 선언과 독립된 문장이다.
-  "onboarding.goal.title": "그 사람이 되기 위해, 오늘 딱 하나",
+  "onboarding.goal.title": "그 꿈에 다가가기 위해, 오늘 딱 하나",
   "onboarding.goal.subtitle":
     "하나면 충분해요. 꾸준히 지키면 담을 수 있는 목표가 하나씩 늘어나요.",
   "onboarding.goal.placeholder": "매일 책 30쪽을 읽고 한 줄을 남긴다",
@@ -119,7 +119,7 @@ const dict = {
   "onboarding.step4.preparing": "준비 중…",
 
   "onboarding.step5.titleLoading": "오늘의 한 마디를 만들고 있어요…",
-  "onboarding.step5.titleDone": "매일 아침, 10년 후 나의 하루가 생생히 펼쳐져요.",
+  "onboarding.step5.titleDone": "매일 아침, 꿈이 이뤄진 하루가 눈앞에 펼쳐져요.",
   "onboarding.step5.subtitleLoading": "잠시만 기다려주세요.",
   "onboarding.step5.subtitleDone":
     "잠금화면 위젯이 매일 다른 한 줄을 보여줍니다. 안드로이드 앱을 설치하면 위젯을 추가할 수 있어요.",
@@ -135,10 +135,10 @@ const dict = {
   "onboarding.step5.widgetStep3": "3. 잠금화면에 추가하면 매일 자동으로 한 줄이 도착해요",
   "onboarding.step5.start": "시작하기",
   "onboarding.step5.finishing": "마무리 중…",
-  "onboarding.step5.portraitLabel": "10년 후 나의 모습",
-  "onboarding.step5.portraitLoading": "10년 후 당신의 모습을 그리고 있어요…",
+  "onboarding.step5.portraitLabel": "꿈을 이룬 나의 모습",
+  "onboarding.step5.portraitLoading": "꿈을 이룬 당신의 모습을 그리고 있어요…",
   "onboarding.step5.portraitError":
-    "10년 후 모습을 만들지 못했어요. 시작 후 홈에서 다시 만들 수 있어요.",
+    "그 모습을 만들지 못했어요. 시작 후 홈에서 다시 만들 수 있어요.",
 
   "onboarding.saveError": "저장에 실패했어요.",
   "onboarding.category.philosophy": "철학",
@@ -149,27 +149,27 @@ const dict = {
   "onboarding.category.literature": "문학",
 
   // ── 홈 ───────────────────────────────────────────
-  "home.title": "오늘의 동기부여",
-  "home.subtitle": "매일 새로 도착하는 한 마디로 하루를 시작하세요.",
+  "home.title": "오늘의 한 걸음",
+  "home.subtitle": "오늘 한 걸음이면, 꿈은 그만큼 가까워져요.",
   "home.dateFormat": "{year}년 {month}월 {day}일",
   "home.settingsAria": "설정",
 
-  "home.future.title": "10년 후의 나의 모습",
-  "home.future.subtitle": "되고 싶은 모습이 구체적일수록, 매일 도착하는 한 마디도 더 명확해져요.",
-  "home.future.empty": "아직 적어둔 모습이 없어요. 설정에서 작성할 수 있어요.",
+  "home.future.title": "내가 이루고 싶은 꿈",
+  "home.future.subtitle": "꿈이 구체적일수록, 오늘 할 한 걸음도 매일의 한 마디도 또렷해져요.",
+  "home.future.empty": "아직 적어둔 꿈이 없어요. 설정에서 작성할 수 있어요.",
   "home.future.saveAndRegen": "저장하고 카드 다시 받기",
-  "home.future.saveFailed": "미래의 나 저장 실패",
+  "home.future.saveFailed": "꿈 저장 실패",
 
-  // ── "10년 후 나의 모습" 초상 카드 ─────────────────
-  "futureSelf.portrait.headerLabel": "10년 후 나의 모습",
-  "futureSelf.portrait.loading": "10년 후 당신의 모습을 그리고 있어요…",
-  "futureSelf.portrait.error": "10년 후 모습을 그리지 못했어요.",
+  // ── "꿈을 이룬 나의 모습" 초상 카드 ─────────────────
+  "futureSelf.portrait.headerLabel": "꿈을 이룬 나의 모습",
+  "futureSelf.portrait.loading": "꿈을 이룬 당신의 모습을 그리고 있어요…",
+  "futureSelf.portrait.error": "꿈을 이룬 모습을 그리지 못했어요.",
   "futureSelf.portrait.regenerate": "초상 다시 그리기",
   "futureSelf.portrait.regenerating": "다시 그리는 중…",
 
-  "home.goals.title": "목표를 이루기 위한 오늘의 행동",
+  "home.goals.title": "꿈에 다가가는 오늘의 행동",
   "home.goals.subtitle":
-    "성공한 나의 모습으로 다가가기 위해 오늘 옮겨볼 한 가지 행동.",
+    "꿈에 한 걸음 다가가기 위해 오늘 옮겨볼 한 가지 행동.",
   "home.goals.todayProgress": "오늘 {done}/{total}",
   "home.goals.placeholder": "예: 매일 안 해본 일 1가지 도전하기",
   "home.goals.maxAlert": "목표는 최대 {max}개까지 추가할 수 있어요.",
@@ -190,7 +190,7 @@ const dict = {
 
   // ── MotivationCard ──────────────────────────────
   "motivation.wallpaper.goalsLabel": "나의 목표",
-  "motivation.wallpaper.watermark": "Anima · 미래의 나",
+  "motivation.wallpaper.watermark": "Anima · 나의 꿈",
   "motivation.wallpaper.download": "배경화면으로 저장",
   "motivation.wallpaper.downloading": "저장 중…",
   "motivation.wallpaper.downloadFailed": "이미지 저장에 실패했습니다.",
@@ -213,7 +213,7 @@ const dict = {
   "motivation.firstResponseToast": "정체성 \"나는 {tag}\"가 오늘로 1걸음 쌓였어요.",
   "motivation.editResponse": "응답 수정",
   "motivation.identityPrefix": "나는",
-  "motivation.affirmations.title": "성공한 나에게 한 발 더",
+  "motivation.affirmations.title": "꿈에 한 발 더",
   "motivation.affirmations.streak": "{count}일째 연속",
   "motivation.affirmations.placeholder": "위 글 그대로 따라 적어보세요",
   "motivation.affirmations.checkin": "오늘 다짐 새기기",
@@ -222,33 +222,33 @@ const dict = {
   "motivation.affirmations.mismatched": "한 글자라도 다르면 안 돼요. 위 글을 그대로 옮겨 적어주세요.",
   "motivation.affirmations.alreadyToday": "오늘은 이미 새기셨어요. 내일 다시 만나요.",
   "motivation.affirmations.empty":
-    "설정에서 “성공한 나의 모습” 다짐을 적어두면 매일 따라 적으며 연속일을 쌓을 수 있어요.",
+    "설정에서 ‘꿈을 이룬 나’ 다짐을 적어두면 매일 따라 적으며 연속일을 쌓을 수 있어요.",
 
-  // ── 미래 일상 비전 (꿈이 실현된 하루) ────────────
+  // ── 꿈이 이뤄진 하루 ─────────────────────────────
   "futureVision.headerLabel": "오늘, 그 꿈을 사는 하루",
-  "futureVision.loading": "당신의 미래 하루를 그리고 있어요…",
-  "futureVision.error": "미래 일상을 그리지 못했어요.",
+  "futureVision.loading": "꿈이 이뤄진 하루를 그리고 있어요…",
+  "futureVision.error": "그 하루를 그리지 못했어요.",
   "futureVision.regenerate": "또 다른 하루 보기",
   "futureVision.regenerating": "다른 하루를 그리는 중…",
   "futureVision.reveal": "오늘의 하루 펼쳐보기",
-  "futureVision.empty.title": "먼저 ‘미래의 나’를 그려주세요",
+  "futureVision.empty.title": "먼저 당신의 꿈을 적어주세요",
   "futureVision.empty.body":
-    "10년 후 되고 싶은 모습을 한 단락 적으면, 매일 그 꿈이 실현된 하루를 눈앞에 그려 드릴게요.",
-  "futureVision.empty.cta": "미래의 나 적기",
+    "이루고 싶은 꿈을 한 단락 적으면, 그 꿈이 이뤄진 하루를 매일 눈앞에 그려 드릴게요.",
+  "futureVision.empty.cta": "내 꿈 적기",
 
   // ── 설정 ─────────────────────────────────────────
   "settings.title": "설정",
-  "settings.subtitle": "미래의 모습 · 매일 다짐 · 오늘의 행동 · 명언 큐레이션을 한곳에서 관리해요.",
-  "settings.future.title": "10년 후의 나의 모습",
-  "settings.future.subtitle": "매일 도착하는 동기부여 한 마디가 이 글을 바탕으로 만들어져요.",
+  "settings.subtitle": "내 꿈 · 매일 다짐 · 오늘의 행동 · 명언 큐레이션을 한곳에서 관리해요.",
+  "settings.future.title": "내가 이루고 싶은 꿈",
+  "settings.future.subtitle": "오늘의 행동과 매일 도착하는 한 마디가 이 꿈을 기준으로 만들어져요.",
   "settings.futureSelf.legacyNote":
     "이전에 적어둔 글이에요. 위 질문에 답하고 저장하면 이 글을 대체해요.",
-  "settings.affirmations.title": "성공한 나에게 한 발 더",
+  "settings.affirmations.title": "꿈에 한 발 더",
   "settings.affirmations.subtitle":
     "매일 카드 위쪽에 흐린 글씨로 미리 보여드려요. 그 위에 똑같이 따라 적으면 연속일이 +1 됩니다.",
-  "settings.goals.title": "목표를 이루기 위한 오늘의 행동",
+  "settings.goals.title": "꿈에 다가가는 오늘의 행동",
   "settings.goals.subtitle":
-    "성공한 나의 모습으로 다가가기 위해 오늘 옮겨볼 한 가지 행동.",
+    "꿈에 한 걸음 다가가기 위해 오늘 옮겨볼 한 가지 행동.",
   "settings.goals.empty": "홈 화면에서 목표를 추가하면 여기서도 편집할 수 있어요.",
   "settings.quote.title": "오늘의 명언 큐레이션",
   "settings.quote.subtitle":
@@ -265,7 +265,7 @@ const dict = {
   "settings.account.delete.subtitle": "내 정보·다짐·기록을 모두 영구 삭제합니다. 되돌릴 수 없어요.",
   "settings.account.delete.confirmTitle": "정말 계정을 삭제할까요?",
   "settings.account.delete.confirmBody":
-    "10년 후의 나에게 적은 모습, 매일의 다짐, 잘한 일 기록이 모두 사라집니다.\n결제 영수증도 함께 정리되며, 같은 이메일로 다시 가입할 수는 있어요.",
+    "적어둔 꿈, 매일의 다짐, 잘한 일 기록이 모두 사라집니다.\n결제 영수증도 함께 정리되며, 같은 이메일로 다시 가입할 수는 있어요.",
   "settings.account.delete.confirmInputLabel": "확인을 위해 아래에 \"삭제\"를 입력해주세요.",
   "settings.account.delete.confirmInputKeyword": "삭제",
   "settings.account.delete.confirmCancel": "취소",
@@ -287,11 +287,11 @@ const dict = {
   "auth.signingIn": "로그인 중…",
   "auth.signingUp": "가입 중…",
   "auth.signIn.title": "다시 만나서 반가워요",
-  "auth.signIn.subtitle": "10년 후의 너에게서 매일 한 마디가 도착하는 곳.",
+  "auth.signIn.subtitle": "당신의 꿈이 하루에 한 걸음씩 이뤄지는 곳.",
   "auth.signIn.noAccount": "처음이신가요?",
   "auth.signIn.toSignUp": "회원가입",
-  "auth.signUp.title": "10년 후의 너를 만나러 가요",
-  "auth.signUp.subtitle": "지금 바로 매일 도착하는 한 마디를 받아보세요.",
+  "auth.signUp.title": "당신의 꿈을 이루러 가요",
+  "auth.signUp.subtitle": "꿈 한 줄만 적으면, 오늘 할 한 걸음부터 만들어 드릴게요.",
   "auth.signUp.haveAccount": "이미 계정이 있으신가요?",
   "auth.signUp.toSignIn": "로그인",
   "auth.error.invalidEmail": "이메일 형식을 확인해주세요.",
@@ -314,7 +314,7 @@ const dict = {
 
   // ── 잘한 일 히스토리 ─────────────────────────────
   "wins.history.title": "잘한 일 기록",
-  "wins.history.subtitle": "매일 적은 한 줄이 모여 너만의 흔적이 돼요.",
+  "wins.history.subtitle": "매일 적은 한 줄이 모여 꿈에 다가간 증거가 돼요.",
   "wins.history.empty": "아직 적은 기록이 없어요.",
   "wins.history.back": "← 홈으로",
   "wins.history.loadFailed": "기록을 불러오지 못했어요.",
@@ -339,7 +339,7 @@ const dict = {
   "legal.privacy": "개인정보처리방침",
   "legal.terms": "이용약관",
   "settings.profile.header": "프로필",
-  "settings.affirmations.header": "성공한 나의 모습 다짐",
+  "settings.affirmations.header": "꿈을 이룬 나 다짐",
   "settings.quote.header": "카드",
   "settings.quote.pinnedAuthor": "좋아하는 인물",
   "settings.language.header": "언어",
@@ -355,7 +355,7 @@ const dict = {
   "settings.notifications.footer":
     "알림은 이 기기에서만 예약돼요. 하루 최대 2건 — 이미 한 일에는 보내지 않아요.",
   "settings.notifications.morning.title": "아침 다짐 리마인더",
-  "settings.notifications.morning.desc": "성공 선언을 따라 쓰며 하루를 여는 신호예요.",
+  "settings.notifications.morning.desc": "꿈을 이룬 나의 선언을 따라 쓰며 하루를 여는 신호예요.",
   "settings.notifications.evening.title": "저녁 기록 리마인더",
   "settings.notifications.evening.desc": "오늘 목표를 아직 체크하지 않았을 때만 도착해요.",
   "settings.notifications.weekly.title": "일요일 회고 알림",
@@ -363,7 +363,7 @@ const dict = {
   "settings.notifications.time": "시각",
 
   // ── 알림 문구 (iOS 로컬 알림 본문 — Android 는 네이티브 리소스) ──
-  "notify.morning.title": "성공한 나에게 한 발 더",
+  "notify.morning.title": "꿈에 한 발 더",
   "notify.morning.body": "오늘도 다짐을 따라 적으며 하루를 시작해요.",
   "notify.evening.title": "오늘의 목표, 아직 남아 있어요",
   "notify.evening.body": "잠깐이면 돼요 — 오늘 한 걸음을 체크해 주세요.",
@@ -499,11 +499,11 @@ const dict = {
   "coach.failed": "제안을 불러오지 못했어요.",
   "coach.quota": "오늘의 코치 제안 한도를 다 썼어요. 내일 다시 만나요.",
 
-  // ── 성공한 미래의 나 (하루 1줄 필수 + 전량은 선택) ───────
-  "affirmations.focus.title": "성공한 미래의 나",
+  // ── 꿈을 이룬 나 (하루 1줄 필수 + 전량은 선택) ───────
+  "affirmations.focus.title": "꿈을 이룬 나",
   "affirmations.focus.rotation": "{index}/{total}번째",
   "affirmations.focus.hint": "이미 꿈을 이룬 나의 모습을 생생히 적어주세요.",
-  "affirmations.focus.placeholder": "적을수록 그 미래가 현실이 돼요…",
+  "affirmations.focus.placeholder": "적을수록 그 꿈이 현실이 돼요…",
   "affirmations.focus.expand": "{count}줄 전체 새기기",
   "affirmations.focus.collapse": "오늘 한 줄만 쓰기",
   "affirmations.focus.deepHint": "전체를 새기면 정체성 증거가 한 표 더 쌓여요.",
@@ -511,7 +511,7 @@ const dict = {
   "affirmations.extra.mismatch": "다시 볼 문장이 있어요 — 오늘 체크인은 이미 완료됐어요.",
 
   // ── 체크인 직후 보상 ──────────────────────────────
-  "checkin.reward.title": "오늘의 나로 살았어요",
+  "checkin.reward.title": "꿈에 한 걸음 다가갔어요",
   "checkin.reward.streak": "{count}일째 이어가는 중",
   "checkin.reward.evidence": "정체성 증거 +{count} · 나는 {label}",
   "checkin.reward.evidencePlain": "정체성 증거 +{count}",
@@ -558,9 +558,9 @@ const dict = {
   "home.plans.manageLocked": "목표 관리",
   // 홈에 남는 건 명언·오늘 카드·7일 링뿐 — 나머지는 전부 이 한 섹션 뒤로 접힌다.
   "home.section.more": "더 보기",
-  "home.more.summary": "미래의 나 · 기록 · 실행 설계",
+  "home.more.summary": "내 꿈 · 기록 · 실행 설계",
   // 접힌 요약도 아직 못 여는 기능의 이름을 흘리지 않는다 — 잠긴 게 있으면 이쪽을 쓴다.
-  "home.more.summaryLocked": "미래의 나 · 목표 · 아직 잠긴 것",
+  "home.more.summaryLocked": "내 꿈 · 목표 · 아직 잠긴 것",
 
   // ── 오늘의 목표 실행 체크 (전사 체크인과 같은 카드) ──
   "home.todayGoal.title": "오늘의 목표",
@@ -573,8 +573,8 @@ const dict = {
   "home.todayGoal.afterCheckin": "다짐을 새겼어요. 오늘 지켰다면 목표를 눌러 주세요.",
 
   // ── 미래의 나 한 줄 ────────────────────────────────
-  "home.futureLine.label": "미래의 나",
-  "home.futureLine.empty": "아직 적어둔 모습이 없어요.",
+  "home.futureLine.label": "내 꿈",
+  "home.futureLine.empty": "아직 적어둔 꿈이 없어요.",
   "home.futureLine.write": "지금 적기",
 
   // ── 목표 슬롯 해금 ─────────────────────────────────

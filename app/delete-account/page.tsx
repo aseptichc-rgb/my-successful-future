@@ -79,7 +79,7 @@ export default async function DeleteAccountPage({
         {isKo ? <KoContent /> : <EnContent />}
 
         <footer className="mt-12 text-center text-[11px] tracking-[-0.01em] text-black/40">
-          © Anima · made for the future you
+          © Anima · made for the dream you’re chasing
         </footer>
       </main>
     </div>
@@ -117,7 +117,7 @@ function KoContent() {
 
       <Section title="앱·개발자 정보">
         본 안내는 <b>Anima</b>(이하 “서비스”) 앱의 계정 및 데이터 삭제에 관한
-        것입니다. 서비스는 사용자가 작성한 미래 자아 서술과 일일 목표를 바탕으로
+        것입니다. 서비스는 사용자가 작성한 꿈 서술과 일일 목표를 바탕으로
         매일 동기부여 카드를 제공하는 개인용 애플리케이션입니다. 삭제와 관련한
         문의는 아래 연락처로 보내실 수 있습니다.
       </Section>
@@ -166,8 +166,8 @@ function KoContent() {
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>계정 식별 정보 — 이메일 주소, 표시 이름, 사용자 ID(uid)</li>
           <li>
-            사용자가 입력한 콘텐츠 — “10년 후의 나” 서술, 일일 목표, 다짐, 오늘
-            잘한 일 기록
+            사용자가 입력한 콘텐츠 — “내가 이루고 싶은 꿈” 서술, 일일 목표, 다짐,
+            오늘 잘한 일 기록
           </li>
           <li>일일 동기부여 카드·인용 기록 및 위젯 표시 내역</li>
           <li>인앱 결제 권한(entitlement) 캐시</li>
@@ -218,8 +218,8 @@ function EnContent() {
       <Section title="App & developer">
         This page explains how to delete your account and data for the{" "}
         <b>Anima</b> app (the &ldquo;Service&rdquo;). Anima is a personal app
-        that delivers a daily motivation card based on the &ldquo;future
-        self&rdquo; description and daily goals you write. For any deletion
+        that delivers a daily motivation card based on the dream you write down
+        and the daily goals you set. For any deletion
         question, contact us at the address below.
       </Section>
 

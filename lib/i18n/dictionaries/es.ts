@@ -52,8 +52,8 @@ const dict: Record<DictKey, string> = {
   "onboarding.futureSelf.dream.placeholder":
     "Ej.: Para 2035, llevar mi propia marca a 10 millones de euros al año con un equipo de 20, trabajar cuatro días a la semana desde una casa frente al mar y pasar un mes al año fuera con mi hijo.",
   "onboarding.futureSelf.dream.why":
-    "Números, plazos, nombres: cuanto más concreto, mejor. Esta frase será la materia prima de cada tarjeta que recibas.",
-  "onboarding.futureSelf.daily.q": "Dentro de 10 años, ¿cómo fluye un día normal de tu vida?",
+    "Números, plazos, nombres: cuanto más concreto, mejor. Este sueño decide el paso de hoy y cada frase que recibes.",
+  "onboarding.futureSelf.daily.q": "Cuando ese sueño sea real, ¿cómo fluye un día normal de tu vida?",
   "onboarding.futureSelf.daily.placeholder":
     "Dónde despiertas, qué llena tu mañana, cómo termina tu tarde.",
   "onboarding.futureSelf.work.q":
@@ -94,7 +94,7 @@ const dict: Record<DictKey, string> = {
   "onboarding.declaration.writeMyOwn": "Escribir la mía",
 
   // Paso 2, campo inferior — la acción de hoy hacia esa persona. Independiente de la línea.
-  "onboarding.goal.title": "Una sola cosa hoy, para ser esa persona",
+  "onboarding.goal.title": "Una sola cosa hoy, para acercarte a ese sueño",
   "onboarding.goal.subtitle":
     "Con una basta. Si la mantienes, se abrirá sitio para otra meta.",
   "onboarding.goal.placeholder": "leo 30 páginas cada día y anoto una línea",
@@ -112,7 +112,7 @@ const dict: Record<DictKey, string> = {
   "onboarding.step4.preparing": "Preparando…",
 
   "onboarding.step5.titleLoading": "Creando tu frase de hoy…",
-  "onboarding.step5.titleDone": "Cada mañana, tu día dentro de diez años cobra vida ante ti.",
+  "onboarding.step5.titleDone": "Cada mañana, el día en que tu sueño se cumple se despliega ante ti.",
   "onboarding.step5.subtitleLoading": "Un momento.",
   "onboarding.step5.subtitleDone":
     "El widget de pantalla de bloqueo muestra una frase distinta cada día. Instala la app de Android para añadir el widget.",
@@ -131,10 +131,10 @@ const dict: Record<DictKey, string> = {
     "3. Añádelo a la pantalla de bloqueo y recibirás una frase nueva cada día",
   "onboarding.step5.start": "Empezar",
   "onboarding.step5.finishing": "Finalizando…",
-  "onboarding.step5.portraitLabel": "MI YO DENTRO DE 10 AÑOS",
-  "onboarding.step5.portraitLoading": "Pintando tu yo de dentro de 10 años…",
+  "onboarding.step5.portraitLabel": "YO, VIVIENDO EL SUEÑO",
+  "onboarding.step5.portraitLoading": "Pintando al tú que ya vive el sueño…",
   "onboarding.step5.portraitError":
-    "No se pudo crear tu retrato futuro. Podrás crearlo desde Inicio después de empezar.",
+    "No se pudo crear ese retrato. Podrás crearlo desde Inicio después de empezar.",
 
   "onboarding.saveError": "No se pudo guardar.",
   "onboarding.category.philosophy": "Filosofía",
@@ -145,28 +145,28 @@ const dict: Record<DictKey, string> = {
   "onboarding.category.literature": "Literatura",
 
   // Home
-  "home.title": "Motivación de hoy",
-  "home.subtitle": "Empieza el día con una frase nueva escrita para ti.",
+  "home.title": "El paso de hoy",
+  "home.subtitle": "Un paso hoy, y el sueño está así de cerca.",
   "home.dateFormat": "{day}/{month}/{year}",
   "home.settingsAria": "Ajustes",
 
-  "home.future.title": "Tú, dentro de 10 años",
+  "home.future.title": "El sueño que quiero cumplir",
   "home.future.subtitle":
-    "Cuanto más concreto sea tu yo futuro, más nítida será la frase diaria que recibas.",
-  "home.future.empty": "Aún no has escrito nada. Puedes hacerlo en Ajustes.",
+    "Cuanto más concreto sea tu sueño, más nítidos serán el paso y la frase de hoy.",
+  "home.future.empty": "Aún no has escrito tu sueño. Puedes hacerlo en Ajustes.",
   "home.future.saveAndRegen": "Guardar y regenerar la tarjeta de hoy",
-  "home.future.saveFailed": "No se pudo guardar tu yo futuro",
+  "home.future.saveFailed": "No se pudo guardar tu sueño",
 
   // Tarjeta de retrato "Mi yo dentro de 10 años"
-  "futureSelf.portrait.headerLabel": "MI YO DENTRO DE 10 AÑOS",
-  "futureSelf.portrait.loading": "Pintando tu yo de dentro de 10 años…",
-  "futureSelf.portrait.error": "No se pudo pintar tu retrato futuro.",
+  "futureSelf.portrait.headerLabel": "YO, VIVIENDO EL SUEÑO",
+  "futureSelf.portrait.loading": "Pintando al tú que ya vive el sueño…",
+  "futureSelf.portrait.error": "No se pudo pintar ese retrato.",
   "futureSelf.portrait.regenerate": "Volver a pintar el retrato",
   "futureSelf.portrait.regenerating": "Repintando…",
 
-  "home.goals.title": "Acciones de hoy hacia tus metas",
+  "home.goals.title": "La acción de hoy hacia tu sueño",
   "home.goals.subtitle":
-    "Una pequeña acción que te acerca a tu yo futuro.",
+    "Una pequeña acción que te acerca un paso a tu sueño.",
   "home.goals.todayProgress": "Hoy {done}/{total}",
   "home.goals.placeholder": "Ej.: Probar 1 cosa que nunca he hecho, cada día",
   "home.goals.maxAlert": "Puedes añadir hasta {max} metas.",
@@ -189,7 +189,7 @@ const dict: Record<DictKey, string> = {
 
   // MotivationCard
   "motivation.wallpaper.goalsLabel": "Mis metas",
-  "motivation.wallpaper.watermark": "Anima · Yo del futuro",
+  "motivation.wallpaper.watermark": "Anima · Mi sueño",
   "motivation.wallpaper.download": "Guardar como fondo de pantalla",
   "motivation.wallpaper.downloading": "Guardando…",
   "motivation.wallpaper.downloadFailed": "No se pudo guardar la imagen.",
@@ -214,7 +214,7 @@ const dict: Record<DictKey, string> = {
     "Tu identidad \"Soy {tag}\" ha sumado 1 paso hoy.",
   "motivation.editResponse": "Editar respuesta",
   "motivation.identityPrefix": "Soy",
-  "motivation.affirmations.title": "Un paso más hacia tu yo exitoso",
+  "motivation.affirmations.title": "Un paso más hacia tu sueño",
   "motivation.affirmations.streak": "Racha de {count} días",
   "motivation.affirmations.placeholder": "Copia la línea de arriba, exacta",
   "motivation.affirmations.checkin": "Grabar las afirmaciones de hoy",
@@ -226,35 +226,35 @@ const dict: Record<DictKey, string> = {
   "motivation.affirmations.alreadyToday":
     "Ya lo grabaste hoy. Hasta mañana.",
   "motivation.affirmations.empty":
-    "Añade afirmaciones en Ajustes para copiarlas a diario y construir una racha.",
+    "Escribe tus afirmaciones del sueño en Ajustes para copiarlas a diario y crear una racha.",
 
   // ── Visión del día futuro (un día viviendo el sueño) ──
   "futureVision.headerLabel": "Hoy, un día viviendo ese sueño",
-  "futureVision.loading": "Pintando tu día futuro…",
-  "futureVision.error": "No se pudo pintar tu día futuro.",
+  "futureVision.loading": "Pintando el día en que tu sueño es real…",
+  "futureVision.error": "No se pudo pintar ese día.",
   "futureVision.regenerate": "Ver otro día",
   "futureVision.regenerating": "Pintando otro día…",
   "futureVision.reveal": "Desplegar el día de hoy",
-  "futureVision.empty.title": "Primero, imagina tu yo futuro",
+  "futureVision.empty.title": "Primero, escribe tu sueño",
   "futureVision.empty.body":
-    "Escribe un párrafo sobre quién quieres llegar a ser en 10 años, y cada día pintaré ante tus ojos ese día de sueño cumplido.",
-  "futureVision.empty.cta": "Escribir mi yo futuro",
+    "Escribe un párrafo sobre el sueño que persigues y cada día pintaré ante tus ojos el día en que se cumple.",
+  "futureVision.empty.cta": "Escribir mi sueño",
 
   // Settings
   "settings.title": "Ajustes",
   "settings.subtitle":
-    "Gestiona tu yo futuro, afirmaciones diarias, acciones de hoy y curaduría de citas en un solo lugar.",
-  "settings.future.title": "Tú, dentro de 10 años",
+    "Gestiona tu sueño, afirmaciones diarias, la acción de hoy y la curaduría de citas en un solo lugar.",
+  "settings.future.title": "El sueño que quiero cumplir",
   "settings.future.subtitle":
-    "Tu frase diaria se construye a partir de este párrafo.",
+    "La acción de hoy y tu frase diaria se construyen a partir de este sueño.",
   "settings.futureSelf.legacyNote":
     "Esto es lo que escribiste antes. Al responder las preguntas de arriba y guardar, lo reemplazará.",
-  "settings.affirmations.title": "Un paso más hacia tu yo exitoso",
+  "settings.affirmations.title": "Un paso más hacia tu sueño",
   "settings.affirmations.subtitle":
     "Aparece en gris claro sobre cada tarjeta diaria. Copia cada línea exactamente para sumar +1 a tu racha.",
-  "settings.goals.title": "Acciones de hoy hacia tus metas",
+  "settings.goals.title": "La acción de hoy hacia tu sueño",
   "settings.goals.subtitle":
-    "Una pequeña acción que te acerca a tu yo futuro.",
+    "Una pequeña acción que te acerca un paso a tu sueño.",
   "settings.goals.empty":
     "Añade metas desde Inicio y podrás editarlas aquí.",
   "settings.quote.title": "Curaduría de citas",
@@ -272,7 +272,7 @@ const dict: Record<DictKey, string> = {
   "settings.account.delete.subtitle": "Elimina de forma permanente tu perfil, afirmaciones e historial. Es irreversible.",
   "settings.account.delete.confirmTitle": "¿Eliminar tu cuenta?",
   "settings.account.delete.confirmBody":
-    "Tu yo futuro, las afirmaciones diarias y el registro de logros se borrarán.\nLos recibos también se limpiarán. Podrás volver a registrarte con el mismo correo más tarde.",
+    "Tu sueño, las afirmaciones diarias y el registro de logros se borrarán.\nLos recibos también se limpiarán. Podrás volver a registrarte con el mismo correo más tarde.",
   "settings.account.delete.confirmInputLabel": "Escribe \"eliminar\" abajo para confirmar.",
   "settings.account.delete.confirmInputKeyword": "eliminar",
   "settings.account.delete.confirmCancel": "Cancelar",
@@ -295,11 +295,11 @@ const dict: Record<DictKey, string> = {
   "auth.signingUp": "Creando cuenta…",
   "auth.signIn.title": "Bienvenido de nuevo",
   "auth.signIn.subtitle":
-    "Donde te llega cada día una frase de tu yo de dentro de 10 años.",
+    "Donde tu sueño se acerca un paso cada día.",
   "auth.signIn.noAccount": "¿Es tu primera vez?",
   "auth.signIn.toSignUp": "Crear cuenta",
-  "auth.signUp.title": "Conoce a tu yo de dentro de 10 años",
-  "auth.signUp.subtitle": "Recibe ahora mismo tu primera frase diaria.",
+  "auth.signUp.title": "Vamos a hacer realidad tu sueño",
+  "auth.signUp.subtitle": "Escribe una línea sobre tu sueño y la convertimos en el primer paso de hoy.",
   "auth.signUp.haveAccount": "¿Ya tienes cuenta?",
   "auth.signUp.toSignIn": "Iniciar sesión",
   "auth.error.invalidEmail": "Revisa el formato del correo.",
@@ -324,7 +324,7 @@ const dict: Record<DictKey, string> = {
   // Wins history
   "wins.history.title": "Tus logros, por día",
   "wins.history.subtitle":
-    "Cada pequeña línea, reunida — un registro tuyo en el tiempo.",
+    "Cada pequeña línea, reunida: la prueba de que te acercaste al sueño.",
   "wins.history.empty": "Aún no hay nada escrito.",
   "wins.history.back": "← Volver a inicio",
   "wins.history.loadFailed": "No se pudieron cargar tus registros.",
@@ -351,7 +351,7 @@ const dict: Record<DictKey, string> = {
   "legal.privacy": "Política de privacidad",
   "legal.terms": "Términos de servicio",
   "settings.profile.header": "Perfil",
-  "settings.affirmations.header": "Afirmaciones diarias",
+  "settings.affirmations.header": "Afirmaciones del sueño",
   "settings.quote.header": "Tarjeta",
   "settings.quote.pinnedAuthor": "Autor favorito",
   "settings.language.header": "Idioma",
@@ -367,7 +367,7 @@ const dict: Record<DictKey, string> = {
   "settings.notifications.footer":
     "Los recordatorios se programan solo en este dispositivo. Máximo 2 al día — nunca por lo que ya hiciste.",
   "settings.notifications.morning.title": "Recordatorio matutino de afirmación",
-  "settings.notifications.morning.desc": "Una señal para empezar el día escribiendo tu declaración.",
+  "settings.notifications.morning.desc": "Una señal para abrir el día escribiendo la declaración de tu sueño.",
   "settings.notifications.evening.title": "Recordatorio nocturno de registro",
   "settings.notifications.evening.desc": "Llega solo si aún no marcaste la meta de hoy.",
   "settings.notifications.weekly.title": "Repaso del domingo",
@@ -375,7 +375,7 @@ const dict: Record<DictKey, string> = {
   "settings.notifications.time": "Hora",
 
   // Textos de notificación (iOS — Android usa recursos nativos)
-  "notify.morning.title": "Un paso más hacia tu yo futuro",
+  "notify.morning.title": "Un paso más hacia tu sueño",
   "notify.morning.body": "Empieza el día escribiendo tu afirmación.",
   "notify.evening.title": "La meta de hoy sigue esperando",
   "notify.evening.body": "Solo toma un momento — marca el paso de hoy.",
@@ -510,10 +510,10 @@ const dict: Record<DictKey, string> = {
   "coach.quota": "Agotaste las sugerencias del coach de hoy. Hasta mañana.",
 
   // ── Afirmación de hoy (una línea obligatoria, el resto opcional) ──
-  "affirmations.focus.title": "Tu yo futuro y exitoso",
+  "affirmations.focus.title": "El tú que ya vive el sueño",
   "affirmations.focus.rotation": "{index} de {total}",
   "affirmations.focus.hint": "Escribe, con detalle, al tú que ya vive ese sueño.",
-  "affirmations.focus.placeholder": "Cada línea lo hace más real…",
+  "affirmations.focus.placeholder": "Cada línea hace el sueño más real…",
   "affirmations.focus.expand": "Grabar las {count} líneas",
   "affirmations.focus.collapse": "Solo la línea de hoy",
   "affirmations.focus.deepHint": "Si las grabas todas, ganas un voto de identidad más.",
@@ -522,7 +522,7 @@ const dict: Record<DictKey, string> = {
     "Hay una línea para repasar — el registro de hoy ya está completo.",
 
   // ── Justo después del registro ────────────────────
-  "checkin.reward.title": "Hoy viviste como esa persona",
+  "checkin.reward.title": "Diste un paso hacia el sueño",
   "checkin.reward.streak": "Día {count} seguido",
   "checkin.reward.evidence": "Evidencia de identidad +{count} · Soy {label}",
   "checkin.reward.evidencePlain": "Evidencia de identidad +{count}",
@@ -571,8 +571,8 @@ const dict: Record<DictKey, string> = {
   "home.plans.manageLocked": "Gestionar objetivos",
   // En Inicio solo quedan la frase, la tarjeta de hoy y el anillo de 7 días.
   "home.section.more": "Ver más",
-  "home.more.summary": "Yo futuro · Notas · Planes",
-  "home.more.summaryLocked": "Yo futuro · Objetivos · algo aún bloqueado",
+  "home.more.summary": "Mi sueño · Notas · Planes",
+  "home.more.summaryLocked": "Mi sueño · Objetivos · algo aún bloqueado",
 
   // ── Marcar la meta de hoy (misma tarjeta que la transcripción) ──
   "home.todayGoal.title": "Meta de hoy",
@@ -584,8 +584,8 @@ const dict: Record<DictKey, string> = {
   "home.todayGoal.afterCheckin": "Escrita. Si hoy la cumpliste, toca la meta.",
 
   // ── Yo futuro, una línea ──
-  "home.futureLine.label": "Mi yo futuro",
-  "home.futureLine.empty": "Aún no has escrito nada.",
+  "home.futureLine.label": "Mi sueño",
+  "home.futureLine.empty": "Aún no has escrito tu sueño.",
   "home.futureLine.write": "Escribirlo ahora",
 
   // ── Espacios para metas ──

@@ -192,7 +192,7 @@ export default function PrivacyPolicyPage() {
         </Section>
 
         <footer className="mt-12 text-center text-[11px] tracking-[-0.01em] text-black/40">
-          © Anima · made for the future you
+          © Anima · made for the dream you’re chasing
         </footer>
       </main>
     </div>

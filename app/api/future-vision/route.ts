@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     }
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[future-vision GET] 실패:", msg);
-    return NextResponse.json({ error: "미래 일상을 불러오지 못했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "꿈이 이뤄진 하루를 불러오지 못했습니다." }, { status: 500 });
   }
 }
 
@@ -80,6 +80,6 @@ export async function POST(request: NextRequest) {
     }
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[future-vision POST] 실패:", msg);
-    return NextResponse.json({ error: "미래 일상을 그리지 못했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "꿈이 이뤄진 하루를 그리지 못했습니다." }, { status: 500 });
   }
 }

@@ -56,7 +56,7 @@ import type { DailyEntry, DailyMotivation, FutureVision } from "@/types";
  * ─────────────────────────────────────────────────────────────────
  *  홈에 상시 노출되는 블록은 셋뿐이다:
  *    ① 오늘의 한마디(명언) → ② 오늘 카드(다짐 1줄 전사 + 목표 실행 체크) → ③ 7일 리듬 링
- *  나머지(미래의 나 · 미래 일상 · 실행 설계 · 기록 · 주간 회고)는 전부
+ *  나머지(내 꿈 · 꿈이 이뤄진 하루 · 실행 설계 · 기록 · 주간 회고)는 전부
  *  ▸더 보기 한 섹션 뒤로 접었다 — "입력이 많고 복잡하다"는 피드백에 대한 답.
  *
  *  ⚠️ 섹션 순서는 절대 고정이다 — 시간대에 따라 카드를 재배치하면 같은 버튼이
@@ -409,7 +409,7 @@ export default function HomeDashboardPage() {
             .then(async (res) => {
               if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
-                throw new Error((data as { error?: string }).error || "미래 일상을 만들지 못했어요.");
+                throw new Error((data as { error?: string }).error || "꿈이 이뤄진 하루를 만들지 못했어요.");
               }
               // 첫 생성으로 오늘 비전 문서가 생겼으니 위젯도 같은 하루를 받도록 깨운다.
               notifyAndroidWidgetRefresh();

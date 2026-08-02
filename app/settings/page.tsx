@@ -980,7 +980,7 @@ export default function SettingsPage() {
           <SettingsRow
             color="#D85A30"
             glyph={G.spark}
-            title={t("settings.affirmations.header") || "성공한 나의 모습 다짐"}
+            title={t("settings.affirmations.header") || "꿈을 이룬 나 다짐"}
             detail={`${affirmations.length}`}
             onClick={() => setAffirmationsOpen(true)}
           />
@@ -1358,7 +1358,7 @@ export default function SettingsPage() {
       {affirmationsOpen && (
         <Sheet
           onClose={() => setAffirmationsOpen(false)}
-          title={t("settings.affirmations.header") || "성공한 나의 모습 다짐"}
+          title={t("settings.affirmations.header") || "꿈을 이룬 나 다짐"}
         >
           <div className="mt-2">
             <AffirmationsEditor

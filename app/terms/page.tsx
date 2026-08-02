@@ -43,7 +43,7 @@ export default function TermsPage() {
         </p>
 
         <Section title="1. 서비스의 정의">
-          Anima(이하 “서비스”)는 사용자가 작성한 미래 자아 서술과 일일 목표를 바탕으로
+          Anima(이하 “서비스”)는 사용자가 작성한 꿈 서술과 일일 목표를 바탕으로
           매일 한 마디의 동기부여 카드와 큐레이션된 인용을 안드로이드 위젯/잠금화면에
           제공하는 개인용 애플리케이션입니다.
         </Section>
@@ -173,7 +173,7 @@ export default function TermsPage() {
         </Section>
 
         <footer className="mt-12 text-center text-[11px] tracking-[-0.01em] text-black/40">
-          © Anima · made for the future you
+          © Anima · made for the dream you’re chasing
         </footer>
       </main>
     </div>

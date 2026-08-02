@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">Anima</string>
     <string name="widget_label">Anima 오늘의 한 마디</string>
-    <string name="widget_description">매일 바뀌는 동기부여 카드와 명언을 잠금화면·홈화면에 띄웁니다.</string>
+    <string name="widget_description">꿈에 다가가는 오늘의 한 걸음과 그 걸음을 밀어줄 한 마디를 잠금화면·홈화면에 띄웁니다.</string>
     <string name="loading">불러오는 중…</string>
     <!-- 앱을 켰을 때 가장 먼저 크게 보이는 한 문장 (ui/BootSplash).
          웹의 lib/i18n "splash.*" 와 같은 문장을 유지할 것 — 네이티브 → TWA 전환 때
@@ -33,10 +33,10 @@
     <string name="wins_reminder_body_goal">잠깐이면 돼요 — "%1$s" 를 체크해 주세요.</string>
 
     <!-- 다짐 따라쓰기 아침 알림 (기본 08:00, 기기 타임존 — 시각·on/off 는 앱 설정을 따름) -->
-    <string name="affirmations_reminder_channel_name">성공한 나에게 한 발 더 알림</string>
-    <string name="affirmations_reminder_channel_description">아침에 \"성공한 나의 모습\" 다짐을 따라 적어보도록 알려드려요.</string>
-    <string name="affirmations_reminder_title">성공한 나에게 한 발 더</string>
-    <string name="affirmations_reminder_body">오늘도 다짐을 따라 적으며 하루를 시작해요.</string>
+    <string name="affirmations_reminder_channel_name">꿈에 한 발 더 알림</string>
+    <string name="affirmations_reminder_channel_description">아침에 \"꿈을 이룬 나\" 다짐을 따라 적어보도록 알려드려요.</string>
+    <string name="affirmations_reminder_title">꿈에 한 발 더</string>
+    <string name="affirmations_reminder_body">꿈을 이룬 나의 선언을 따라 적으며 하루를 시작해요.</string>
 
     <!-- 일요일 주간 회고 알림 (저녁 시각에 기록 알림 대신 도착) -->
     <string name="weekly_review_channel_name">주간 회고 알림</string>

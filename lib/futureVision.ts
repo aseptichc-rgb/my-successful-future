@@ -338,8 +338,8 @@ const FALLBACK_VISIONS: Record<UserLanguage, FallbackCopy> = {
   ko: {
     emptyTitle: "아직 그리지 않은 하루",
     emptyHook: "당신의 하루는 아직 비어 있다 —",
-    emptyScene: "되고 싶은 나의 모습을 한 단락 적어보세요. 그러면 매일 그 하루를 눈앞에 그려 드릴게요.",
-    emptyClosing: "설정에서 '미래의 나'를 적으면 오늘부터 시작돼요.",
+    emptyScene: "이루고 싶은 꿈을 한 단락 적어보세요. 그러면 매일 그 꿈이 이뤄진 하루를 눈앞에 그려 드릴게요.",
+    emptyClosing: "설정에서 '내 꿈'을 적으면 오늘부터 시작돼요.",
     inviteLabel: "시작",
     days: [
       {
@@ -377,8 +377,8 @@ const FALLBACK_VISIONS: Record<UserLanguage, FallbackCopy> = {
   en: {
     emptyTitle: "A day not yet imagined",
     emptyHook: "Your day is still blank —",
-    emptyScene: "Write a paragraph about who you want to become, and I'll paint that day before your eyes each morning.",
-    emptyClosing: "Add your future self in Settings and it begins today.",
+    emptyScene: "Write a paragraph about the dream you're going after, and I'll paint the day it comes true before your eyes each morning.",
+    emptyClosing: "Add your dream in Settings and it begins today.",
     inviteLabel: "Begin",
     days: [
       {
@@ -416,8 +416,8 @@ const FALLBACK_VISIONS: Record<UserLanguage, FallbackCopy> = {
   es: {
     emptyTitle: "Un día aún por imaginar",
     emptyHook: "Tu día aún está en blanco —",
-    emptyScene: "Escribe un párrafo sobre quién quieres llegar a ser, y pintaré ese día ante tus ojos cada mañana.",
-    emptyClosing: "Añade tu yo futuro en Ajustes y empieza hoy.",
+    emptyScene: "Escribe un párrafo sobre el sueño que persigues y pintaré ante tus ojos el día en que se cumple.",
+    emptyClosing: "Añade tu sueño en Ajustes y empieza hoy.",
     inviteLabel: "Empezar",
     days: [
       {
@@ -455,8 +455,8 @@ const FALLBACK_VISIONS: Record<UserLanguage, FallbackCopy> = {
   zh: {
     emptyTitle: "尚未描绘的一天",
     emptyHook: "你的一天还是空白 —",
-    emptyScene: "写下你想成为的样子,我会每天清晨把那一天描绘在你眼前。",
-    emptyClosing: "在设置中写下未来的自己,今天就开始。",
+    emptyScene: "写下你想实现的梦想,我会每天清晨把梦想成真的那一天描绘在你眼前。",
+    emptyClosing: "在设置中写下你的梦想,今天就开始。",
     inviteLabel: "开始",
     days: [
       {

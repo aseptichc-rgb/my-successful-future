@@ -110,9 +110,9 @@ function buildPortraitPrompt(ctx: PortraitContext): string {
       ? ctx.goals.map((g, i) => `${i + 1}. ${g}`).join("\n")
       : "(no specific goals listed yet)";
 
-  return `You are a master portrait writer. A person has described, dimension by dimension, who they will be 10 years from now. Weave their answers into ONE cohesive, vivid portrait of that future self — so real they can see themselves in it.
+  return `You are a master portrait writer. A person has described, dimension by dimension, who they will be once their dream has come true. Weave their answers into ONE cohesive, vivid portrait of that future self — so real they can see themselves in it.
 
-## What they wrote about their future self (10 years from now)
+## What they wrote about the dream they are going after
 ${buildMaterialBlock(ctx)}
 
 ## Goals they are walking toward right now
@@ -172,36 +172,36 @@ interface PortraitFallbackCopy {
 
 const FALLBACK_PORTRAITS: Record<UserLanguage, PortraitFallbackCopy> = {
   ko: {
-    title: "그 미래를 사는 사람",
+    title: "그 꿈을 사는 사람",
     body: (p) =>
       `당신은 스스로 그린 모습 — ${p} — 을 이미 살아가는 사람입니다. 아침을 여는 방식에도, 사람들을 대하는 태도에도 그 삶의 결이 배어 있습니다. 주변은 당신이 걸어온 길을 신뢰하고, 당신은 그 신뢰에 조용한 실력으로 답합니다. 오늘의 한 걸음이 그 미래를 매일 조금씩 앞당기고 있습니다.`,
     emptyTitle: "아직 그리지 않은 초상",
     emptyBody:
-      "10년 후의 당신을 아직 적지 않았어요. 하루의 풍경, 하는 일, 곁에 있는 사람들을 한 줄씩 적어보세요. 그러면 그 답을 모아 당신의 초상을 그려 드릴게요.",
+      "아직 이루고 싶은 꿈을 적지 않았어요. 하루의 풍경, 하는 일, 곁에 있는 사람들을 한 줄씩 적어보세요. 그러면 그 답을 모아 당신의 초상을 그려 드릴게요.",
   },
   en: {
-    title: "The person living that future",
+    title: "The person living that dream",
     body: (p) =>
       `You are already becoming the person you described — ${p}. It shows in how you start your mornings and how you carry yourself with people. Those around you trust the road you have walked, and you answer that trust with quiet competence. Every step you take today brings that future a little closer.`,
     emptyTitle: "A portrait not yet drawn",
     emptyBody:
-      "You haven't written your future self yet. Jot down a line each about your days, your work, and the people beside you — and we'll weave them into your portrait.",
+      "You haven't written your dream yet. Jot down a line each about your days, your work, and the people beside you — and we'll weave them into your portrait.",
   },
   es: {
-    title: "La persona que vive ese futuro",
+    title: "La persona que vive ese sueño",
     body: (p) =>
       `Ya te estás convirtiendo en la persona que describiste — ${p}. Se nota en cómo empiezas tus mañanas y en cómo te presentas ante los demás. Quienes te rodean confían en el camino que has recorrido, y tú respondes a esa confianza con una competencia serena. Cada paso de hoy acerca un poco más ese futuro.`,
     emptyTitle: "Un retrato aún sin dibujar",
     emptyBody:
-      "Aún no has escrito tu yo del futuro. Anota una línea sobre tus días, tu trabajo y las personas a tu lado — y las uniremos en tu retrato.",
+      "Aún no has escrito tu sueño. Anota una línea sobre tus días, tu trabajo y las personas a tu lado — y las uniremos en tu retrato.",
   },
   zh: {
-    title: "活在那个未来的人",
+    title: "活在那个梦想里的人",
     body: (p) =>
       `你已经在成为自己描绘的那个人 — ${p}。这体现在你开启清晨的方式，也体现在你与人相处的姿态。身边的人信任你走过的路，你以从容的实力回应这份信任。今天的每一步，都让那个未来更近一点。`,
     emptyTitle: "尚未描绘的画像",
     emptyBody:
-      "你还没有写下十年后的自己。把你的日常、事业、身边的人各写一行 — 我们会把它们织成你的画像。",
+      "你还没有写下你的梦想。把你的日常、事业、身边的人各写一行 — 我们会把它们织成你的画像。",
   },
 };
 

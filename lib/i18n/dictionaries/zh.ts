@@ -50,8 +50,8 @@ const dict: Record<DictKey, string> = {
   "onboarding.futureSelf.dream.placeholder":
     "例:到 2035 年,把挂着自己名字的品牌做到年营收 5,000 万元,带着 20 人的团队,住在能看见海的家里,每周只工作四天,每年带孩子在国外住上一个月。",
   "onboarding.futureSelf.dream.why":
-    "写上数字、期限和人名,越具体越好。这句话会成为你每天收到的卡片的原料。",
-  "onboarding.futureSelf.daily.q": "10 年后,你平常的一天是怎样度过的?",
+    "写上数字、期限和人名,越具体越好。这个梦想会决定你今天的一步和每天的一句话。",
+  "onboarding.futureSelf.daily.q": "梦想实现之后,你平常的一天是怎样度过的?",
   "onboarding.futureSelf.daily.placeholder":
     "在哪里醒来、上午做什么、傍晚如何度过。",
   "onboarding.futureSelf.work.q": "那时你在做什么工作,在人们中处于怎样的位置?",
@@ -87,7 +87,7 @@ const dict: Record<DictKey, string> = {
   "onboarding.declaration.writeMyOwn": "自己来写",
 
   // 第 2 步下方 —— 为了成为那个人,今天要做的行动。与上面那一句彼此独立。
-  "onboarding.goal.title": "为了成为那个人,今天只做一件事",
+  "onboarding.goal.title": "为了靠近那个梦想,今天只做一件事",
   "onboarding.goal.subtitle": "一个就够了。坚持下去,就能多放一个目标。",
   "onboarding.goal.placeholder": "每天读 30 页书,并写下一行心得",
   "onboarding.goal.hint": "写成「今天做了或没做」的行动,才能一眼判断有没有做到。",
@@ -103,7 +103,7 @@ const dict: Record<DictKey, string> = {
   "onboarding.step4.preparing": "准备中…",
 
   "onboarding.step5.titleLoading": "正在为你准备今日的一句话…",
-  "onboarding.step5.titleDone": "每天清晨，十年后你的一天，鲜活地在眼前展开。",
+  "onboarding.step5.titleDone": "每天清晨,梦想成真的一天在眼前展开。",
   "onboarding.step5.subtitleLoading": "请稍候。",
   "onboarding.step5.subtitleDone":
     "锁屏小组件每天会显示一条新的话。安装 Android 应用即可添加小组件。",
@@ -121,10 +121,10 @@ const dict: Record<DictKey, string> = {
     "3. 添加到锁屏,每天都会自动收到一条新句",
   "onboarding.step5.start": "开始",
   "onboarding.step5.finishing": "正在收尾…",
-  "onboarding.step5.portraitLabel": "十年后的我",
-  "onboarding.step5.portraitLoading": "正在描绘十年后的你…",
+  "onboarding.step5.portraitLabel": "实现梦想的我",
+  "onboarding.step5.portraitLoading": "正在描绘实现梦想的你…",
   "onboarding.step5.portraitError":
-    "未能生成你的未来画像。开始之后可以从主页重新生成。",
+    "未能生成那幅画像。开始之后可以从主页重新生成。",
 
   "onboarding.saveError": "保存失败。",
   "onboarding.category.philosophy": "哲学",
@@ -135,28 +135,28 @@ const dict: Record<DictKey, string> = {
   "onboarding.category.literature": "文学",
 
   // Home
-  "home.title": "今日动力",
-  "home.subtitle": "用一句新写给你的话开始一天。",
+  "home.title": "今天的一步",
+  "home.subtitle": "今天迈一步,梦想就近一步。",
   "home.dateFormat": "{year} 年 {month} 月 {day} 日",
   "home.settingsAria": "设置",
 
-  "home.future.title": "10 年后的你",
+  "home.future.title": "我想实现的梦想",
   "home.future.subtitle":
-    "未来的你越具体,每天送达的一句话就越清晰。",
-  "home.future.empty": "还没有写。可以在「设置」中撰写。",
+    "梦想越具体,今天要走的一步和每天的一句话就越清晰。",
+  "home.future.empty": "还没有写下梦想。可以在「设置」中撰写。",
   "home.future.saveAndRegen": "保存并重新生成今日卡片",
-  "home.future.saveFailed": "未能保存「未来的你」",
+  "home.future.saveFailed": "未能保存你的梦想",
 
   // 「十年后的我」画像卡片
-  "futureSelf.portrait.headerLabel": "十年后的我",
-  "futureSelf.portrait.loading": "正在描绘十年后的你…",
-  "futureSelf.portrait.error": "未能描绘你的未来画像。",
+  "futureSelf.portrait.headerLabel": "实现梦想的我",
+  "futureSelf.portrait.loading": "正在描绘实现梦想的你…",
+  "futureSelf.portrait.error": "未能描绘那幅画像。",
   "futureSelf.portrait.regenerate": "重新描绘画像",
   "futureSelf.portrait.regenerating": "重新描绘中…",
 
-  "home.goals.title": "通往目标的今日行动",
+  "home.goals.title": "通往梦想的今日行动",
   "home.goals.subtitle":
-    "向未来的你迈出的一小步。",
+    "让你离梦想更近一步的一个小行动。",
   "home.goals.todayProgress": "今日 {done}/{total}",
   "home.goals.placeholder": "例:每天挑战一件没做过的事",
   "home.goals.maxAlert": "最多可添加 {max} 个目标。",
@@ -177,7 +177,7 @@ const dict: Record<DictKey, string> = {
 
   // MotivationCard
   "motivation.wallpaper.goalsLabel": "我的目标",
-  "motivation.wallpaper.watermark": "Anima · 未来的我",
+  "motivation.wallpaper.watermark": "Anima · 我的梦想",
   "motivation.wallpaper.download": "保存为壁纸",
   "motivation.wallpaper.downloading": "保存中…",
   "motivation.wallpaper.downloadFailed": "图片保存失败。",
@@ -202,7 +202,7 @@ const dict: Record<DictKey, string> = {
     "你的身份「我是{tag}」今天前进了 1 步。",
   "motivation.editResponse": "修改回答",
   "motivation.identityPrefix": "我是",
-  "motivation.affirmations.title": "再向成功的自己迈一步",
+  "motivation.affirmations.title": "离梦想更近一步",
   "motivation.affirmations.streak": "连续 {count} 天",
   "motivation.affirmations.placeholder": "请原样抄写上方的句子",
   "motivation.affirmations.checkin": "刻下今日的誓言",
@@ -214,34 +214,34 @@ const dict: Record<DictKey, string> = {
   "motivation.affirmations.alreadyToday":
     "今天已经刻过了。明天再见。",
   "motivation.affirmations.empty":
-    "在「设置」中添加誓言,就能每天照抄并累积连续天数。",
+    "在「设置」中写下「实现梦想的我」誓言,就能每天照抄并累积连续天数。",
 
   // ── 未来日常愿景(梦想成真的一天) ──
   "futureVision.headerLabel": "今天,活在那个梦想里的一天",
-  "futureVision.loading": "正在描绘你的未来一天…",
-  "futureVision.error": "未能描绘你的未来一天。",
+  "futureVision.loading": "正在描绘梦想成真的一天…",
+  "futureVision.error": "未能描绘那一天。",
   "futureVision.regenerate": "看看另一天",
   "futureVision.regenerating": "正在描绘另一天…",
   "futureVision.reveal": "展开今天的一天",
-  "futureVision.empty.title": "先描绘未来的自己",
+  "futureVision.empty.title": "先写下你的梦想",
   "futureVision.empty.body":
-    "写下你十年后想成为的样子,我会每天把那个梦想成真的一天描绘在你眼前。",
-  "futureVision.empty.cta": "写下未来的自己",
+    "写下你想实现的梦想,我会每天把梦想成真的那一天描绘在你眼前。",
+  "futureVision.empty.cta": "写下我的梦想",
 
   // Settings
   "settings.title": "设置",
   "settings.subtitle":
-    "在一个地方管理你的未来形象、每日誓言、今日行动与名言策展。",
-  "settings.future.title": "10 年后的你",
-  "settings.future.subtitle": "你的每日一句话,都从这段话出发。",
+    "在一个地方管理你的梦想、每日誓言、今日行动与名言策展。",
+  "settings.future.title": "我想实现的梦想",
+  "settings.future.subtitle": "今天的行动和每天的一句话,都以这个梦想为准。",
   "settings.futureSelf.legacyNote":
     "这是你之前写下的内容。回答上面的问题并保存后,将替换这段文字。",
-  "settings.affirmations.title": "再向成功的自己迈一步",
+  "settings.affirmations.title": "离梦想更近一步",
   "settings.affirmations.subtitle":
     "每张日卡上方以浅色显示。完全一致地抄写,连续天数 +1。",
-  "settings.goals.title": "通往目标的今日行动",
+  "settings.goals.title": "通往梦想的今日行动",
   "settings.goals.subtitle":
-    "向未来的你迈出的一小步。",
+    "让你离梦想更近一步的一个小行动。",
   "settings.goals.empty":
     "先在主页添加目标,这里就可以编辑。",
   "settings.quote.title": "名言策展",
@@ -259,7 +259,7 @@ const dict: Record<DictKey, string> = {
   "settings.account.delete.subtitle": "永久删除你的资料、宣言与日志。此操作无法撤销。",
   "settings.account.delete.confirmTitle": "确定要删除账户吗？",
   "settings.account.delete.confirmBody":
-    "你写下的未来的自己、每日宣言、做得好的事记录都会被清除。\n购买凭证也会一并清理。日后仍可用同一邮箱重新注册。",
+    "你写下的梦想、每日宣言、做得好的事记录都会被清除。\n购买凭证也会一并清理。日后仍可用同一邮箱重新注册。",
   "settings.account.delete.confirmInputLabel": "请在下方输入「删除」以确认。",
   "settings.account.delete.confirmInputKeyword": "删除",
   "settings.account.delete.confirmCancel": "取消",
@@ -282,11 +282,11 @@ const dict: Record<DictKey, string> = {
   "auth.signingUp": "创建账户中…",
   "auth.signIn.title": "欢迎回来",
   "auth.signIn.subtitle":
-    "10 年后的你,每天会在这里给你送来一句话。",
+    "让你的梦想每天靠近一步的地方。",
   "auth.signIn.noAccount": "第一次来吗?",
   "auth.signIn.toSignUp": "注册",
-  "auth.signUp.title": "去见见 10 年后的自己",
-  "auth.signUp.subtitle": "现在就收到你的第一句话。",
+  "auth.signUp.title": "去把你的梦想变成现实",
+  "auth.signUp.subtitle": "写下一句梦想,我们就把它变成今天的第一步。",
   "auth.signUp.haveAccount": "已经有账户?",
   "auth.signUp.toSignIn": "登录",
   "auth.error.invalidEmail": "请检查邮箱格式。",
@@ -309,7 +309,7 @@ const dict: Record<DictKey, string> = {
 
   // Wins history
   "wins.history.title": "你的好事,按天",
-  "wins.history.subtitle": "每一行小事汇集起来,就是属于你的轨迹。",
+  "wins.history.subtitle": "每天写下的一行,汇成你靠近梦想的证据。",
   "wins.history.empty": "还没有记录。",
   "wins.history.back": "← 返回主页",
   "wins.history.loadFailed": "记录加载失败。",
@@ -335,7 +335,7 @@ const dict: Record<DictKey, string> = {
   "legal.privacy": "隐私政策",
   "legal.terms": "服务条款",
   "settings.profile.header": "个人资料",
-  "settings.affirmations.header": "每日肯定",
+  "settings.affirmations.header": "梦想誓言",
   "settings.quote.header": "卡片",
   "settings.quote.pinnedAuthor": "收藏作者",
   "settings.language.header": "语言",
@@ -351,7 +351,7 @@ const dict: Record<DictKey, string> = {
   "settings.notifications.footer":
     "提醒仅在本设备上安排。每天最多 2 条 — 已完成的事不会再提醒。",
   "settings.notifications.morning.title": "早晨誓言提醒",
-  "settings.notifications.morning.desc": "以抄写成功宣言开启一天的信号。",
+  "settings.notifications.morning.desc": "以抄写梦想宣言开启一天的信号。",
   "settings.notifications.evening.title": "晚间记录提醒",
   "settings.notifications.evening.desc": "仅当今天的目标尚未打卡时才会送达。",
   "settings.notifications.weekly.title": "周日回顾提醒",
@@ -359,7 +359,7 @@ const dict: Record<DictKey, string> = {
   "settings.notifications.time": "时间",
 
   // 通知文案（iOS 本地通知 — Android 使用原生资源）
-  "notify.morning.title": "向成功的自己更近一步",
+  "notify.morning.title": "离梦想更近一步",
   "notify.morning.body": "以抄写誓言开始今天吧。",
   "notify.evening.title": "今天的目标还在等你",
   "notify.evening.body": "只需片刻 — 为今天的一步打卡吧。",
@@ -490,10 +490,10 @@ const dict: Record<DictKey, string> = {
   "coach.quota": "今天的教练建议次数已用完，明天见。",
 
   // ── 今日誓言（每天只需一行，全部抄写为可选）──────────
-  "affirmations.focus.title": "成功的未来的我",
+  "affirmations.focus.title": "实现梦想的我",
   "affirmations.focus.rotation": "第 {index}/{total} 条",
   "affirmations.focus.hint": "把已经实现梦想的自己，生动地写下来。",
-  "affirmations.focus.placeholder": "写得越多，那个未来越真实…",
+  "affirmations.focus.placeholder": "写得越多,那个梦想越真实…",
   "affirmations.focus.expand": "刻下全部 {count} 行",
   "affirmations.focus.collapse": "只写今天这一行",
   "affirmations.focus.deepHint": "全部刻下，会多得一票身份证据。",
@@ -501,7 +501,7 @@ const dict: Record<DictKey, string> = {
   "affirmations.extra.mismatch": "有一行可以再看看 — 今天的打卡已经完成了。",
 
   // ── 打卡之后 ──────────────────────────────────────
-  "checkin.reward.title": "今天你活成了那个人",
+  "checkin.reward.title": "你离梦想又近了一步",
   "checkin.reward.streak": "连续第 {count} 天",
   "checkin.reward.evidence": "身份证据 +{count} · 我是{label}",
   "checkin.reward.evidencePlain": "身份证据 +{count}",
@@ -548,8 +548,8 @@ const dict: Record<DictKey, string> = {
   "home.plans.manageLocked": "管理目标",
   // 首页只留名言、今天的卡片和 7 天节奏环,其余全部折叠到这里。
   "home.section.more": "查看更多",
-  "home.more.summary": "未来的我 · 记录 · 执行设计",
-  "home.more.summaryLocked": "未来的我 · 目标 · 还没解锁的东西",
+  "home.more.summary": "我的梦想 · 记录 · 执行设计",
+  "home.more.summaryLocked": "我的梦想 · 目标 · 还没解锁的东西",
 
   // ── 今天的目标打卡(与誓言抄写同一张卡片)──
   "home.todayGoal.title": "今天的目标",
@@ -561,8 +561,8 @@ const dict: Record<DictKey, string> = {
   "home.todayGoal.afterCheckin": "已经写下了。今天做到了就点一下目标。",
 
   // ── 未来的我(一行)──
-  "home.futureLine.label": "未来的我",
-  "home.futureLine.empty": "还没有写下任何内容。",
+  "home.futureLine.label": "我的梦想",
+  "home.futureLine.empty": "还没有写下梦想。",
   "home.futureLine.write": "现在写",
 
   // ── 目标格子解锁 ──

@@ -52,8 +52,8 @@ const dict: Record<DictKey, string> = {
   "onboarding.futureSelf.dream.placeholder":
     "e.g. By 2035, grow a brand in my own name to $10M a year with a team of 20, work four days a week from a house by the ocean, and take a month abroad with my kid every year.",
   "onboarding.futureSelf.dream.why":
-    "Numbers, dates, names — the more concrete, the better. This line becomes the raw material for every card you'll get.",
-  "onboarding.futureSelf.daily.q": "10 years from now, how does an ordinary day of yours flow?",
+    "Numbers, dates, names — the more concrete, the better. This dream decides today's step and every line you get.",
+  "onboarding.futureSelf.daily.q": "Once that dream is real, how does an ordinary day of yours flow?",
   "onboarding.futureSelf.daily.placeholder":
     "Where you wake up, what fills your morning, how your evening winds down.",
   "onboarding.futureSelf.work.q": "What work do you do then, and where do you stand among people?",
@@ -91,7 +91,7 @@ const dict: Record<DictKey, string> = {
   "onboarding.declaration.writeMyOwn": "Write my own",
 
   // Step 2, bottom field — today's action toward that person. Independent of the line above.
-  "onboarding.goal.title": "One thing today, to become that person",
+  "onboarding.goal.title": "One thing today, to move toward that dream",
   "onboarding.goal.subtitle":
     "One is enough. Keep it up and you'll earn room for another goal.",
   "onboarding.goal.placeholder": "read 30 pages every day and write one line about it",
@@ -109,7 +109,7 @@ const dict: Record<DictKey, string> = {
   "onboarding.step4.preparing": "Preparing…",
 
   "onboarding.step5.titleLoading": "Crafting today's quote for you…",
-  "onboarding.step5.titleDone": "Every morning, your day ten years from now comes vividly to life.",
+  "onboarding.step5.titleDone": "Every morning, the day your dream comes true unfolds before you.",
   "onboarding.step5.subtitleLoading": "Just a moment.",
   "onboarding.step5.subtitleDone":
     "The lock-screen widget shows a different line each day. Install the Android app to add the widget.",
@@ -127,10 +127,10 @@ const dict: Record<DictKey, string> = {
     "3. Add it to your lock screen — a fresh line arrives every day",
   "onboarding.step5.start": "Start",
   "onboarding.step5.finishing": "Finishing…",
-  "onboarding.step5.portraitLabel": "ME, 10 YEARS FROM NOW",
-  "onboarding.step5.portraitLoading": "Painting the you of 10 years from now…",
+  "onboarding.step5.portraitLabel": "ME, LIVING THE DREAM",
+  "onboarding.step5.portraitLoading": "Painting the you who's living the dream…",
   "onboarding.step5.portraitError":
-    "Couldn't create your future portrait. You can make it again from Home after starting.",
+    "Couldn't create that portrait. You can make it again from Home after starting.",
 
   "onboarding.saveError": "Failed to save.",
   "onboarding.category.philosophy": "Philosophy",
@@ -141,28 +141,28 @@ const dict: Record<DictKey, string> = {
   "onboarding.category.literature": "Literature",
 
   // Home
-  "home.title": "Today's motivation",
-  "home.subtitle": "Start the day with a fresh line written for you.",
+  "home.title": "Today's step",
+  "home.subtitle": "One step today, and the dream is that much closer.",
   "home.dateFormat": "{month}/{day}/{year}",
   "home.settingsAria": "Settings",
 
-  "home.future.title": "You, 10 years from now",
+  "home.future.title": "The dream I'm going after",
   "home.future.subtitle":
-    "The more specific the future you, the sharper the daily line you'll receive.",
-  "home.future.empty": "Nothing written yet. You can write it in Settings.",
+    "The more specific your dream, the sharper today's step and today's line.",
+  "home.future.empty": "No dream written yet. You can write it in Settings.",
   "home.future.saveAndRegen": "Save and regenerate today's card",
-  "home.future.saveFailed": "Failed to save your future self",
+  "home.future.saveFailed": "Failed to save your dream",
 
   // "Me, 10 years from now" portrait card
-  "futureSelf.portrait.headerLabel": "ME, 10 YEARS FROM NOW",
-  "futureSelf.portrait.loading": "Painting the you of 10 years from now…",
-  "futureSelf.portrait.error": "Couldn't paint your future portrait.",
+  "futureSelf.portrait.headerLabel": "ME, LIVING THE DREAM",
+  "futureSelf.portrait.loading": "Painting the you who's living the dream…",
+  "futureSelf.portrait.error": "Couldn't paint that portrait.",
   "futureSelf.portrait.regenerate": "Repaint the portrait",
   "futureSelf.portrait.regenerating": "Repainting…",
 
-  "home.goals.title": "Today's actions toward your goals",
+  "home.goals.title": "Today's action toward your dream",
   "home.goals.subtitle":
-    "One small action that moves you toward the future you.",
+    "One small action that moves you a step closer to your dream.",
   "home.goals.todayProgress": "Today {done}/{total}",
   "home.goals.placeholder": "e.g., Try 1 thing I've never done, every day",
   "home.goals.maxAlert": "You can add up to {max} goals.",
@@ -184,7 +184,7 @@ const dict: Record<DictKey, string> = {
 
   // MotivationCard
   "motivation.wallpaper.goalsLabel": "My goals",
-  "motivation.wallpaper.watermark": "Anima · Future me",
+  "motivation.wallpaper.watermark": "Anima · My dream",
   "motivation.wallpaper.download": "Save as wallpaper",
   "motivation.wallpaper.downloading": "Saving…",
   "motivation.wallpaper.downloadFailed": "Failed to save the image.",
@@ -209,7 +209,7 @@ const dict: Record<DictKey, string> = {
     "Your identity \"I am {tag}\" grew by 1 step today.",
   "motivation.editResponse": "Edit response",
   "motivation.identityPrefix": "I am",
-  "motivation.affirmations.title": "One step closer to the future you",
+  "motivation.affirmations.title": "One step closer to your dream",
   "motivation.affirmations.streak": "{count}-day streak",
   "motivation.affirmations.placeholder": "Type the line above, exactly",
   "motivation.affirmations.checkin": "Engrave today's affirmations",
@@ -221,35 +221,35 @@ const dict: Record<DictKey, string> = {
   "motivation.affirmations.alreadyToday":
     "Already engraved today. See you tomorrow.",
   "motivation.affirmations.empty":
-    "Add affirmations in Settings to copy them daily and build a streak.",
+    "Write your dream affirmations in Settings to copy them daily and build a streak.",
 
   // ── Future daily vision (a day living the dream) ──
   "futureVision.headerLabel": "Today, a day living that dream",
-  "futureVision.loading": "Painting your future day…",
-  "futureVision.error": "Couldn't paint your future day.",
+  "futureVision.loading": "Painting the day your dream is real…",
+  "futureVision.error": "Couldn't paint that day.",
   "futureVision.regenerate": "See another day",
   "futureVision.regenerating": "Painting another day…",
   "futureVision.reveal": "Unfold today",
-  "futureVision.empty.title": "First, picture your future self",
+  "futureVision.empty.title": "First, write down your dream",
   "futureVision.empty.body":
-    "Write a paragraph about who you want to become in 10 years, and each day I'll paint that dream-come-true day before your eyes.",
-  "futureVision.empty.cta": "Write your future self",
+    "Write a paragraph about the dream you're going after, and each day I'll paint the day it comes true, right before your eyes.",
+  "futureVision.empty.cta": "Write my dream",
 
   // Settings
   "settings.title": "Settings",
   "settings.subtitle":
-    "Manage your future self, daily affirmations, today's actions, and quote curation in one place.",
-  "settings.future.title": "You, 10 years from now",
+    "Manage your dream, daily affirmations, today's action, and quote curation in one place.",
+  "settings.future.title": "The dream I'm going after",
   "settings.future.subtitle":
-    "Your daily line is built from this paragraph.",
+    "Today's action and your daily line are both built from this dream.",
   "settings.futureSelf.legacyNote":
     "This is what you wrote before. Answering the questions above and saving will replace it.",
-  "settings.affirmations.title": "One step closer to the future you",
+  "settings.affirmations.title": "One step closer to your dream",
   "settings.affirmations.subtitle":
     "Shown faintly above each daily card. Type each line back exactly to extend your streak by 1.",
-  "settings.goals.title": "Today's actions toward your goals",
+  "settings.goals.title": "Today's action toward your dream",
   "settings.goals.subtitle":
-    "One small action that moves you toward the future you.",
+    "One small action that moves you a step closer to your dream.",
   "settings.goals.empty":
     "Add goals from the Home screen and you'll be able to edit them here.",
   "settings.quote.title": "Quote curation",
@@ -267,7 +267,7 @@ const dict: Record<DictKey, string> = {
   "settings.account.delete.subtitle": "Permanently removes your profile, affirmations, and history. This cannot be undone.",
   "settings.account.delete.confirmTitle": "Delete your account?",
   "settings.account.delete.confirmBody":
-    "Your future self, daily affirmations, and wins log will be erased.\nReceipts will be cleared too. You can sign up again with the same email later.",
+    "Your dream, daily affirmations, and wins log will be erased.\nReceipts will be cleared too. You can sign up again with the same email later.",
   "settings.account.delete.confirmInputLabel": "Type \"delete\" below to confirm.",
   "settings.account.delete.confirmInputKeyword": "delete",
   "settings.account.delete.confirmCancel": "Cancel",
@@ -290,11 +290,11 @@ const dict: Record<DictKey, string> = {
   "auth.signingUp": "Creating account…",
   "auth.signIn.title": "Welcome back",
   "auth.signIn.subtitle":
-    "Where a daily line from your 10-years-from-now self arrives.",
+    "Where your dream gets one step closer, every day.",
   "auth.signIn.noAccount": "First time here?",
   "auth.signIn.toSignUp": "Sign up",
-  "auth.signUp.title": "Meet the you 10 years ahead",
-  "auth.signUp.subtitle": "Get your first daily line right now.",
+  "auth.signUp.title": "Let's go make your dream real",
+  "auth.signUp.subtitle": "Write one line about your dream — we'll turn it into today's first step.",
   "auth.signUp.haveAccount": "Already have an account?",
   "auth.signUp.toSignIn": "Sign in",
   "auth.error.invalidEmail": "Please check the email format.",
@@ -318,7 +318,7 @@ const dict: Record<DictKey, string> = {
   // Wins history
   "wins.history.title": "Your wins, by day",
   "wins.history.subtitle":
-    "Every small line, gathered — your own quiet record over time.",
+    "Every small line, gathered — proof you moved toward the dream.",
   "wins.history.empty": "Nothing written yet.",
   "wins.history.back": "← Back to home",
   "wins.history.loadFailed": "Failed to load your entries.",
@@ -345,7 +345,7 @@ const dict: Record<DictKey, string> = {
   "legal.privacy": "Privacy Policy",
   "legal.terms": "Terms of Service",
   "settings.profile.header": "Profile",
-  "settings.affirmations.header": "Daily affirmations",
+  "settings.affirmations.header": "Dream affirmations",
   "settings.quote.header": "Card",
   "settings.quote.pinnedAuthor": "Pinned author",
   "settings.language.header": "Language",
@@ -361,7 +361,7 @@ const dict: Record<DictKey, string> = {
   "settings.notifications.footer":
     "Reminders are scheduled on this device only. At most 2 a day — never for things you've already done.",
   "settings.notifications.morning.title": "Morning affirmation reminder",
-  "settings.notifications.morning.desc": "A cue to start the day by writing your declaration.",
+  "settings.notifications.morning.desc": "A cue to open the day by writing your dream declaration.",
   "settings.notifications.evening.title": "Evening check-in reminder",
   "settings.notifications.evening.desc": "Arrives only if today's goal isn't checked yet.",
   "settings.notifications.weekly.title": "Sunday review",
@@ -369,7 +369,7 @@ const dict: Record<DictKey, string> = {
   "settings.notifications.time": "Time",
 
   // Notification copy (iOS local notification body — Android uses native resources)
-  "notify.morning.title": "One step closer to your future self",
+  "notify.morning.title": "One step closer to your dream",
   "notify.morning.body": "Start the day by writing your affirmation.",
   "notify.evening.title": "Today's goal is still waiting",
   "notify.evening.body": "It only takes a moment — check off today's step.",
@@ -504,10 +504,10 @@ const dict: Record<DictKey, string> = {
   "coach.quota": "You've used today's coach suggestions. See you tomorrow.",
 
   // ── Today's affirmation (one line required, all lines optional) ──
-  "affirmations.focus.title": "Your successful future self",
+  "affirmations.focus.title": "The you who's living the dream",
   "affirmations.focus.rotation": "{index} of {total}",
   "affirmations.focus.hint": "Write out, vividly, the you who has already lived the dream.",
-  "affirmations.focus.placeholder": "Each line makes it more real…",
+  "affirmations.focus.placeholder": "Each line makes the dream more real…",
   "affirmations.focus.expand": "Engrave all {count} lines",
   "affirmations.focus.collapse": "Just today's line",
   "affirmations.focus.deepHint": "Engrave them all and you earn one more identity vote.",
@@ -515,7 +515,7 @@ const dict: Record<DictKey, string> = {
   "affirmations.extra.mismatch": "A line to revisit — today's check-in is already complete.",
 
   // ── Right after check-in ──────────────────────────
-  "checkin.reward.title": "You lived as that person today",
+  "checkin.reward.title": "You moved a step closer to the dream",
   "checkin.reward.streak": "Day {count} in a row",
   "checkin.reward.evidence": "Identity evidence +{count} · I am {label}",
   "checkin.reward.evidencePlain": "Identity evidence +{count}",
@@ -563,8 +563,8 @@ const dict: Record<DictKey, string> = {
   "home.plans.manageLocked": "Manage goals",
   // Home keeps only the quote, today's card and the 7-day ring — the rest folds in here.
   "home.section.more": "More",
-  "home.more.summary": "Future self · Notes · Plans",
-  "home.more.summaryLocked": "Future self · Goals · something still locked",
+  "home.more.summary": "My dream · Notes · Plans",
+  "home.more.summaryLocked": "My dream · Goals · something still locked",
 
   // ── Today's goal check (same card as the transcription check-in) ──
   "home.todayGoal.title": "Today's goal",
@@ -576,8 +576,8 @@ const dict: Record<DictKey, string> = {
   "home.todayGoal.afterCheckin": "Written. If you kept it today, tap the goal.",
 
   // ── Future self, one line ──
-  "home.futureLine.label": "Future me",
-  "home.futureLine.empty": "Nothing written yet.",
+  "home.futureLine.label": "My dream",
+  "home.futureLine.empty": "No dream written yet.",
   "home.futureLine.write": "Write it now",
 
   // ── Goal slots ──
