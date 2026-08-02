@@ -47,6 +47,7 @@ import DeclarationNudgeCard from "@/components/home/DeclarationNudgeCard";
 import WeekRhythmRing from "@/components/home/WeekRhythmRing";
 import type { CheckinSubmitResult } from "@/components/affirmations/AffirmationCheckin";
 import Logo from "@/components/ui/Logo";
+import BootSplash from "@/components/ui/BootSplash";
 import { useLanguage } from "@/lib/i18n";
 import type { DailyEntry, DailyMotivation, FutureVision } from "@/types";
 
@@ -651,12 +652,10 @@ export default function HomeDashboardPage() {
 
   const openSettings = useCallback(() => router.push("/settings"), [router]);
 
+  // 앱(TWA) 콜드 스타트가 가장 오래 머무는 화면 — 스피너만 돌리지 않고
+  // 제품의 한 문장을 크게 보여준다 (components/ui/BootSplash).
   if (loading || !firebaseUser) {
-    return (
-      <div className="flex h-full items-center justify-center bg-[var(--bg-grouped)]">
-        <div className="h-6 w-6 animate-spin rounded-full border-[1.5px] border-black/10 border-t-[#D85A30]" />
-      </div>
-    );
+    return <BootSplash />;
   }
 
   const futureText = user?.futurePersona || "";

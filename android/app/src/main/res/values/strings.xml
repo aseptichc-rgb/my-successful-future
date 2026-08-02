@@ -4,6 +4,12 @@
     <string name="widget_label">Anima 오늘의 한 마디</string>
     <string name="widget_description">매일 바뀌는 동기부여 카드와 명언을 잠금화면·홈화면에 띄웁니다.</string>
     <string name="loading">불러오는 중…</string>
+    <!-- 앱을 켰을 때 가장 먼저 크게 보이는 한 문장 (ui/BootSplash).
+         웹의 lib/i18n "splash.*" 와 같은 문장을 유지할 것 — 네이티브 → TWA 전환 때
+         두 스플래시가 이어져 보여야 한다. accent 조각만 골드 이탤릭으로 그린다. -->
+    <string name="boot_eyebrow">YOUR FUTURE IS WHAT YOU BELIEVE</string>
+    <string name="boot_belief_lead">당신의 미래는 당신이 믿는 대로</string>
+    <string name="boot_belief_accent">이루어진다.</string>
     <string name="sign_in_with_google">Google 로 시작하기</string>
     <string name="sign_out">로그아웃</string>
     <string name="open_anima">Anima 열기</string>

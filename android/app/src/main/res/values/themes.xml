@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- 앱 실행 직후 Compose 가 첫 프레임을 그리기 전까지 보이는 창 배경을 부팅 스플래시와
+         같은 흑요석으로 맞춘다 — 크림이었을 때는 "크림 → 흑요석 → (TWA) 흑요석" 으로
+         한 번 번쩍였다. -->
     <style name="Theme.Anima" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:statusBarColor" tools:targetApi="l">@color/anima_indigo</item>
-        <item name="android:windowBackground">@color/anima_cream</item>
+        <item name="android:statusBarColor" tools:targetApi="l">@color/boot_obsidian</item>
+        <item name="android:windowBackground">@color/boot_obsidian</item>
     </style>
 </resources>

@@ -28,7 +28,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -235,7 +234,8 @@ fun HomeScreen(onOpenAnima: (path: String?) -> Unit) {
         }
         else -> {
             // UNKNOWN(서버 응답 대기) 또는 DONE(곧 TWA 로 넘어가는 짧은 순간).
-            LoadingGate()
+            // MainActivity 의 부팅 화면과 같은 스플래시를 써서 진입 흐름 내내 같은 문장이 보이게 한다.
+            BootSplash()
         }
     }
 }
@@ -474,21 +474,8 @@ private fun AuthSection(
     }
 }
 
-/**
- * 로그인은 됐지만 서버에서 온보딩 상태를 받아오기 전 한 박자.
- * 캐시 미스 + 첫 로그인 직후에만 잠깐 보이고, 응답이 도착하면 메인 홈 또는 게이트로 자동 전환된다.
- */
-@Composable
-private fun LoadingGate() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF0EDE6)),
-        contentAlignment = Alignment.Center,
-    ) {
-        CircularProgressIndicator(color = Color(0xFF1E1B4B))
-    }
-}
+// 로그인은 됐지만 서버에서 온보딩 상태를 받아오기 전 한 박자에 보이던 LoadingGate 는
+// [BootSplash] 로 통합했다 — 부팅 → 온보딩 판정 → TWA 진입까지 같은 화면이 이어진다.
 
 /**
  * 신규 가입자 전용 게이트. 게이트가 떠 있는 동안엔 일반 홈(오늘의 한 마디 / Anima 열기) 이 노출되지 않는다.

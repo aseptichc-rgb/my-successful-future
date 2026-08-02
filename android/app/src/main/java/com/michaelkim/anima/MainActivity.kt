@@ -41,6 +41,7 @@ import com.google.androidbrowserhelper.trusted.TwaLauncher
 import com.michaelkim.anima.data.QuoteRepository
 import com.michaelkim.anima.data.api.ApiClient
 import com.michaelkim.anima.data.auth.AuthRepository
+import com.michaelkim.anima.ui.BootSplash
 import com.michaelkim.anima.ui.HomeScreen
 import com.michaelkim.anima.util.CrashReporter
 import com.michaelkim.anima.widget.QuoteWidget
@@ -141,6 +142,11 @@ class MainActivity : ComponentActivity() {
             }
             return
         }
+        // TWA 가 실제로 떠오르기까지의 몇 초(위젯 캐시 동기 갱신 + customToken 교환) 동안
+        // 예전에는 windowBackground(크림색) 만 보였다. 사용자가 앱에서 가장 먼저 마주하는
+        // 순간이므로 부팅 스플래시를 띄워 제품의 한 문장을 크게 보여준다.
+        // 웹(/home)의 부팅 스플래시와 같은 문장·색이라 TWA 전환이 끊겨 보이지 않는다.
+        setContent { BootSplash() }
         lifecycleScope.launch {
             // customToken 교환을 위젯 캐시 갱신과 병렬로 시작 — 직렬일 땐 (캐시 갱신 최대 2.5초)
             // + (교환 왕복) 이 순서대로 쌓여 위젯 탭 → 홈 진입 체감이 그만큼 느렸다.

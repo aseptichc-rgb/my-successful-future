@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Anima aperture 마크 (부팅 스플래시용 골드 변형).
+  원본: drawable/ic_anima_aperture.xml — 흑요석 배경 위에 올리므로 색만 바꿨다.
+  색은 values/colors.xml 의 boot_* 한 곳에서만 관리한다.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="22dp"
+    android:height="22dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <path
+        android:pathData="M 55.84527,8.408741 A 42,42 0 1 1 44.15473,8.408741"
+        android:strokeColor="@color/boot_gold"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M 55,50 A 5,5 0 1 1 45,50 A 5,5 0 1 1 55,50"
+        android:fillColor="@color/boot_ember" />
+</vector>

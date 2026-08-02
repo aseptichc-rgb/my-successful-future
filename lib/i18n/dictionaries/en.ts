@@ -27,6 +27,11 @@ const dict: Record<DictKey, string> = {
   "common.saveFailed": "Failed to save.",
   "common.tryAgainLater": "Please try again in a moment.",
 
+  // Boot splash — the first line the app shows on cold start
+  "splash.eyebrow": "YOUR FUTURE IS WHAT YOU BELIEVE",
+  "splash.lead": "Your future becomes what you",
+  "splash.accent": "believe.",
+
   // Language
   "language.title": "Choose your language",
   "language.subtitle": "한국어 · English · Español · 中文",

@@ -9,6 +9,17 @@
     <color name="black">#FF000000</color>
     <color name="widget_loading_bg">#1E1B4B</color>
 
+    <!-- 부팅 스플래시 팔레트 (ui/BootSplash · themes.xml windowBackground).
+         웹 app/globals.css 의 boot 컬러 토큰과 같은 값 — 네이티브 스플래시에서 TWA 웹
+         스플래시로 넘어갈 때 색이 튀지 않아야 한 화면처럼 이어진다.
+         출처: anima-ig-01-obsidian-gold.png (인스타 포스터 아트디렉션). -->
+    <color name="boot_obsidian">#FF1B1822</color>
+    <color name="boot_obsidian_deep">#FF0C0A11</color>
+    <color name="boot_cream">#FFF5EFE2</color>
+    <color name="boot_gold">#FFE2A73C</color>
+    <color name="boot_ember">#FFC4552C</color>
+    <color name="boot_hairline">#6BE2A73C</color>
+
     <!-- 위젯 디자인 토큰 v3 — 웹 앱과 동일한 cream + indigo + soul 톤.
          웹의 차분한 3색 팔레트(cream 배경 · indigo 본문 · soul 단일 액센트)를
          위젯에도 그대로 적용. tone="dark"/"light" 데이터가 와도 두 변형 모두 cream 으로

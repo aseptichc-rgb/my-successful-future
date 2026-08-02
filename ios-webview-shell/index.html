@@ -5,21 +5,78 @@
     <title>Anima</title>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <style>
+      /*
+        부팅 스플래시 — 웹(components/ui/BootSplash) · 안드로이드(ui/BootSplash.kt) 와
+        같은 화면. 색/문구를 바꿀 때는 세 곳을 함께 바꿔야 전환이 이어져 보인다.
+        아트디렉션 출처: anima-ig-01-obsidian-gold.png
+      */
+      :root {
+        --boot-obsidian: #1b1822;
+        --boot-obsidian-deep: #0c0a11;
+        --boot-cream: #f5efe2;
+        --boot-gold: #e2a73c;
+        --boot-ember: #c4552c;
+      }
       body {
         margin: 0;
-        background: #f0ede6;
-        color: #1e1b4b;
+        min-height: 100vh;
+        padding: 0 26px calc(16vh + env(safe-area-inset-bottom));
+        box-sizing: border-box;
+        background:
+          radial-gradient(110% 70% at 50% -10%, rgba(255, 255, 255, 0.055), transparent 62%),
+          linear-gradient(180deg, var(--boot-obsidian) 0%, var(--boot-obsidian-deep) 100%);
+        color: var(--boot-cream);
         font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
         display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+      }
+      .lockup {
+        position: absolute;
+        top: calc(env(safe-area-inset-top) + 22px);
+        left: 26px;
+        display: flex;
         align-items: center;
-        justify-content: center;
-        height: 100vh;
+        gap: 9px;
+        font-family: AppleMyungjo, Georgia, "Times New Roman", serif;
+        font-size: 19px;
+      }
+      .eyebrow {
+        margin: 0;
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        color: var(--boot-ember);
+      }
+      .belief {
+        margin: 20px 0 0;
+        font-family: AppleMyungjo, Georgia, "Times New Roman", serif;
+        font-size: 36px;
+        font-weight: 400;
+        line-height: 1.18;
+        letter-spacing: -0.015em;
+        /* 한국어를 단어 중간에서 끊지 않는다 ("이루어진 / 다." 방지) */
+        word-break: keep-all;
+      }
+      /* 마지막 조각은 골드로만 강조한다 — 한글 이탤릭은 시스템 합성이라 글자가 뭉개진다. */
+      .belief .accent {
+        color: var(--boot-gold);
+        white-space: nowrap;
+      }
+      .rule {
+        margin-top: 34px;
+        width: 100%;
+        max-width: 440px;
+        height: 1px;
+        background: linear-gradient(90deg, rgba(226, 167, 60, 0.42), transparent);
       }
       .dot {
-        width: 24px;
-        height: 24px;
-        border: 2px solid rgba(30, 27, 75, 0.2);
-        border-top-color: #1e1b4b;
+        margin-top: 28px;
+        width: 16px;
+        height: 16px;
+        border: 1.5px solid rgba(255, 255, 255, 0.12);
+        border-top-color: var(--boot-gold);
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
       }
@@ -28,14 +85,34 @@
           transform: rotate(360deg);
         }
       }
+      @media (prefers-reduced-motion: reduce) {
+        .dot {
+          animation: none;
+        }
+      }
     </style>
   </head>
   <body>
     <!--
       Capacitor 는 server.url 이 지정돼 있으면 WKWebView 가 그 URL 을 직접 로드한다.
       이 파일은 실제로 거의 표시되지 않지만, server.url 도달 실패 시 또는 오프라인 첫
-      부팅에서 짧게 노출된다 — 우리 베이지 배경 + 인디고 스피너로 자연스럽게 보이도록.
+      부팅에서 짧게 노출된다 — 그 몇 초도 앱의 첫 문장으로 채운다.
     -->
+    <div class="lockup">
+      <svg width="22" height="22" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+        <path
+          d="M 55.845 8.409 A 42 42 0 1 1 44.155 8.409"
+          stroke="#e2a73c"
+          stroke-width="2"
+          stroke-linecap="round"
+        />
+        <circle cx="50" cy="50" r="5" fill="#c4552c" />
+      </svg>
+      anima
+    </div>
+    <p class="eyebrow">Your future is what you believe</p>
+    <p class="belief">당신의 미래는 당신이 믿는 대로 <span class="accent">이루어진다.</span></p>
+    <div class="rule" aria-hidden="true"></div>
     <div class="dot" aria-hidden="true"></div>
   </body>
 </html>

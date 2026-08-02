@@ -27,6 +27,11 @@ const dict: Record<DictKey, string> = {
   "common.saveFailed": "No se pudo guardar.",
   "common.tryAgainLater": "Inténtalo de nuevo en un momento.",
 
+  // Boot splash — la primera frase al abrir la app
+  "splash.eyebrow": "TU FUTURO ES LO QUE CREES",
+  "splash.lead": "Tu futuro será aquello que",
+  "splash.accent": "creas.",
+
   // Language
   "language.title": "Elige tu idioma",
   "language.subtitle": "한국어 · English · Español · 中文",

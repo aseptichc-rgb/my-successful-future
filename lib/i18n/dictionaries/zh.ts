@@ -27,6 +27,11 @@ const dict: Record<DictKey, string> = {
   "common.saveFailed": "保存失败。",
   "common.tryAgainLater": "请稍后再试。",
 
+  // Boot splash — 打开应用时最先看到的一句
+  "splash.eyebrow": "你相信什么 就成为什么",
+  "splash.lead": "你的未来,会成为你",
+  "splash.accent": "所相信的样子。",
+
   // Language
   "language.title": "选择你的语言",
   "language.subtitle": "한국어 · English · Español · 中文",

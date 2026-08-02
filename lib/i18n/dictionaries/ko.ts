@@ -27,6 +27,14 @@ const dict = {
   "common.saveFailed": "저장에 실패했습니다.",
   "common.tryAgainLater": "잠시 후 다시 시도해주세요.",
 
+  // ── 부팅 스플래시 ────────────────────────────────
+  // 앱을 켜면 가장 먼저 크게 보이는 한 문장 (components/ui/BootSplash).
+  // lead(크림) + accent(골드 이탤릭) 로 쪼갠 이유: 강조할 조각의 위치가 언어마다 다르다.
+  // 안드로이드(res/values/strings.xml 의 boot_*) 와 같은 문장을 유지할 것.
+  "splash.eyebrow": "YOUR FUTURE IS WHAT YOU BELIEVE",
+  "splash.lead": "당신의 미래는 당신이 믿는 대로",
+  "splash.accent": "이루어진다.",
+
   // ── 언어 선택 ────────────────────────────────────
   "language.title": "언어를 선택하세요",
   "language.subtitle": "Choose your language · Selecciona tu idioma · 选择语言",

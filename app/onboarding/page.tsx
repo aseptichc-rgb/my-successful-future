@@ -21,6 +21,7 @@ import { normalizeGoalText } from "@/lib/goalText";
 import { needsMoreSpecificGoal } from "@/lib/goalQuality";
 import { GOAL_TEXT_MAX, SUCCESS_AFFIRMATION_MAX_LEN } from "@/lib/constants/goal";
 import { authedFetch } from "@/lib/authedFetch";
+import BootSplash from "@/components/ui/BootSplash";
 import { useLanguage, LOCALE_META, SUPPORTED_LOCALES, type Locale, type DictKey } from "@/lib/i18n";
 import type { DailyMotivation, FutureSelfAnswers } from "@/types";
 
@@ -408,12 +409,9 @@ export default function OnboardingPage() {
     }
   };
 
+  // 첫 실행(앱 최초 진입) 이 도달하는 화면 — /home 과 같은 부팅 스플래시를 쓴다.
   if (authLoading || !firebaseUser) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F0EDE6]">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-black/10 border-t-[#1E1B4B]" />
-      </div>
-    );
+    return <BootSplash />;
   }
 
   // 맞춤 제안이 있으면 그것을, 없으면 사전의 정적 예시를 칩으로 쓴다(칸별로 독립 판단 —
