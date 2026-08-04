@@ -12,6 +12,10 @@
  *   node scripts/ios-appstore-submit.mjs --submit --build 12  # 특정 빌드 번호 지정 (기본: 최신 VALID)
  *   node scripts/ios-appstore-submit.mjs --submit --no-iap    # 대기 중 인앱결제를 함께 묶지 않음
  *
+ * 업데이트 버전(첫 출시가 아닌 경우)은 릴리스 노트가 필수다:
+ *   node scripts/ios-appstore-submit.mjs --submit --version 1.0.1 --whats-new "..." --release-type auto
+ *   --release-type auto(기본, 승인 즉시 출시) | manual(승인 후 수동 출시)
+ *
  * 인증(App Store Connect API 키):
  *   ASC_API_KEY_PATH   (필수) AuthKey_XXXXXXXXXX.p8 파일 경로
  *   ASC_API_KEY_ID     (선택) 기본값 아래 DEFAULT_KEY_ID
@@ -33,7 +37,9 @@ const PLATFORM = "IOS";
 const DEFAULT_KEY_ID = "8ZJ3Y6N6J7";
 const DEFAULT_ISSUER_ID = "daa5537d-77cb-44e3-904f-6df67f61ffde";
 
-const JWT_TTL_SEC = 20 * 60; // ASC 는 최대 20분까지만 허용한다.
+// ASC 의 상한은 20분이지만 경계값(정확히 1200초)은 NOT_AUTHORIZED 로 거절된다 — 실측 확인.
+// 서버와의 미세한 시계 차이도 흡수하도록 15분으로 여유를 둔다.
+const JWT_TTL_SEC = 15 * 60;
 const HTTP_TIMEOUT_MS = 60_000;
 const BUILD_PAGE_LIMIT = 20;
 const VERSION_PAGE_LIMIT = 10;
@@ -50,12 +56,24 @@ const EDITABLE_VERSION_STATES = new Set([
 
 /** 이미 심사 파이프라인에 들어가 있어 재제출이 불필요한 상태. */
 const IN_FLIGHT_VERSION_STATES = new Set([
+  "READY_FOR_REVIEW",
   "WAITING_FOR_REVIEW",
   "IN_REVIEW",
   "PENDING_APPLE_RELEASE",
   "PENDING_DEVELOPER_RELEASE",
   "PROCESSING_FOR_DISTRIBUTION",
+  "WAITING_FOR_EXPORT_COMPLIANCE",
+]);
+
+/**
+ * 이미 출시가 끝난 상태. READY_FOR_DISTRIBUTION 은 "심사 중"이 아니라 "앱스토어에 살아 있음"이다 —
+ * 여기에 새 빌드를 얹으려면 반드시 새 버전 번호를 만들어야 한다.
+ */
+const LIVE_VERSION_STATES = new Set([
   "READY_FOR_DISTRIBUTION",
+  "ACCEPTED",
+  "REPLACED_WITH_NEW_VERSION",
+  "DEVELOPER_REMOVED_FROM_SALE",
 ]);
 
 /** 이번 심사에 함께 묶어야 하는 인앱결제 상태 (첫 IAP 는 앱 버전과 같이 제출해야 통과된다). */
@@ -66,6 +84,16 @@ const IAP_NEEDS_SUBMISSION_STATES = new Set([
 ]);
 
 const log = (msg) => console.log(`[ios-submit] ${msg}`);
+
+/** "1.0" → "1.0.1", "1.0.3" → "1.0.4". 제안용일 뿐 자동 적용하지 않는다. */
+function suggestNextVersion(current) {
+  if (!current) return "1.0.1";
+  const parts = current.split(".").map(Number);
+  if (parts.some(Number.isNaN)) return "1.0.1";
+  while (parts.length < 3) parts.push(0);
+  parts[parts.length - 1] += 1;
+  return parts.join(".");
+}
 
 function fail(msg) {
   console.error(`[ios-submit] REJECT: ${msg}`);
@@ -83,12 +111,20 @@ function argValue(name) {
   return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith("--") ? argv[i + 1] : null;
 }
 
+const RELEASE_TYPES = { auto: "AFTER_APPROVAL", manual: "MANUAL" };
+
 const opts = {
   submit: hasFlag("--submit"),
   versionString: argValue("--version"),
   buildNumber: argValue("--build"),
   includeIap: !hasFlag("--no-iap"),
+  whatsNew: argValue("--whats-new"),
+  releaseType: RELEASE_TYPES[argValue("--release-type") ?? "auto"],
 };
+
+if (!opts.releaseType) {
+  fail(`--release-type 은 ${Object.keys(RELEASE_TYPES).join(" 또는 ")} 여야 합니다.`);
+}
 
 // ───────────────────────────── ASC 클라이언트 ─────────────────────────────
 
@@ -178,8 +214,11 @@ async function fetchApp() {
 async function fetchBuilds(appId) {
   const res = await api(
     "GET",
+    // fields[builds] 에 preReleaseVersion 을 반드시 포함해야 한다 — 빼면 관계(relationship) 자체가
+    // 응답에서 사라져 마케팅 버전을 "?" 로 잃는다.
     `/v1/builds?filter[app]=${appId}&sort=-uploadedDate&limit=${BUILD_PAGE_LIMIT}` +
-      `&include=preReleaseVersion&fields[builds]=version,uploadedDate,processingState,expired`,
+      `&include=preReleaseVersion` +
+      `&fields[builds]=version,uploadedDate,processingState,expired,preReleaseVersion`,
   );
   const preVersions = new Map(
     (res.included || []).filter((i) => i.type === "preReleaseVersions").map((i) => [i.id, i.attributes?.version]),
@@ -228,15 +267,36 @@ async function fetchPendingIaps(appId) {
   return [];
 }
 
-/** 새 버전은 "이번 버전의 새로운 기능"이 없으면 제출이 거부된다 — 미리 확인해 알려준다. */
-async function findLocalesMissingWhatsNew(versionId) {
+async function fetchLocalizations(versionId) {
   const res = await api(
     "GET",
     `/v1/appStoreVersions/${versionId}/appStoreVersionLocalizations?limit=${VERSION_PAGE_LIMIT}`,
   );
-  return (res.data || [])
-    .filter((l) => !l.attributes?.whatsNew?.trim())
-    .map((l) => l.attributes?.locale);
+  return (res.data || []).map((l) => ({
+    id: l.id,
+    locale: l.attributes?.locale,
+    whatsNew: l.attributes?.whatsNew,
+  }));
+}
+
+/**
+ * 업데이트 버전은 "이번 버전의 새로운 기능"이 비어 있으면 심사 제출이 거부된다.
+ * 비어 있는 로케일에만 채워 넣어 이미 번역해 둔 문구를 덮어쓰지 않는다.
+ */
+async function fillMissingWhatsNew(versionId, text) {
+  const locales = await fetchLocalizations(versionId);
+  const empty = locales.filter((l) => !l.whatsNew?.trim());
+  for (const loc of empty) {
+    await api("PATCH", `/v1/appStoreVersionLocalizations/${loc.id}`, {
+      data: {
+        type: "appStoreVersionLocalizations",
+        id: loc.id,
+        attributes: { whatsNew: text },
+      },
+    });
+    log(`릴리스 노트 입력: ${loc.locale}`);
+  }
+  return locales.filter((l) => l.whatsNew?.trim()).map((l) => l.locale);
 }
 
 // ─────────────────────────── 변경 동작 ───────────────────────────
@@ -247,11 +307,11 @@ async function attachBuild(versionId, buildId) {
   });
 }
 
-async function createVersion(appId, versionString) {
+async function createVersion(appId, versionString, releaseType) {
   const res = await api("POST", "/v1/appStoreVersions", {
     data: {
       type: "appStoreVersions",
-      attributes: { platform: PLATFORM, versionString },
+      attributes: { platform: PLATFORM, versionString, releaseType },
       relationships: { app: { data: { type: "apps", id: appId } } },
     },
   });
@@ -347,7 +407,7 @@ async function main() {
   for (const v of versions.slice(0, 5)) log(`  · ${v.versionString} — ${v.state}`);
 
   const inFlight = versions.find((v) => IN_FLIGHT_VERSION_STATES.has(v.state));
-  if (inFlight && !opts.versionString) {
+  if (inFlight) {
     log(`버전 ${inFlight.versionString} 이(가) 이미 ${inFlight.state} 입니다 — 추가 제출이 필요 없습니다.`);
     return;
   }
@@ -356,10 +416,11 @@ async function main() {
   const needsNewVersion = !version;
 
   if (needsNewVersion && !opts.versionString) {
-    const live = versions[0];
+    const live = versions.find((v) => LIVE_VERSION_STATES.has(v.state)) ?? versions[0];
     fail(
-      `편집 가능한 앱 버전이 없습니다 (최근: ${live?.versionString} — ${live?.state}).\n` +
-        `  새 버전을 만들려면 버전 번호를 명시하세요: --version <번호>  (예: --version 1.0.1)`,
+      `편집 가능한 앱 버전이 없습니다 — ${live?.versionString} 이(가) ${live?.state} (이미 출시됨).\n` +
+        `  build ${target.buildNumber} 을(를) 앱스토어에 올리려면 새 버전 번호가 필요합니다.\n` +
+        `  예: --submit --version ${suggestNextVersion(live?.versionString)}`,
     );
   }
 
@@ -373,19 +434,20 @@ async function main() {
     log("─── 실행 계획 (dry-run — 아무것도 변경하지 않았습니다) ───");
     log(
       needsNewVersion
-        ? `  1. 새 앱 버전 ${opts.versionString} 생성`
+        ? `  1. 새 앱 버전 ${opts.versionString} 생성 (출시 방식 ${opts.releaseType})`
         : `  1. 기존 버전 ${version.versionString} (${version.state}) 사용`,
     );
     log(`  2. 빌드 ${target.marketingVersion} (${target.buildNumber}) 연결`);
-    log(`  3. 심사 제출${pendingIaps.length ? ` (+ 인앱결제 ${pendingIaps.length}건)` : ""}`);
+    log(`  3. 릴리스 노트 ${opts.whatsNew ? `입력 (${opts.whatsNew.length}자)` : "미지정 — 비어 있으면 중단"}`);
+    log(`  4. 심사 제출${pendingIaps.length ? ` (+ 인앱결제 ${pendingIaps.length}건)` : ""}`);
     log("실제로 제출하려면 --submit 을 붙여 다시 실행하세요.");
     return;
   }
 
   // 4) 실제 제출
   if (needsNewVersion) {
-    version = await createVersion(app.id, opts.versionString);
-    log(`새 앱 버전 생성: ${version.versionString} (id ${version.id})`);
+    version = await createVersion(app.id, opts.versionString, opts.releaseType);
+    log(`새 앱 버전 생성: ${version.versionString} (출시 방식 ${opts.releaseType})`);
   } else if (opts.versionString && opts.versionString !== version.versionString) {
     log(`주의: 편집 가능한 버전 ${version.versionString} 이(가) 이미 있어 --version ${opts.versionString} 은 무시합니다.`);
   }
@@ -393,9 +455,19 @@ async function main() {
   await attachBuild(version.id, target.id);
   log(`빌드 연결 완료: ${version.versionString} ← build ${target.buildNumber}`);
 
-  const missingWhatsNew = await findLocalesMissingWhatsNew(version.id);
-  if (missingWhatsNew.length) {
-    log(`주의: "이번 버전의 새로운 기능"이 비어 있는 언어 — ${missingWhatsNew.join(", ")}`);
+  // 첫 버전이 아니면 릴리스 노트가 필수다. 없으면 제출 API 가 거부하므로 여기서 막는다.
+  if (opts.whatsNew) {
+    const kept = await fillMissingWhatsNew(version.id, opts.whatsNew);
+    if (kept.length) log(`기존 릴리스 노트 유지: ${kept.join(", ")}`);
+  } else {
+    const empty = (await fetchLocalizations(version.id)).filter((l) => !l.whatsNew?.trim());
+    if (empty.length) {
+      fail(
+        `릴리스 노트가 비어 있는 언어가 있습니다: ${empty.map((l) => l.locale).join(", ")}\n` +
+          `  업데이트 버전은 릴리스 노트 없이 제출할 수 없습니다. --whats-new "내용" 으로 지정하세요.\n` +
+          `  (버전 ${version.versionString} 과 빌드 연결은 이미 만들어졌으니 같은 명령에 --whats-new 만 추가해 다시 실행하면 됩니다.)`,
+      );
+    }
   }
 
   const submissionId = await openReviewSubmission(app.id);
