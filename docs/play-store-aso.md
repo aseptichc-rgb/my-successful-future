@@ -46,32 +46,40 @@ Your future becomes what you believe. Daily affirmations from your future self.
 Keywords woven naturally (no stuffing). Paste as-is.
 
 ```
-Your future becomes what you believe.
+What if there was an app that made your dreams come true?
 
-Anima is a daily affirmations and motivation app built on one simple idea: the future you keep believing in is the future you move toward. Write down the person you want to become and today's goals — then let your future self speak back to you, one line at a time.
+Not by magic. By the oldest rule there is: you become what you believe.
 
-No ads. No noise. Just a daily reminder of who you're becoming.
+Every great life you admire started the same way — as a belief someone refused to put down. Anima takes that belief and turns it into something you actually do every day, in about a minute.
 
-■ Who it's for
-· Anyone who wants to start the day with a clear, grounding intention
-· People tired of empty self-help clichés who want real, verified words
-· Those who set goals and want to keep believing in them, every single day
-· Anyone who wants quiet motivation without a flood of notifications
+■ You become what you believe
+Your mind moves toward whatever you keep telling it. So tell it something worth becoming. Write down the person you're growing into, and every morning your future self speaks back to you — one line, written for the future you described.
 
-■ What you get
-· Daily affirmations & motivation — a line that matches the future you're building
+■ See the power of affirmations for yourself
+You don't have to take anyone's word for it. Write one affirmation a day for two weeks and notice how differently you walk into the day. That's the whole experiment, and you're the only proof you need.
+
+■ You can be great too
+Greatness isn't something you're born holding. It's built by people who kept believing on the ordinary days — the ones with no motivation and nobody watching. Anima is made for exactly those days.
+
+■ Starting is the whole thing
+Most dreams don't die from a lack of talent. They die because the first step never happens. So make today the first step, and make it small enough that you'll actually take it.
+
+■ What's inside
+· Daily affirmations & motivation — a line matched to the future you're building
 · Personalized to you — shaped by the future self you describe and today's goals
-· Real mentors, real words — from Seneca to modern voices, with no fabricated quotes
-· Daily intention writing — trace a short affirmation to set your mindset for the day
-· Wins journal — note what went well today and give yourself credit
+· Real mentors, real words — from Seneca to modern voices, never a fabricated quote
+· Daily intention writing — trace a short affirmation and set your mindset for the day
+· Wins journal — note what went well today and give yourself the credit
 · Calm by design — no ads, no tracking, no notification spam
 
 ■ Why Anima is different
 · Zero ads, zero tracking — we never collect your advertising ID
-· No fake quotes — only curated, real words from real people
+· No fake quotes — only curated words from real people who actually said them
 · One-time purchase, yours for life — no subscriptions, ever
 
-Your future is shaped by what you believe today. Start believing it, with Anima.
+Your dream doesn't need a perfect plan. It needs a first step, taken today.
+
+Take it with Anima.
 ```
 
 ---
