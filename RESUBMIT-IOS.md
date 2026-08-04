@@ -88,11 +88,24 @@ $env:ASC_API_KEY_PATH = "C:\keys\AuthKey_8ZJ3Y6N6J7.p8"
 # 2) 상태 점검 (아무것도 바꾸지 않음) — 빌드 목록·버전 상태·실행 계획만 출력
 npm run ios:submit
 
-# 3) 실제 심사 제출
-node scripts/ios-appstore-submit.mjs --submit
-#   편집 가능한 버전이 없으면(직전 버전이 이미 판매중) 새 버전 번호를 명시:
-node scripts/ios-appstore-submit.mjs --submit --version 1.0.1
+# 3) 실제 심사 제출 (직전 버전이 이미 출시중이면 새 버전 번호 + 릴리스 노트가 필수)
+node scripts/ios-appstore-submit.mjs --submit --version 1.0.1 --whats-new "..." --release-type auto
 ```
+
+실제 실행 기록(2026-08-04): 위 명령으로 **1.0.1 / build 10 을 심사 제출 완료** —
+`WAITING_FOR_REVIEW`, 승인 즉시 자동 출시(AFTER_APPROVAL). 1.0(build 9)은 이미 출시중이었고
+`anima_lifetime` IAP 도 APPROVED 라 더 묶을 항목은 없었다.
+
+### 실행하며 알게 된 함정
+
+- **JWT 유효기간을 정확히 1200초(20분)로 두면 `NOT_AUTHORIZED` 로 거절된다.** Apple 문서의
+  "최대 20분"은 경계값을 포함하지 않는다. 900초로 두면 통과. 401 이 뜨면 키를 의심하기 전에
+  이걸 먼저 볼 것.
+- `fields[builds]` 를 지정할 때 `preReleaseVersion` 을 빼면 **관계 자체가 응답에서 사라져**
+  마케팅 버전을 못 읽는다.
+- `READY_FOR_DISTRIBUTION` 은 "심사 중"이 아니라 **"이미 출시돼 살아 있음"**이다.
+  여기에 새 빌드를 얹으려면 반드시 새 버전 번호를 만들어야 한다.
+- 업데이트 버전은 **릴리스 노트가 비어 있으면 제출이 거부된다.** 첫 출시(1.0)에는 없어도 됐다.
 
 스크립트([scripts/ios-appstore-submit.mjs](scripts/ios-appstore-submit.mjs))가 하는 일:
 최신 VALID 빌드 선택 → 앱 버전에 연결 → 대기 중인 인앱결제(`anima_lifetime` 등)를 같은
