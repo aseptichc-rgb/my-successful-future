@@ -91,5 +91,10 @@ DerivedData/
 /android/upload-keystore-credentials.txt
 /android/keystore.properties
 
+# App Store Connect API 개인 키 (.p8) — 유출 시 앱 메타데이터/제출 권한이 통째로 넘어간다.
+# scripts/ios-appstore-submit.mjs 는 ASC_API_KEY_PATH 로 저장소 밖 경로를 참조한다.
+*.p8
+AuthKey_*.p8
+
 # 심사용 데모 계정 자격증명 — Play Console UI 에 직접 입력만 하고 파일은 로컬에 둔다.
 /scripts/review-account-credentials.txt

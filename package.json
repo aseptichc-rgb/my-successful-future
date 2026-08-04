@@ -10,6 +10,7 @@
     "ios:sync": "cap sync ios && capacitor-assets generate --ios",
     "ios:assets": "capacitor-assets generate --ios",
     "ios:open": "cap open ios",
+    "ios:submit": "node scripts/ios-appstore-submit.mjs",
     "test": "vitest run",
     "quotes:gen": "node scripts/gen-curated-quotes.mjs"
   },

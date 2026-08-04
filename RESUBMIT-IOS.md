@@ -75,6 +75,34 @@ xcrun altool --upload-app -f build/export/App.ipa -t ios \
 
 ---
 
+## TestFlight 빌드 → 정식 앱스토어 승격 (Windows 에서 가능)
+
+이미 TestFlight 에 올라간 빌드를 정식 출시로 넘기는 건 **아카이브·서명이 필요 없다** —
+App Store Connect 쪽 조작뿐이라 Mac 없이 API 로 끝난다. 웹 변경은 `server.url` 모드라
+Vercel 배포 시점에 이미 라이브이므로 **새 빌드를 만들 필요도 없다**.
+
+```powershell
+# 1) ASC API 키(.p8) 경로 지정 — App Store Connect > 사용자 및 액세스 > 통합 에서 App Manager 키 발급
+$env:ASC_API_KEY_PATH = "C:\keys\AuthKey_8ZJ3Y6N6J7.p8"
+
+# 2) 상태 점검 (아무것도 바꾸지 않음) — 빌드 목록·버전 상태·실행 계획만 출력
+npm run ios:submit
+
+# 3) 실제 심사 제출
+node scripts/ios-appstore-submit.mjs --submit
+#   편집 가능한 버전이 없으면(직전 버전이 이미 판매중) 새 버전 번호를 명시:
+node scripts/ios-appstore-submit.mjs --submit --version 1.0.1
+```
+
+스크립트([scripts/ios-appstore-submit.mjs](scripts/ios-appstore-submit.mjs))가 하는 일:
+최신 VALID 빌드 선택 → 앱 버전에 연결 → 대기 중인 인앱결제(`anima_lifetime` 등)를 같은
+심사 요청에 묶음 → `reviewSubmissions.submitted = true`. `--build` 로 특정 빌드,
+`--no-iap` 로 인앱결제 제외 가능.
+
+> 키 ID/Issuer ID 는 기본값이 박혀 있고 비밀은 `.p8` 파일뿐이다. `.p8` 은 저장소에 커밋하지 말 것.
+
+---
+
 ## 체크 포인트
 
 - 코드 변경 불필요(로그인 수정은 서버측 이미 반영) → **빌드번호만 올리면 끝**.
