@@ -83,7 +83,7 @@ Vercel 배포 시점에 이미 라이브이므로 **새 빌드를 만들 필요�
 
 ```powershell
 # 1) ASC API 키(.p8) 경로 지정 — App Store Connect > 사용자 및 액세스 > 통합 에서 App Manager 키 발급
-$env:ASC_API_KEY_PATH = "C:\keys\AuthKey_8ZJ3Y6N6J7.p8"
+$env:ASC_API_KEY_PATH = "C:\Users\kjykj\OneDrive\IDEA\anima\AuthKey_8ZJ3Y6N6J7.p8"
 
 # 2) 상태 점검 (아무것도 바꾸지 않음) — 빌드 목록·버전 상태·실행 계획만 출력
 npm run ios:submit
@@ -111,6 +111,12 @@ node scripts/ios-appstore-submit.mjs --submit --version 1.0.1 --whats-new "..." 
 최신 VALID 빌드 선택 → 앱 버전에 연결 → 대기 중인 인앱결제(`anima_lifetime` 등)를 같은
 심사 요청에 묶음 → `reviewSubmissions.submitted = true`. `--build` 로 특정 빌드,
 `--no-iap` 로 인앱결제 제외 가능.
+
+스토어 문구(설명·키워드·프로모션) 갱신은 [scripts/ios-update-metadata.mjs](scripts/ios-update-metadata.mjs):
+설명·키워드는 출시된 버전에서 수정 불가라 편집용 새 버전을 만들어 스테이징하고, 심사 없이
+반영되는 프로모션 텍스트만 라이브에 즉시 적용한다. 실행 기록(2026-08-06): **1.0.2 편집 버전
+생성 + en-US·ko·es-ES·zh-Hans 4개 로케일 문구 스테이징 + 라이브 1.0.1 프로모션 텍스트 갱신 완료** —
+1.0.2 빌드가 올라오면 `--submit` 으로 문구 변경이 함께 심사된다.
 
 > 키 ID/Issuer ID 는 기본값이 박혀 있고 비밀은 `.p8` 파일뿐이다. `.p8` 은 저장소에 커밋하지 말 것.
 
