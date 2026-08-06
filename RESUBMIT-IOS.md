@@ -106,6 +106,11 @@ node scripts/ios-appstore-submit.mjs --submit --version 1.0.1 --whats-new "..." 
 - `READY_FOR_DISTRIBUTION` 은 "심사 중"이 아니라 **"이미 출시돼 살아 있음"**이다.
   여기에 새 빌드를 얹으려면 반드시 새 버전 번호를 만들어야 한다.
 - 업데이트 버전은 **릴리스 노트가 비어 있으면 제출이 거부된다.** 첫 출시(1.0)에는 없어도 됐다.
+- **"새 빌드 없이" 문구(설명·키워드)만 심사받는 길은 없다 (2026-08-06 실측).** 출시에 이미 쓰인
+  빌드(1.0.1 의 build 10)는 새 버전에 연결하는 순간 409 로 거부되고, 출시된 적 없는 구 빌드
+  (build 8)는 제출까지는 통과하지만 몇 분 뒤 사후 검증에서 `INVALID_BINARY` 로 반려된다.
+  심사 없이 즉시 바뀌는 건 프로모션 텍스트뿐. `INVALID_BINARY` 는 편집 가능 상태라 스테이징한
+  문구는 그대로 남으며, 마케팅 버전 1.0.2 새 빌드를 올린 뒤 `--submit` 하면 정상 진행된다.
 
 스크립트([scripts/ios-appstore-submit.mjs](scripts/ios-appstore-submit.mjs))가 하는 일:
 최신 VALID 빌드 선택 → 앱 버전에 연결 → 대기 중인 인앱결제(`anima_lifetime` 등)를 같은
