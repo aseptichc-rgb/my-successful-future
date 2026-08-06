@@ -71,9 +71,9 @@ const MARKETING_URL = "https://my-successful-future.vercel.app";
 const COPY = {
   "en-US": {
     promotionalText:
-      "The app that gets you to your dream. Write the dream you are going after, and Anima turns it into today's step — delivered to your lock screen widget.",
+      "The app that gets you to your dream. Write the dream you are going after, and Anima turns it into today's step — delivered to your home screen widget.",
     keywords:
-      "motivation,affirmations,daily quote,goals,habits,widget,lock screen,self care,dream,mindset",
+      "motivation,affirmations,daily quote,goals,habits,widget,self care,dream,mindset",
     whatsNew: "Minor improvements and a refreshed app description.",
     description: `The app that helps you reach your dream.
 
@@ -82,8 +82,8 @@ Anima asks one thing: what dream are you going after? Write it down, and every m
 ■ Today’s line, drawn from your dream
 Write a paragraph about the dream you’re chasing, and Anima builds a new card from it each day. The words you need most show up every morning.
 
-■ Lock screen & home screen widgets
-Get your daily line on your iOS lock screen and home screen — and a large widget on iPad. You’ll meet it naturally throughout the day without even opening the app.
+■ Home screen widgets
+Get your daily line on your iOS home screen — and a large widget on iPad. You’ll meet it naturally throughout the day without even opening the app.
 
 ■ Build streaks by rewriting your affirmations
 Write down “the you who’s living the dream,” then retype it each day to grow a streak. Small repetitions become identity.
@@ -107,9 +107,9 @@ We don’t collect location, contacts, photos, or call logs.`,
   },
   ko: {
     promotionalText:
-      "이루고 싶은 꿈을 한 줄 적으면 오늘 할 한 걸음이 정해집니다. 그 걸음을 밀어줄 한 마디가 매일 잠금화면 위젯으로 도착해요. 작은 반복이 꿈을 현실로 만듭니다.",
+      "이루고 싶은 꿈을 한 줄 적으면 오늘 할 한 걸음이 정해집니다. 그 걸음을 밀어줄 한 마디가 매일 홈 화면 위젯으로 도착해요. 작은 반복이 꿈을 현실로 만듭니다.",
     keywords:
-      "동기부여,확언,다짐,명언,목표,습관,잠금화면,위젯,자기계발,꿈,성공,멘토,루틴,마인드셋,긍정,자존감",
+      "동기부여,확언,다짐,명언,목표,습관,위젯,자기계발,꿈,성공,멘토,루틴,마인드셋,긍정,자존감",
     whatsNew: "앱 소개 문구를 새로 다듬고 소소한 개선을 했습니다.",
     description: `당신의 꿈을 이루게 해주는 앱.
 
@@ -118,8 +118,8 @@ Anima는 이루고 싶은 꿈을 적어두면, 그 꿈에 다가가는 오늘의
 ■ 내 꿈에서 나온 오늘의 한 마디
 이루고 싶은 꿈을 한 단락 적어두면, 그 꿈을 기준으로 매일 다른 카드가 만들어집니다. 매일 아침, 가장 필요한 말이 도착해요.
 
-■ 잠금화면·홈 위젯
-한 마디를 매일 잠금화면과 홈 화면 위젯으로 받아보세요. 앱을 열지 않아도 하루에 여러 번 자연스럽게 마주치게 됩니다. (iOS 잠금화면·홈 화면, iPad 대형 위젯 지원)
+■ 홈 화면 위젯
+한 마디를 매일 홈 화면 위젯으로 받아보세요. 앱을 열지 않아도 하루에 여러 번 자연스럽게 마주치게 됩니다. (iOS 홈 화면, iPad 대형 위젯 지원)
 
 ■ 다짐 따라 적기로 연속일 쌓기
 ‘꿈을 이룬 나’를 한 줄씩 적어두면, 매일 똑같이 따라 적으며 연속일(streak)을 쌓을 수 있어요. 작은 반복이 정체성이 됩니다.
@@ -143,9 +143,9 @@ Anima는 이루고 싶은 꿈을 적어두면, 그 꿈에 다가가는 오늘의
   },
   "es-ES": {
     promotionalText:
-      "La app que te lleva a tu sueño. Escribe el sueño que persigues y Anima lo convierte en el paso de hoy, directo al widget de tu pantalla de bloqueo.",
+      "La app que te lleva a tu sueño. Escribe el sueño que persigues y Anima lo convierte en el paso de hoy, directo al widget de tu pantalla de inicio.",
     keywords:
-      "motivación,afirmaciones,frase diaria,metas,hábitos,widget,pantalla bloqueo,sueño,mentalidad",
+      "motivación,afirmaciones,frase diaria,metas,hábitos,widget,sueño,mentalidad",
     whatsNew: "Pequeñas mejoras y descripción renovada.",
     description: `La app que te lleva a tu sueño.
 
@@ -154,8 +154,8 @@ Anima te hace una sola pregunta: ¿qué sueño persigues? Escríbelo y cada mañ
 ■ La frase de hoy, sacada de tu sueño
 Escribe un párrafo sobre el sueño que persigues y Anima crea cada día una tarjeta nueva a partir de él. Las palabras que más necesitas llegan cada mañana.
 
-■ Widgets en pantalla de bloqueo e inicio
-Recibe tu frase diaria en la pantalla de bloqueo y de inicio de iOS, y en un widget grande en iPad. La encontrarás de forma natural durante el día sin abrir la app.
+■ Widgets en pantalla de inicio
+Recibe tu frase diaria en la pantalla de inicio de iOS y en un widget grande en iPad. La encontrarás de forma natural durante el día sin abrir la app.
 
 ■ Crea rachas reescribiendo tus afirmaciones
 Escribe “el tú que ya vive el sueño” y vuelve a copiarlo cada día para sumar una racha. Las pequeñas repeticiones se convierten en identidad.
@@ -179,9 +179,9 @@ No recopilamos ubicación, contactos, fotos ni registros de llamadas.`,
   },
   "zh-Hans": {
     promotionalText:
-      "帮你实现梦想的 App。写下你想实现的梦想，Anima 会把它变成今天要走的一步，直接送到锁屏小组件。微小的重复，终将让梦想成真。",
+      "帮你实现梦想的 App。写下你想实现的梦想，Anima 会把它变成今天要走的一步，直接送到主屏小组件。微小的重复，终将让梦想成真。",
     keywords:
-      "励志,正能量,每日金句,目标,习惯,锁屏,小组件,自我提升,梦想,名言,成功,坚持,语录,心态,自律,打卡",
+      "励志,正能量,每日金句,目标,习惯,小组件,自我提升,梦想,名言,成功,坚持,语录,心态,自律,打卡",
     whatsNew: "更新了应用介绍，并进行了小幅改进。",
     description: `帮你实现梦想的 App。
 
@@ -190,8 +190,8 @@ Anima 只问你一件事：你想实现什么梦想？写下来，每天清晨�
 ■ 从你的梦想里长出的今日一句
 写下你想实现的梦想，Anima 每天都会据此生成一张全新的卡片，把你最需要的话送到每个清晨。
 
-■ 锁屏与主屏小组件
-在 iOS 锁屏和主屏上接收每日一句，iPad 还支持大尺寸小组件。不打开 App，也能在一天中自然地与它相遇。
+■ 主屏小组件
+在 iOS 主屏上接收每日一句，iPad 还支持大尺寸小组件。不打开 App，也能在一天中自然地与它相遇。
 
 ■ 抄写誓言，累积连续打卡
 写下“实现梦想的你”，每天照着抄写一遍，累积连续天数。微小的重复，终将成为你的身份。
