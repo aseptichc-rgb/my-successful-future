@@ -1,9 +1,17 @@
 # 재심사 — Guideline 4 대응 build 1.0(9) 올리기
 
-> ## ⛔ 현재 상태(2026-08-07): 1.0.2 가 `INVALID_BINARY` — **새 빌드 없이는 해결 불가**
+> ## ✅ 현재 상태(2026-08-08): **1.0.2 (11) 업로드 완료** — INVALID_BINARY 해소용 새 바이너리
+>
+> Mac 에서 아래 [§ 1.0.2 INVALID_BINARY 복구](#102-invalid_binary-복구-2026-08-07-진단) 절차를 그대로
+> 실행해 `UPLOAD SUCCEEDED` 확인(Delivery UUID `afa96583-5880-40cf-a796-0e15ac68e07d`).
+> 남은 일은 TestFlight 처리 후 심사 재제출뿐:
+> `node scripts/ios-appstore-submit.mjs --submit --cancel-stuck-submission`
+>
+> <details><summary>이전 상태(2026-08-07): 1.0.2 가 <code>INVALID_BINARY</code></summary>
 >
 > 2026-08-06 20:44(KST) 제출한 1.0.2 가 Apple 사후 검증에서 "잘못된 바이너리"로 반려됐다.
-> 조치 절차는 아래 [§ 1.0.2 INVALID_BINARY 복구](#102-invalid_binary-복구-2026-08-07-진단) 참고.
+> 조치 절차는 아래 § 1.0.2 INVALID_BINARY 복구 참고.
+> </details>
 >
 > **상태(2026-07-28): build 1.0(9) 업로드 완료** — 위젯 수동 서명 경로로 archive→export→altool 성공.
 > ASC TestFlight 처리 후 §5~6 대로 "앱 심사에 다시 제출" 하면 됨. 아래는 그 재현 절차.
@@ -197,6 +205,23 @@ node scripts/ios-appstore-submit.mjs --submit --cancel-stuck-submission
 ```
 
 `--whats-new` 는 생략해도 된다 — 4개 로케일 릴리스 노트가 이미 스테이징돼 있다.
+
+### 실행 기록 (2026-08-08, Mac)
+
+위 절차를 그대로 실행해 **1.0.2 (11) 업로드 성공**. 실측 메모:
+
+- 웹 변경은 `server.url` 모드라 이미 라이브 → **네이티브 코드 변경 0**, 버전 값만 올렸다.
+  `cap sync` 도 불필요(위젯/플러그인 변동 없음 — 괜히 돌리면 위젯 서명이 리셋된다).
+- `agvtool new-marketing-version` 은 **Info.plist 만 고치고 pbxproj 의 `MARKETING_VERSION` 은
+  건드리지 않는다.** 바이너리 자체는 Info.plist 리터럴을 쓰므로 업로드는 통과하지만,
+  `scripts/ios-preflight.mjs` 는 pbxproj 를 읽어 옛 버전을 보고한다 → **pbxproj 4곳(App/위젯 ×
+  Debug/Release)도 함께 1.0.2 로 맞출 것.**
+- 아카이브/익스포트 산출물은 버전별 경로로 분리했다(`build/Anima-1.0.2.xcarchive`,
+  `build/export-1.0.2`). 기존 `build/Anima.xcarchive` 를 덮어쓰면 실패 시 옛 IPA 를 올릴 위험이 있다.
+- 아카이브 후 **업로드 전에** 앱·위젯 Info.plist 의 버전이 둘 다 `1.0.2 / 11` 인지 확인:
+  `plutil -extract CFBundleVersion raw build/Anima-1.0.2.xcarchive/Products/Applications/App.app/Info.plist`
+- `ios/` 는 gitignore 대상이라 **버전 상향은 커밋에 잡히지 않는다.** 다음 빌드 때 Mac 로컬
+  pbxproj 가 이미 1.0.2/11 인 상태에서 시작한다는 뜻 — 새 빌드는 12 부터.
 
 ### 재발 방지 (스크립트에 반영 완료)
 
