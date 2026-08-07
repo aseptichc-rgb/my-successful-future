@@ -1,11 +1,12 @@
 # 재심사 — Guideline 4 대응 build 1.0(9) 올리기
 
-> ## ✅ 현재 상태(2026-08-08): **1.0.2 (11) 업로드 완료** — INVALID_BINARY 해소용 새 바이너리
+> ## ✅ 현재 상태(2026-08-08): **1.0.2 (11) 심사 제출 완료** — INVALID_BINARY 해소
 >
 > Mac 에서 아래 [§ 1.0.2 INVALID_BINARY 복구](#102-invalid_binary-복구-2026-08-07-진단) 절차를 그대로
-> 실행해 `UPLOAD SUCCEEDED` 확인(Delivery UUID `afa96583-5880-40cf-a796-0e15ac68e07d`).
-> 남은 일은 TestFlight 처리 후 심사 재제출뿐:
-> `node scripts/ios-appstore-submit.mjs --submit --cancel-stuck-submission`
+> 실행: `UPLOAD SUCCEEDED`(Delivery UUID `afa96583-5880-40cf-a796-0e15ac68e07d`) → TestFlight
+> `1.0.2 (11) VALID` → `--submit --cancel-stuck-submission` 으로 심사 대기열 진입.
+> 스토어 문구 4개 로케일(설명·키워드·릴리스 노트)도 같은 심사에 묶였다.
+> 실행 중 겪은 409 경합은 [§ 실행 기록](#실행-기록-2026-08-08-mac) 참고.
 >
 > <details><summary>이전 상태(2026-08-07): 1.0.2 가 <code>INVALID_BINARY</code></summary>
 >
@@ -222,6 +223,29 @@ node scripts/ios-appstore-submit.mjs --submit --cancel-stuck-submission
   `plutil -extract CFBundleVersion raw build/Anima-1.0.2.xcarchive/Products/Applications/App.app/Info.plist`
 - `ios/` 는 gitignore 대상이라 **버전 상향은 커밋에 잡히지 않는다.** 다음 빌드 때 Mac 로컬
   pbxproj 가 이미 1.0.2/11 인 상태에서 시작한다는 뜻 — 새 빌드는 12 부터.
+
+**제출까지 완료** — `--submit --cancel-stuck-submission` 으로 1.0.2 / build 11 심사 대기열 진입.
+스토어 문구(4개 로케일 설명·키워드·릴리스 노트)도 이 심사에 함께 올라갔다.
+
+#### 함정: 빌드 연결 직후 제출하면 409 가 난다
+
+첫 `--submit` 이 마지막 단계에서 실패했다:
+
+```
+빌드 연결 완료: 1.0.2 ← build 11
+멈춰 있던 심사 요청 취소: 76679926-…
+REJECT: API POST /v1/reviewSubmissionItems → 409:
+  appStoreVersions with id '889385315' is not in valid state.
+```
+
+원인은 **상태 전이 지연**이다. `INVALID_BINARY` 버전에 새 빌드를 붙이면 상태가
+`PREPARE_FOR_SUBMISSION` 으로 돌아가는데, ASC 가 그걸 반영하기 전에 같은 실행 안에서
+`reviewSubmissionItems` 를 POST 하면 아직 옛 상태로 보여 409 로 막힌다.
+
+**대응: 그냥 다시 실행하면 된다.** 잠시 뒤 드라이런으로 `1.0.2 — PREPARE_FOR_SUBMISSION` 을
+확인한 뒤 같은 명령을 재실행하니 통과했다. 이때 앞선 실행이 만들어 둔 미제출 심사 요청을
+스크립트가 재사용하므로(`기존 미제출 심사 요청 재사용: 8e466537-…`) 중복 제출은 생기지 않는다.
+409 를 보고 빌드를 다시 만들 필요는 전혀 없다.
 
 ### 재발 방지 (스크립트에 반영 완료)
 
