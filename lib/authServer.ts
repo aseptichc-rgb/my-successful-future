@@ -120,7 +120,12 @@ export async function verifyRequestUser(request: NextRequest): Promise<AuthedUse
  *   값을 그대로 노출해서 라우트가 다운그레이드 응답을 결정할 수 있게 한다.
  *
  * 결제 흐름이 완성되기 전에 운영 빌드에 ENTITLEMENT_REQUIRED 를 켜면
- * 모든 보호 라우트가 즉시 닫히므로, 안드로이드 BillingClient 통합·검증 흐름 점검 후 켤 것.
+ * 모든 보호 라우트가 즉시 닫히므로, iOS StoreKit · 안드로이드 BillingClient 양쪽의
+ * 결제·검증 흐름을 점검한 뒤에 켤 것.
+ *
+ * 안내 문구는 플랫폼 중립으로 쓴다 — 결제 진입점이 iOS(StoreKit) / 안드로이드(Play Billing)
+ * 양쪽 앱의 설정 화면에 있고, 웹에는 아예 없다. 특정 스토어를 지목하면 나머지 플랫폼
+ * 사용자에게 오안내가 된다.
  */
 export async function requirePaidUser(request: NextRequest): Promise<AuthedUser> {
   const user = await verifyRequestUser(request);
@@ -130,7 +135,7 @@ export async function requirePaidUser(request: NextRequest): Promise<AuthedUser>
   throw new AuthError(
     402,
     reason === "trial_expired"
-      ? "무료 체험 기간이 끝났습니다. 안드로이드 앱에서 결제를 완료해 주세요."
+      ? "무료 체험 기간이 끝났습니다. 앱의 설정 화면에서 결제를 완료해 주세요."
       : "무료 체험이 시작되지 않았습니다. 다시 로그인해 주세요.",
   );
 }
