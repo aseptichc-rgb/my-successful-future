@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>anima · Instagram Ads (EN) v3 — Obsidian &amp; Gold</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,300;9..144,0,400;9..144,1,300&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* ─────────────────────────────────────────────────────────────
+   anima · Instagram Ads EN v3
+   One world, five frames. Every token below is FIXED across all
+   five slides — only the words and the card contents change.
+   See docs/superpowers/specs/2026-08-07-instagram-ads-v3-design.md
+   ───────────────────────────────────────────────────────────── */
+:root{
+  /* palette */
+  --cream:#F7F3EC;
+  --gold:#D9A441;          /* structure only: eyebrows, rules, borders, labels */
+  --soul:#D85A30;          /* exactly ONE live point per slide */
+  --indigo:#1E1B4B;
+
+  /* type families */
+  --display:'Fraunces','Times New Roman',serif;
+  --ui:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+
+  /* canvas geometry — 4:5 Instagram feed */
+  --w:1080px;
+  --h:1350px;
+  --pad-x:88px;
+  --pad-y:96px;
+  --gutter:1260px;         /* horizontal spacing between boards */
+
+  /* type scale — mono floor is 22px so it survives feed downscale (~7px @350w) */
+  --fs-eyebrow:22px;
+  --fs-label:22px;
+  --fs-metric:24px;
+  --fs-wordmark:34px;
+
+  /* card */
+  --card-radius:20px;
+  --card-pad:34px 36px;
+  --card-border:1px solid rgba(217,164,65,.28);
+  --card-bg:rgba(247,243,236,.035);
+
+  /* rhythm */
+  --rule-margin:56px 0 40px;
+  --metric-margin:30px;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;background:#3a3833;}
+body{font-family:var(--ui);-webkit-font-smoothing:antialiased;}
+
+/* ── the single background world, shared by all five ─────────── */
+.ad{
+  position:absolute;
+  top:0;
+  width:var(--w);
+  height:var(--h);
+  overflow:hidden;
+  color:var(--cream);
+  background:radial-gradient(120% 90% at 50% 0%,#26232E 0%,#16141A 46%,#0E0D12 100%);
+  box-shadow:0 30px 90px rgba(0,0,0,.45);
+}
+.inner{position:absolute;inset:0;padding:var(--pad-y) var(--pad-x);display:flex;flex-direction:column;}
+
+/* ── [A] top bar ─────────────────────────────────────────────── */
+.topbar{display:flex;justify-content:space-between;align-items:center;flex:none;}
+.lockup{display:flex;align-items:center;gap:14px;}
+.lockup .wm{font-family:var(--display);font-weight:300;font-size:var(--fs-wordmark);letter-spacing:-.02em;line-height:1;color:var(--cream);}
+.eyebrow{font-family:var(--mono);font-size:var(--fs-eyebrow);letter-spacing:.2em;text-transform:uppercase;color:rgba(217,164,65,.9);}
+
+/* ── [B] headline band — vertically centred so the 1:1 grid crop
+      never clips it (v2 bottom-anchored these and lost them) ──── */
+.band{margin:auto 0;flex:none;}
+.hl{font-family:var(--display);font-weight:300;letter-spacing:-.028em;line-height:.98;color:var(--cream);text-wrap:balance;}
+.hl i{font-style:italic;color:var(--gold);}
+
+/* ── [C] gold hairline ───────────────────────────────────────── */
+.rule{height:1px;background:linear-gradient(90deg,rgba(217,164,65,.55),rgba(217,164,65,0));margin:var(--rule-margin);flex:none;}
+
+/* ── [D] proof card ──────────────────────────────────────────── */
+.card{border:var(--card-border);border-radius:var(--card-radius);background:var(--card-bg);padding:var(--card-pad);flex:none;}
+.clabel{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:.14em;text-transform:uppercase;color:rgba(217,164,65,.85);}
+.ctext{font-family:var(--display);font-weight:300;line-height:1.24;color:var(--cream);}
+
+/* ── [E] running metric — the one number that grows 01→04→12→84 ── */
+.metric{font-family:var(--mono);font-size:var(--fs-metric);letter-spacing:.16em;text-transform:uppercase;color:rgba(247,243,236,.42);margin-top:var(--metric-margin);flex:none;}
+.metric b{color:var(--gold);font-weight:500;}
+
+/* ── shared card internals ───────────────────────────────────── */
+.chip{font-family:var(--mono);font-size:22px;letter-spacing:.12em;text-transform:uppercase;border-radius:8px;padding:6px 14px;flex:none;}
+.row{display:flex;gap:16px;align-items:flex-start;}
+.heat{display:grid;grid-template-columns:repeat(15,1fr);gap:10px;}
+.heat div{aspect-ratio:1;border-radius:8px;}
+.seg{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;}
+.seg .bar{height:14px;border-radius:999px;}
+.seg .lb{font-family:var(--mono);font-size:22px;letter-spacing:.1em;text-transform:uppercase;margin-top:16px;text-align:center;}
+.cta{text-decoration:none;display:inline-flex;align-items:center;gap:16px;background:var(--soul);color:var(--cream);font-family:var(--mono);font-size:24px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;padding:26px 42px;border-radius:999px;}
+
+/* ── editor chrome (hidden during PNG export) ────────────────── */
+.cap{position:absolute;top:-58px;font-family:var(--mono);font-size:16px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.6);white-space:nowrap;}
+.cap b{color:#fff;font-weight:500;}
+.cap .dl{margin-left:16px;cursor:pointer;font:inherit;font-size:14px;color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:5px 13px;transition:background .15s;}
+.cap .dl:hover{background:rgba(255,255,255,.28);}
+#dlbar{position:absolute;left:0;top:-130px;display:flex;gap:16px;align-items:center;z-index:10;}
+#dlbar button{cursor:pointer;font-family:var(--mono);font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:#16141A;background:var(--cream);border:none;border-radius:999px;padding:13px 24px;}
+#dlbar button:hover{background:#fff;}
+#dlbar button[disabled]{opacity:.5;cursor:default;}
+#dlstat{font-family:var(--mono);font-size:14px;letter-spacing:.08em;color:rgba(255,255,255,.72);}
+#dlstat.err{color:#FF9E80;}
+</style>
+</head>
+<body>
+
+<div id="dlbar">
+  <button id="dlall">↓ Download all 5 (PNG · 2160×2700)</button>
+  <span id="dlstat"></span>
+</div>
+
+<!-- ═══ 01 · THE IDEA — hook ═══ -->
+<div class="cap" data-slot="0">EN 01 · <b>THE IDEA</b> · hook<button class="dl" data-ad="ad1" data-name="anima-ig-v3-01-idea">↓ PNG</button></div>
+<div class="ad" id="ad1" data-slot="0">
+  <div class="inner">
+    <div class="topbar">
+      <div class="lockup"><span class="mk" data-w="38" data-stroke="#E7C77A" data-dot="#D85A30" data-sw="7"></span><span class="wm">anima</span></div>
+      <span class="eyebrow">NO.01 · The Idea</span>
+    </div>
+
+    <div class="band">
+      <div class="hl" style="font-size:118px;">A dream is<br>just <i>today</i>,<br>repeated.</div>
+    </div>
+
+    <div class="rule"></div>
+    <div class="card">
+      <div class="clabel">Tonight's declaration</div>
+      <div class="ctext" style="font-size:44px;margin-top:18px;">I am a founder who ships something real<span style="display:inline-block;width:3px;height:38px;background:var(--soul);vertical-align:-7px;margin-left:6px;"></span></div>
+    </div>
+    <div class="metric">Day <b>01</b></div>
+  </div>
+</div>
+
+<!-- ═══ 02 · HOW — mechanism ═══ -->
+<div class="cap" data-slot="1">EN 02 · <b>HOW</b> · mechanism<button class="dl" data-ad="ad2" data-name="anima-ig-v3-02-how">↓ PNG</button></div>
+<div class="ad" id="ad2" data-slot="1">
+  <div class="inner">
+    <div class="topbar">
+      <div class="lockup"><span class="mk" data-w="38" data-stroke="#E7C77A" data-dot="#D85A30" data-sw="7"></span><span class="wm">anima</span></div>
+      <span class="eyebrow">NO.02 · How</span>
+    </div>
+
+    <div class="band">
+      <div class="hl" style="font-size:88px;">Your whole dream,<br>cut down to<br><i>one thing</i><br>before noon.</div>
+    </div>
+
+    <div class="rule"></div>
+    <div class="card">
+      <div class="clabel" style="margin-bottom:24px;">Today's if–then</div>
+      <div class="row" style="margin-bottom:16px;">
+        <span class="chip" style="background:rgba(217,164,65,.16);color:var(--gold);">If</span>
+        <span style="font-size:32px;line-height:1.3;color:rgba(247,243,236,.86);">it's 7:00am and I've finished my coffee</span>
+      </div>
+      <div class="row">
+        <span class="chip" style="background:rgba(216,90,48,.24);color:#F5A882;">Then</span>
+        <span style="font-size:32px;line-height:1.3;font-weight:500;color:var(--cream);">I write one commit before email</span>
+      </div>
+    </div>
+    <div class="metric">Day <b>04</b></div>
+  </div>
+</div>
+
+<!-- ═══ 03 · PROOF — evidence ═══ -->
+<div class="cap" data-slot="2">EN 03 · <b>PROOF</b> · evidence<button class="dl" data-ad="ad3" data-name="anima-ig-v3-03-proof">↓ PNG</button></div>
+<div class="ad" id="ad3" data-slot="2">
+  <div class="inner">
+    <div class="topbar">
+      <div class="lockup"><span class="mk" data-w="38" data-stroke="#E7C77A" data-dot="#D85A30" data-sw="7"></span><span class="wm">anima</span></div>
+      <span class="eyebrow">NO.03 · Proof</span>
+    </div>
+
+    <div class="band">
+      <div class="hl" style="font-size:82px;">25 of the last<br>30 days. That's<br>not motivation —<br>that's a <i>system</i>.</div>
+    </div>
+
+    <div class="rule"></div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:26px;">
+        <span class="clabel">Last 30 days</span>
+        <span class="clabel" style="color:rgba(247,243,236,.5);">83% consistent</span>
+      </div>
+      <div class="heat" id="heat"></div>
+    </div>
+    <div class="metric">Day <b>12</b></div>
+  </div>
+</div>
+
+<!-- ═══ 04 · WHO — payoff ═══ -->
+<div class="cap" data-slot="3">EN 04 · <b>WHO</b> · payoff<button class="dl" data-ad="ad4" data-name="anima-ig-v3-04-who">↓ PNG</button></div>
+<div class="ad" id="ad4" data-slot="3">
+  <div class="inner">
+    <div class="topbar">
+      <div class="lockup"><span class="mk" data-w="38" data-stroke="#E7C77A" data-dot="#D85A30" data-sw="7"></span><span class="wm">anima</span></div>
+      <span class="eyebrow">NO.04 · Who</span>
+    </div>
+
+    <div class="band">
+      <div class="hl" style="font-size:82px;">84 days in,<br>it isn't discipline<br>anymore. It's just<br><i>who you are</i>.</div>
+    </div>
+
+    <div class="rule"></div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:28px;">
+        <span class="clabel">Seed → Forest</span>
+        <span class="clabel" style="color:rgba(247,243,236,.5);">Stage 3 / 6</span>
+      </div>
+      <div class="seg" id="seg"></div>
+    </div>
+    <div class="metric">Day <b>84</b></div>
+  </div>
+</div>
+
+<!-- ═══ 05 · START — CTA ═══ -->
+<div class="cap" data-slot="4">EN 05 · <b>START</b> · CTA<button class="dl" data-ad="ad5" data-name="anima-ig-v3-05-start">↓ PNG</button></div>
+<div class="ad" id="ad5" data-slot="4">
+  <div class="inner">
+    <div class="topbar">
+      <div class="lockup"><span class="mk" data-w="38" data-stroke="#E7C77A" data-dot="#D85A30" data-sw="7"></span><span class="wm">anima</span></div>
+      <span class="eyebrow">NO.05 · Start</span>
+    </div>
+
+    <div class="band">
+      <div class="hl" style="font-size:108px;">Declare it<br>tonight.<br><i>Do it by noon.</i></div>
+    </div>
+
+    <div class="rule"></div>
+    <div class="card" style="border-color:rgba(217,164,65,.18);">
+      <div style="display:flex;align-items:center;gap:28px;">
+        <a class="cta" href="#">Get the app <span style="font-size:26px;">→</span></a>
+        <span style="font-family:var(--mono);font-size:22px;letter-spacing:.12em;text-transform:uppercase;color:rgba(247,243,236,.6);line-height:1.6;">iOS · Android<br>Free to start</span>
+      </div>
+    </div>
+    <div class="metric">Day <b>01</b> · yours</div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/html-to-image@1.11.13/dist/html-to-image.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ── layout constants (mirror the CSS custom properties) ───── */
+  var GUTTER = 1260;          // px between boards on the canvas
+  var EXPORT_W = 1080;
+  var EXPORT_H = 1350;
+  var PIXEL_RATIO = 2;        // → 2160 × 2700
+  var BATCH_PAUSE_MS = 400;   // lets the browser flush each download
+  var HEAT_COLUMNS = 15;
+
+  /* ── place boards side by side ─────────────────────────────── */
+  document.querySelectorAll('[data-slot]').forEach(function (el) {
+    el.style.left = (Number(el.dataset.slot) * GUTTER) + 'px';
+  });
+
+  /* ── aperture mark ─────────────────────────────────────────── */
+  function apertureSVG(size, stroke, dot, sw) {
+    var cx = 50, cy = 50, r = 42, gap = 16;
+    function polar(rr, deg) {
+      var rad = deg * Math.PI / 180;
+      return [cx + rr * Math.cos(rad), cy + rr * Math.sin(rad)];
+    }
+    var s = polar(r, -90 + gap / 2), e = polar(r, -90 - gap / 2 + 360);
+    var dotR = Math.max(6, sw * 1.25);
+    return '<svg viewBox="0 0 100 100" width="' + size + '" height="' + size + '" fill="none" ' +
+      'xmlns="http://www.w3.org/2000/svg" style="display:block">' +
+      '<path d="M ' + s[0].toFixed(2) + ' ' + s[1].toFixed(2) + ' A ' + r + ' ' + r +
+      ' 0 1 1 ' + e[0].toFixed(2) + ' ' + e[1].toFixed(2) + '" stroke="' + stroke +
+      '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+      '<circle cx="' + cx + '" cy="' + cy + '" r="' + dotR + '" fill="' + dot + '"/></svg>';
+  }
+  document.querySelectorAll('.mk').forEach(function (el) {
+    el.innerHTML = apertureSVG(+el.dataset.w, el.dataset.stroke, el.dataset.dot, +el.dataset.sw);
+  });
+
+  /* ── 03 · heatmap ───────────────────────────────────────────
+     Same 30-day array as the store screenshots: 25 kept of 30.
+     The first miss lands on day 3, which is what the headline
+     counts against. Do not edit one without the other.        */
+  var KEPT = [1,1,0,1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,0,1,1,1,1,1,1,0,1,1,1,1];
+  // Gold = kept (structure). Orange is reserved for TODAY alone, so this
+  // slide keeps the same single-live-point discipline as the other four.
+  var CELL = {
+    kept:   'rgba(217,164,65,.70)',
+    missed: 'rgba(247,243,236,.09)',
+    today:  'var(--soul)'
+  };
+  var heat = document.getElementById('heat');
+  heat.style.gridTemplateColumns = 'repeat(' + HEAT_COLUMNS + ',1fr)';
+  heat.innerHTML = KEPT.map(function (v, i) {
+    var isToday = i === KEPT.length - 1;
+    var bg = isToday ? CELL.today : (v ? CELL.kept : CELL.missed);
+    return '<div style="background:' + bg + ';' +
+      (isToday ? 'box-shadow:0 0 0 4px rgba(216,90,48,.32);' : '') + '"></div>';
+  }).join('');
+
+  /* ── 04 · growth ladder (no emoji — pure CSS segments) ─────── */
+  var STAGES = [
+    { label: 'Seed',   state: 'done' },
+    { label: 'Sprout', state: 'done' },
+    { label: 'Stem',   state: 'active' },
+    { label: 'Branch', state: 'todo' },
+    { label: 'Tree',   state: 'todo' },
+    { label: 'Forest', state: 'todo' }
+  ];
+  var BAR = {
+    done:   { bg: 'rgba(217,164,65,.75)', fg: 'rgba(217,164,65,.85)' },
+    active: { bg: 'var(--soul)',          fg: '#F5A882' },
+    todo:   { bg: 'rgba(247,243,236,.10)', fg: 'rgba(247,243,236,.34)' }
+  };
+  document.getElementById('seg').innerHTML = STAGES.map(function (s) {
+    var t = BAR[s.state];
+    return '<div><div class="bar" style="background:' + t.bg + '"></div>' +
+      '<div class="lb" style="color:' + t.fg + '">' + s.label + '</div></div>';
+  }).join('');
+
+  /* ── PNG export ────────────────────────────────────────────── */
+  var stat = document.getElementById('dlstat');
+  function say(msg, isErr) {
+    stat.textContent = msg;
+    stat.classList.toggle('err', !!isErr);
+  }
+
+  // The boards sit side by side at left:0, 1260, 2520… html-to-image clones
+  // the node into a 1080-wide foreignObject but carries the computed `left`
+  // across, so every board except the first renders outside the capture box
+  // and comes back blank. (v2 passed style:{left:'0'} to fix this; the clone's
+  // copied computed style overwrites it, which is why v2 shipped two
+  // byte-identical blank PNGs.) Park the real node at the origin instead, so
+  // the computed style it clones is already 0.
+  //
+  // Chrome is hidden for the shot; both it and the offset are ALWAYS restored
+  // in finally — v2 left the chrome hidden whenever a render threw.
+  async function renderAd(id) {
+    var node = document.getElementById(id);
+    if (!node) throw new Error('unknown board: ' + id);
+    var chrome = Array.prototype.slice.call(document.querySelectorAll('.cap, #dlbar'));
+    var parkedLeft = node.style.left;
+    var parkedZ = node.style.zIndex;
+    chrome.forEach(function (c) { c.style.visibility = 'hidden'; });
+    node.style.left = '0px';
+    node.style.zIndex = '9999';
+    try {
+      await document.fonts.ready;
+      return await htmlToImage.toPng(node, {
+        width: EXPORT_W,
+        height: EXPORT_H,
+        pixelRatio: PIXEL_RATIO,
+        style: { margin: '0' },
+        cacheBust: true
+      });
+    } finally {
+      node.style.left = parkedLeft;
+      node.style.zIndex = parkedZ;
+      chrome.forEach(function (c) { c.style.visibility = ''; });
+    }
+  }
+  window.renderAd = renderAd;
+
+  async function downloadAd(id, name) {
+    var url = await renderAd(id);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = name + '.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  document.querySelectorAll('.cap .dl').forEach(function (btn) {
+    btn.addEventListener('click', async function (e) {
+      e.stopPropagation();
+      var original = btn.textContent;
+      btn.textContent = '…';
+      try {
+        await downloadAd(btn.dataset.ad, btn.dataset.name);
+        say('');
+      } catch (err) {
+        console.error('[export]', btn.dataset.name, err);
+        say('failed · ' + btn.dataset.name + ' · ' + (err && err.message ? err.message : err), true);
+      } finally {
+        btn.textContent = original;
+      }
+    });
+  });
+
+  // One failure must not abort the batch; report the tally at the end.
+  document.getElementById('dlall').addEventListener('click', async function () {
+    var all = Array.prototype.slice.call(document.querySelectorAll('.cap .dl'));
+    var btn = this;
+    var ok = 0, failed = [];
+    btn.disabled = true;
+    try {
+      for (var i = 0; i < all.length; i++) {
+        say('rendering ' + (i + 1) + ' / ' + all.length + '…');
+        try {
+          await downloadAd(all[i].dataset.ad, all[i].dataset.name);
+          ok++;
+        } catch (err) {
+          console.error('[export]', all[i].dataset.name, err);
+          failed.push(all[i].dataset.name);
+        }
+        await new Promise(function (r) { setTimeout(r, BATCH_PAUSE_MS); });
+      }
+      say(failed.length
+        ? 'done · ' + ok + ' ok, ' + failed.length + ' failed: ' + failed.join(', ')
+        : 'done · ' + ok + ' files', failed.length > 0);
+    } catch (err) {
+      console.error('[export] batch aborted', err);
+      say('batch aborted · ' + (err && err.message ? err.message : err), true);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
