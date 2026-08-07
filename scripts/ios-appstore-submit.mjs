@@ -11,6 +11,8 @@
  *   node scripts/ios-appstore-submit.mjs --submit --version 1.0.1   # 새 앱 버전을 만들어 제출
  *   node scripts/ios-appstore-submit.mjs --submit --build 12  # 특정 빌드 번호 지정 (기본: 최신 VALID)
  *   node scripts/ios-appstore-submit.mjs --submit --no-iap    # 대기 중 인앱결제를 함께 묶지 않음
+ *   node scripts/ios-appstore-submit.mjs --submit --cancel-stuck-submission
+ *                                                             # 반려돼 "해결되지 않은 문제"로 멈춘 심사 요청을 취소하고 재제출
  *
  * 업데이트 버전(첫 출시가 아닌 경우)은 릴리스 노트가 필수다:
  *   node scripts/ios-appstore-submit.mjs --submit --version 1.0.1 --whats-new "..." --release-type auto
@@ -27,6 +29,7 @@
 import { readFileSync, existsSync } from "node:fs";
 import { createSign } from "node:crypto";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 // ─────────────────────────────── 상수 ───────────────────────────────
 const API = "https://api.appstoreconnect.apple.com";
@@ -83,7 +86,76 @@ const IAP_NEEDS_SUBMISSION_STATES = new Set([
   "DEVELOPER_ACTION_NEEDED",
 ]);
 
+/** 마케팅 버전을 읽지 못했을 때 fetchBuilds 가 채우는 자리표시자. 이 값이면 검증을 건너뛴다. */
+const UNKNOWN_MARKETING_VERSION = "?";
+
+/** 아직 제출 버튼을 누르지 않은 심사 요청 — 그대로 이어서 쓴다. */
+const REUSABLE_SUBMISSION_STATE = "READY_FOR_REVIEW";
+/** 반려 후 개발자 조치를 기다리는 상태. 남아 있으면 새 심사 요청 생성이 막힌다. */
+const STUCK_SUBMISSION_STATE = "UNRESOLVED_ISSUES";
+
 const log = (msg) => console.log(`[ios-submit] ${msg}`);
+
+// ─────────────────────── 제출 전 검증 (순수 함수) ───────────────────────
+
+/**
+ * "8" vs "10" 처럼 점으로 구분된 빌드번호를 자리별 숫자로 비교한다.
+ * 문자열 비교로 두면 "8" > "10" 이 되어 빌드번호 역행을 놓친다.
+ * @returns 음수 a<b / 0 a==b / 양수 a>b
+ */
+export function compareBuildNumbers(a, b) {
+  const parts = (v) => String(v ?? "").split(".").map((n) => Number(n) || 0);
+  const [pa, pb] = [parts(a), parts(b)];
+  for (let i = 0; i < Math.max(pa.length, pb.length); i += 1) {
+    const diff = (pa[i] ?? 0) - (pb[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
+/**
+ * 이 빌드를 이 앱 버전에 붙여도 되는지 검사한다.
+ *
+ * ASC API 는 규칙 위반 빌드도 200 으로 받아주고, Apple 사후 검증이 몇 분 뒤 조용히
+ * INVALID_BINARY("잘못된 바이너리")로 반려한다 — 2026-08-06 실사고. API 가 안 막으므로
+ * 여기서 막는다. 자세한 경위는 [RESUBMIT-IOS.md](../RESUBMIT-IOS.md) 참고.
+ *
+ * @param {{buildNumber: string, marketingVersion: string}} build 붙이려는 빌드
+ * @param {string} versionString 대상 앱스토어 버전 (예: "1.0.2")
+ * @param {string[]} releasedBuildNumbers 이미 출시된 버전들이 쓴 빌드번호
+ * @returns {{ok: true} | {ok: false, reason: string}}
+ */
+export function validateBuildForVersion({ build, versionString, releasedBuildNumbers = [] }) {
+  const mv = build?.marketingVersion;
+
+  // 1) 바이너리의 CFBundleShortVersionString 이 앱스토어 버전과 다르면 반려된다.
+  //    조회 실패("?")로 막아 정상 제출까지 못 하게 되는 일은 피한다.
+  if (mv && mv !== UNKNOWN_MARKETING_VERSION && mv !== versionString) {
+    return {
+      ok: false,
+      reason:
+        `빌드의 마케팅 버전(${mv})이 앱스토어 버전(${versionString})과 다릅니다. ` +
+        `Apple 은 이 조합을 제출 직후 INVALID_BINARY 로 반려합니다 — ` +
+        `Xcode 에서 MARKETING_VERSION 을 ${versionString} 로 올린 새 빌드가 필요합니다.`,
+    };
+  }
+
+  // 2) 빌드번호는 이미 출시에 쓰인 것보다 반드시 커야 한다 (같으면 재사용이라 409).
+  const highest = releasedBuildNumbers.reduce(
+    (max, n) => (max === null || compareBuildNumbers(n, max) > 0 ? n : max),
+    null,
+  );
+  if (highest !== null && compareBuildNumbers(build.buildNumber, highest) <= 0) {
+    return {
+      ok: false,
+      reason:
+        `빌드번호 ${build.buildNumber} 이(가) 이미 출시된 빌드 ${highest} 보다 크지 않습니다. ` +
+        `빌드번호는 항상 증가해야 하며, 낮거나 같으면 INVALID_BINARY 로 반려됩니다.`,
+    };
+  }
+
+  return { ok: true };
+}
 
 /** "1.0" → "1.0.1", "1.0.3" → "1.0.4". 제안용일 뿐 자동 적용하지 않는다. */
 function suggestNextVersion(current) {
@@ -118,6 +190,7 @@ const opts = {
   versionString: argValue("--version"),
   buildNumber: argValue("--build"),
   includeIap: !hasFlag("--no-iap"),
+  cancelStuckSubmission: hasFlag("--cancel-stuck-submission"),
   whatsNew: argValue("--whats-new"),
   releaseType: RELEASE_TYPES[argValue("--release-type") ?? "auto"],
 };
@@ -236,7 +309,11 @@ async function fetchBuilds(appId) {
 async function fetchVersions(appId) {
   const res = await api(
     "GET",
-    `/v1/apps/${appId}/appStoreVersions?filter[platform]=${PLATFORM}&limit=${VERSION_PAGE_LIMIT}`,
+    // include=build 로 각 버전이 물고 있는 빌드번호까지 받아 온다 — 빌드번호 역행 검증에 쓴다.
+    `/v1/apps/${appId}/appStoreVersions?filter[platform]=${PLATFORM}&limit=${VERSION_PAGE_LIMIT}&include=build`,
+  );
+  const buildNumbers = new Map(
+    (res.included || []).filter((i) => i.type === "builds").map((i) => [i.id, i.attributes?.version]),
   );
   return (res.data || []).map((v) => ({
     id: v.id,
@@ -244,6 +321,7 @@ async function fetchVersions(appId) {
     // appStoreState 는 deprecated 지만 아직 응답에 남아 있어 폴백으로 쓴다.
     state: v.attributes?.appVersionState ?? v.attributes?.appStoreState,
     createdDate: v.attributes?.createdDate,
+    buildNumber: buildNumbers.get(v.relationships?.build?.data?.id) ?? null,
   }));
 }
 
@@ -318,16 +396,55 @@ async function createVersion(appId, versionString, releaseType) {
   return { id: res.data.id, versionString, state: res.data.attributes?.appVersionState };
 }
 
-/** 아직 제출되지 않은(READY_FOR_REVIEW) 심사 요청이 있으면 재사용, 없으면 새로 만든다. */
-async function openReviewSubmission(appId) {
-  const existing = await api(
+/**
+ * 아직 제출되지 않은(READY_FOR_REVIEW) 심사 요청이 있으면 재사용, 없으면 새로 만든다.
+ *
+ * 앱당 진행 중인 심사 요청은 하나뿐이라, 반려돼 UNRESOLVED_ISSUES 로 멈춰 선 요청이 남아 있으면
+ * 새 요청 생성이 409 로 막힌다. 그 경우 원인을 명확히 알리고, 취소는 --cancel-stuck-submission
+ * 을 붙였을 때만 한다 (앱스토어 계정 상태를 건드리는 일이라 기본값은 '건드리지 않음').
+ */
+async function fetchOpenSubmissions(appId) {
+  const res = await api(
     "GET",
-    `/v1/reviewSubmissions?filter[app]=${appId}&filter[platform]=${PLATFORM}&filter[state]=READY_FOR_REVIEW&limit=1`,
+    `/v1/reviewSubmissions?filter[app]=${appId}&filter[platform]=${PLATFORM}` +
+      `&filter[state]=${REUSABLE_SUBMISSION_STATE},${STUCK_SUBMISSION_STATE}&limit=${VERSION_PAGE_LIMIT}`,
   );
-  if (existing.data?.[0]) {
-    log(`기존 미제출 심사 요청 재사용: ${existing.data[0].id}`);
-    return existing.data[0].id;
+  return (res.data || []).map((s) => ({
+    id: s.id,
+    state: s.attributes?.state,
+    submittedDate: s.attributes?.submittedDate,
+  }));
+}
+
+/** 반려돼 개발자 조치를 기다리는 심사 요청 (있으면 새 요청 생성이 막힌다). */
+async function findStuckSubmission(appId) {
+  return (await fetchOpenSubmissions(appId)).find((s) => s.state === STUCK_SUBMISSION_STATE) ?? null;
+}
+
+async function openReviewSubmission(appId, { cancelStuck = false } = {}) {
+  const found = await fetchOpenSubmissions(appId);
+
+  const reusable = found.find((s) => s.state === REUSABLE_SUBMISSION_STATE);
+  if (reusable) {
+    log(`기존 미제출 심사 요청 재사용: ${reusable.id}`);
+    return reusable.id;
   }
+
+  const stuck = found.find((s) => s.state === STUCK_SUBMISSION_STATE);
+  if (stuck) {
+    if (!cancelStuck) {
+      fail(
+        `반려된 심사 요청이 ${STUCK_SUBMISSION_STATE}("해결되지 않은 문제") 로 남아 있어 새 요청을 만들 수 없습니다.\n` +
+          `  요청 id ${stuck.id} (제출 ${stuck.submittedDate ?? "-"})\n` +
+          `  같은 명령에 --cancel-stuck-submission 을 붙이면 이 요청을 취소하고 새로 제출합니다.`,
+      );
+    }
+    await api("PATCH", `/v1/reviewSubmissions/${stuck.id}`, {
+      data: { type: "reviewSubmissions", id: stuck.id, attributes: { canceled: true } },
+    });
+    log(`멈춰 있던 심사 요청 취소: ${stuck.id}`);
+  }
+
   const created = await api("POST", "/v1/reviewSubmissions", {
     data: {
       type: "reviewSubmissions",
@@ -424,7 +541,27 @@ async function main() {
     );
   }
 
-  // 3) dry-run 이면 여기서 계획만 출력하고 끝낸다.
+  // 3) 제출해도 되는 조합인지 먼저 검증한다 — ASC API 는 규칙 위반을 200 으로 통과시키고
+  //    Apple 사후 검증이 나중에 INVALID_BINARY 로 반려하기 때문에 여기서 걸러야 한다.
+  const targetVersionString = version?.versionString ?? opts.versionString;
+  const releasedBuildNumbers = versions
+    .filter((v) => LIVE_VERSION_STATES.has(v.state) && v.buildNumber)
+    .map((v) => v.buildNumber);
+  const check = validateBuildForVersion({
+    build: target,
+    versionString: targetVersionString,
+    releasedBuildNumbers,
+  });
+  if (!check.ok) {
+    fail(
+      `${check.reason}\n` +
+        `  대상 버전 ${targetVersionString} / 선택된 빌드 ${target.marketingVersion} (${target.buildNumber})` +
+        `${releasedBuildNumbers.length ? ` / 이미 출시된 빌드: ${releasedBuildNumbers.join(", ")}` : ""}\n` +
+        `  Mac 에서 새 빌드를 올린 뒤 다시 실행하세요 — 절차는 RESUBMIT-IOS.md 참고.`,
+    );
+  }
+
+  // 4) dry-run 이면 여기서 계획만 출력하고 끝낸다.
   const pendingIaps = opts.includeIap ? await fetchPendingIaps(app.id) : [];
   if (pendingIaps.length) {
     log(`함께 제출할 인앱결제: ${pendingIaps.map((p) => `${p.productId}(${p.state})`).join(", ")}`);
@@ -440,11 +577,18 @@ async function main() {
     log(`  2. 빌드 ${target.marketingVersion} (${target.buildNumber}) 연결`);
     log(`  3. 릴리스 노트 ${opts.whatsNew ? `입력 (${opts.whatsNew.length}자)` : "미지정 — 비어 있으면 중단"}`);
     log(`  4. 심사 제출${pendingIaps.length ? ` (+ 인앱결제 ${pendingIaps.length}건)` : ""}`);
+    const stuck = await findStuckSubmission(app.id);
+    if (stuck) {
+      log(
+        `주의: 심사 요청 ${stuck.id} 이(가) ${STUCK_SUBMISSION_STATE}("해결되지 않은 문제") 로 남아 있습니다 — ` +
+          `--cancel-stuck-submission 을 함께 붙여야 제출이 진행됩니다.`,
+      );
+    }
     log("실제로 제출하려면 --submit 을 붙여 다시 실행하세요.");
     return;
   }
 
-  // 4) 실제 제출
+  // 5) 실제 제출
   if (needsNewVersion) {
     version = await createVersion(app.id, opts.versionString, opts.releaseType);
     log(`새 앱 버전 생성: ${version.versionString} (출시 방식 ${opts.releaseType})`);
@@ -470,7 +614,9 @@ async function main() {
     }
   }
 
-  const submissionId = await openReviewSubmission(app.id);
+  const submissionId = await openReviewSubmission(app.id, {
+    cancelStuck: opts.cancelStuckSubmission,
+  });
   await addSubmissionItem(submissionId, {
     appStoreVersion: { data: { type: "appStoreVersions", id: version.id } },
   });
@@ -486,4 +632,6 @@ async function main() {
   log("App Store Connect > 배포 에서 '심사 대기 중(Waiting for Review)' 으로 바뀌었는지 확인하세요.");
 }
 
-main().catch((e) => fail(e?.stack || String(e)));
+// 단위 테스트가 순수 헬퍼만 import 할 수 있도록, 직접 실행했을 때만 main() 을 돌린다.
+const isDirectRun = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isDirectRun) main().catch((e) => fail(e?.stack || String(e)));

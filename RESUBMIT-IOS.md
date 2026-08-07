@@ -1,5 +1,10 @@
 # 재심사 — Guideline 4 대응 build 1.0(9) 올리기
 
+> ## ⛔ 현재 상태(2026-08-07): 1.0.2 가 `INVALID_BINARY` — **새 빌드 없이는 해결 불가**
+>
+> 2026-08-06 20:44(KST) 제출한 1.0.2 가 Apple 사후 검증에서 "잘못된 바이너리"로 반려됐다.
+> 조치 절차는 아래 [§ 1.0.2 INVALID_BINARY 복구](#102-invalid_binary-복구-2026-08-07-진단) 참고.
+>
 > **상태(2026-07-28): build 1.0(9) 업로드 완료** — 위젯 수동 서명 경로로 archive→export→altool 성공.
 > ASC TestFlight 처리 후 §5~6 대로 "앱 심사에 다시 제출" 하면 됨. 아래는 그 재현 절차.
 >
@@ -124,6 +129,85 @@ node scripts/ios-appstore-submit.mjs --submit --version 1.0.1 --whats-new "..." 
 1.0.2 빌드가 올라오면 `--submit` 으로 문구 변경이 함께 심사된다.
 
 > 키 ID/Issuer ID 는 기본값이 박혀 있고 비밀은 `.p8` 파일뿐이다. `.p8` 은 저장소에 커밋하지 말 것.
+
+---
+
+## 1.0.2 `INVALID_BINARY` 복구 (2026-08-07 진단)
+
+App Store Connect 화면의 **"1.0.2 잘못된 바이너리"** + 심사 제출 **"해결되지 않은 문제"** 의 실제 원인.
+
+### 진단 결과 (ASC API 실측)
+
+| 항목 | 값 |
+|---|---|
+| 앱 버전 1.0.2 | `INVALID_BINARY` — 연결된 빌드 **1.0 (8)** |
+| 앱 버전 1.0.1 | `READY_FOR_DISTRIBUTION` — 빌드 **1.0.1 (10)** (출시중) |
+| 심사 제출 `76679926…` | `UNRESOLVED_ISSUES`, 항목 `REJECTED` (2026-08-06 11:44 UTC) |
+| TestFlight 최신 빌드 | `1.0.1 (10)` — **마케팅 버전 1.0.2 인 빌드는 존재하지 않음** |
+
+**원인: 1.0.2 에 구 빌드 8 을 붙였고, 그 빌드가 두 규칙을 동시에 어긴다.**
+
+1. **마케팅 버전 불일치** — 바이너리의 `CFBundleShortVersionString` 은 `1.0` 인데 앱스토어 버전은 `1.0.2`.
+2. **빌드번호 역행** — 이미 출시된 1.0.1 이 build `10` 을 쓰는데 붙인 건 build `8`.
+
+ASC API 는 이 제출을 **200 으로 통과시킨다.** Apple 사후 검증이 몇 분 뒤 조용히 반려하므로,
+제출 시점에는 성공한 것처럼 보인다. 이건 위 "함정" 절의 마지막 항목이 실제로 터진 사례다.
+
+### 살아남은 것 (다시 만들 필요 없음)
+
+`INVALID_BINARY` 는 **편집 가능** 상태라 스테이징한 자산이 전부 그대로 남아 있다 — 실측 확인:
+
+- 4개 로케일(`en-US`·`ko`·`es-ES`·`zh-Hans`) 의 설명·키워드·릴리스 노트·프로모션 텍스트
+- 심사 정보(데모 계정 `play-review@anima-test.com`, App Review 메모)
+- 앱 가격 **0.0 (무료)** — 무료 전환은 정상 반영됨
+- 인앱결제 `anima_lifetime` = `APPROVED` (추가로 묶을 항목 없음)
+
+### 복구 절차 — **Mac 필수** (Windows 에서는 API 로 해결 불가)
+
+빌드 번호만 올린 새 바이너리가 반드시 필요하다. 위 §"Mac에서" 절차와 같되 **버전 값이 다르다**:
+
+```bash
+# 1) 마케팅 버전 1.0.2 + 빌드번호 11 (10 보다 커야 한다)
+cd ios/App
+xcrun agvtool new-marketing-version 1.0.2
+xcrun agvtool new-version -all 11
+cd ../..
+
+# 2) 서명 키체인 잠금해제 → archive → export → 업로드 (위 §4 와 동일)
+security unlock-keychain -p anima ~/Library/Keychains/anima-build.keychain-db
+xcodebuild -scheme App -project ios/App/App.xcodeproj -configuration Release \
+  -destination 'generic/platform=iOS' -archivePath build/Anima.xcarchive \
+  CODE_SIGN_STYLE=Manual archive
+xcodebuild -exportArchive -archivePath build/Anima.xcarchive \
+  -exportPath build/export -exportOptionsPlist scripts/ExportOptions-widget.plist
+xcrun altool --upload-app -f build/export/App.ipa -t ios \
+  --apiKey 8ZJ3Y6N6J7 --apiIssuer daa5537d-77cb-44e3-904f-6df67f61ffde
+```
+
+TestFlight 에서 `1.0.2 (11)` 이 `VALID` 로 처리된 뒤(5~15분), Windows/Mac 어디서든:
+
+```powershell
+$env:ASC_API_KEY_PATH = "...\AuthKey_8ZJ3Y6N6J7.p8"
+
+# 계획 확인 — 막혀 있는 심사 요청도 함께 알려준다
+npm run ios:submit
+
+# 재제출. 반려로 멈춰 선 심사 요청(UNRESOLVED_ISSUES)을 취소하고 새로 올린다
+node scripts/ios-appstore-submit.mjs --submit --cancel-stuck-submission
+```
+
+`--whats-new` 는 생략해도 된다 — 4개 로케일 릴리스 노트가 이미 스테이징돼 있다.
+
+### 재발 방지 (스크립트에 반영 완료)
+
+`scripts/ios-appstore-submit.mjs` 가 제출 **전에** 아래를 검사하고, 걸리면 `REJECT` 로 중단한다:
+
+- 빌드의 마케팅 버전 ≠ 대상 앱스토어 버전 → 중단
+- 빌드번호 ≤ 이미 출시된 최대 빌드번호 → 중단
+- `UNRESOLVED_ISSUES` 심사 요청이 남아 있음 → 중단(`--cancel-stuck-submission` 으로만 취소)
+
+회귀 테스트는 [scripts/ios-appstore-submit.test.mjs](scripts/ios-appstore-submit.test.mjs) — 이번 사고
+조합(1.0.2 ← build 8/마케팅 1.0)을 그대로 재현해 막히는지 검증한다. `npm test` 로 실행.
 
 ---
 
