@@ -7,9 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "ios:preflight": "node scripts/ios-preflight.mjs",
+    "preios:sync": "npm run ios:preflight",
     "ios:sync": "cap sync ios && capacitor-assets generate --ios",
     "ios:assets": "capacitor-assets generate --ios",
+    "preios:open": "npm run ios:preflight",
     "ios:open": "cap open ios",
+    "preios:submit": "npm run ios:preflight",
     "ios:submit": "node scripts/ios-appstore-submit.mjs",
     "test": "vitest run",
     "quotes:gen": "node scripts/gen-curated-quotes.mjs"

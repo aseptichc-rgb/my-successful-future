@@ -1,5 +1,20 @@
 # Anima iOS 출시 — Mac-side 작업 안내서
 
+> ## ⛔ 빌드 전 필독 — [RESUBMIT-IOS.md](RESUBMIT-IOS.md)
+>
+> **이미 출시된 앱에 새 빌드를 올리는 작업이면 이 문서보다 [RESUBMIT-IOS.md](RESUBMIT-IOS.md) 가 먼저다.**
+> (이 문서는 iOS 프로젝트를 처음 세우는 절차다.)
+>
+> 2026-08-06 에 마케팅 버전이 맞지 않는 구 빌드를 붙여 제출했다가 `INVALID_BINARY`("잘못된
+> 바이너리")로 반려된 실사고가 있다. ASC API 는 그 제출을 200 으로 통과시키므로 제출 시점엔
+> 성공한 것처럼 보인다. 아카이브 전에 반드시 확인할 것:
+>
+> 1. `MARKETING_VERSION` == App Store Connect 의 앱 버전
+> 2. `CURRENT_PROJECT_VERSION` > 이미 출시된 최대 빌드번호
+>
+> `npm run ios:sync` · `ios:open` · `ios:submit` 이 이 체크리스트를 자동으로 띄운다
+> (`npm run ios:preflight` 로 단독 실행 가능 — 현재 pbxproj 값도 함께 보여준다).
+
 > 이 문서는 Windows 환경에서 Claude 가 준비한 골격 위에, Mac/Xcode 에서 이어 진행할 작업을
 > 단계별로 정리한 안내서다. 단계마다 "왜 필요한가 / 거절 위험" 을 함께 적어 두어, 심사 거절
 > 직전에 허둥대지 않도록 한다.
@@ -19,6 +34,10 @@ cd my-successful-future
 # 2. 의존성 설치
 npm install
 sudo gem install cocoapods   # 이미 있으면 생략
+
+# 2-1. 빌드 전 체크리스트 — 버전/빌드번호 규칙과 RESUBMIT-IOS.md 안내를 띄운다.
+#      ios:sync·ios:open·ios:submit 실행 시 자동으로도 뜨지만, 먼저 한 번 읽고 시작할 것.
+npm run ios:preflight
 
 # 3. Capacitor 가 iOS 프로젝트를 생성
 npx cap add ios
