@@ -18,7 +18,7 @@ import {
   type AppleSignInResult,
 } from "@/lib/firebase";
 import type { AuthCredential } from "firebase/auth";
-import { shouldStartTrial } from "@/lib/entitlement";
+import { shouldStartTrial, readEntitlement, type Entitlement } from "@/lib/entitlement";
 import {
   fireAndroidAuthBridge,
   installUserGestureTracker,
@@ -30,6 +30,10 @@ interface AuthContextValue {
   user: User | null;
   firebaseUser: FirebaseUser | null;
   loading: boolean;
+  /** 현재 세션의 권한 상태(트라이얼/평생/구독/무료) — 서버 게이트와 동일한 readEntitlement 판정. */
+  entitlement: Entitlement;
+  /** custom claim 의 원시 trialEndsAt(ms). 만료 여부와 무관한 raw 값 — 배너 D-day 표시용. */
+  trialEndsAt: number | null;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signInGoogle: () => Promise<GoogleSignInResult>;
@@ -279,6 +283,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
+  // 최신 ID 토큰의 custom claims — 트라이얼/결제 배너가 파생해 쓴다(게이트 판정은 서버에서).
+  const [claims, setClaims] = useState<Record<string, unknown> | null>(null);
   const restoreAttemptedRef = useRef(false);
   // uid 별로 트라이얼 시작 시도 여부 — customToken 재로그인이 onIdTokenChanged 를
   // 다시 발동시키므로 무한 호출 방지용. 로그아웃 시 비운다.
@@ -327,8 +333,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         try {
-          const idToken = await fbUser.getIdToken();
-          if (idToken) await syncServerSession(idToken);
+          // getIdTokenResult 로 토큰과 claims 를 한 번에 얻는다 — claims 는 트라이얼 D-day
+          // 배너 표시용으로 state 에 싣고, 토큰은 서버 세션 동기화에 쓴다.
+          const tokenResult = await fbUser.getIdTokenResult();
+          setClaims(tokenResult.claims as Record<string, unknown>);
+          if (tokenResult.token) await syncServerSession(tokenResult.token);
         } catch {
           // 다음 갱신 사이클에서 다시 시도
         }
@@ -349,6 +358,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setFirebaseUser(null);
       setUser(null);
+      setClaims(null);
       setLoading(false);
     });
     return unsubscribe;
@@ -422,12 +432,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // claims 에서 파생 — 게이트와 동일한 readEntitlement 로 권한을, raw trialEndsAt 은 D-day 표시로.
+  // AuthProvider 는 state 변화 때만 리렌더되므로 매 렌더 재계산 비용은 무시할 수준이다.
+  const entitlement = readEntitlement(claims);
+  const trialEndsAt =
+    typeof claims?.trialEndsAt === "number" ? (claims.trialEndsAt as number) : null;
+
   return (
     <AuthContext.Provider
       value={{
         user,
         firebaseUser,
         loading,
+        entitlement,
+        trialEndsAt,
         signIn,
         signUp,
         signInGoogle,

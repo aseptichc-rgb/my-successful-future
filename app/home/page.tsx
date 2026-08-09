@@ -40,6 +40,7 @@ import MotivationCard from "@/components/home/MotivationCard";
 import TodayCard from "@/components/home/TodayCard";
 import FutureVisionCard from "@/components/home/FutureVisionCard";
 import MoreSection from "@/components/home/MoreSection";
+import TrialBanner from "@/components/home/TrialBanner";
 import SlotUnlockBanner from "@/components/home/SlotUnlockBanner";
 import StepUpCard from "@/components/home/StepUpCard";
 import RecommitCard from "@/components/home/RecommitCard";
@@ -774,6 +775,9 @@ export default function HomeDashboardPage() {
       </header>
 
       <main className="mx-auto w-full max-w-3xl">
+        {/* ── 무료 체험 D-day / 만료 안내 — 결제 가능 환경에서만 업그레이드 CTA 노출 ── */}
+        <TrialBanner />
+
         {/* ── 스트릭 공백 감지 — 프리즈 안내 칩 / 자기연민 재약속 카드 ── */}
         <RecommitCard
           streak={user?.affirmationStreak}

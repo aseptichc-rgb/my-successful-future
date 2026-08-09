@@ -50,6 +50,7 @@ import {
 } from "@/lib/androidPurchase";
 import { readEntitlement } from "@/lib/entitlement";
 import { computePlanUnlock } from "@/lib/planUnlock";
+import { detectPurchaseEnv } from "@/lib/purchaseEnv";
 import { isAndroidApp, notifyAndroidPurchase, notifyAndroidRestore } from "@/lib/widgetBridge";
 import { getAllKnownAuthorsGrouped } from "@/lib/famousQuoteCatalog";
 import AffirmationsEditor from "@/components/affirmations/AffirmationsEditor";
@@ -423,11 +424,6 @@ function readSheetDeepLink(): { sheet: "goals" | "affirmations" | null; refine: 
   }
 }
 
-/** 결제 환경은 페이지 수명 동안 불변 — 렌더마다 URL 파싱·스토리지 조회를 반복하지 않게 캐시. */
-let purchaseEnvCache: boolean | null = null;
-const detectPurchaseEnv = (): boolean =>
-  (purchaseEnvCache ??= isIosPurchaseAvailable() || isAndroidApp() || isAndroidPurchaseAvailable());
-
 export default function SettingsPage() {
   const router = useRouter();
   const { user, firebaseUser, loading: authLoading, signOut, refreshUser } = useAuth();
@@ -483,6 +479,8 @@ export default function SettingsPage() {
   const bridgeTokenRef = useRef<string | null>(null);
   // 결제/복원 대기 폴링 취소용 — 언마운트 또는 다른 결제 액션 시작 시 이전 폴링을 끊는다.
   const pollAbortRef = useRef<AbortController | null>(null);
+  // 홈 트라이얼 배너의 "업그레이드"(?pro=1) 딥링크가 도착하면 이 섹션으로 스크롤한다.
+  const proSectionRef = useRef<HTMLDivElement | null>(null);
   // 결제/복원 결과 안내 — window.alert(TWA 에서 origin 헤더가 붙어 앱답지 않음) 대신 인앱 다이얼로그.
   const [proNotice, setProNotice] = useState<{
     title: string;
@@ -572,6 +570,36 @@ export default function SettingsPage() {
       /* URL 파싱 불가 환경 — 쿼리만 남을 뿐 나머지는 정상 동작 */
     }
   }, []);
+
+  /* 홈 트라이얼 배너의 "업그레이드"(?pro=1) 딥링크 — ANIMA PRO 섹션으로 스크롤한 뒤 쿼리를
+     지운다. Pro 섹션은 결제 가능 환경(showPro)에서만 렌더되므로 showPro 가 참이 된 뒤에
+     실행되도록 의존성에 건다(웹에서는 섹션이 없어 스크롤 없이 쿼리만 정리). */
+  useEffect(() => {
+    let url: URL;
+    try {
+      url = new URL(window.location.href);
+    } catch {
+      return; // URL 파싱 불가 — 스크롤 생략
+    }
+    if (url.searchParams.get("pro") !== "1") return;
+    if (showPro) {
+      // 커밋 직후 DOM 이 붙은 다음에 스크롤해야 위치가 정확하다.
+      const raf = requestAnimationFrame(() => {
+        try {
+          proSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        } catch {
+          /* smooth 미지원 구형 웹뷰 — 섹션은 이미 화면에 있다 */
+        }
+      });
+      url.searchParams.delete("pro");
+      try {
+        window.history.replaceState({}, "", url.toString());
+      } catch {
+        /* 무시 — 쿼리만 남을 뿐 동작엔 영향 없음 */
+      }
+      return () => cancelAnimationFrame(raf);
+    }
+  }, [showPro]);
 
   /* 이미 나머지 차원까지 채워둔 사용자(기존 7문항 온보딩 이용자)에게는 접혀 있으면
      자기가 쓴 글이 사라진 것처럼 보인다 — 시트가 "열리는 전이" 순간에만 판정해 자동으로
@@ -1041,6 +1069,7 @@ export default function SettingsPage() {
 
         {/* Anima Pro — iOS 인앱결제 (네이티브 플러그인이 있는 iOS 빌드에서만 노출) */}
         {showPro && (
+          <div ref={proSectionRef} className="scroll-mt-4">
           <GroupedSection
             header={t("settings.pro.header")}
             footer={
@@ -1108,6 +1137,7 @@ export default function SettingsPage() {
               </div>
             </button>
           </GroupedSection>
+          </div>
         )}
 
         {/* 계정 */}
