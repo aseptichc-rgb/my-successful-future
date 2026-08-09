@@ -71,147 +71,167 @@ const MARKETING_URL = "https://my-successful-future.vercel.app";
 const COPY = {
   "en-US": {
     promotionalText:
-      "The app that gets you to your dream. Write the dream you are going after, and Anima turns it into today's step — delivered to your home screen widget.",
+      "Your future becomes what you believe. Daily affirmations from your future self.",
     keywords:
       "motivation,affirmations,daily quote,goals,habits,widget,self care,dream,mindset",
     whatsNew: "Minor improvements and a refreshed app description.",
-    description: `The app that helps you reach your dream.
+    description: `What if there was an app that made your dreams come true?
 
-Anima asks one thing: what dream are you going after? Write it down, and every morning you get today’s step toward it — plus the one line that pushes you to take it. No elaborate planner. Just the one line you need to start today.
+Not by magic. By the oldest rule there is: you become what you believe.
 
-■ Today’s line, drawn from your dream
-Write a paragraph about the dream you’re chasing, and Anima builds a new card from it each day. The words you need most show up every morning.
+Every great life you admire started the same way — as a belief someone refused to put down. Anima takes that belief and turns it into something you actually do every day, in about a minute.
 
-■ Home screen widgets
-Get your daily line on your iOS home screen — and a large widget on iPad. You’ll meet it naturally throughout the day without even opening the app.
+■ You become what you believe
+Your mind moves toward whatever you keep telling it. So tell it something worth becoming. Write down the person you're growing into, and every morning your future self speaks back to you — one line, written for the future you described.
 
-■ Build streaks by rewriting your affirmations
-Write down “the you who’s living the dream,” then retype it each day to grow a streak. Small repetitions become identity.
+■ See the power of affirmations for yourself
+You don't have to take anyone's word for it. Write one affirmation a day for two weeks and notice how differently you walk into the day. That's the whole experiment, and you're the only proof you need.
 
-■ A one-line daily mission
-Answer “I am ___” one line at a time and build the identity you’re reaching for, step by step.
+■ You can be great too
+Greatness isn't something you're born holding. It's built by people who kept believing on the ordinary days — the ones with no motivation and nobody watching. Anima is made for exactly those days.
 
-■ Quote curation from mentors you choose
-Pin a philosopher, founder, or leader you admire and their words arrive first. Leave it open and around eight mentors rotate automatically each week.
+■ Starting is the whole thing
+Most dreams don't die from a lack of talent. They die because the first step never happens. So make today the first step, and make it small enough that you'll actually take it.
 
-■ Log today’s small wins
-However small, write down what went well today. Revisit it by date and watch your growth quietly add up.
+■ What's inside
+· Daily affirmations & motivation — a line matched to the future you're building
+· Personalized to you — shaped by the future self you describe and today's goals
+· Real mentors, real words — from Seneca to modern voices, never a fabricated quote
+· Daily intention writing — trace a short affirmation and set your mindset for the day
+· Wins journal — note what went well today and give yourself the credit
+· Calm by design — no ads, no tracking, no notification spam
 
-■ Four languages
-한국어 · English · Español · 中文 — both the app and your daily message appear in the language you choose.
+■ Why Anima is different
+· Zero ads, zero tracking — we never collect your advertising ID
+· No fake quotes — only curated words from real people who actually said them
+· One-time purchase, yours for life — no subscriptions, ever
 
-Write your dream today. Tomorrow morning, your first step toward it arrives.
+Your dream doesn't need a perfect plan. It needs a first step, taken today.
 
-— Privacy
-We don’t collect location, contacts, photos, or call logs.`,
+Take it with Anima.`,
   },
   ko: {
     promotionalText:
-      "이루고 싶은 꿈을 한 줄 적으면 오늘 할 한 걸음이 정해집니다. 그 걸음을 밀어줄 한 마디가 매일 홈 화면 위젯으로 도착해요. 작은 반복이 꿈을 현실로 만듭니다.",
+      "나의 미래는 내가 믿는 대로 됩니다. 미래의 내가 오늘의 나에게 건네는, 매일 한 줄의 확언으로 하루를 시작하세요.",
     keywords:
       "동기부여,확언,다짐,명언,목표,습관,위젯,자기계발,꿈,성공,멘토,루틴,마인드셋,긍정,자존감",
     whatsNew: "앱 소개 문구를 새로 다듬고 소소한 개선을 했습니다.",
-    description: `당신의 꿈을 이루게 해주는 앱.
+    description: `꿈을 이루어주는 앱이 있다면 어떨까요?
 
-Anima는 이루고 싶은 꿈을 적어두면, 그 꿈에 다가가는 오늘의 한 걸음과 그 걸음을 밀어줄 한 마디를 매일 보내주는 앱입니다. 거창한 계획표가 아니라, 오늘 하루를 시작할 단 한 줄이면 충분해요.
+마법이 아닙니다. 가장 오래된 진리 하나 때문입니다 — 사람은 자신이 믿는 대로 됩니다.
 
-■ 내 꿈에서 나온 오늘의 한 마디
-이루고 싶은 꿈을 한 단락 적어두면, 그 꿈을 기준으로 매일 다른 카드가 만들어집니다. 매일 아침, 가장 필요한 말이 도착해요.
+당신이 우러러보는 모든 위대한 삶도 똑같이 시작됐습니다. 누군가 끝내 놓지 않은 하나의 믿음으로요. Anima는 그 믿음을 매일 1분, 당신이 실제로 하는 행동으로 바꿔 줍니다.
 
-■ 홈 화면 위젯
-한 마디를 매일 홈 화면 위젯으로 받아보세요. 앱을 열지 않아도 하루에 여러 번 자연스럽게 마주치게 됩니다. (iOS 홈 화면, iPad 대형 위젯 지원)
+■ 믿는 대로 된다
+마음은 당신이 되뇌는 쪽으로 움직입니다. 그러니 될 만한 가치가 있는 것을 들려주세요. 되어가고 싶은 사람을 적어두면, 매일 아침 미래의 당신이 답합니다 — 당신이 그려둔 미래를 위해 쓰인 단 한 줄로요.
 
-■ 다짐 따라 적기로 연속일 쌓기
-‘꿈을 이룬 나’를 한 줄씩 적어두면, 매일 똑같이 따라 적으며 연속일(streak)을 쌓을 수 있어요. 작은 반복이 정체성이 됩니다.
+■ 확언의 힘을 직접 확인하세요
+누구의 말도 믿을 필요 없어요. 하루 한 줄씩 2주만 확언을 적어보고, 하루를 맞이하는 태도가 얼마나 달라지는지 느껴보세요. 그게 실험의 전부이고, 증거는 당신 자신이면 충분합니다.
 
-■ 오늘의 한 줄 미션
-“나는 ___” 한 줄에 답하며 되고 싶은 정체성을 한 걸음씩 쌓아가세요.
+■ 당신도 위대해질 수 있어요
+위대함은 타고나는 것이 아닙니다. 의욕도 없고 아무도 보지 않는 평범한 날에도 계속 믿은 사람들이 쌓아 올린 것이죠. Anima는 바로 그런 날을 위해 만들어졌습니다.
 
-■ 명언 큐레이션
-좋아하는 철학자·기업가·리더를 한 명 정해두면 그 인물의 명언이 우선 도착합니다. 비워두면 매주 8명 안팎의 멘토가 자동으로 바뀌어요.
+■ 시작이 전부입니다
+대부분의 꿈은 재능이 없어서 죽지 않습니다. 첫걸음을 떼지 않아서 죽습니다. 그러니 오늘을 첫걸음으로 삼되, 실제로 뗄 수 있을 만큼 작게 만드세요.
 
-■ 오늘 잘한 일 기록
-아주 작은 일이어도 좋아요. 하루에 잘한 일을 적어두면 날짜별로 다시 볼 수 있어, 나도 모르게 쌓인 성장을 확인하게 됩니다.
+■ 이런 것들이 담겨 있어요
+· 매일의 확언과 동기부여 — 당신이 만들어가는 미래에 맞춘 한 줄
+· 나에게 맞춤 — 당신이 그린 미래의 나와 오늘의 목표를 반영
+· 진짜 멘토, 진짜 말 — 세네카부터 현대의 목소리까지, 지어낸 명언은 없습니다
+· 매일의 다짐 쓰기 — 짧은 확언을 따라 적으며 하루의 마음가짐을 다잡아요
+· 잘한 일 기록 — 오늘 잘한 일을 적고 스스로를 인정해 주세요
+· 조용한 설계 — 광고 없음, 추적 없음, 알림 폭탄 없음
 
-■ 4개 언어 지원
-한국어 · English · Español · 中文 — 앱 화면과 매일 도착하는 한 마디 모두 선택한 언어로 표시됩니다.
+■ Anima가 다른 이유
+· 광고 0, 추적 0 — 광고 식별자를 절대 수집하지 않습니다
+· 가짜 명언 없음 — 실제로 그 말을 한 사람들의 검증된 문장만
+· 한 번 구매로 평생 — 구독은 영원히 없습니다
 
-지금 이루고 싶은 꿈을 적어보세요. 내일 아침, 그 꿈에 다가가는 첫 한 걸음이 도착합니다.
+당신의 꿈에 완벽한 계획은 필요 없습니다. 필요한 건 오늘 뗀 첫걸음 하나입니다.
 
-— 개인정보 보호
-위치·연락처·사진·통화 기록을 수집하지 않습니다.`,
+Anima와 함께 떼어보세요.`,
   },
   "es-ES": {
     promotionalText:
-      "La app que te lleva a tu sueño. Escribe el sueño que persigues y Anima lo convierte en el paso de hoy, directo al widget de tu pantalla de inicio.",
+      "Tu futuro se convierte en lo que crees. Afirmaciones diarias de tu yo del futuro.",
     keywords:
       "motivación,afirmaciones,frase diaria,metas,hábitos,widget,sueño,mentalidad",
     whatsNew: "Pequeñas mejoras y descripción renovada.",
-    description: `La app que te lleva a tu sueño.
+    description: `¿Y si hubiera una app que hiciera realidad tus sueños?
 
-Anima te hace una sola pregunta: ¿qué sueño persigues? Escríbelo y cada mañana tendrás el paso de hoy hacia él, junto a la frase que te empuja a darlo. Sin agendas complicadas. Solo la frase que necesitas para empezar hoy.
+No por arte de magia. Por la regla más antigua que existe: te conviertes en lo que crees.
 
-■ La frase de hoy, sacada de tu sueño
-Escribe un párrafo sobre el sueño que persigues y Anima crea cada día una tarjeta nueva a partir de él. Las palabras que más necesitas llegan cada mañana.
+Cada gran vida que admiras empezó igual: como una creencia que alguien se negó a soltar. Anima toma esa creencia y la convierte en algo que de verdad haces cada día, en cerca de un minuto.
 
-■ Widgets en pantalla de inicio
-Recibe tu frase diaria en la pantalla de inicio de iOS y en un widget grande en iPad. La encontrarás de forma natural durante el día sin abrir la app.
+■ Te conviertes en lo que crees
+La mente se mueve hacia aquello que le repites. Así que dile algo digno de llegar a ser. Escribe en quién te estás convirtiendo y, cada mañana, tu yo del futuro te responde: una línea, escrita para el futuro que describiste.
 
-■ Crea rachas reescribiendo tus afirmaciones
-Escribe “el tú que ya vive el sueño” y vuelve a copiarlo cada día para sumar una racha. Las pequeñas repeticiones se convierten en identidad.
+■ Comprueba tú mismo el poder de las afirmaciones
+No tienes que creer en la palabra de nadie. Escribe una afirmación al día durante dos semanas y nota lo distinto que empiezas el día. Ese es todo el experimento, y tú eres la única prueba que necesitas.
 
-■ Una misión diaria de una línea
-Responde “Yo soy ___” línea a línea y construye paso a paso la identidad que buscas.
+■ Tú también puedes ser grande
+La grandeza no es algo con lo que se nace. La construyen quienes siguieron creyendo en los días corrientes: esos sin motivación y sin nadie mirando. Anima está hecha justo para esos días.
 
-■ Curaduría de frases con los referentes que elijas
-Fija a un filósofo, fundador o líder que admires y sus frases llegarán primero. Déjalo abierto y cada semana rotarán automáticamente unos ocho referentes.
+■ Empezar lo es todo
+La mayoría de los sueños no mueren por falta de talento. Mueren porque el primer paso nunca ocurre. Haz de hoy ese primer paso, y hazlo lo bastante pequeño como para darlo de verdad.
 
-■ Registra tus pequeños logros de hoy
-Por pequeño que sea, anota lo que hiciste bien hoy. Revísalo por fecha y observa cómo tu crecimiento se acumula sin darte cuenta.
+■ Qué incluye
+· Afirmaciones y motivación diarias — una línea a la medida del futuro que construyes
+· Personalizada para ti — según el yo del futuro que describes y tus metas de hoy
+· Mentores reales, palabras reales — de Séneca a voces actuales, nunca una cita inventada
+· Escritura de intención diaria — traza una afirmación breve y fija tu mentalidad del día
+· Diario de logros — anota lo que salió bien hoy y date el crédito
+· Calma por diseño — sin anuncios, sin rastreo, sin spam de notificaciones
 
-■ Cuatro idiomas
-한국어 · English · Español · 中文: tanto la app como tu mensaje diario aparecen en el idioma que elijas.
+■ Por qué Anima es diferente
+· Cero anuncios, cero rastreo — nunca recopilamos tu identificador de publicidad
+· Sin citas falsas — solo palabras curadas de personas reales que de verdad las dijeron
+· Pago único, tuya de por vida — sin suscripciones, nunca
 
-Escribe hoy tu sueño. Mañana por la mañana llegará tu primer paso hacia él.
+Tu sueño no necesita un plan perfecto. Necesita un primer paso, dado hoy.
 
-— Privacidad
-No recopilamos ubicación, contactos, fotos ni registros de llamadas.`,
+Dalo con Anima.`,
   },
   "zh-Hans": {
     promotionalText:
-      "帮你实现梦想的 App。写下你想实现的梦想，Anima 会把它变成今天要走的一步，直接送到主屏小组件。微小的重复，终将让梦想成真。",
+      "你的未来，取决于你相信什么。来自未来自己的每日肯定语，让微小的重复终将成真。",
     keywords:
       "励志,正能量,每日金句,目标,习惯,小组件,自我提升,梦想,名言,成功,坚持,语录,心态,自律,打卡",
     whatsNew: "更新了应用介绍，并进行了小幅改进。",
-    description: `帮你实现梦想的 App。
+    description: `如果有一款 App 能让你的梦想成真，会怎样？
 
-Anima 只问你一件事：你想实现什么梦想？写下来，每天清晨就会收到通往它的今日一步，以及推你迈出那一步的一句话。不需要复杂的计划表，只要开启今天所需要的那一句话。
+不是靠魔法，而是靠最古老的一条法则：你相信什么，就会成为什么。
 
-■ 从你的梦想里长出的今日一句
-写下你想实现的梦想，Anima 每天都会据此生成一张全新的卡片，把你最需要的话送到每个清晨。
+你所敬佩的每一段伟大人生，都始于同样的起点——一个有人始终不肯放下的信念。Anima 把那份信念，变成你每天真正会做的事，只需约一分钟。
 
-■ 主屏小组件
-在 iOS 主屏上接收每日一句，iPad 还支持大尺寸小组件。不打开 App，也能在一天中自然地与它相遇。
+■ 你相信什么，就会成为什么
+心，会朝着你不断对它说的话前进。所以，告诉它值得成为的样子。写下你正在成为的那个人，每天清晨，未来的你都会回应你——一句为你描述的未来而写的话。
 
-■ 抄写誓言，累积连续打卡
-写下“实现梦想的你”，每天照着抄写一遍，累积连续天数。微小的重复，终将成为你的身份。
+■ 亲自见证肯定语的力量
+你不必听信任何人。每天写一句肯定语，坚持两周，感受自己迎接每一天的状态有多不同。这就是全部的实验，而你自己就是唯一需要的证据。
 
-■ 每日一句使命
-逐行回答“我是 ___”，一步步塑造你想成为的身份。
+■ 你也可以了不起
+了不起不是与生俱来的，而是由那些在平凡日子里——没有动力、也无人注视时——依然坚持相信的人一点点建成的。Anima 正是为那样的日子而生。
 
-■ 名人语录精选
-选定一位你欣赏的哲学家、企业家或领袖，他的语录会优先送达。留空则每周自动轮换约八位导师。
+■ 开始，就是一切
+大多数梦想不是因为缺乏才华而消亡，而是因为第一步始终没有迈出。所以，把今天当作第一步，并让它小到你真的会去做。
 
-■ 记录今天做得好的小事
-再微小也没关系。写下今天做得好的事，按日期回看，你会发现成长在不知不觉中累积。
+■ 内含什么
+· 每日肯定语与激励——为你正在建构的未来量身写就的一句话
+· 为你量身定制——依据你描述的未来自己与今天的目标
+· 真实的导师，真实的话语——从塞内卡到当代的声音，绝无杜撰的名言
+· 每日意图书写——描摹一句简短的肯定语，定下一天的心态
+· 成就日记——记下今天做得好的事，给自己应得的肯定
+· 以宁静为设计——无广告、无追踪、无通知轰炸
 
-■ 支持四种语言
-한국어 · English · Español · 中文 —— 应用界面与每日一句都会以你选择的语言显示。
+■ Anima 为何与众不同
+· 零广告、零追踪——我们从不收集你的广告标识符
+· 没有假名言——只有真实人物确实说过、经过甄选的话语
+· 一次购买，终身拥有——永不订阅
 
-现在就写下你的梦想。明天清晨，通往它的第一步就会送达。
+你的梦想不需要完美的计划，只需要今天迈出的第一步。
 
-— 隐私保护
-我们不收集位置信息、通讯录、照片或通话记录。`,
+与 Anima 一起，迈出这一步。`,
   },
 };
 
