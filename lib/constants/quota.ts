@@ -61,8 +61,28 @@ export const DAILY_QUOTA = {
 export type QuotaKey = keyof typeof DAILY_QUOTA;
 
 /**
- * 운영에서 true 로 켜면 결제 검증을 통과하지 못한 사용자의 보호 라우트 호출을 402 로 차단.
- * 개발/베타 단계에서는 false (기본값) — 결제 흐름이 완성되기 전 모든 라우트가 살아있도록.
+ * 운영에서 true 로 켜면 무료 티어 정책이 발효된다(아래 표). false(기본값) 면 모두가 Pro 와
+ * 동일하게 동작한다 — 결제 흐름이 완성되기 전 베타에서 모든 라우트가 살아있도록.
+ *
+ * ── 티어 정책 ────────────────────────────────────────────────────
+ * 체험(14일)이 끝난 미결제 사용자도 **매일의 습관은 계속 유지**하고, 결제 유도는 AI 개인화
+ * 기능에서만 한다. 그래야 이탈 없이 장기적으로 전환을 노릴 수 있고, LLM 비용은 결제 사용자에게만
+ * 발생한다.
+ *
+ *   무료 유지 (verifyRequestUser)
+ *     · 매일 큐레이션 명언 카드 1장  — ensureMotivation({ curatedOnly: true }), Gemini 미호출
+ *     · 홈/잠금화면 위젯            — 같은 카드를 그대로 노출
+ *     · 다짐 따라쓰기 체크인         — /api/affirmation-checkin
+ *     · 카드 미션 한 줄 기록         — /api/mission-response
+ *     · 지난 기록 열람              — 각 GET 라우트
+ *
+ *   Pro 전용 (requirePaidUser → 402 → 클라이언트 페이월)
+ *     · AI 개인화 카드 / "또 다른 한마디" 재생성 · 작가 지정
+ *     · 미래 일상 비전   · 10년 후 나의 모습 초상
+ *     · 작가 추천       · 다짐 코치        · WOOP 장애물 제안
+ *
+ * 무료/Pro 분기는 [lib/authServer.ts] 의 canUseAiFeatures(다운그레이드) 와
+ * requirePaidUser(차단) 두 함수에만 존재한다. 여기 표를 고쳤으면 그 두 호출부도 함께 볼 것.
  */
 export const ENTITLEMENT_REQUIRED = process.env.ENTITLEMENT_REQUIRED === "true";
 

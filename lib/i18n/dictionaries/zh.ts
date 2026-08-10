@@ -325,6 +325,15 @@ const dict: Record<DictKey, string> = {
   "billing.trialBanner": "免费试用还剩 {days} 天",
   "billing.trialEnded": "免费试用已结束。",
   "billing.upgrade": "升级",
+  "billing.paywall.title": "此功能需要终身权益",
+  "billing.paywall.desc":
+    "每日卡片、小组件和宣言打卡仍然免费。一次买断即可解锁为你量身定制的 AI 卡片和未来愿景。",
+  "billing.paywall.cta": "查看终身权益",
+  "billing.paywall.restore": "已购买 · 恢复购买",
+  "billing.paywall.webNotice":
+    "请在 iPhone 或 Android 应用内完成购买。在应用中登录后，会自动应用到当前账号。",
+  "billing.paywall.goSettings": "前往设置",
+  "billing.paywall.dismiss": "继续免费使用",
 
   // Apple iOS redesign — settings/auth/legal/common additions
   "auth.signOut": "退出登录",

@@ -11,7 +11,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
-import { verifyRequestUser, requirePaidUser, AuthError } from "@/lib/authServer";
+import { verifyRequestUser, canUseAiFeatures, AuthError } from "@/lib/authServer";
 import { ensureMotivation, isValidYmd, todayKst, resolveRequestYmd } from "@/lib/dailyMotivation";
 import { enforceQuota, QuotaExceededError } from "@/lib/quota";
 
@@ -51,8 +51,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // LLM 생성 경로 — ENTITLEMENT_REQUIRED=true 시 결제/체험 사용자만 통과.
-    const me = await requirePaidUser(request);
+    // 무료 티어도 오늘의 카드 1장은 계속 받는다(큐레이션으로 다운그레이드).
+    // 재생성·작가 지정만 Pro 전용 — 아래에서 402 로 막는다. 정책표는 lib/constants/quota.ts.
+    const me = await verifyRequestUser(request);
+    const aiAllowed = canUseAiFeatures(me);
     let body: PostBody = {};
     try {
       body = (await request.json()) as PostBody;
@@ -67,6 +69,15 @@ export async function POST(request: NextRequest) {
         ? body.overrideAuthor.trim().slice(0, OVERRIDE_AUTHOR_MAX_LEN)
         : undefined;
 
+    // 재생성/작가 지정은 Pro 전용 — 매번 Gemini 를 새로 호출하는 경로라 무료로 열 수 없다.
+    // 첫 카드 보장(force=false)은 무료도 통과해 큐레이션 카드를 받는다.
+    if ((force || overrideAuthor) && !aiAllowed) {
+      throw new AuthError(
+        402,
+        "다른 한마디 받기는 이용권이 필요해요. 오늘의 카드는 그대로 이용하실 수 있어요.",
+      );
+    }
+
     // "오늘의 또 다른 한마디" 재생성 호출만 한도에 카운트한다.
     // 첫 카드 생성 (force=false, 캐시 미스) 은 한도에 영향 없음.
     if (force || overrideAuthor) {
@@ -79,6 +90,7 @@ export async function POST(request: NextRequest) {
       // overrideAuthor 는 항상 새 카드를 만들어야 의미 있음
       force: force || Boolean(overrideAuthor),
       overrideAuthor,
+      curatedOnly: !aiAllowed,
     });
     return NextResponse.json({ motivation: result.motivation, cached: result.cached });
   } catch (err) {

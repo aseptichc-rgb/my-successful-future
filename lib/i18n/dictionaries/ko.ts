@@ -329,6 +329,16 @@ const dict = {
   "billing.trialBanner": "남은 무료 체험 {days}일",
   "billing.trialEnded": "무료 체험이 끝났어요.",
   "billing.upgrade": "업그레이드",
+  // Pro 유도 시트(Pro 전용 기능 시도 시에만 노출) — components/billing/ProUpsellSheet.tsx
+  "billing.paywall.title": "이 기능은 이용권이 필요해요",
+  "billing.paywall.desc":
+    "오늘의 카드와 위젯, 다짐 체크인은 계속 무료로 쓸 수 있어요. 평생 이용권 한 번이면 나에게 맞춘 AI 카드와 미래 비전까지 모두 열립니다.",
+  "billing.paywall.cta": "평생 이용권 보기",
+  "billing.paywall.restore": "이미 구매했어요 · 구매 복원",
+  "billing.paywall.webNotice":
+    "결제는 iPhone 또는 Android 앱에서 진행할 수 있어요. 앱에서 로그인하면 이 계정에 그대로 적용됩니다.",
+  "billing.paywall.goSettings": "설정으로 이동",
+  "billing.paywall.dismiss": "무료로 계속 쓸게요",
 
   // ── Apple iOS 리디자인 추가 키 (settings/auth/legal/common 보강) ─────
   "auth.signOut": "로그아웃",

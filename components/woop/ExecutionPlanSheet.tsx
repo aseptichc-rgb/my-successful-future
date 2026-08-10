@@ -10,6 +10,7 @@ import {
   type ExecutionPlanWithId,
 } from "@/lib/firebase";
 import { authedFetch } from "@/lib/authedFetch";
+import { isPaymentRequired } from "@/lib/paymentRequired";
 import { notifyAndroidWidgetRefresh } from "@/lib/widgetBridge";
 import { refreshIosWidget } from "@/lib/iosWidget";
 import { useT } from "@/lib/i18n";
@@ -118,6 +119,8 @@ export default function ExecutionPlanSheet({
         suggestions?: ObstacleSuggestion[];
         error?: string;
       };
+      // Pro 전용 — 업그레이드 시트가 안내하므로 인라인 에러는 띄우지 않는다.
+      if (isPaymentRequired(res)) return;
       if (!res.ok || !data.ok || !Array.isArray(data.suggestions)) {
         throw new Error(data.error || t("woop.suggestFailed"));
       }

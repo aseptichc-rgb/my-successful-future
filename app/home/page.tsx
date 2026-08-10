@@ -32,6 +32,7 @@ import {
   type WeeklyReview,
 } from "@/lib/weeklyReview";
 import { authedFetch } from "@/lib/authedFetch";
+import { isPaymentRequired } from "@/lib/paymentRequired";
 import { notifyAndroidWidgetRefresh } from "@/lib/widgetBridge";
 import { refreshIosWidget } from "@/lib/iosWidget";
 import { syncIosNotifications } from "@/lib/notificationBridge";
@@ -332,6 +333,8 @@ export default function HomeDashboardPage() {
             body: JSON.stringify({ ymd }),
           })
             .then(async (res) => {
+              // 402 는 업그레이드 시트가 안내한다 — 인라인 에러로 같은 말을 겹치지 않는다.
+              if (isPaymentRequired(res)) return;
               if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
                 throw new Error((data as { error?: string }).error || "동기부여 카드를 만들지 못했어요.");
@@ -364,6 +367,8 @@ export default function HomeDashboardPage() {
         method: "POST",
         body: JSON.stringify({ ymd, force: true }),
       });
+      // Pro 전용 — 업그레이드 시트가 이미 떴으므로 조용히 종료한다.
+      if (isPaymentRequired(res)) return;
       const data = (await res.json().catch(() => ({}))) as {
         motivation?: DailyMotivation;
         error?: string;
@@ -408,6 +413,8 @@ export default function HomeDashboardPage() {
             body: JSON.stringify({ ymd }),
           })
             .then(async (res) => {
+              // 402 는 업그레이드 시트가 안내한다 — 인라인 에러로 같은 말을 겹치지 않는다.
+              if (isPaymentRequired(res)) return;
               if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
                 throw new Error((data as { error?: string }).error || "꿈이 이뤄진 하루를 만들지 못했어요.");
@@ -443,6 +450,8 @@ export default function HomeDashboardPage() {
         method: "POST",
         body: JSON.stringify({ ymd, force: true }),
       });
+      // Pro 전용 — 업그레이드 시트가 이미 떴으므로 조용히 종료한다.
+      if (isPaymentRequired(res)) return;
       const data = (await res.json().catch(() => ({}))) as {
         vision?: FutureVision;
         error?: string;

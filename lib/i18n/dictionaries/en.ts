@@ -335,6 +335,15 @@ const dict: Record<DictKey, string> = {
   "billing.trialBanner": "{days} days left in trial",
   "billing.trialEnded": "Your free trial has ended.",
   "billing.upgrade": "Upgrade",
+  "billing.paywall.title": "This one needs lifetime access",
+  "billing.paywall.desc":
+    "Your daily card, widget, and affirmation check-in stay free. One lifetime purchase unlocks AI cards personalized to you, plus your future vision.",
+  "billing.paywall.cta": "See lifetime access",
+  "billing.paywall.restore": "Already purchased · Restore",
+  "billing.paywall.webNotice":
+    "Purchases are made in the iPhone or Android app. Sign in there and it applies to this same account.",
+  "billing.paywall.goSettings": "Go to Settings",
+  "billing.paywall.dismiss": "Keep using it free",
 
   // Apple iOS redesign — settings/auth/legal/common additions
   "auth.signOut": "Sign out",

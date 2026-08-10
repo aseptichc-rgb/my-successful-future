@@ -9,7 +9,7 @@
  * 폴백하므로 이 라우트는 200 을 유지한다 — 단, 쿼터는 소진된다(기존 정책과 동일).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { verifyRequestUser, AuthError } from "@/lib/authServer";
+import { requirePaidUser, AuthError } from "@/lib/authServer";
 import { enforceQuota, QuotaExceededError } from "@/lib/quota";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { suggestAffirmationRewrites, COACH_INPUT_MAX_LEN } from "@/lib/affirmationCoach";
@@ -23,7 +23,8 @@ interface PostBody {
 
 export async function POST(request: NextRequest) {
   try {
-    const me = await verifyRequestUser(request);
+    // LLM 생성 경로 — ENTITLEMENT_REQUIRED=true 시 결제/체험 사용자만 통과.
+    const me = await requirePaidUser(request);
 
     let body: PostBody = {};
     try {

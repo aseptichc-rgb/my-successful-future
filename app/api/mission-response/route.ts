@@ -24,6 +24,8 @@ interface PostBody {
 
 export async function POST(request: NextRequest) {
   try {
+    // 무료 티어 유지 기능 — 매일의 기록 습관은 미결제 사용자에게도 계속 열어둔다.
+    // (결제 유도는 AI 생성 기능에서만 — lib/constants/quota.ts 의 티어 정책 주석 참고.)
     const me = await verifyRequestUser(request);
 
     let body: PostBody = {};

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { authedFetch } from "@/lib/authedFetch";
+import { isPaymentRequired } from "@/lib/paymentRequired";
 import { useT, type DictKey } from "@/lib/i18n";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -58,6 +59,8 @@ export default function CoachPanel({
           error?: string;
         };
         if (cancelled) return;
+        // Pro 전용 — 업그레이드 시트가 안내하므로 인라인 에러는 띄우지 않는다.
+        if (isPaymentRequired(res)) return;
         if (res.status === HTTP_TOO_MANY_REQUESTS) {
           setError(t("coach.quota"));
           return;

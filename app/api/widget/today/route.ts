@@ -14,7 +14,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
-import { requirePaidUser, AuthError } from "@/lib/authServer";
+import { verifyRequestUser, canUseAiFeatures, AuthError } from "@/lib/authServer";
 import { enforceQuota, QuotaExceededError } from "@/lib/quota";
 import {
   KST_OFFSET_MS,
@@ -181,9 +181,10 @@ function nextRefreshIso(now: Date): string {
 
 export async function GET(request: NextRequest) {
   try {
-    // 결제 게이팅: ENTITLEMENT_REQUIRED=true 운영에서 미결제 사용자 차단.
-    // 개발/베타에서는 통과시키되 user.paid 로 다운그레이드 응답을 줄 수 있다(현재는 동일 응답).
-    const me = await requirePaidUser(request);
+    // 위젯은 무료 티어의 핵심 습관 표면이라 막지 않는다 — 미결제 사용자는 큐레이션 카드로
+    // 다운그레이드해서 계속 채워준다(빈 위젯은 곧 삭제로 이어진다). 정책표: lib/constants/quota.ts.
+    const me = await verifyRequestUser(request);
+    const aiAllowed = canUseAiFeatures(me);
 
     const url = new URL(request.url);
     const ymdParam = url.searchParams.get("ymd");
@@ -205,7 +206,11 @@ export async function GET(request: NextRequest) {
     }
 
     // 1) 오늘의 개인화 카드 보장 (없으면 생성)
-    const { motivation } = await ensureMotivation({ uid: me.uid, ymd });
+    const { motivation } = await ensureMotivation({
+      uid: me.uid,
+      ymd,
+      curatedOnly: !aiAllowed,
+    });
 
     // 2) 진척도 수집 + streak 동시 추출. home 의 "오늘 행동 체크" 와 일치하도록
     //    user.goals 를 실시간으로 읽고, 같은 스냅샷에서 affirmationStreak.count 도 함께 뽑아
@@ -257,12 +262,16 @@ export async function GET(request: NextRequest) {
     //   이미 있으면 캐시를 그대로 읽는다(하루 1회 Gemini, 이후 0). force 경로가 아니라
     //   enforceQuota 를 타지 않으므로 429 위험이 없다. 어떤 실패든 티저를 생략해 위젯 본문은
     //   영향받지 않는다(비전은 보조 콘텐츠 — 없을 땐 해당 섹션만 자연 생략).
+    //   무료 티어는 이 블록을 통째로 건너뛴다 — 비전은 Pro 전용이라 위젯에서 몰래 생성하면
+    //   막아둔 기능의 LLM 비용이 그대로 새어나간다. 티저만 빠지고 위젯 본문은 정상 동작한다.
     let futureVision: WidgetFutureVision | undefined;
-    try {
-      const { vision } = await ensureFutureVision({ uid: me.uid, ymd });
-      futureVision = buildVisionTeaser(vision) ?? undefined;
-    } catch (err) {
-      console.error("[widget/today] 미래 비전 티저 조립 실패(생략):", err);
+    if (aiAllowed) {
+      try {
+        const { vision } = await ensureFutureVision({ uid: me.uid, ymd });
+        futureVision = buildVisionTeaser(vision) ?? undefined;
+      } catch (err) {
+        console.error("[widget/today] 미래 비전 티저 조립 실패(생략):", err);
+      }
     }
 
     // 3) 슬롯 조립 — motivation 한 장만 노출 (홈과 동일).

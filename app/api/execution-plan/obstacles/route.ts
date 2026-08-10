@@ -9,7 +9,7 @@
  * 이 라우트는 200 을 유지한다 — 단, 쿼터는 소진된다(기존 생성 라우트들과 동일 정책).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { verifyRequestUser, AuthError } from "@/lib/authServer";
+import { requirePaidUser, AuthError } from "@/lib/authServer";
 import { enforceQuota, QuotaExceededError } from "@/lib/quota";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { suggestObstacles } from "@/lib/executionPlan";
@@ -53,7 +53,8 @@ async function fetchRecentWins(uid: string): Promise<string[]> {
 
 export async function POST(request: NextRequest) {
   try {
-    const me = await verifyRequestUser(request);
+    // LLM 생성 경로 — ENTITLEMENT_REQUIRED=true 시 결제/체험 사용자만 통과.
+    const me = await requirePaidUser(request);
 
     let body: PostBody = {};
     try {

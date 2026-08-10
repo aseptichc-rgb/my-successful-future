@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { AuthProvider } from "@/lib/auth-context";
 import LanguageBridge from "@/components/LanguageBridge";
+import ProUpsellSheet from "@/components/billing/ProUpsellSheet";
 import "./globals.css";
 
 // 폰트는 Pretendard 단일 — globals.css 의 --font-* 체인이 CDN Pretendard 를 우선
@@ -47,7 +48,11 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col font-sans bg-[var(--bg-grouped)] text-[var(--label)]">
         <AuthProvider>
-          <LanguageBridge>{children}</LanguageBridge>
+          <LanguageBridge>
+            {children}
+            {/* Pro 전용 기능을 눌렀을 때만 올라오는 업그레이드 시트(닫기 가능). 평소엔 렌더 없음. */}
+            <ProUpsellSheet />
+          </LanguageBridge>
         </AuthProvider>
       </body>
     </html>

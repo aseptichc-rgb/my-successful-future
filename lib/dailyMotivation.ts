@@ -22,7 +22,7 @@ import { generateText } from "@/lib/gemini";
 import { type FamousQuoteSeed } from "@/lib/famousQuotesSeed";
 import { getQuoteSeedPool } from "@/lib/famousQuoteCatalog";
 import { anonymousAuthorLabel, getCuratedQuotePool } from "@/lib/curatedQuotes";
-import { ensureIdentities } from "@/lib/identities";
+import { ensureIdentities, readIdentityLabels } from "@/lib/identities";
 import { geminiLanguageName, normalizeLanguage } from "@/lib/llmLang";
 import { FUTURE_PERSONA_TRUNC } from "@/lib/constants/futurePersona";
 import type {
@@ -766,8 +766,19 @@ export async function ensureMotivation(opts: {
   ymd: string;
   force?: boolean;
   overrideAuthor?: string;
+  /**
+   * 무료 티어 카드 — Gemini 를 **한 번도** 호출하지 않고 큐레이션 시드에서만 카드를 만든다.
+   *
+   * 결제하지 않아도 매일의 습관(카드 1장 + 위젯)은 계속 살아 있게 하되, LLM 비용은 결제
+   * 사용자에게만 발생시키기 위한 다운그레이드 경로다. 명언 선택은 [deterministicFallback],
+   * 미션은 [buildFallbackMission] 이 맡으므로 결과물의 형태(DailyMotivation)는 완전히 동일하다
+   * — 위젯·홈·기록 어느 쪽도 무료/결제를 구분하는 분기를 둘 필요가 없다.
+   *
+   * 중복 회피(seenQuotes/히스토리)·그라디언트·레이스 방지 저장은 결제 경로와 그대로 공유한다.
+   */
+  curatedOnly?: boolean;
 }): Promise<{ motivation: DailyMotivation; cached: boolean }> {
-  const { uid, ymd, force = false, overrideAuthor } = opts;
+  const { uid, ymd, force = false, overrideAuthor, curatedOnly = false } = opts;
   const ref = getAdminDb().doc(`users/${uid}/dailyMotivations/${ymd}`);
   // force=true 일 때도 직전 결과는 알아야 풀에서 제외할 수 있다.
   const existingSnap = await ref.get();
@@ -779,12 +790,15 @@ export async function ensureMotivation(opts: {
   const ctx = await fetchUserContext(uid);
   // 정체성 라벨 풀 보장 — 카드의 mission.identityTag 가 항상 이 풀 안의 값이도록.
   // futurePersona/goals 가 바뀐 후 처음 카드를 만들 때 1회 Gemini 호출이 더 발생할 수 있다.
-  const identityLabels = await ensureIdentities({
-    uid,
-    futurePersona: ctx.futurePersona,
-    goals: ctx.goals,
-    language: ctx.language,
-  });
+  // 무료 티어(curatedOnly)는 그 호출까지 피해야 하므로 저장된 라벨만 읽는다.
+  const identityLabels = curatedOnly
+    ? await readIdentityLabels(uid, ctx.language)
+    : await ensureIdentities({
+        uid,
+        futurePersona: ctx.futurePersona,
+        goals: ctx.goals,
+        language: ctx.language,
+      });
 
   const gradient = pickGradient(`${uid}:${ymd}`);
   const trimmedOverride = overrideAuthor?.trim() || undefined;
@@ -858,7 +872,21 @@ export async function ensureMotivation(opts: {
     ]),
   );
 
-  if (pool.length === 0 && freeAuthor) {
+  if (curatedOnly) {
+    // 무료 티어 — Gemini 를 건너뛰고 오늘의 풀에서 결정론적으로 1건 고른다.
+    // promptPool(모델에게 보여줄 균형 추출본) 이 아니라 pool 전체를 쓴다: 모델 컨텍스트 상한을
+    // 맞출 이유가 없으니 후보를 좁힐수록 손해다.
+    picked = toPickedQuote(
+      deterministicFallback(uid, force ? `${ymd}:${varietySalt}` : ymd, pool, ctx.language),
+      ctx.language,
+    );
+    mission = buildFallbackMission(
+      identityLabels,
+      ctx.goals,
+      `${uid}:${ymd}:${varietySalt}`,
+      ctx.language,
+    );
+  } else if (pool.length === 0 && freeAuthor) {
     // 시드에 없는 free-text 인물 → Gemini 가 실제 발언 + mission/identityTag 를 같이 가져옴.
     try {
       const raw = await generateText(

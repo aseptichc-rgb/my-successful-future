@@ -121,6 +121,37 @@ function parseLabels(raw: string): string[] | null {
  * 풀이 없거나 (futurePersona+goals) 변경이 감지되면 새로 생성해 저장.
  * 항상 최신 라벨 배열을 반환한다 — 카드 생성기가 바로 사용할 수 있도록.
  */
+/**
+ * 저장된 정체성 라벨만 읽어온다 — **Gemini 를 호출하지 않는다.**
+ *
+ * 무료 티어 카드 생성 경로 전용([ensureMotivation] 의 curatedOnly). 라벨이 아직 없으면
+ * 언어별 기본 라벨로 떨어지고, 저장도 하지 않는다.
+ *
+ * [ensureIdentities] 와 달리 sourcePersonaHash 불일치(= 꿈/목표가 바뀌어 라벨이 낡음)를
+ * 의도적으로 무시한다: 무료 사용자에게 라벨 재생성 비용을 태우지 않기 위함이고, 낡은 라벨이라도
+ * 카드 한 장이 정체성 1개에 매핑된다는 불변식은 그대로 지켜진다. 결제 후에는 다음 카드 생성에서
+ * [ensureIdentities] 가 최신 라벨로 자연히 덮어쓴다.
+ */
+export async function readIdentityLabels(
+  uid: string,
+  language?: UserLanguage,
+): Promise<string[]> {
+  const lang = normalizeLanguage(language ?? "ko");
+  try {
+    const snap = await getAdminDb().doc(`users/${uid}`).get();
+    const existing = snap.data()?.identities as UserIdentities | undefined;
+    if (existing && Array.isArray(existing.labels) && existing.labels.length >= IDENTITY_MIN) {
+      return existing.labels.slice();
+    }
+  } catch (err) {
+    console.warn(
+      "[identities] 라벨 조회 실패, 기본 라벨 사용:",
+      err instanceof Error ? err.message : err,
+    );
+  }
+  return (FALLBACK_LABELS[lang] ?? FALLBACK_LABELS.ko).slice();
+}
+
 export async function ensureIdentities(opts: {
   uid: string;
   futurePersona: string;

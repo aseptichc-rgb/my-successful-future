@@ -341,6 +341,15 @@ const dict: Record<DictKey, string> = {
   "billing.trialBanner": "Te quedan {days} días de prueba",
   "billing.trialEnded": "Tu prueba gratuita terminó.",
   "billing.upgrade": "Mejorar",
+  "billing.paywall.title": "Esto necesita acceso de por vida",
+  "billing.paywall.desc":
+    "Tu tarjeta diaria, el widget y el registro de afirmaciones siguen siendo gratis. Una sola compra de por vida desbloquea las tarjetas con IA personalizadas y tu visión de futuro.",
+  "billing.paywall.cta": "Ver acceso de por vida",
+  "billing.paywall.restore": "Ya lo compré · Restaurar",
+  "billing.paywall.webNotice":
+    "La compra se hace en la app de iPhone o Android. Inicia sesión allí y se aplicará a esta misma cuenta.",
+  "billing.paywall.goSettings": "Ir a Ajustes",
+  "billing.paywall.dismiss": "Seguir usándolo gratis",
 
   // Apple iOS redesign — settings/auth/legal/common additions
   "auth.signOut": "Cerrar sesión",

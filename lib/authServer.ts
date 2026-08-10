@@ -140,6 +140,21 @@ export async function requirePaidUser(request: NextRequest): Promise<AuthedUser>
   );
 }
 
+/**
+ * AI 생성 기능(Gemini 호출)을 쓸 수 있는 사용자인지 — **던지지 않고** boolean 으로 답한다.
+ *
+ * [requirePaidUser] 와 역할이 다르다:
+ *   requirePaidUser   — Pro 전용 라우트를 통째로 막는다(402). 미래 비전·초상·코치 등.
+ *   canUseAiFeatures  — 무료로도 계속 써야 하는 라우트에서 "AI 개인화 대신 큐레이션으로
+ *                       다운그레이드할지" 를 정한다. 카드·위젯이 여기에 해당.
+ *
+ * ENTITLEMENT_REQUIRED 가 꺼져 있으면(개발/베타) 항상 true — 게이트 스위치는 여전히 하나다.
+ */
+export function canUseAiFeatures(user: AuthedUser): boolean {
+  if (!ENTITLEMENT_REQUIRED) return true;
+  return hasProAccess(user.entitlement);
+}
+
 export class AuthError extends Error {
   constructor(public status: number, message: string) {
     super(message);
