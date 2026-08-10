@@ -60,8 +60,10 @@ const config: CapacitorConfig = {
     backgroundColor: "#F0EDE6", // 안드로이드 Theme.Anima 와 동일 베이지.
     // WKWebView 로딩 실패 시 보여줄 텍스트 (네이티브 alert 로 노출).
     loggingBehavior: "production",
-    // iOS 16.4+ 에서 표준이 된 WKWebView 인스펙터 활성화 — TestFlight 빌드도 디버깅 가능.
-    webContentsDebuggingEnabled: true,
+    // WKWebView 인스펙터(Safari 개발자 도구 연결). 켜두면 배포 앱에서도 웹뷰 DOM·네트워크·
+    // 세션 쿠키를 그대로 들여다볼 수 있으므로 출시 빌드에서는 반드시 꺼야 한다.
+    // 디버깅이 필요한 로컬/TestFlight 빌드에서만 IOS_WEBVIEW_DEBUG=true 로 켠 뒤 cap sync.
+    webContentsDebuggingEnabled: process.env.IOS_WEBVIEW_DEBUG === "true",
     // App Group ID — 위젯 익스텐션과 데이터 공유 시 사용. Apple Developer Account 에서
     // group.com.michaelkim.anima 를 등록한 뒤 Xcode Capabilities 에서 활성화한다.
     // 위 ID 와 Info.plist 의 NSAppTransportSecurity 도 함께 설정해야 한다.

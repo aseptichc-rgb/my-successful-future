@@ -113,11 +113,27 @@ export async function POST(request: NextRequest) {
         { status: 401 },
       );
     }
-    if (isSubscription && !verification.expiresAtMs) {
-      return NextResponse.json(
-        { error: "구독 영수증에 expiresDate 가 없습니다." },
-        { status: 402 },
-      );
+    // 구독은 expiresDate 가 있어야 하고, 이미 지난 영수증이면 권한을 주지 않는다.
+    // readEntitlement 가 만료된 ent claim 을 free 로 떨어뜨리므로 접근 자체는 막히지만,
+    // 여기서 걸러야 "죽은 claim 을 박고 200 ok" 를 돌려주는 상태가 안 생긴다.
+    //
+    // ⚠️ 구독 상품을 실제로 출시하려면 이 검증만으로는 부족하다. 갱신(DID_RENEW)/만료
+    //    (EXPIRED) 알림을 [app/api/apple-webhook/route.ts] 가 처리해 claim 의 expiresAt 을
+    //    갱신해야 한다. 현재는 REFUND/REVOKE 만 처리하므로, 갱신 사용자가 첫 주기 종료와
+    //    동시에 접근을 잃는다. APPLE_SUBSCRIPTION_PRODUCT_IDS 를 채우기 전에 반드시 선행할 것.
+    if (isSubscription) {
+      if (!verification.expiresAtMs) {
+        return NextResponse.json(
+          { error: "구독 영수증에 expiresDate 가 없습니다." },
+          { status: 402 },
+        );
+      }
+      if (verification.expiresAtMs <= Date.now()) {
+        return NextResponse.json(
+          { error: "이미 만료된 구독 영수증입니다." },
+          { status: 402 },
+        );
+      }
     }
 
     // 3-b) 영수증 재사용 차단 — 동일 originalTransactionId 가 이미 다른(회수되지 않은)

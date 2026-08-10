@@ -6,18 +6,18 @@
  *
  * 삭제 범위:
  *   1) users/{uid} 와 그 모든 서브컬렉션
- *      - dailyEntries/{ymd}
- *      - dailyMotivations/{ymd}
- *      - usage/{ymd}
- *      - identityProgress/{tag}
- *      - affirmationLogs/{ymd}
+ *      — 목록은 [lib/constants/userData.ts] 의 USER_SUBCOLLECTIONS 가 단일 진리원천.
+ *        Firestore 는 상위 문서를 지워도 서브컬렉션을 자동 삭제하지 않으므로 반드시 열거해야 한다.
  *   2) entitlements/{uid}  (결제 영수증 검증 결과)
  *   3) Firebase Auth 사용자 레코드 (auth.deleteUser)
  *
- * 보존(의도적으로 남기는 항목):
- *   - tokenUsage/{docId} : LLM 토큰 비용 회계 — 어드민 전용 read 만 가능하며
- *     본인 uid 가 들어있어도 PII 가 아닌 비용 집계 목적이라 보존 (영수증·세무 보관 의무 대비).
- *     사용자가 별도 요청 시 어드민이 수동 마스킹.
+ * 익명화(레코드는 남기고 신원만 지우는 항목):
+ *   - tokenUsage/{docId}.uid → null : LLM 토큰 비용 회계는 전자상거래법상 보관 의무가 있어
+ *     레코드 자체는 남기지만, 개인을 식별하는 uid 는 지운다. 남는 건 모델·토큰수·비용뿐이라
+ *     [app/privacy/page.tsx] 의 "anonymized token usage metrics" 문구와 실제가 일치한다.
+ *   - trialLedger/{emailHash}.lastUid → 삭제 : 원장 문서는 남겨야 탈퇴→재가입 트라이얼
+ *     리셋을 계속 막을 수 있다(문서 ID 는 복원 불가능한 단방향 해시). 계정과 이어지는
+ *     lastUid 만 제거한다. [lib/trialLedger.ts] 참고.
  *
  * 인증:
  *   Authorization: Bearer <Firebase ID Token>
@@ -28,9 +28,11 @@
  *   500 { error }   — 부분 실패 (자세한 단계는 server log)
  */
 import { NextRequest, NextResponse } from "next/server";
-import type { Firestore } from "firebase-admin/firestore";
+import { FieldValue, type Firestore } from "firebase-admin/firestore";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
 import { verifyRequestUser, AuthError } from "@/lib/authServer";
+import { USER_SUBCOLLECTIONS } from "@/lib/constants/userData";
+import { trialLedgerPath } from "@/lib/trialLedger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,14 +41,6 @@ const SESSION_COOKIE_NAME = "__session";
 
 // 삭제 시 한 번에 처리할 문서 수. Firestore batch 제한(500) 이내로 안전한 값.
 const DELETE_BATCH_SIZE = 200;
-// 사용자별 서브컬렉션 목록 — Admin SDK 는 listCollections 가 비싸서 명시 열거.
-const USER_SUBCOLLECTIONS = [
-  "dailyEntries",
-  "dailyMotivations",
-  "usage",
-  "identityProgress",
-  "affirmationLogs",
-] as const;
 
 /**
  * 단일 서브컬렉션을 페이지네이션으로 모두 삭제. limit 단위로 commit.
@@ -65,6 +59,32 @@ async function deleteSubcollection(db: Firestore, path: string): Promise<number>
     if (snap.size < DELETE_BATCH_SIZE) break;
   }
   return totalDeleted;
+}
+
+/**
+ * tokenUsage 의 비용 레코드는 남기되 uid 만 지워 익명 집계로 만든다.
+ *
+ * 페이지네이션이 필요 없다: uid 를 null 로 덮는 순간 같은 쿼리에 다시 걸리지 않으므로,
+ * 매번 "아직 uid 가 남아 있는 문서" 만 조회하면 자연히 소진된다.
+ */
+async function anonymizeTokenUsage(db: Firestore, uid: string): Promise<number> {
+  let totalRedacted = 0;
+  while (true) {
+    const snap = await db
+      .collection("tokenUsage")
+      .where("uid", "==", uid)
+      .limit(DELETE_BATCH_SIZE)
+      .get();
+    if (snap.empty) break;
+    const batch = db.batch();
+    snap.docs.forEach((d) =>
+      batch.update(d.ref, { uid: null, uidRedactedAt: FieldValue.serverTimestamp() }),
+    );
+    await batch.commit();
+    totalRedacted += snap.size;
+    if (snap.size < DELETE_BATCH_SIZE) break;
+  }
+  return totalRedacted;
 }
 
 export async function DELETE(request: NextRequest) {
@@ -92,10 +112,42 @@ export async function DELETE(request: NextRequest) {
       );
     });
 
-    // 3) users/{uid} 본문 삭제
+    // 3) 계정과 분리 보존되는 레코드에서 신원만 지운다 (레코드 자체는 목적상 남긴다).
+    //    둘 다 best-effort — 여기서 실패해도 계정 삭제 자체는 완료시키고 로그로 남긴다.
+    //    (사용자를 삭제 불가 상태에 묶어두는 것이 더 나쁜 결과다.)
+    try {
+      const redacted = await anonymizeTokenUsage(db, uid);
+      if (redacted > 0) {
+        console.info(`[account/delete] tokenUsage ${redacted}건 uid 익명화 완료.`);
+      }
+    } catch (e) {
+      console.warn(
+        `[account/delete] uid=${uid} tokenUsage 익명화 실패:`,
+        e instanceof Error ? e.message : String(e),
+      );
+    }
+
+    const ledgerPath = trialLedgerPath(me.email);
+    if (ledgerPath) {
+      try {
+        // 문서를 지우면 재가입 트라이얼 리셋 차단이 무너지므로 lastUid 필드만 제거.
+        await db.doc(ledgerPath).update({ lastUid: FieldValue.delete() });
+      } catch (e) {
+        // 원장 문서가 없는 사용자(트라이얼 미발급)는 not-found — 정상 흐름이라 debug 수준.
+        const code = (e as { code?: number | string })?.code;
+        if (code !== 5 && code !== "not-found") {
+          console.warn(
+            `[account/delete] uid=${uid} trialLedger lastUid 제거 실패:`,
+            e instanceof Error ? e.message : String(e),
+          );
+        }
+      }
+    }
+
+    // 4) users/{uid} 본문 삭제
     await db.doc(`users/${uid}`).delete();
 
-    // 4) Firebase Auth 사용자 삭제 — 같은 이메일로 재가입 가능해진다.
+    // 5) Firebase Auth 사용자 삭제 — 같은 이메일로 재가입 가능해진다.
     //    이미 다른 곳에서 삭제됐을 수 있으니 not-found 는 멱등하게 무시.
     try {
       await auth.deleteUser(uid);
@@ -104,7 +156,7 @@ export async function DELETE(request: NextRequest) {
       if (code !== "auth/user-not-found") throw err;
     }
 
-    // 5) 세션 쿠키 폐기 — 클라이언트에서 Firebase 로컬 상태도 함께 signOut 호출하지만,
+    // 6) 세션 쿠키 폐기 — 클라이언트에서 Firebase 로컬 상태도 함께 signOut 호출하지만,
     //    웹 측 httpOnly 세션이 살아 있으면 곧장 다른 라우트가 통과될 수 있어 동시에 만료시킨다.
     const response = NextResponse.json({ ok: true, deletedAt: Date.now() });
     response.cookies.set({

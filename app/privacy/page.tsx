@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-const LAST_UPDATED = "2026-06-02";
+const LAST_UPDATED = "2026-08-10";
 const CONTACT_EMAIL =
   process.env.NEXT_PUBLIC_PRIVACY_CONTACT_EMAIL || "aseptichc@gmail.com";
 
@@ -136,12 +136,32 @@ export default function PrivacyPolicyPage() {
         </Section>
 
         <Section title="5. Retention">
-          We retain your data for as long as you use the Service. When you
-          delete your account, we permanently delete your identifying
-          information, profile, daily records, and cached purchase receipts.
-          Transaction accounting records that we are legally required to keep
-          (such as anonymized token usage metrics under applicable e-commerce
-          laws) are stored separately for the statutory retention period.
+          <p>
+            We retain your data for as long as you use the Service. When you
+            delete your account, we permanently delete your identifying
+            information, profile, daily records, and cached purchase receipts.
+          </p>
+          <p className="mt-2">
+            Two records outlive your account, and neither can be used to
+            identify you:
+          </p>
+          <ul className="mt-2 list-disc space-y-2 pl-5">
+            <li>
+              <b>Token usage metrics:</b> the model, token count, and cost of
+              each AI call, which we are required to keep as transaction
+              accounting records under applicable e-commerce laws. The account
+              identifier attached to these rows is erased at the moment you
+              delete your account, leaving anonymous cost totals.
+            </li>
+            <li>
+              <b>Free-trial issuance record:</b> a one-way hash of your email
+              address and the date a free trial was issued to it. We keep this
+              so the 14-day trial cannot be reset indefinitely by deleting and
+              re-creating an account. The hash cannot be reversed into your
+              email address, and the account identifier stored alongside it is
+              erased when you delete your account.
+            </li>
+          </ul>
         </Section>
 
         <Section title="6. Your rights">
