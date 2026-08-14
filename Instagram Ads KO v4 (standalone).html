@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>anima · Instagram Ads (KO) v4 — Obsidian &amp; Gold</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- crossorigin 필수: 없으면 스타일시트가 opaque 로 잡혀 html-to-image 가 cssRules
+     를 못 읽고("Error inlining remote css file" SecurityError) @font-face 를 PNG 에
+     인라인하지 못한다. Chrome 은 우연히 문서 폰트로 그려주지만 다른 브라우저에서는
+     폴백 서체로 내보내진다. Google Fonts 는 ACAO:* 를 주므로 이 속성만으로 해결된다. -->
+<link rel="stylesheet" crossorigin="anonymous" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@200;300;500;600&display=swap">
+<style>
+/* ─────────────────────────────────────────────────────────────
+   anima · Instagram Ads KO v4
+   v3(EN)의 Obsidian & Gold 시스템을 그대로 상속한 한국어판.
+   슬라이드 5장 + 01번 훅 변형 3안(A/B/C) = 7보드.
+
+   v3 대비 변경점은 세 가지뿐이다.
+   1) 디스플레이 서체: Fraunces → Noto Serif KR (워드마크만 Fraunces 유지)
+   2) 강조 장치: 이탤릭 → 굵기 600 + 골드
+      한글에는 진짜 이탤릭 자소가 없어 합성 oblique 가 되므로 사용하지 않는다.
+   3) 줄바꿈: word-break:keep-all — 한글 단어 중간 분리 방지
+
+   불변 규칙(v3 §3-1 승계):
+   · 골드 #D9A441 = 구조 전용(eyebrow·헤어라인·보더·라벨)
+   · 오렌지 #D85A30 = 슬라이드당 "살아있는 지점" 정확히 1개소
+     (로고 조리개 점은 전 장 공통 브랜드 상수이므로 카운트 제외)
+   · 이모지 0건 · mono 22px 하한
+   참조: docs/superpowers/specs/2026-08-07-instagram-ads-v3-design.md
+   ───────────────────────────────────────────────────────────── */
+:root{
+  /* palette */
+  --cream:#F7F3EC;
+  --gold:#D9A441;
+  --soul:#D85A30;
+
+  /* type families — 한글 폴백을 mono 에도 반드시 물려야 eyebrow 가 깨지지 않는다 */
+  --display:'Noto Serif KR','Apple SD Gothic Neo',serif;
+  --wordmark:'Fraunces','Times New Roman',serif;
+  --ui:'Noto Sans KR',-apple-system,BlinkMacSystemFont,sans-serif;
+  --mono:'JetBrains Mono','Noto Sans KR',ui-monospace,Menlo,monospace;
+
+  /* canvas geometry — 4:5 인스타그램 피드 */
+  --w:1080px;
+  --h:1350px;
+  --pad-x:88px;
+  --pad-y:96px;
+  --gutter:1260px;
+
+  /* type scale — mono 하한 22px (피드 렌더 약 350px 폭에서 실효 7px) */
+  --fs-eyebrow:22px;
+  --fs-label:22px;
+  --fs-metric:24px;
+  --fs-wordmark:34px;
+  --lh-hl:1.16;          /* 한글은 라틴(.98)보다 행간이 필요하다 */
+
+  /* card */
+  --card-radius:20px;
+  --card-pad:34px 36px;
+  --card-border:1px solid rgba(217,164,65,.28);
+  --card-bg:rgba(247,243,236,.035);
+
+  /* rhythm */
+  --rule-margin:56px 0 40px;
+  --metric-margin:30px;
+
+  /* editor chrome */
+  --chrome-cap-top:-58px;
+  --chrome-bar-top:-132px;
+  --stage-top:172px;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;background:#3a3833;}
+body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stage-top) 40px 80px;}
+
+/* #stage 가 chrome(캡션·툴바)의 위치 기준이 된다. v3 는 body 직속이라
+   top:-58px 캡션이 뷰포트 밖으로 밀려 보이지 않았다. */
+#stage{position:relative;height:var(--h);}
+
+/* ── 전 슬라이드 공통 배경 세계 ──────────────────────────────── */
+.ad{
+  position:absolute;
+  top:0;
+  width:var(--w);
+  height:var(--h);
+  overflow:hidden;
+  color:var(--cream);
+  background:radial-gradient(120% 90% at 50% 0%,#26232E 0%,#16141A 46%,#0E0D12 100%);
+  box-shadow:0 30px 90px rgba(0,0,0,.45);
+}
+.inner{position:absolute;inset:0;padding:var(--pad-y) var(--pad-x);display:flex;flex-direction:column;}
+
+/* ── [A] 상단바 ──────────────────────────────────────────────── */
+.topbar{display:flex;justify-content:space-between;align-items:center;flex:none;}
+.lockup{display:flex;align-items:center;gap:14px;}
+.lockup .wm{font-family:var(--wordmark);font-weight:300;font-size:var(--fs-wordmark);letter-spacing:-.02em;line-height:1;color:var(--cream);}
+.eyebrow{font-family:var(--mono);font-size:var(--fs-eyebrow);letter-spacing:.2em;color:rgba(217,164,65,.9);}
+
+/* ── [B] 헤드라인 밴드 — 1:1 크롭 안전지대(수직 중앙) ────────── */
+.band{margin:auto 0;flex:none;}
+.hl{font-family:var(--display);font-weight:200;letter-spacing:-.02em;line-height:var(--lh-hl);color:var(--cream);word-break:keep-all;}
+.hl em{font-style:normal;font-weight:600;color:var(--gold);}
+
+/* ── [C] 골드 헤어라인 ───────────────────────────────────────── */
+.rule{height:1px;background:linear-gradient(90deg,rgba(217,164,65,.55),rgba(217,164,65,0));margin:var(--rule-margin);flex:none;}
+
+/* ── [D] proof 카드 ──────────────────────────────────────────── */
+.card{border:var(--card-border);border-radius:var(--card-radius);background:var(--card-bg);padding:var(--card-pad);flex:none;}
+.clabel{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:.12em;color:rgba(217,164,65,.85);}
+.clabel.mute{color:rgba(247,243,236,.5);}
+.chead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:26px;}
+.ctext{font-family:var(--display);font-weight:300;line-height:1.3;color:var(--cream);word-break:keep-all;}
+
+/* ── [E] 러닝 메트릭 — 01 → 04 → 12 → 84 → 01(당신) ──────────── */
+.metric{font-family:var(--mono);font-size:var(--fs-metric);letter-spacing:.14em;color:rgba(247,243,236,.42);margin-top:var(--metric-margin);flex:none;}
+.metric b{color:var(--gold);font-weight:500;}
+
+/* ── 카드 내부 공용 부품 ─────────────────────────────────────── */
+.caret{display:inline-block;width:3px;height:38px;background:var(--soul);vertical-align:-7px;margin-left:8px;}
+.heat{display:grid;gap:10px;}
+.heat div{aspect-ratio:1;border-radius:8px;}
+.seg{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;}
+.seg .bar{height:14px;border-radius:999px;}
+.seg .lb{font-family:var(--mono);font-size:22px;letter-spacing:.06em;margin-top:16px;text-align:center;}
+
+/* 3일 vs 84일 대비 바 (01-C 전용) */
+.vs{display:flex;flex-direction:column;gap:24px;}
+.vsrow{display:flex;align-items:center;gap:22px;}
+.vslb{font-family:var(--mono);font-size:22px;letter-spacing:.06em;width:186px;flex:none;}
+.vstrack{flex:1;height:20px;border-radius:999px;background:rgba(247,243,236,.06);}
+/* 길이는 84일 대비 실제 비율. 3일은 3.6% 라 슬라이버가 되므로 최소폭만 보장한다. */
+.vsbar{height:100%;border-radius:999px;min-width:30px;}
+.vsval{font-family:var(--mono);font-size:24px;letter-spacing:.06em;width:104px;flex:none;text-align:right;}
+
+/* 잠금화면 목업 — 폰 프레임 없이 "시각 + 위젯" 두 컬럼으로 압축 */
+.lock{display:flex;align-items:center;gap:34px;border:1px solid rgba(247,243,236,.10);border-radius:16px;background:rgba(0,0,0,.28);padding:28px 30px;}
+.lock-l{flex:none;text-align:center;}
+.lock-time{font-family:var(--ui);font-weight:300;font-size:76px;line-height:1;letter-spacing:-.03em;color:var(--cream);}
+.lock-date{font-family:var(--mono);font-size:22px;letter-spacing:.06em;color:rgba(247,243,236,.5);margin-top:12px;}
+.lock-w{flex:1;border:1px solid rgba(217,164,65,.30);border-radius:14px;background:rgba(247,243,236,.05);padding:20px 22px;}
+.lock-wlabel{font-family:var(--mono);font-size:22px;letter-spacing:.1em;color:rgba(217,164,65,.85);}
+.lock-wtext{font-family:var(--display);font-weight:300;font-size:34px;line-height:1.25;color:var(--cream);margin-top:10px;word-break:keep-all;}
+.lock-chips{display:flex;gap:12px;margin-top:20px;}
+.lchip{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:22px;letter-spacing:.06em;border-radius:999px;padding:8px 16px;}
+/* 체크 표시는 서체에 의존하지 않도록 CSS 로 그린다(글리프 폴백/이모지 회피) */
+.ck{display:inline-block;width:9px;height:16px;border-style:solid;border-width:0 3px 3px 0;transform:rotate(45deg);margin:-4px 2px 0 0;}
+.box{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-radius:4px;opacity:.5;}
+
+.cta{text-decoration:none;display:inline-flex;align-items:center;gap:16px;background:var(--soul);color:var(--cream);font-family:var(--ui);font-size:30px;font-weight:500;letter-spacing:.02em;padding:26px 44px;border-radius:999px;}
+.cta-sub{font-family:var(--mono);font-size:22px;letter-spacing:.08em;color:rgba(247,243,236,.6);line-height:1.65;}
+
+/* ── 편집 화면 chrome (PNG 내보내기 시 숨김) ─────────────────── */
+.cap{position:absolute;top:var(--chrome-cap-top);font-family:var(--mono);font-size:16px;letter-spacing:.08em;color:rgba(255,255,255,.6);white-space:nowrap;}
+.cap b{color:#fff;font-weight:500;}
+.cap.alt b{color:var(--gold);}
+.cap .dl{margin-left:16px;cursor:pointer;font:inherit;font-size:14px;color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:5px 13px;transition:background .15s;}
+.cap .dl:hover{background:rgba(255,255,255,.28);}
+#dlbar{position:absolute;left:0;top:var(--chrome-bar-top);display:flex;gap:16px;align-items:center;z-index:10;}
+#dlbar button{cursor:pointer;font-family:var(--mono);font-size:15px;letter-spacing:.1em;color:#16141A;background:var(--cream);border:none;border-radius:999px;padding:13px 24px;}
+#dlbar button:hover{background:#fff;}
+#dlbar button[disabled]{opacity:.5;cursor:default;}
+#dlstat{font-family:var(--mono);font-size:14px;letter-spacing:.06em;color:rgba(255,255,255,.72);}
+#dlstat.err{color:#FF9E80;}
+
+/* 캡션 판 — 보드 아래 일반 흐름. 캔버스가 아니므로 PNG 에 찍히지 않는다. */
+#capbox{margin-top:120px;max-width:1080px;color:rgba(255,255,255,.9);font-family:var(--ui);}
+#capbox h2{font-family:var(--mono);font-size:15px;letter-spacing:.14em;color:var(--gold);font-weight:500;margin:0 0 14px;}
+#capbox textarea{width:100%;height:300px;background:rgba(0,0,0,.35);color:var(--cream);border:1px solid rgba(217,164,65,.3);border-radius:14px;padding:22px 24px;font-family:var(--ui);font-size:15px;line-height:1.75;resize:vertical;}
+#capbox .hint{font-family:var(--mono);font-size:13px;letter-spacing:.06em;color:rgba(255,255,255,.45);margin-top:12px;line-height:1.7;}
+</style>
+</head>
+<body>
+
+<div id="stage">
+
+<div id="dlbar">
+  <button id="dlall">↓ 5장 일괄 저장 (PNG · 2160×2700)</button>
+  <button id="dlhooks">↓ 훅 3안만 저장</button>
+  <span id="dlstat"></span>
+</div>
+
+<!-- ═══ 01-A · 훅 (기본 채택) ═══ -->
+<div class="cap" data-slot="0">KO 01-A · <b>훅 · 찔림형</b> · 채택<button class="dl" data-ad="adA" data-name="anima-ig-v4-ko-01a-hook">↓ PNG</button></div>
+<div class="ad" id="adA" data-slot="0">
+  <div class="inner">
+    <div class="topbar">
+      <div class="lockup"><span class="mk" data-w="38" data-stroke="#E7C77A" data-dot="#D85A30" data-sw="7"></span><span class="wm">anima</span></div>
+      <span class="eyebrow">NO.01 · 훅</span>
+    </div>
+
+    <div class="band">
+      <div class="hl" style="font-size:100px;">3년 뒤에도<br>같은 꿈을<br><em>적고 있을까 봐.</em></div>
+    </div>
+
+    <div class="rule"></div>
+    <!-- 오렌지 1개소: 입력 커서 -->
+    <div class="card">
+      <div class="clabel">오늘 밤의 다짐</div>
+      <div class="ctext" style="font-size:44px;margin-top:18px;">나는 내 이름으로 일하는 사람이다<span class="caret"></span></div>
+    </div>
+    <div class="metric"><b>01</b>일차</div>
+  </div>
+</div>
+
+<!-- ═══ 02 · 방법 ═══ -->
+<div class="cap" data-slot="1">KO 02 · <b>방법</b> · 작동원리<button class="dl" data-ad="ad2" data-name="anima-ig-v4-ko-02-how">↓ PNG</button></div>
+<div class="ad" id="ad2" data-slot="1">
+  <div class="inner">
+    <div class="topbar">
+      <div class="lockup"><span class="mk" data-w="38" data-stroke="#E7C77A" data-dot="#D85A30" data-sw="7"></span><span class="wm">anima</span></div>
+      <span class="eyebrow">NO.02 · 방법</span>
+    </div>
+
+    <div class="band">
+      <div class="hl" style="font-size:92px;">꿈 전체가 아니라,<br><em>오늘 한 줄</em>만<br>지키면 됩니다.</div>
+    </div>
+
+    <div class="rule"></div>
+    <!-- 오렌지 1개소: 마지막으로 채워진 체크(=하루가 닫히는 지점) -->
+    <div class="card">
+      <div class="clabel" style="margin-bottom:24px;">잠금화면 · 오늘 밤</div>
+      <div class="lock" data-lock="night"></div>
+    </div>
+    <div class="metric"><b>04</b>일차</div>
+  </div>
+</div>
+
+<!-- ═══ 03 · 증거 ═══ -->
+<div class="cap" data-slot="2">KO 03 · <b>증거</b> · 데이터<button class="dl" data-ad="ad3" data-name="anima-ig-v4-ko-03-proof">↓ PNG</button></div>
+<div class="ad" id="ad3" data-slot="2">
+  <div class="inner">
+    <div class="topbar">
+      <div class="lockup"><span class="mk" data-w="38" data-stroke="#E7C77A" data-dot="#D85A30" data-sw="7"></span><span class="wm">anima</span></div>
+      <span class="eyebrow">NO.03 · 증거</span>
+    </div>
+
+    <div class="band">
+      <div class="hl" style="font-size:92px;">30일 중 25일.<br>의지가 아니라<br><em>구조</em>입니다.</div>
+    </div>
+
+    <div class="rule"></div>
+    <!-- 오렌지 1개소: 히트맵의 '오늘' 셀 -->
+    <div class="card">
+      <div class="chead">
+        <span class="clabel">지난 30일</span>
+        <span class="clabel mute">83% 유지</span>
+      </div>
+      <div class="heat" data-heat></div>
+    </div>
+    <!-- 30일 히트맵을 근거로 쓰므로 러닝 메트릭도 30일차여야 성립한다.
+         (v3 은 12일차에 "지난 30일"을 보여줘 앞뒤가 맞지 않았다) -->
+    <div class="metric"><b>30</b>일차</div>
+  </div>
+</div>
+
+<!-- ═══ 04 · 변화 ═══ -->
+<div class="cap" data-slot="3">KO 04 · <b>변화</b> · 보상<button class="dl" data-ad="ad4" data-name="anima-ig-v4-ko-04-who">↓ PNG</button></div>
+<div class="ad" id="ad4" data-slot="3">
+  <div class="inner">
+    <div class="topbar">
+      <div class="lockup"><span class="mk" data-w="38" data-stroke="#E7C77A" data-dot="#D85A30" data-sw="7"></span><span class="wm">anima</span></div>
+      <span class="eyebrow">NO.04 · 변화</span>
+    </div>
+
+    <div class="band">
+      <div class="hl" style="font-size:80px;">84일째.<br>이건 더 이상<br>노력이 아니라,<br><em>그냥 나</em>입니다.</div>
+    </div>
+
+    <div class="rule"></div>
+    <!-- 오렌지 1개소: 현재 진행 중인 3단계 바 -->
+    <div class="card">
+      <div class="chead">
+        <span class="clabel">씨앗 → 숲</span>
+        <span class="clabel mute">3단계 / 6단계</span>
+      </div>
+      <div class="seg" data-seg></div>
+    </div>
+    <div class="metric"><b>84</b>일차</div>
+  </div>
+</div>
+
+<!-- ═══ 05 · 시작 (CTA) ═══ -->
+<div class="cap" data-slot="4">KO 05 · <b>시작</b> · CTA<button class="dl" data-ad="ad5" data-name="anima-ig-v4-ko-05-start">↓ PNG</button></div>
+<div class="ad" id="ad5" data-slot="4">
+  <div class="inner">
+    <div class="topbar">
+      <div class="lockup"><span class="mk" data-w="38" data-stroke="#E7C77A" data-dot="#D85A30" data-sw="7"></span><span class="wm">anima</span></div>
+      <span class="eyebrow">NO.05 · 시작</span>
+    </div>
+
+    <div class="band">
+      <div class="hl" style="font-size:100px;">오늘 밤 적고,<br><em>내일 아침</em><br>시작하세요.</div>
+    </div>
+
+    <div class="rule"></div>
+    <!-- 오렌지 1개소: CTA 버튼 -->
+    <div class="card" style="border-color:rgba(217,164,65,.18);">
+      <div style="display:flex;align-items:center;gap:30px;">
+        <a class="cta" href="https://www.successfulfuture.app/go/app">앱 받기 <span style="font-size:26px;">→</span></a>
+        <span class="cta-sub">iOS · Android<br>무료로 시작</span>
+      </div>
+    </div>
+    <div class="metric"><b>01</b>일차 · 당신의 차례</div>
+  </div>
+</div>
+
+<!-- ═══ 01-B · 훅 변형 (A/B 테스트용) ═══ -->
+<div class="cap alt" data-slot="5">KO 01-B · <b>훅 · 제품형</b> · 변형<button class="dl" data-ad="adB" data-name="anima-ig-v4-ko-01b-hook-alt">↓ PNG</button></div>
+<div class="ad" id="adB" data-slot="5">
+  <div class="inner">
+    <div class="topbar">
+      <div class="lockup"><span class="mk" data-w="38" data-stroke="#E7C77A" data-dot="#D85A30" data-sw="7"></span><span class="wm">anima</span></div>
+      <span class="eyebrow">NO.01 · 훅</span>
+    </div>
+
+    <div class="band">
+      <div class="hl" style="font-size:88px;">핸드폰을 켜는 순간,<br>꿈이 먼저<br><em>말을 겁니다.</em></div>
+    </div>
+
+    <div class="rule"></div>
+    <!-- 오렌지 1개소: 위젯 안 '오늘의 한 걸음' 라이브 바 -->
+    <div class="card">
+      <div class="clabel" style="margin-bottom:24px;">잠금화면 · 내일 아침</div>
+      <div class="lock" data-lock="morning"></div>
+    </div>
+    <div class="metric"><b>01</b>일차</div>
+  </div>
+</div>
+
+<!-- ═══ 01-C · 훅 변형 (A/B 테스트용) ═══ -->
+<div class="cap alt" data-slot="6">KO 01-C · <b>훅 · 관용구형</b> · 변형<button class="dl" data-ad="adC" data-name="anima-ig-v4-ko-01c-hook-alt">↓ PNG</button></div>
+<div class="ad" id="adC" data-slot="6">
+  <div class="inner">
+    <div class="topbar">
+      <div class="lockup"><span class="mk" data-w="38" data-stroke="#E7C77A" data-dot="#D85A30" data-sw="7"></span><span class="wm">anima</span></div>
+      <span class="eyebrow">NO.01 · 훅</span>
+    </div>
+
+    <div class="band">
+      <div class="hl" style="font-size:118px;">작심삼일 말고,<br><em>작심 84일.</em></div>
+    </div>
+
+    <div class="rule"></div>
+    <!-- 오렌지 1개소: 84일 바의 끝점.
+         훅은 메트릭이 01일차이므로 누적 기록(히트맵)을 근거로 쓸 수 없다.
+         대신 헤드라인 그대로를 그림으로 옮긴 3일 vs 84일 대비 바를 쓴다. -->
+    <div class="card">
+      <div class="chead">
+        <span class="clabel">다짐이 살아남는 기간</span>
+        <span class="clabel mute">28배</span>
+      </div>
+      <div class="vs" data-vs></div>
+    </div>
+    <div class="metric"><b>01</b>일차</div>
+  </div>
+</div>
+
+</div><!-- /#stage -->
+
+<div id="capbox">
+  <h2>인스타그램 캡션 (복사해서 사용)</h2>
+  <textarea id="captext" spellcheck="false" readonly></textarea>
+  <div class="hint">
+    캐러셀 순서: 01-A → 02 → 03 → 04 → 05 (5장) · 훅 A/B 테스트는 1번만 01-B / 01-C 로 교체<br>
+    Meta 광고 관리자 CTA 버튼: “설치하기” · 랜딩: https://www.successfulfuture.app/go/app
+  </div>
+</div>
+
+<script src="https://unpkg.com/html-to-image@1.11.13/dist/html-to-image.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ── 레이아웃 상수 (CSS 커스텀 프로퍼티와 동일 값) ─────────── */
+  var GUTTER = 1260;          // 보드 간 가로 간격
+  var EXPORT_W = 1080;
+  var EXPORT_H = 1350;
+  var PIXEL_RATIO = 2;        // → 2160 × 2700
+  var BATCH_PAUSE_MS = 400;   // 브라우저가 다운로드를 flush 할 여유
+  var HEAT_COLUMNS = 15;
+  var CARRYOVER = ['adA', 'ad2', 'ad3', 'ad4', 'ad5'];   // 실제 게재 5장
+  var HOOK_VARIANTS = ['adA', 'adB', 'adC'];             // 훅 A/B 테스트 3안
+
+  /* ── 보드를 가로로 배치 ────────────────────────────────────── */
+  document.querySelectorAll('[data-slot]').forEach(function (el) {
+    el.style.left = (Number(el.dataset.slot) * GUTTER) + 'px';
+  });
+  var stage = document.getElementById('stage');
+  var boardCount = document.querySelectorAll('.ad').length;
+  stage.style.width = ((boardCount - 1) * GUTTER + EXPORT_W) + 'px';
+
+  /* ── 조리개 마크 (v3 과 동일 도형) ─────────────────────────── */
+  function apertureSVG(size, stroke, dot, sw) {
+    var cx = 50, cy = 50, r = 42, gap = 16;
+    function polar(rr, deg) {
+      var rad = deg * Math.PI / 180;
+      return [cx + rr * Math.cos(rad), cy + rr * Math.sin(rad)];
+    }
+    var s = polar(r, -90 + gap / 2), e = polar(r, -90 - gap / 2 + 360);
+    var dotR = Math.max(6, sw * 1.25);
+    return '<svg viewBox="0 0 100 100" width="' + size + '" height="' + size + '" fill="none" ' +
+      'xmlns="http://www.w3.org/2000/svg" style="display:block">' +
+      '<path d="M ' + s[0].toFixed(2) + ' ' + s[1].toFixed(2) + ' A ' + r + ' ' + r +
+      ' 0 1 1 ' + e[0].toFixed(2) + ' ' + e[1].toFixed(2) + '" stroke="' + stroke +
+      '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
+      '<circle cx="' + cx + '" cy="' + cy + '" r="' + dotR + '" fill="' + dot + '"/></svg>';
+  }
+  document.querySelectorAll('.mk').forEach(function (el) {
+    el.innerHTML = apertureSVG(+el.dataset.w, el.dataset.stroke, el.dataset.dot, +el.dataset.sw);
+  });
+
+  /* ── 히트맵 ─────────────────────────────────────────────────
+     v2/v3 과 동일한 30일 배열(30일 중 25일 유지 = 83%). 스토어
+     스크린샷과 같은 데이터이므로 헤드라인 숫자와 함께 고쳐야 한다. */
+  var KEPT = [1,1,0,1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,0,1,1,1,1,1,1,0,1,1,1,1];
+  var CELL = {
+    kept:   'rgba(217,164,65,.70)',   // 골드 = 구조
+    missed: 'rgba(247,243,236,.09)',
+    today:  'var(--soul)'             // 오렌지는 '오늘' 한 칸에만
+  };
+  var heatHTML = KEPT.map(function (v, i) {
+    var isToday = i === KEPT.length - 1;
+    var bg = isToday ? CELL.today : (v ? CELL.kept : CELL.missed);
+    return '<div style="background:' + bg + ';' +
+      (isToday ? 'box-shadow:0 0 0 4px rgba(216,90,48,.32);' : '') + '"></div>';
+  }).join('');
+  document.querySelectorAll('[data-heat]').forEach(function (el) {
+    el.style.gridTemplateColumns = 'repeat(' + HEAT_COLUMNS + ',1fr)';
+    el.innerHTML = heatHTML;
+  });
+
+  /* ── 성장 사다리 (이모지 없이 CSS 세그먼트) ────────────────── */
+  var STAGES = [
+    { label: '씨앗',   state: 'done' },
+    { label: '새싹',   state: 'done' },
+    { label: '줄기',   state: 'active' },
+    { label: '가지',   state: 'todo' },
+    { label: '나무',   state: 'todo' },
+    { label: '숲',     state: 'todo' }
+  ];
+  var BAR = {
+    done:   { bg: 'rgba(217,164,65,.75)',  fg: 'rgba(217,164,65,.85)' },
+    active: { bg: 'var(--soul)',           fg: '#F5A882' },
+    todo:   { bg: 'rgba(247,243,236,.10)', fg: 'rgba(247,243,236,.34)' }
+  };
+  document.querySelectorAll('[data-seg]').forEach(function (el) {
+    el.innerHTML = STAGES.map(function (s) {
+      var t = BAR[s.state];
+      return '<div><div class="bar" style="background:' + t.bg + '"></div>' +
+        '<div class="lb" style="color:' + t.fg + '">' + s.label + '</div></div>';
+    }).join('');
+  });
+
+  /* ── 3일 vs 84일 대비 바 (01-C) ────────────────────────────
+     헤드라인 "작심삼일 말고, 작심 84일."을 그대로 그림으로 옮긴 것.
+     누적 기록이 아니라 두 기간의 비교이므로 01일차 메트릭과 충돌하지 않는다. */
+  var VS_MAX_DAYS = 84;
+  var VS_ROWS = [
+    { label: '보통의 다짐', days: 3,  fill: 'rgba(247,243,236,.18)', fg: 'rgba(247,243,236,.42)' },
+    { label: 'anima',      days: 84, fill: 'linear-gradient(90deg,rgba(217,164,65,.85),var(--soul))', fg: 'var(--gold)' }
+  ];
+  document.querySelectorAll('[data-vs]').forEach(function (el) {
+    el.innerHTML = VS_ROWS.map(function (r) {
+      var pct = (r.days / VS_MAX_DAYS * 100).toFixed(1);
+      return '<div class="vsrow">' +
+          '<span class="vslb" style="color:' + r.fg + '">' + r.label + '</span>' +
+          '<span class="vstrack"><span class="vsbar" style="display:block;width:' + pct + '%;background:' + r.fill + '"></span></span>' +
+          '<span class="vsval" style="color:' + r.fg + '">' + r.days + '일</span>' +
+        '</div>';
+    }).join('');
+  });
+
+  /* ── 잠금화면 목업 ──────────────────────────────────────────
+     아침(할 일이 남은 상태) / 밤(하루가 닫힌 상태) 두 변형을 같은
+     렌더러로 그린다. 오렌지는 각 변형에서 정확히 1개소만 쓴다. */
+  var CHIP_TONE = {
+    done:   { bg: 'rgba(217,164,65,.16)',  fg: 'rgba(217,164,65,.95)' },
+    live:   { bg: 'rgba(216,90,48,.22)',   fg: '#F5A882' },
+    todo:   { bg: 'rgba(247,243,236,.06)', fg: 'rgba(247,243,236,.45)' }
+  };
+  var LOCK = {
+    morning: {
+      time: '7:02',
+      date: '8월 14일 금요일',
+      label: '오늘의 한 걸음',
+      text: '이력서 첫 문단 다시 쓰기',
+      live: true,                                   // 오렌지 = 위젯 라이브 바
+      chips: [
+        { label: '다짐', state: 'todo' },
+        { label: '행동', state: 'todo' },
+        { label: '잘한 일', state: 'todo' }
+      ]
+    },
+    night: {
+      time: '21:40',
+      date: '8월 14일 금요일',
+      label: '오늘의 한 걸음',
+      text: '이력서 첫 문단 다시 쓰기',
+      live: false,
+      chips: [
+        { label: '다짐', state: 'done' },
+        { label: '행동', state: 'done' },
+        { label: '잘한 일', state: 'live' }         // 오렌지 = 마지막으로 닫히는 칸
+      ]
+    }
+  };
+  function lockHTML(cfg) {
+    var chips = cfg.chips.map(function (c) {
+      var t = CHIP_TONE[c.state];
+      var glyph = c.state === 'todo'
+        ? '<span class="box"></span>'
+        : '<span class="ck" style="border-color:' + t.fg + '"></span>';
+      return '<span class="lchip" style="background:' + t.bg + ';color:' + t.fg + '">' +
+        glyph + c.label + '</span>';
+    }).join('');
+    var liveBar = cfg.live
+      ? '<span style="display:inline-block;width:4px;height:34px;background:var(--soul);' +
+        'border-radius:2px;vertical-align:-8px;margin-right:14px;"></span>'
+      : '';
+    return '<div class="lock-l">' +
+        '<div class="lock-time">' + cfg.time + '</div>' +
+        '<div class="lock-date">' + cfg.date + '</div>' +
+      '</div>' +
+      '<div class="lock-w">' +
+        '<div class="lock-wlabel">' + cfg.label + '</div>' +
+        '<div class="lock-wtext">' + liveBar + cfg.text + '</div>' +
+        '<div class="lock-chips">' + chips + '</div>' +
+      '</div>';
+  }
+  document.querySelectorAll('[data-lock]').forEach(function (el) {
+    var cfg = LOCK[el.dataset.lock];
+    if (!cfg) { return; }
+    el.innerHTML = lockHTML(cfg);
+  });
+
+  /* ── 인스타그램 캡션 ────────────────────────────────────────── */
+  document.getElementById('captext').value = [
+    '3년 뒤에도 같은 꿈을 적고 있을까 봐.',
+    '',
+    'Anima 는 “언젠가”를 오늘 지킬 한 줄로 바꿔주는 앱이에요.',
+    '',
+    '· 밤에는 다짐 한 줄 — 직접 쓴 문장을 매일 따라 씁니다',
+    '· 아침에는 잠금화면 위젯 — 오늘의 한 걸음이 먼저 말을 겁니다',
+    '· 하루 끝에는 잘한 일 3가지 — 부정 편향을 눌러주는 기록',
+    '',
+    '30일 중 25일. 의지가 아니라 구조입니다.',
+    '작심삼일 말고, 작심 84일.',
+    '',
+    '→ 무료로 시작하기 (iOS · Android)',
+    '',
+    '#자기계발 #다짐 #습관만들기 #모닝루틴 #동기부여 #목표달성',
+    '#잠금화면위젯 #성공일기 #갓생 #자기관리 #루틴 #꿈'
+  ].join('\n');
+
+  /* ── PNG 내보내기 ───────────────────────────────────────────
+     한글 웹폰트는 unicode-range 서브셋으로 쪼개져 내려온다.
+     document.fonts.ready 만으로는 캡처 시점에 한글 face 가 아직
+     안 붙어 두부(□) 로 찍힐 수 있으므로 명시적으로 load 한다. */
+  var FONT_PROBE = '가나다ABC012';
+  var FONT_FACES = [
+    '200 100px "Noto Serif KR"',
+    '300 100px "Noto Serif KR"',
+    '600 100px "Noto Serif KR"',
+    '300 40px "Noto Sans KR"',
+    '500 40px "Noto Sans KR"',
+    '300 40px "Fraunces"',
+    '500 24px "JetBrains Mono"'
+  ];
+  var fontsPrimed = null;
+  function primeFonts() {
+    if (fontsPrimed) { return fontsPrimed; }
+    fontsPrimed = Promise.all(FONT_FACES.map(function (f) {
+      // 개별 face 실패가 전체 렌더를 막지 않도록 흡수한다(폴백으로 그려짐).
+      return document.fonts.load(f, FONT_PROBE).catch(function (err) {
+        console.warn('[font] load failed', f, err);
+      });
+    })).then(function () { return document.fonts.ready; });
+    return fontsPrimed;
+  }
+
+  var stat = document.getElementById('dlstat');
+  function say(msg, isErr) {
+    stat.textContent = msg;
+    stat.classList.toggle('err', !!isErr);
+  }
+
+  // 보드는 left:0 / 1260 / 2520 … 로 가로 배치된다. html-to-image 는 노드를
+  // 1080px foreignObject 로 복제하면서 computed left 를 그대로 이관하므로,
+  // 첫 보드를 제외한 나머지가 캡처 박스 밖으로 밀려 백지로 나온다(v2 결함).
+  // style:{left:'0'} 오버라이드는 복제된 computed style 에 덮여 무력하므로,
+  // 캡처 직전 실제 노드를 원점으로 옮기고 finally 에서 복원한다.
+  async function renderAd(id) {
+    var node = document.getElementById(id);
+    if (!node) { throw new Error('알 수 없는 보드: ' + id); }
+    var chrome = Array.prototype.slice.call(document.querySelectorAll('.cap, #dlbar, #capbox'));
+    var parkedLeft = node.style.left;
+    var parkedZ = node.style.zIndex;
+    chrome.forEach(function (c) { c.style.visibility = 'hidden'; });
+    node.style.left = '0px';
+    node.style.zIndex = '9999';
+    try {
+      await primeFonts();
+      return await htmlToImage.toPng(node, {
+        width: EXPORT_W,
+        height: EXPORT_H,
+        pixelRatio: PIXEL_RATIO,
+        style: { margin: '0' },
+        cacheBust: true
+      });
+    } finally {
+      node.style.left = parkedLeft;
+      node.style.zIndex = parkedZ;
+      chrome.forEach(function (c) { c.style.visibility = ''; });
+    }
+  }
+  window.renderAd = renderAd;
+
+  function nameFor(id) {
+    var btn = document.querySelector('.cap .dl[data-ad="' + id + '"]');
+    return btn ? btn.dataset.name : id;
+  }
+
+  async function downloadAd(id, name) {
+    var url = await renderAd(id);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = name + '.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  document.querySelectorAll('.cap .dl').forEach(function (btn) {
+    btn.addEventListener('click', async function (e) {
+      e.stopPropagation();
+      var original = btn.textContent;
+      btn.textContent = '…';
+      try {
+        await downloadAd(btn.dataset.ad, btn.dataset.name);
+        say('');
+      } catch (err) {
+        console.error('[export]', btn.dataset.name, err);
+        say('실패 · ' + btn.dataset.name + ' · ' + (err && err.message ? err.message : err), true);
+      } finally {
+        btn.textContent = original;
+      }
+    });
+  });
+
+  // 개별 실패가 배치 전체를 중단시키지 않도록 하고, 마지막에 집계를 보고한다.
+  async function runBatch(btn, ids, tag) {
+    var ok = 0, failed = [];
+    btn.disabled = true;
+    try {
+      for (var i = 0; i < ids.length; i++) {
+        say(tag + ' 렌더링 ' + (i + 1) + ' / ' + ids.length + '…');
+        try {
+          await downloadAd(ids[i], nameFor(ids[i]));
+          ok++;
+        } catch (err) {
+          console.error('[export]', ids[i], err);
+          failed.push(nameFor(ids[i]));
+        }
+        await new Promise(function (r) { setTimeout(r, BATCH_PAUSE_MS); });
+      }
+      say(failed.length
+        ? '완료 · 성공 ' + ok + ' / 실패 ' + failed.length + ': ' + failed.join(', ')
+        : '완료 · ' + ok + '장 저장됨', failed.length > 0);
+    } catch (err) {
+      console.error('[export] batch aborted', err);
+      say('배치 중단 · ' + (err && err.message ? err.message : err), true);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  document.getElementById('dlall').addEventListener('click', function () {
+    runBatch(this, CARRYOVER, '캐러셀');
+  });
+  document.getElementById('dlhooks').addEventListener('click', function () {
+    runBatch(this, HOOK_VARIANTS, '훅');
+  });
+})();
+</script>
+
+</body>
+</html>
