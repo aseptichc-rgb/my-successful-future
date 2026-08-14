@@ -18,10 +18,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { PlatformText, WebOnly } from "@/components/landing/PlatformGate";
-
-const PLAY_STORE_URL =
-  process.env.NEXT_PUBLIC_PLAY_STORE_URL ||
-  "https://play.google.com/store/apps/details?id=com.michaelkim.anima";
+import { PLAY_STORE_URL } from "@/lib/constants/storeLinks";
 
 export default function LandingPage() {
   return (
