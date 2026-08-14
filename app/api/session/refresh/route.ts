@@ -11,7 +11,7 @@ const SESSION_COOKIE_NAME = "__session";
 export async function GET(request: NextRequest) {
   const cookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   if (!cookie) {
-    return NextResponse.json({ error: "세션 쿠키가 없습니다." }, { status: 401 });
+    return NextResponse.json({ error: "No session cookie." }, { status: 401 });
   }
   try {
     // checkRevoked=true 로 비활성화/탈취된 세션도 차단
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ customToken });
   } catch {
     // 만료/위조/탈취된 쿠키 → 클라이언트가 cookie clear 하도록 401 반환
-    const response = NextResponse.json({ error: "유효하지 않은 세션입니다." }, { status: 401 });
+    const response = NextResponse.json({ error: "Invalid session." }, { status: 401 });
     response.cookies.set({
       name: SESSION_COOKIE_NAME,
       value: "",

@@ -70,14 +70,14 @@ export async function POST(request: NextRequest) {
 
   const signedPayload = body.signedPayload?.trim();
   if (!signedPayload) {
-    return NextResponse.json({ error: "signedPayload 누락" }, { status: 400 });
+    return NextResponse.json({ error: "Missing signedPayload" }, { status: 400 });
   }
 
   // 2) Apple 서명 검증 + 디코드 (인증). 실패 = 위조/손상 → 400(재시도 무의미).
   const verified = verifyAppleNotification(signedPayload);
   if (!verified.ok) {
     console.warn(`[apple-webhook] 검증 실패: ${verified.reason}`);
-    return NextResponse.json({ error: "검증 실패", reason: verified.reason }, { status: 400 });
+    return NextResponse.json({ error: "Verification failed", reason: verified.reason }, { status: 400 });
   }
 
   const type = verified.notificationType ?? "";
@@ -142,6 +142,6 @@ export async function POST(request: NextRequest) {
     // Firestore/Auth 일시 장애 — 5xx 로 돌려 Apple 재전송 유도.
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[apple-webhook] 회수 실패(재시도 유도): ${msg}`);
-    return NextResponse.json({ error: "회수 처리 실패" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to revoke entitlement" }, { status: 500 });
   }
 }

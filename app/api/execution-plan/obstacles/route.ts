@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     const goal = typeof body.goal === "string" ? body.goal.trim() : "";
     if (goal.length < GOAL_MIN_LEN || goal.length > GOAL_MAX_LEN) {
       return NextResponse.json(
-        { error: `목표는 ${GOAL_MIN_LEN}~${GOAL_MAX_LEN}자여야 합니다.` },
+        { error: `The goal must be ${GOAL_MIN_LEN}-${GOAL_MAX_LEN} characters.` },
         { status: 400 },
       );
     }
@@ -106,6 +106,6 @@ export async function POST(request: NextRequest) {
     }
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[execution-plan/obstacles POST] 실패:", msg);
-    return NextResponse.json({ error: "장애물 제안을 만들지 못했어요." }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't create obstacle suggestions." }, { status: 500 });
   }
 }

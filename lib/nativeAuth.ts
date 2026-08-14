@@ -59,7 +59,7 @@ export async function signInWithAppleNative(auth: Auth): Promise<void> {
   const rawNonce = result.credential?.nonce;
   if (!idToken) {
     // 정상 흐름이면 항상 idToken 이 온다. 없으면 Firebase 가 거절하므로 명시적으로 끊는다.
-    throw new Error("Apple 네이티브 로그인 응답에 idToken 이 없습니다.");
+    throw new Error("The native Apple sign-in response has no idToken.");
   }
 
   // 네이티브가 hash(rawNonce) 로 Apple 에 요청했으므로, Firebase 검증엔 rawNonce 를 넘겨야 한다.

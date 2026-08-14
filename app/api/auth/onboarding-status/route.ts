@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[auth/onboarding-status] 실패:", msg);
     return NextResponse.json(
-      { error: "온보딩 상태 조회 중 오류가 발생했습니다." },
+      { error: "Couldn't load your onboarding status." },
       { status: 500 },
     );
   }

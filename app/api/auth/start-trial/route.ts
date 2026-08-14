@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[auth/start-trial] 실패:", msg);
     return NextResponse.json(
-      { error: "무료 체험 시작 중 오류가 발생했습니다." },
+      { error: "Couldn't start your free trial." },
       { status: 500 },
     );
   }

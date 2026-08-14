@@ -151,7 +151,7 @@ export async function purchaseIosPro(
   productId: string = ANIMA_LIFETIME_PRODUCT_ID,
 ): Promise<PurchaseOutcome> {
   if (!isIosPurchaseAvailable()) {
-    return { status: "error", message: "이 기기에서는 결제를 사용할 수 없습니다." };
+    return { status: "error", message: "Purchases aren't available on this device." };
   }
   try {
     const payload = await StoreKitBridge.purchase({ productId });
@@ -167,12 +167,12 @@ export async function purchaseIosPro(
  */
 export async function restoreIosPro(): Promise<PurchaseOutcome> {
   if (!isIosPurchaseAvailable()) {
-    return { status: "error", message: "이 기기에서는 결제를 사용할 수 없습니다." };
+    return { status: "error", message: "Purchases aren't available on this device." };
   }
   try {
     const result = await StoreKitBridge.restore();
     if (!result.restored || !result.jws || !result.transactionId || !result.productId) {
-      return { status: "error", message: "복원할 구매 내역이 없습니다." };
+      return { status: "error", message: "No purchases to restore." };
     }
     await verifyAndApply({
       transactionId: result.transactionId,

@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
     }
     if (err instanceof QuotaExceededError) {
       return NextResponse.json(
-        { error: "추천은 하루 5번까지 받을 수 있어요. 내일 다시 만나요." },
+        { error: "You can get recommendations up to 5 times a day. See you tomorrow." },
         { status: 429 },
       );
     }

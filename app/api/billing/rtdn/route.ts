@@ -101,11 +101,11 @@ export async function POST(request: NextRequest) {
   // 0) 인증 — 공유 비밀이 설정돼 있지 않으면 검증 불가이므로 전면 차단.
   if (!VERIFY_TOKEN) {
     console.error("[rtdn] PLAY_RTDN_VERIFY_TOKEN 미설정 — 수신 거부.");
-    return NextResponse.json({ error: "RTDN 미구성" }, { status: 503 });
+    return NextResponse.json({ error: "RTDN is not configured" }, { status: 503 });
   }
   const provided = request.nextUrl.searchParams.get("token") || "";
   if (!safeEqual(provided, VERIFY_TOKEN)) {
-    return NextResponse.json({ error: "인증 실패" }, { status: 403 });
+    return NextResponse.json({ error: "Authentication failed" }, { status: 403 });
   }
 
   // 1) Pub/Sub envelope 파싱
@@ -191,6 +191,6 @@ export async function POST(request: NextRequest) {
     // Firestore/Auth 일시 장애 — 5xx 로 돌려 Pub/Sub 재전송 유도.
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[rtdn] 회수 실패(재시도 유도): ${msg}`);
-    return NextResponse.json({ error: "회수 처리 실패" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to revoke entitlement" }, { status: 500 });
   }
 }

@@ -46,25 +46,25 @@ export async function PATCH(
   const denied = await assertAdminRequest(req);
   if (denied) return denied;
   const { id } = await ctx.params;
-  if (!id) return NextResponse.json({ error: "id 누락" }, { status: 400 });
+  if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
   let body: PatchBody = {};
   try {
     body = (await req.json()) as PatchBody;
   } catch {
-    return NextResponse.json({ error: "JSON body 가 필요합니다." }, { status: 400 });
+    return NextResponse.json({ error: "A JSON body is required." }, { status: 400 });
   }
 
   const update: Record<string, unknown> = { updatedAt: Timestamp.now() };
 
   if (body.text !== undefined) {
     if (typeof body.text !== "string") {
-      return NextResponse.json({ error: "text 형식 오류" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid text format" }, { status: 400 });
     }
     const t = body.text.trim();
     if (t.length < TEXT_MIN || t.length > TEXT_MAX) {
       return NextResponse.json(
-        { error: `text 는 ${TEXT_MIN}~${TEXT_MAX}자여야 합니다.` },
+        { error: `text must be ${TEXT_MIN}-${TEXT_MAX} characters.` },
         { status: 400 },
       );
     }
@@ -76,12 +76,12 @@ export async function PATCH(
     } else if (typeof body.author === "string") {
       update.author = body.author.trim().slice(0, AUTHOR_MAX);
     } else {
-      return NextResponse.json({ error: "author 형식 오류" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid author format" }, { status: 400 });
     }
   }
   if (body.category !== undefined) {
     if (!ALLOWED_CATEGORIES.includes(body.category as FamousQuoteCategory)) {
-      return NextResponse.json({ error: "category 가 올바르지 않습니다." }, { status: 400 });
+      return NextResponse.json({ error: "Invalid category." }, { status: 400 });
     }
     update.category = body.category;
   }
@@ -91,7 +91,7 @@ export async function PATCH(
   }
   if (body.tags !== undefined) {
     if (!Array.isArray(body.tags)) {
-      return NextResponse.json({ error: "tags 는 배열" }, { status: 400 });
+      return NextResponse.json({ error: "tags must be an array" }, { status: 400 });
     }
     update.tags = body.tags
       .filter((t): t is string => typeof t === "string")
@@ -107,14 +107,14 @@ export async function PATCH(
     const ref = getAdminDb().collection("famousQuotes").doc(id);
     const snap = await ref.get();
     if (!snap.exists) {
-      return NextResponse.json({ error: "찾을 수 없습니다." }, { status: 404 });
+      return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
     await ref.update(update);
     const updated = await ref.get();
     return NextResponse.json({ item: updated.data() });
   } catch (err) {
     console.error("[admin/famous-quotes PATCH] 실패:", err);
-    return NextResponse.json({ error: "수정에 실패했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't update the entry." }, { status: 500 });
   }
 }
 
@@ -125,12 +125,12 @@ export async function DELETE(
   const denied = await assertAdminRequest(req);
   if (denied) return denied;
   const { id } = await ctx.params;
-  if (!id) return NextResponse.json({ error: "id 누락" }, { status: 400 });
+  if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
   try {
     await getAdminDb().collection("famousQuotes").doc(id).delete();
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[admin/famous-quotes DELETE] 실패:", err);
-    return NextResponse.json({ error: "삭제에 실패했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't delete the entry." }, { status: 500 });
   }
 }

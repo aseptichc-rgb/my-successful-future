@@ -21,6 +21,7 @@ import { normalizeGoalText } from "@/lib/goalText";
 import { needsMoreSpecificGoal } from "@/lib/goalQuality";
 import { GOAL_TEXT_MAX, SUCCESS_AFFIRMATION_MAX_LEN } from "@/lib/constants/goal";
 import { authedFetch } from "@/lib/authedFetch";
+import { isPaymentRequired } from "@/lib/paymentRequired";
 import BootSplash from "@/components/ui/BootSplash";
 import { useLanguage, LOCALE_META, SUPPORTED_LOCALES, type Locale, type DictKey } from "@/lib/i18n";
 import type { DailyMotivation, FutureSelfAnswers } from "@/types";
@@ -331,6 +332,10 @@ export default function OnboardingPage() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({}),
             });
+            // Pro 전용 — ProUpsellSheet 가 문맥 있는 안내를 이미 띄운다. 여기서 에러까지
+            // 세우면 같은 사실을 두 번 말하게 되고, "생성 실패" 문구라 원인도 잘못 전달된다.
+            // 에러 없이 빠져나가면 초상 섹션 자체가 렌더되지 않는다(3-state 조건 렌더).
+            if (isPaymentRequired(res)) return;
             const data = (await res.json().catch(() => ({}))) as {
               portrait?: PortraitPreview;
               error?: string;
@@ -357,14 +362,22 @@ export default function OnboardingPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ force: true }),
         });
-        const data = (await res.json().catch(() => ({}))) as {
-          motivation?: DailyMotivation;
-          error?: string;
-        };
-        if (!res.ok || !data.motivation) {
-          throw new Error(data.error || `${t("common.error")} (${res.status})`);
+        // force=true(핀 인물 반영 재생성)는 Pro 전용 — 체험이 끝난 뒤 온보딩에 다시 들어온
+        // 경우에만 도달한다. 안내는 ProUpsellSheet 하나로 통일하고 여기서는 미리보기만 비운다
+        // (preview·previewError 가 둘 다 null 이면 카드 자리가 아예 렌더되지 않는다).
+        //
+        // early return 을 쓰지 않는 이유: 이 try 는 IIFE 가 아니라 저장 흐름 본문이라
+        // 여기서 빠져나가면 아래 setSaving(false) / setStep(3) 까지 건너뛰어 온보딩이 멈춘다.
+        if (!isPaymentRequired(res)) {
+          const data = (await res.json().catch(() => ({}))) as {
+            motivation?: DailyMotivation;
+            error?: string;
+          };
+          if (!res.ok || !data.motivation) {
+            throw new Error(data.error || `${t("common.error")} (${res.status})`);
+          }
+          setPreview(data.motivation);
         }
-        setPreview(data.motivation);
       } catch (err) {
         setPreviewError(err instanceof Error ? err.message : String(err));
       } finally {

@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[auth/native-bridge] 실패:", msg);
     return NextResponse.json(
-      { error: "네이티브 브릿지 토큰 발급에 실패했습니다." },
+      { error: "Couldn't issue a native bridge token." },
       { status: 500 },
     );
   }

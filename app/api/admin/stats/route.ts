@@ -203,6 +203,6 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[admin/stats] 집계 실패:", msg);
-    return NextResponse.json({ error: "통계를 불러오지 못했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't load stats." }, { status: 500 });
   }
 }

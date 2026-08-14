@@ -4,7 +4,7 @@
  * iOS StoreKit2 클라이언트가 받은 `Transaction.signedTransaction` (JWS) 또는
  * `originalTransactionId` 를 서버가 Apple 에 직접 물어 확정한다. 이 검증을 거치지 않으면
  * 다음 공격이 가능:
- *   - 가짜 영수증 위조 (JWS 서명 검증 실패)
+ *   - 가짜 영수증 위조 (JWS signature verification failed)
  *   - 환불 후에도 결제자처럼 행세 (서버 측 transaction.revocationDate 확인 필요)
  *   - 다른 앱의 영수증을 우리 앱에 제출 (bundleId / appAppleId 미스매치 차단)
  *
@@ -135,7 +135,7 @@ function signAppleJwt(): string {
  */
 function decodeJwsPayload<T>(jws: string): T {
   const parts = jws.split(".");
-  if (parts.length !== 3) throw new Error("JWS 형식 오류");
+  if (parts.length !== 3) throw new Error("Malformed JWS");
   const json = Buffer.from(parts[1], "base64url").toString("utf8");
   return JSON.parse(json) as T;
 }
@@ -309,29 +309,29 @@ export interface AppleNotificationResult {
 export function verifyAppleNotification(signedPayload: string): AppleNotificationResult {
   try {
     const sp = (signedPayload || "").trim();
-    if (!sp) return { ok: false, reason: "signedPayload 누락" };
+    if (!sp) return { ok: false, reason: "Missing signedPayload" };
 
     // 1) 바깥 알림 JWS 서명 검증.
     if (!verifyJwsSignature(sp)) {
-      return { ok: false, reason: "알림 JWS 서명 검증 실패" };
+      return { ok: false, reason: "Notification JWS signature verification failed" };
     }
     const payload = decodeJwsPayload<AppleNotificationPayload>(sp);
     const data = payload.data;
 
     // 3-a) 알림 레벨 bundleId 검증 — 누락도 거부(타 앱 알림/필드 생략 우회 차단).
     if (!data?.bundleId || data.bundleId !== BUNDLE_ID) {
-      return { ok: false, reason: `bundleId 불일치: ${data?.bundleId ?? "누락"}` };
+      return { ok: false, reason: `bundleId mismatch: ${data?.bundleId ?? "missing"}` };
     }
 
     // 2) 거래 JWS 가 있으면 서명·bundleId 를 한 번 더 검증하고 디코드.
     let transaction: AppleNotificationResult["transaction"];
     if (data.signedTransactionInfo) {
       if (!verifyJwsSignature(data.signedTransactionInfo)) {
-        return { ok: false, reason: "거래 JWS 서명 검증 실패" };
+        return { ok: false, reason: "Transaction JWS signature verification failed" };
       }
       const tx = decodeJwsPayload<SignedTransactionPayload>(data.signedTransactionInfo);
       if (!tx.bundleId || tx.bundleId !== BUNDLE_ID) {
-        return { ok: false, reason: `거래 bundleId 불일치: ${tx.bundleId ?? "누락"}` };
+        return { ok: false, reason: `Transaction bundleId mismatch: ${tx.bundleId ?? "missing"}` };
       }
       transaction = {
         originalTransactionId: tx.originalTransactionId,
@@ -354,7 +354,7 @@ export function verifyAppleNotification(signedPayload: string): AppleNotificatio
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return { ok: false, reason: `알림 검증 예외: ${msg}` };
+    return { ok: false, reason: `Notification verification threw: ${msg}` };
   }
 }
 
@@ -370,7 +370,7 @@ export async function verifyAppleTransaction(
       purchaseTimeMs: Date.now(),
       productId: "anima_lifetime",
       originalTransactionId: "dev-bypass",
-      reason: "APPLE_STOREKIT_DEV_BYPASS=true (운영 금지)",
+      reason: "APPLE_STOREKIT_DEV_BYPASS=true (never in production)",
     };
   }
 
@@ -382,7 +382,7 @@ export async function verifyAppleTransaction(
     // (transactionId 가 함께 와도 environment 를 읽어야 올바른 호스트를 고를 수 있다.)
     if (input.signedTransactionInfo) {
       if (!verifyJwsSignature(input.signedTransactionInfo)) {
-        return { ok: false, reason: "JWS 서명 검증 실패" };
+        return { ok: false, reason: "JWS signature verification failed" };
       }
       const payload = decodeJwsPayload<SignedTransactionPayload>(
         input.signedTransactionInfo,
@@ -391,7 +391,7 @@ export async function verifyAppleTransaction(
       envFromClient = payload.environment;
     }
     if (!transactionId) {
-      return { ok: false, reason: "transactionId 누락" };
+      return { ok: false, reason: "Missing transactionId" };
     }
 
     // App Store Server API 의 Get Transaction Info 로 거래를 권위 있게 확정한다.
@@ -409,10 +409,10 @@ export async function verifyAppleTransaction(
       return { ok: false, reason: `Apple API ${fetched.status}` };
     }
     if (!fetched.signedTransactionInfo) {
-      return { ok: false, reason: "signedTransactionInfo 누락" };
+      return { ok: false, reason: "Missing signedTransactionInfo" };
     }
     if (!verifyJwsSignature(fetched.signedTransactionInfo)) {
-      return { ok: false, reason: "Apple 응답 JWS 서명 검증 실패" };
+      return { ok: false, reason: "Apple response JWS signature verification failed" };
     }
     const payload = decodeJwsPayload<SignedTransactionPayload>(
       fetched.signedTransactionInfo,
@@ -420,13 +420,13 @@ export async function verifyAppleTransaction(
 
     // 우리 앱의 영수증이 맞는지 확인.
     if (payload.bundleId !== BUNDLE_ID) {
-      return { ok: false, reason: `bundleId 불일치: ${payload.bundleId}` };
+      return { ok: false, reason: `bundleId mismatch: ${payload.bundleId}` };
     }
     // 환불/취소 처리됐는지 확인 — 결제자 권한 박탈 사유.
     if (payload.revocationDate && payload.revocationDate > 0) {
       return {
         ok: false,
-        reason: "환불/취소된 거래",
+        reason: "Refunded or revoked transaction",
         revokedAtMs: payload.revocationDate,
         productId: payload.productId,
       };
@@ -442,6 +442,6 @@ export async function verifyAppleTransaction(
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return { ok: false, reason: `Apple 영수증 검증 예외: ${msg}` };
+    return { ok: false, reason: `Apple receipt verification threw: ${msg}` };
   }
 }

@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     }
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[daily-motivation GET] 실패:", msg);
-    return NextResponse.json({ error: "동기부여 카드를 불러오지 못했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't load today's card." }, { status: 500 });
   }
 }
 
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     if ((force || overrideAuthor) && !aiAllowed) {
       throw new AuthError(
         402,
-        "다른 한마디 받기는 이용권이 필요해요. 오늘의 카드는 그대로 이용하실 수 있어요.",
+        "Another line needs lifetime access. Today's card stays available to you.",
       );
     }
 
@@ -99,12 +99,12 @@ export async function POST(request: NextRequest) {
     }
     if (err instanceof QuotaExceededError) {
       return NextResponse.json(
-        { error: "오늘의 또 다른 한마디는 하루 5번까지 받을 수 있어요. 내일 다시 만나요." },
+        { error: "You can get another line up to 5 times a day. See you tomorrow." },
         { status: 429 },
       );
     }
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[daily-motivation POST] 실패:", msg);
-    return NextResponse.json({ error: "동기부여 카드를 만들지 못했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't create today's card." }, { status: 500 });
   }
 }

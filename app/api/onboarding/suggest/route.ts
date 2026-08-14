@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       typeof body.dream === "string" ? body.dream.trim().slice(0, FUTURE_SELF_FIELD_MAX) : "";
     if (dream.length < DREAM_MIN_LEN_FOR_SUGGEST) {
       return NextResponse.json(
-        { error: `꿈 문장은 ${DREAM_MIN_LEN_FOR_SUGGEST}자 이상이어야 제안을 만들 수 있어요.` },
+        { error: `Your dream needs at least ${DREAM_MIN_LEN_FOR_SUGGEST} characters before we can suggest anything.` },
         { status: 400 },
       );
     }
@@ -70,6 +70,6 @@ export async function POST(request: NextRequest) {
     }
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[onboarding/suggest POST] 실패:", msg);
-    return NextResponse.json({ error: "맞춤 제안을 만들지 못했어요." }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't create personalized suggestions." }, { status: 500 });
   }
 }

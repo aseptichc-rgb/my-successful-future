@@ -101,11 +101,11 @@ export async function verifyRequestUser(request: NextRequest): Promise<AuthedUse
       const decoded = await getAdminAuth().verifySessionCookie(cookie, true);
       return decodedToAuthedUser(decoded);
     } catch {
-      throw new AuthError(401, "세션이 만료되었습니다. 다시 로그인해주세요.");
+      throw new AuthError(401, "Your session expired. Please sign in again.");
     }
   }
 
-  throw new AuthError(401, "인증 정보가 필요합니다.");
+  throw new AuthError(401, "Authentication is required.");
 }
 
 /**
@@ -135,8 +135,8 @@ export async function requirePaidUser(request: NextRequest): Promise<AuthedUser>
   throw new AuthError(
     402,
     reason === "trial_expired"
-      ? "무료 체험 기간이 끝났습니다. 앱의 설정 화면에서 결제를 완료해 주세요."
-      : "무료 체험이 시작되지 않았습니다. 다시 로그인해 주세요.",
+      ? "Your free trial has ended. Complete your purchase in the app's Settings screen."
+      : "Your free trial hasn't started yet. Please sign in again.",
   );
 }
 
@@ -155,6 +155,21 @@ export function canUseAiFeatures(user: AuthedUser): boolean {
   return hasProAccess(user.entitlement);
 }
 
+/**
+ * 서버가 클라이언트로 돌려주는 에러. **message 는 항상 영어로 쓴다.**
+ *
+ * 서버는 요청자의 언어를 알 수 없다 — 로케일은 Firestore 의 users/{uid}.language 와
+ * 클라이언트 i18n 사전에만 있고, ID 토큰에는 실려 오지 않는다. 그래서 한국어로 쓰면
+ * en/es/zh 사용자에게 그대로 새고, 언어별로 나눌 방법도 없다. 영어를 공통 폴백으로
+ * 고정해 두면 어느 로케일에서도 최소한 읽을 수 있는 문장이 남는다.
+ *
+ * 같은 이유로 app/api/** 의 `NextResponse.json({ error })` 와 로케일을 모르는 lib 모듈
+ * (adminAuth · appleStoreKit · playBilling · playIntegrity · iosPurchase · androidPurchase ·
+ * authedFetch · nativeAuth) 의 메시지도 전부 영어다. 새 메시지를 추가할 때 이 규칙을 지킬 것.
+ *
+ * 화면에 자연스러운 모국어로 띄우고 싶다면 서버 문구를 번역하지 말고, 호출부가 상태 코드로
+ * 분기해 [lib/i18n] 사전의 키를 쓰는 쪽이 맞다 (402 → ProUpsellSheet 가 이미 그렇게 한다).
+ */
 export class AuthError extends Error {
   constructor(public status: number, message: string) {
     super(message);

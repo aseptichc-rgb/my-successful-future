@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     }
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[future-self portrait GET] 실패:", msg);
-    return NextResponse.json({ error: "꿈을 이룬 모습을 불러오지 못했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't load your future self." }, { status: 500 });
   }
 }
 
@@ -67,12 +67,12 @@ export async function POST(request: NextRequest) {
     }
     if (err instanceof QuotaExceededError) {
       return NextResponse.json(
-        { error: "초상 다시 그리기는 하루 5번까지 가능해요. 내일 다시 만나요." },
+        { error: "You can redraw your portrait up to 5 times a day. See you tomorrow." },
         { status: 429 },
       );
     }
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[future-self portrait POST] 실패:", msg);
-    return NextResponse.json({ error: "꿈을 이룬 모습을 그리지 못했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't draw your future self." }, { status: 500 });
   }
 }

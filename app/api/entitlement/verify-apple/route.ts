@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     try {
       body = (await request.json()) as RequestBody;
     } catch {
-      return NextResponse.json({ error: "요청 본문이 JSON 이 아닙니다." }, { status: 400 });
+      return NextResponse.json({ error: "The request body is not valid JSON." }, { status: 400 });
     }
 
     const signedTransactionInfo = body.signedTransactionInfo?.trim();
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
 
     if (!signedTransactionInfo && !transactionId) {
       return NextResponse.json(
-        { error: "signedTransactionInfo / transactionId 둘 중 하나는 필요합니다." },
+        { error: "Either signedTransactionInfo or transactionId is required." },
         { status: 400 },
       );
     }
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     });
     if (!verification.ok) {
       return NextResponse.json(
-        { error: "유효하지 않은 영수증입니다.", reason: verification.reason },
+        { error: "The receipt is not valid.", reason: verification.reason },
         { status: 402 },
       );
     }
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     const useSandbox = process.env.APPLE_USE_SANDBOX === "true";
     if (!useSandbox && verification.environment !== "Production") {
       return NextResponse.json(
-        { error: "샌드박스 거래는 운영에서 사용할 수 없습니다." },
+        { error: "Sandbox transactions cannot be used in production." },
         { status: 402 },
       );
     }
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     const verifiedProductId = verification.productId || declaredProductId;
     if (!verifiedProductId) {
       return NextResponse.json(
-        { error: "productId 를 확인하지 못했습니다." },
+        { error: "Couldn't determine the productId." },
         { status: 402 },
       );
     }
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     // 2) 클라가 선언한 productId 와 Apple 응답이 일치하는지(위장 차단).
     if (declaredProductId && declaredProductId !== verifiedProductId) {
       return NextResponse.json(
-        { error: "선언된 productId 와 검증된 영수증이 불일치합니다." },
+        { error: "The declared productId doesn't match the verified receipt." },
         { status: 401 },
       );
     }
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
     const isSubscription = ALLOWED_SUBSCRIPTION_IDS.includes(verifiedProductId);
     if (!isLifetime && !isSubscription) {
       return NextResponse.json(
-        { error: "허용되지 않은 productId 입니다." },
+        { error: "That productId is not allowed." },
         { status: 401 },
       );
     }
@@ -124,13 +124,13 @@ export async function POST(request: NextRequest) {
     if (isSubscription) {
       if (!verification.expiresAtMs) {
         return NextResponse.json(
-          { error: "구독 영수증에 expiresDate 가 없습니다." },
+          { error: "The subscription receipt has no expiresDate." },
           { status: 402 },
         );
       }
       if (verification.expiresAtMs <= Date.now()) {
         return NextResponse.json(
-          { error: "이미 만료된 구독 영수증입니다." },
+          { error: "This subscription receipt has already expired." },
           { status: 402 },
         );
       }
@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
       );
       if (claimedByOther) {
         return NextResponse.json(
-          { error: "이미 다른 계정에 등록된 결제입니다." },
+          { error: "This purchase is already linked to another account." },
           { status: 409 },
         );
       }
@@ -217,7 +217,7 @@ export async function POST(request: NextRequest) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[entitlement/verify-apple] 실패:", msg);
     return NextResponse.json(
-      { error: "결제 검증 중 오류가 발생했습니다." },
+      { error: "Something went wrong while verifying the purchase." },
       { status: 500 },
     );
   }

@@ -48,14 +48,14 @@ function validateAndNormalize(body: CreateBody): {
 } | { error: string } {
   const text = typeof body.text === "string" ? body.text.trim() : "";
   if (text.length < TEXT_MIN || text.length > TEXT_MAX) {
-    return { error: `text 는 ${TEXT_MIN}~${TEXT_MAX}자여야 합니다.` };
+    return { error: `text must be ${TEXT_MIN}-${TEXT_MAX} characters.` };
   }
   const authorRaw = typeof body.author === "string" ? body.author.trim() : "";
   const author = authorRaw.length > 0 ? authorRaw.slice(0, AUTHOR_MAX) : null;
 
   const category = body.category as FamousQuoteCategory;
   if (!ALLOWED_CATEGORIES.includes(category)) {
-    return { error: "category 가 올바르지 않습니다." };
+    return { error: "Invalid category." };
   }
 
   const language: FamousQuoteLang = body.language === "en" ? "en" : "ko";
@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ items, count: items.length });
   } catch (err) {
     console.error("[admin/famous-quotes GET] 실패:", err);
-    return NextResponse.json({ error: "목록 조회에 실패했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't load the list." }, { status: 500 });
   }
 }
 
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
   try {
     body = (await req.json()) as CreateBody;
   } catch {
-    return NextResponse.json({ error: "JSON body 가 필요합니다." }, { status: 400 });
+    return NextResponse.json({ error: "A JSON body is required." }, { status: 400 });
   }
   const v = validateAndNormalize(body);
   if ("error" in v) {
@@ -118,6 +118,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ item });
   } catch (err) {
     console.error("[admin/famous-quotes POST] 실패:", err);
-    return NextResponse.json({ error: "추가에 실패했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't add the entry." }, { status: 500 });
   }
 }

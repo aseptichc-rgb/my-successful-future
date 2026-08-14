@@ -162,7 +162,7 @@ export async function purchaseAndroidPro(
 ): Promise<PurchaseOutcome> {
   const service = await acquireService();
   if (!service) {
-    return { status: "error", message: "이 기기에서는 결제를 사용할 수 없습니다." };
+    return { status: "error", message: "Purchases aren't available on this device." };
   }
 
   let item: ItemDetails | undefined;
@@ -173,7 +173,7 @@ export async function purchaseAndroidPro(
     return { status: "error", message: err instanceof Error ? err.message : String(err) };
   }
   if (!item) {
-    return { status: "error", message: `상품 '${productId}' 을(를) Play 에서 찾을 수 없습니다.` };
+    return { status: "error", message: `Couldn't find product '${productId}' on Play.` };
   }
 
   let response: PaymentResponse;
@@ -196,7 +196,7 @@ export async function purchaseAndroidPro(
   const purchaseToken = (response.details as { purchaseToken?: string } | null)?.purchaseToken;
   if (!purchaseToken) {
     await response.complete("fail").catch(() => undefined);
-    return { status: "error", message: "결제 토큰을 받지 못했습니다." };
+    return { status: "error", message: "Didn't receive a purchase token." };
   }
 
   try {
@@ -217,13 +217,13 @@ export async function restoreAndroidPro(
 ): Promise<PurchaseOutcome> {
   const service = await acquireService();
   if (!service) {
-    return { status: "error", message: "이 기기에서는 결제를 사용할 수 없습니다." };
+    return { status: "error", message: "Purchases aren't available on this device." };
   }
   try {
     const purchases = await service.listPurchases();
     const owned = purchases.find((p) => p.itemId === productId);
     if (!owned?.purchaseToken) {
-      return { status: "error", message: "복원할 구매 내역이 없습니다." };
+      return { status: "error", message: "No purchases to restore." };
     }
     await verifyAndApply(owned.purchaseToken, productId, service);
     return { status: "success", productId };

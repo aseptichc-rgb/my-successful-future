@@ -38,11 +38,11 @@ export async function POST(request: NextRequest) {
     const ymd = body.ymd && isValidYmd(body.ymd) ? body.ymd : todayKst();
     const text = typeof body.text === "string" ? body.text : "";
     if (!text.trim()) {
-      return NextResponse.json({ error: "응답 텍스트를 입력해주세요." }, { status: 400 });
+      return NextResponse.json({ error: "Please write something first." }, { status: 400 });
     }
     if (text.length > RESPONSE_MAX_LEN * 4) {
       // 입력단에서 60자 가드를 걸지만, 서버에서도 비정상 페이로드 차단.
-      return NextResponse.json({ error: "응답이 너무 길어요." }, { status: 400 });
+      return NextResponse.json({ error: "That's a bit too long." }, { status: 400 });
     }
 
     await enforceQuota(me.uid, "missionResponse");
@@ -61,6 +61,6 @@ export async function POST(request: NextRequest) {
     }
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[mission-response POST] 실패:", msg);
-    return NextResponse.json({ error: "응답을 저장하지 못했어요." }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't save your note." }, { status: 500 });
   }
 }

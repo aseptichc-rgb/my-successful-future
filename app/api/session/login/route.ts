@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   try {
     const { idToken } = await request.json();
     if (!idToken || typeof idToken !== "string") {
-      return NextResponse.json({ error: "idToken이 필요합니다." }, { status: 400 });
+      return NextResponse.json({ error: "idToken is required." }, { status: 400 });
     }
 
     // ID 토큰은 발급 후 5분 이내여야 세션 쿠키로 교환 가능.
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     // Firebase Admin 원본 에러(토큰 만료·인자 검증 등 내부 정보)를 클라이언트에 노출하지 않는다.
     console.error("[session/login] 세션 쿠키 발급 실패:", err instanceof Error ? err.message : String(err));
     return NextResponse.json(
-      { error: "세션 발급에 실패했습니다. 다시 로그인해주세요." },
+      { error: "Couldn't create a session. Please sign in again." },
       { status: 401 },
     );
   }

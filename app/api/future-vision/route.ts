@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     }
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[future-vision GET] 실패:", msg);
-    return NextResponse.json({ error: "꿈이 이뤄진 하루를 불러오지 못했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't load your future day." }, { status: 500 });
   }
 }
 
@@ -74,12 +74,12 @@ export async function POST(request: NextRequest) {
     }
     if (err instanceof QuotaExceededError) {
       return NextResponse.json(
-        { error: "또 다른 하루는 하루 5번까지 그려볼 수 있어요. 내일 다시 만나요." },
+        { error: "You can picture another day up to 5 times a day. See you tomorrow." },
         { status: 429 },
       );
     }
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[future-vision POST] 실패:", msg);
-    return NextResponse.json({ error: "꿈이 이뤄진 하루를 그리지 못했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't picture your future day." }, { status: 500 });
   }
 }

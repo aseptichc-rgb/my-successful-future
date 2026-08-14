@@ -35,6 +35,7 @@ import { GOAL_SLOT_MAX, GOAL_TEXT_MAX } from "@/lib/constants/goal";
 import type { FutureSelfAnswers, NotificationPrefs } from "@/types";
 import type { DictKey } from "@/lib/i18n";
 import { authedFetch } from "@/lib/authedFetch";
+import { isPaymentRequired } from "@/lib/paymentRequired";
 import {
   isIosPurchaseAvailable,
   getIosProPrice,
@@ -683,6 +684,18 @@ export default function SettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ force: true }),
       });
+      // Pro 전용 — 다른 화면과 달리 여기서는 직접 안내한다. ProUpsellSheet 는 /settings 를
+      // 침묵 경로로 두기 때문이다(결제 버튼이 이 화면에 있어서 시트로 덮으면 결제 직전
+      // 사용자를 가로막는다). 조용히 return 하면 버튼이 먹통으로 보이므로, 시트와 같은
+      // i18n 문구를 이 페이지의 안내 다이얼로그로 띄워 4개 언어를 그대로 따라간다.
+      if (isPaymentRequired(res)) {
+        setProNotice({
+          title: t("billing.paywall.title"),
+          description: t("billing.paywall.desc"),
+          tone: "error",
+        });
+        return;
+      }
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
         throw new Error(data.error || `${t("common.error")} (${res.status})`);

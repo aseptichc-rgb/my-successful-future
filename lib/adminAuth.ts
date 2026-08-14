@@ -14,15 +14,15 @@ import { isAdminEmail } from "@/lib/tokenUsage";
 export async function assertAdminRequest(req: NextRequest): Promise<NextResponse | null> {
   const header = req.headers.get("authorization") || req.headers.get("Authorization") || "";
   if (!header.startsWith("Bearer ")) {
-    return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+    return NextResponse.json({ error: "Authentication is required." }, { status: 401 });
   }
   try {
     const decoded = await getAdminAuth().verifyIdToken(header.slice(7).trim());
     if (!isAdminEmail(decoded.email)) {
-      return NextResponse.json({ error: "접근 권한이 없습니다." }, { status: 403 });
+      return NextResponse.json({ error: "You don't have access." }, { status: 403 });
     }
   } catch {
-    return NextResponse.json({ error: "유효하지 않은 토큰입니다." }, { status: 401 });
+    return NextResponse.json({ error: "Invalid token." }, { status: 401 });
   }
   return null;
 }

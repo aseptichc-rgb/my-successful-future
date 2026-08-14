@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     try {
       body = (await request.json()) as RequestBody;
     } catch {
-      return NextResponse.json({ error: "요청 본문이 JSON 이 아닙니다." }, { status: 400 });
+      return NextResponse.json({ error: "The request body is not valid JSON." }, { status: 400 });
     }
 
     const purchaseToken = (body.purchaseToken || "").trim();
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
 
     if (!purchaseToken || !productId || !packageName) {
       return NextResponse.json(
-        { error: "purchaseToken/productId/packageName 누락." },
+        { error: "Missing purchaseToken, productId, or packageName." },
         { status: 400 },
       );
     }
@@ -72,13 +72,13 @@ export async function POST(request: NextRequest) {
     // 운영 환경에 패키지명/상품 ID 가 박혀 있으면 일치 검증 (위장 차단)
     if (EXPECTED_PACKAGE_NAME && packageName !== EXPECTED_PACKAGE_NAME) {
       return NextResponse.json(
-        { error: "허용되지 않은 packageName 입니다." },
+        { error: "That packageName is not allowed." },
         { status: 401 },
       );
     }
     if (EXPECTED_PRODUCT_ID && productId !== EXPECTED_PRODUCT_ID) {
       return NextResponse.json(
-        { error: "허용되지 않은 productId 입니다." },
+        { error: "That productId is not allowed." },
         { status: 401 },
       );
     }
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     // 1) Play Integrity 검증. PLAY_INTEGRITY_REQUIRED=true 면 토큰 누락 자체를 거부한다.
     if (PLAY_INTEGRITY_REQUIRED && !integrityToken) {
       return NextResponse.json(
-        { error: "무결성 검증 토큰이 필요합니다." },
+        { error: "An integrity token is required." },
         { status: 401 },
       );
     }
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       });
       if (!integrity.ok) {
         return NextResponse.json(
-          { error: "Play Integrity 검증 실패", reason: integrity.reason },
+          { error: "Play Integrity verification failed", reason: integrity.reason },
           { status: 401 },
         );
       }
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
     });
     if (!purchase.ok) {
       return NextResponse.json(
-        { error: "유효하지 않은 영수증입니다.", reason: purchase.reason },
+        { error: "The receipt is not valid.", reason: purchase.reason },
         { status: 402 },
       );
     }
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
     );
     if (claimedByOther) {
       return NextResponse.json(
-        { error: "이미 다른 계정에 등록된 결제입니다." },
+        { error: "This purchase is already linked to another account." },
         { status: 409 },
       );
     }
@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[entitlement/verify] 실패:", msg);
     return NextResponse.json(
-      { error: "결제 검증 중 오류가 발생했습니다." },
+      { error: "Something went wrong while verifying the purchase." },
       { status: 500 },
     );
   }

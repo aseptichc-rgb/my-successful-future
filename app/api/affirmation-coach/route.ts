@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     const text = typeof body.text === "string" ? body.text.trim() : "";
     if (text.length === 0 || text.length > COACH_INPUT_MAX_LEN) {
       return NextResponse.json(
-        { error: `다짐은 1~${COACH_INPUT_MAX_LEN}자여야 합니다.` },
+        { error: `The affirmation must be 1-${COACH_INPUT_MAX_LEN} characters.` },
         { status: 400 },
       );
     }
@@ -65,6 +65,6 @@ export async function POST(request: NextRequest) {
     }
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[affirmation-coach POST] 실패:", msg);
-    return NextResponse.json({ error: "코치 제안을 만들지 못했어요." }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't create a coach suggestion." }, { status: 500 });
   }
 }

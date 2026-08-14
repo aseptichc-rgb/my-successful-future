@@ -339,7 +339,7 @@ export async function GET(request: NextRequest) {
     console.error("[widget/today] 실패:", msg, stack);
     // 내부 예외 메시지(Firestore 경로·GCP 오류 등)를 클라이언트에 노출하지 않는다.
     return NextResponse.json(
-      { error: "오늘의 위젯 데이터를 불러오지 못했습니다." },
+      { error: "Couldn't load today's widget data." },
       { status: 500 },
     );
   }

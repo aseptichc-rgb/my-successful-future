@@ -43,26 +43,26 @@ function parseEntries(body: PostBody): ParseResult {
   const raw = body.entries;
   if (Array.isArray(raw)) {
     if (raw.length === 0 || raw.length > MAX_TEXTS) {
-      return { ok: false, error: `다짐은 1~${MAX_TEXTS}개여야 합니다.` };
+      return { ok: false, error: `You need 1-${MAX_TEXTS} affirmations.` };
     }
     const entries: CheckinEntry[] = [];
     const seen = new Set<number>();
     for (const item of raw) {
       if (typeof item !== "object" || item === null) {
-        return { ok: false, error: "다짐 항목 형식이 올바르지 않습니다." };
+        return { ok: false, error: "The affirmation items are not in a valid format." };
       }
       const { index, text } = item as { index?: unknown; text?: unknown };
       if (!Number.isInteger(index) || (index as number) < 0 || (index as number) >= MAX_TEXTS) {
-        return { ok: false, error: "다짐 인덱스가 올바르지 않습니다." };
+        return { ok: false, error: "The affirmation index is out of range." };
       }
       if (seen.has(index as number)) {
-        return { ok: false, error: "같은 다짐이 중복 제출됐습니다." };
+        return { ok: false, error: "The same affirmation was submitted twice." };
       }
       if (typeof text !== "string") {
-        return { ok: false, error: "다짐 항목은 모두 문자열이어야 합니다." };
+        return { ok: false, error: "Every affirmation item must be a string." };
       }
       if (text.length > MAX_TEXT_LEN_PAYLOAD) {
-        return { ok: false, error: "다짐 항목이 너무 깁니다." };
+        return { ok: false, error: "One of the affirmation items is too long." };
       }
       seen.add(index as number);
       entries.push({ index: index as number, text });
@@ -73,19 +73,19 @@ function parseEntries(body: PostBody): ParseResult {
   // ── 레거시: texts 배열 순서를 인덱스로 해석 ──
   const legacy = body.texts;
   if (!Array.isArray(legacy)) {
-    return { ok: false, error: "다짐 텍스트 배열이 필요합니다." };
+    return { ok: false, error: "An array of affirmation texts is required." };
   }
   if (legacy.length === 0 || legacy.length > MAX_TEXTS) {
-    return { ok: false, error: `다짐은 1~${MAX_TEXTS}개여야 합니다.` };
+    return { ok: false, error: `You need 1-${MAX_TEXTS} affirmations.` };
   }
   const entries: CheckinEntry[] = [];
   for (let i = 0; i < legacy.length; i++) {
     const text = legacy[i];
     if (typeof text !== "string") {
-      return { ok: false, error: "다짐 항목은 모두 문자열이어야 합니다." };
+      return { ok: false, error: "Every affirmation item must be a string." };
     }
     if (text.length > MAX_TEXT_LEN_PAYLOAD) {
-      return { ok: false, error: "다짐 항목이 너무 깁니다." };
+      return { ok: false, error: "One of the affirmation items is too long." };
     }
     entries.push({ index: i, text });
   }
@@ -127,6 +127,6 @@ export async function POST(request: NextRequest) {
     }
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[affirmation-checkin POST] 실패:", msg);
-    return NextResponse.json({ error: "체크인을 저장하지 못했어요." }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't save your check-in." }, { status: 500 });
   }
 }

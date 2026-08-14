@@ -41,7 +41,7 @@ function getIntegrity() {
   const raw = process.env.GOOGLE_PLAY_SA_KEY;
   if (!raw) {
     throw new Error(
-      "GOOGLE_PLAY_SA_KEY 미설정. 운영에서는 서비스 계정 JSON 을 설정하거나 PLAY_INTEGRITY_DEV_BYPASS=true 로 우회해야 합니다.",
+      "GOOGLE_PLAY_SA_KEY is not set. In production, provide the service account JSON or bypass it with PLAY_INTEGRITY_DEV_BYPASS=true.",
     );
   }
   let credentials: Record<string, unknown>;
@@ -49,7 +49,7 @@ function getIntegrity() {
     credentials = JSON.parse(raw);
   } catch (err) {
     throw new Error(
-      "GOOGLE_PLAY_SA_KEY 가 유효한 JSON 이 아닙니다: " +
+      "GOOGLE_PLAY_SA_KEY is not valid JSON: " +
         (err instanceof Error ? err.message : String(err)),
     );
   }

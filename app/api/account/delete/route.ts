@@ -176,7 +176,7 @@ export async function DELETE(request: NextRequest) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[account/delete] uid=${uid ?? "unknown"} 실패:`, msg);
     return NextResponse.json(
-      { error: "계정 삭제 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요." },
+      { error: "Couldn't delete the account. Please try again in a moment." },
       { status: 500 },
     );
   }

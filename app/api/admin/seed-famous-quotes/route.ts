@@ -62,6 +62,6 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[seed-famous-quotes] 실패:", msg);
-    return NextResponse.json({ error: "시드 동기화에 실패했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't sync the seed data." }, { status: 500 });
   }
 }

@@ -73,7 +73,7 @@ function isReplayableBody(body: BodyInit | null | undefined): boolean {
  */
 export async function authedFetch(input: string, init: RequestInit = {}): Promise<Response> {
   const user = await waitForCurrentUser(AUTH_READY_TIMEOUT_MS);
-  if (!user) throw new Error("로그인이 필요합니다. 다시 로그인 후 시도해주세요.");
+  if (!user) throw new Error("You need to sign in. Please sign in and try again.");
 
   let token: string;
   try {
@@ -83,7 +83,7 @@ export async function authedFetch(input: string, init: RequestInit = {}): Promis
       `인증 토큰을 가져오지 못했습니다: ${err instanceof Error ? err.message : String(err)}`
     );
   }
-  if (!token) throw new Error("인증 토큰이 비어 있습니다. 다시 로그인해주세요.");
+  if (!token) throw new Error("The auth token is empty. Please sign in again.");
 
   const response = await fetch(input, withAuthHeaders(init, token));
   if (response.status !== PAYMENT_REQUIRED_STATUS) return response;
