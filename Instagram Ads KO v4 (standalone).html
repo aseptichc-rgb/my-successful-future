@@ -10,7 +10,9 @@
      를 못 읽고("Error inlining remote css file" SecurityError) @font-face 를 PNG 에
      인라인하지 못한다. Chrome 은 우연히 문서 폰트로 그려주지만 다른 브라우저에서는
      폴백 서체로 내보내진다. Google Fonts 는 ACAO:* 를 주므로 이 속성만으로 해결된다. -->
-<link rel="stylesheet" crossorigin="anonymous" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@200;300;500;600&display=swap">
+<!-- 웨이트는 실사용분만 싣는다 — CJK 는 웨이트당 @font-face 서브셋이 100개
+     이상이라, 안 쓰는 웨이트 하나가 내보내기 임베드 대상 파일 수백 개가 된다. -->
+<link rel="stylesheet" crossorigin="anonymous" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+KR:wght@300;400;500&family=Noto+Serif+KR:wght@200;300;600&display=swap">
 <style>
 /* ─────────────────────────────────────────────────────────────
    anima · Instagram Ads KO v4
@@ -54,9 +56,11 @@
   --pad-y:96px;
   --gutter:1260px;
 
-  /* type scale — mono 하한 22px (피드 렌더 약 350px 폭에서 실효 7px) */
-  --fs-eyebrow:22px;
-  --fs-label:22px;
+  /* type scale — mono 하한 22px (피드 렌더 약 350px 폭에서 실효 7px)
+     하한을 올릴 땐 --fs-mono 하나만 고치면 전 보드에 적용된다. */
+  --fs-mono:22px;
+  --fs-eyebrow:var(--fs-mono);
+  --fs-label:var(--fs-mono);
   --fs-metric:24px;
   --fs-wordmark:34px;
   --lh-hl:1.16;          /* 한글은 라틴(.98)보다 행간이 필요하다 */
@@ -97,30 +101,33 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   box-shadow:0 30px 90px rgba(0,0,0,.45);
 }
 .inner{position:absolute;inset:0;padding:var(--pad-y) var(--pad-x);display:flex;flex-direction:column;}
+.inner>*{flex:none;}  /* .band 만 margin:auto 로 수직 중앙 배치 */
 
 /* ── [A] 상단바 ──────────────────────────────────────────────── */
-.topbar{display:flex;justify-content:space-between;align-items:center;flex:none;}
+.topbar{display:flex;justify-content:space-between;align-items:center;}
 .lockup{display:flex;align-items:center;gap:14px;}
 .lockup .wm{font-family:var(--wordmark);font-weight:300;font-size:var(--fs-wordmark);letter-spacing:-.02em;line-height:1;color:var(--cream);}
 .eyebrow{font-family:var(--mono);font-size:var(--fs-eyebrow);letter-spacing:.2em;color:rgba(217,164,65,.9);}
 
 /* ── [B] 헤드라인 밴드 — 1:1 크롭 안전지대(수직 중앙) ────────── */
-.band{margin:auto 0;flex:none;}
-.hl{font-family:var(--display);font-weight:200;letter-spacing:-.02em;line-height:var(--lh-hl);color:var(--cream);word-break:keep-all;}
+.band{margin:auto 0;}
+/* 크기는 보드별 파라미터 — 각 .ad 의 style="--fs-hl:…" 에서 지정 */
+.hl{font-family:var(--display);font-weight:200;font-size:var(--fs-hl);letter-spacing:-.02em;line-height:var(--lh-hl);color:var(--cream);word-break:keep-all;}
 .hl em{font-style:normal;font-weight:600;color:var(--gold);}
 
 /* ── [C] 골드 헤어라인 ───────────────────────────────────────── */
-.rule{height:1px;background:linear-gradient(90deg,rgba(217,164,65,.55),rgba(217,164,65,0));margin:var(--rule-margin);flex:none;}
+.rule{height:1px;background:linear-gradient(90deg,rgba(217,164,65,.55),rgba(217,164,65,0));margin:var(--rule-margin);}
 
 /* ── [D] proof 카드 ──────────────────────────────────────────── */
-.card{border:var(--card-border);border-radius:var(--card-radius);background:var(--card-bg);padding:var(--card-pad);flex:none;}
+.card{border:var(--card-border);border-radius:var(--card-radius);background:var(--card-bg);padding:var(--card-pad);}
+.card.soft{border-color:rgba(217,164,65,.18);}  /* CTA 카드 — 버튼이 주인공이라 보더를 낮춘다 */
 .clabel{font-family:var(--mono);font-size:var(--fs-label);letter-spacing:.12em;color:rgba(217,164,65,.85);}
 .clabel.mute{color:rgba(247,243,236,.5);}
 .chead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:26px;}
 .ctext{font-family:var(--display);font-weight:300;line-height:1.3;color:var(--cream);word-break:keep-all;}
 
 /* ── [E] 러닝 메트릭 — 01 → 04 → 12 → 84 → 01(당신) ──────────── */
-.metric{font-family:var(--mono);font-size:var(--fs-metric);letter-spacing:.14em;color:rgba(247,243,236,.42);margin-top:var(--metric-margin);flex:none;}
+.metric{font-family:var(--mono);font-size:var(--fs-metric);letter-spacing:.14em;color:rgba(247,243,236,.42);margin-top:var(--metric-margin);}
 .metric b{color:var(--gold);font-weight:500;}
 
 /* ── 카드 내부 공용 부품 ─────────────────────────────────────── */
@@ -129,43 +136,43 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
    강화한다는 헤드라인을 투명도 그라데이션으로 옮긴 것 */
 .rep{display:flex;flex-direction:column;gap:16px;}
 .reprow{display:flex;align-items:baseline;gap:24px;}
-.repday{font-family:var(--mono);font-size:22px;letter-spacing:.08em;width:96px;flex:none;}
+.repday{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.08em;width:96px;flex:none;}
 .reptext{font-family:var(--display);font-weight:300;font-size:36px;line-height:1.3;color:var(--cream);word-break:keep-all;}
 /* 하루 코칭 루프 (03) — 다짐 → 행동 → 회고 3단 설계 */
 .loop{display:flex;flex-direction:column;gap:22px;}
 .looprow{display:flex;align-items:center;gap:24px;}
-.looptime{font-family:var(--mono);font-size:22px;letter-spacing:.08em;width:80px;flex:none;color:rgba(247,243,236,.45);}
-.loopstep{font-family:var(--mono);font-size:22px;letter-spacing:.12em;width:104px;flex:none;text-align:center;padding:8px 0;border:1px solid;border-radius:999px;}
+.looptime{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.08em;width:80px;flex:none;color:rgba(247,243,236,.45);}
+.loopstep{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.12em;width:104px;flex:none;text-align:center;padding:8px 0;border:1px solid;border-radius:999px;}
 .looptext{font-family:var(--display);font-weight:300;font-size:33px;line-height:1.3;color:var(--cream);word-break:keep-all;}
 .seg{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;}
 .seg .bar{height:14px;border-radius:999px;}
-.seg .lb{font-family:var(--mono);font-size:22px;letter-spacing:.06em;margin-top:16px;text-align:center;}
+.seg .lb{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.06em;margin-top:16px;text-align:center;}
 
 /* 3일 vs 84일 대비 바 (01-C 전용) */
 .vs{display:flex;flex-direction:column;gap:24px;}
 .vsrow{display:flex;align-items:center;gap:22px;}
-.vslb{font-family:var(--mono);font-size:22px;letter-spacing:.06em;width:186px;flex:none;}
+.vslb{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.06em;width:186px;flex:none;}
 .vstrack{flex:1;height:20px;border-radius:999px;background:rgba(247,243,236,.06);}
 /* 길이는 84일 대비 실제 비율. 3일은 3.6% 라 슬라이버가 되므로 최소폭만 보장한다. */
 .vsbar{height:100%;border-radius:999px;min-width:30px;}
-.vsval{font-family:var(--mono);font-size:24px;letter-spacing:.06em;width:104px;flex:none;text-align:right;}
+.vsval{font-family:var(--mono);font-size:var(--fs-metric);letter-spacing:.06em;width:104px;flex:none;text-align:right;}
 
 /* 잠금화면 목업 — 폰 프레임 없이 "시각 + 위젯" 두 컬럼으로 압축 */
 .lock{display:flex;align-items:center;gap:34px;border:1px solid rgba(247,243,236,.10);border-radius:16px;background:rgba(0,0,0,.28);padding:28px 30px;}
 .lock-l{flex:none;text-align:center;}
 .lock-time{font-family:var(--ui);font-weight:300;font-size:76px;line-height:1;letter-spacing:-.03em;color:var(--cream);}
-.lock-date{font-family:var(--mono);font-size:22px;letter-spacing:.06em;color:rgba(247,243,236,.5);margin-top:12px;}
+.lock-date{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.06em;color:rgba(247,243,236,.5);margin-top:12px;}
 .lock-w{flex:1;border:1px solid rgba(217,164,65,.30);border-radius:14px;background:rgba(247,243,236,.05);padding:20px 22px;}
-.lock-wlabel{font-family:var(--mono);font-size:22px;letter-spacing:.1em;color:rgba(217,164,65,.85);}
+.lock-wlabel{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.1em;color:rgba(217,164,65,.85);}
 .lock-wtext{font-family:var(--display);font-weight:300;font-size:34px;line-height:1.25;color:var(--cream);margin-top:10px;word-break:keep-all;}
 .lock-chips{display:flex;gap:12px;margin-top:20px;}
-.lchip{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:22px;letter-spacing:.06em;border-radius:999px;padding:8px 16px;}
+.lchip{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.06em;border-radius:999px;padding:8px 16px;}
 /* 체크 표시는 서체에 의존하지 않도록 CSS 로 그린다(글리프 폴백/이모지 회피) */
 .ck{display:inline-block;width:9px;height:16px;border-style:solid;border-width:0 3px 3px 0;transform:rotate(45deg);margin:-4px 2px 0 0;}
 .box{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-radius:4px;opacity:.5;}
 
 .cta{text-decoration:none;display:inline-flex;align-items:center;gap:16px;background:var(--soul);color:var(--cream);font-family:var(--ui);font-size:30px;font-weight:500;letter-spacing:.02em;padding:26px 44px;border-radius:999px;}
-.cta-sub{font-family:var(--mono);font-size:22px;letter-spacing:.08em;color:rgba(247,243,236,.6);line-height:1.65;}
+.cta-sub{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.08em;color:rgba(247,243,236,.6);line-height:1.65;}
 
 /* ── 편집 화면 chrome (PNG 내보내기 시 숨김) ─────────────────── */
 .cap{position:absolute;top:var(--chrome-cap-top);font-family:var(--mono);font-size:16px;letter-spacing:.08em;color:rgba(255,255,255,.6);white-space:nowrap;}
@@ -198,16 +205,16 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 </div>
 
 <!-- ═══ 01-A · 훅 (기본 채택) ═══ -->
-<div class="cap" data-slot="0">KO 01-A · <b>훅 · 찔림형</b> · 채택<button class="dl" data-ad="adA" data-name="anima-ig-v4-ko-01a-hook">↓ PNG</button></div>
-<div class="ad" id="adA" data-slot="0">
+<div class="cap">KO 01-A · <b>훅 · 찔림형</b> · 채택<button class="dl" data-ad="adA">↓ PNG</button></div>
+<div class="ad" id="adA" data-name="anima-ig-v4-ko-01a-hook" style="--fs-hl:112px;">
   <div class="inner">
     <div class="topbar">
-      <div class="lockup"><span class="mk" data-w="38" data-stroke="#E7C77A" data-dot="#D85A30" data-sw="7"></span><span class="wm">anima</span></div>
+      <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
       <span class="eyebrow">NO.01 · 훅</span>
     </div>
 
     <div class="band">
-      <div class="hl" style="font-size:112px;">꿈은 큰데<br><em>나이만</em><br>먹고 있다면.</div>
+      <div class="hl">꿈은 큰데<br><em>나이만</em><br>먹고 있다면.</div>
     </div>
 
     <div class="rule"></div>
@@ -221,16 +228,16 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 </div>
 
 <!-- ═══ 02 · 원리 ═══ -->
-<div class="cap" data-slot="1">KO 02 · <b>원리</b> · 뇌과학<button class="dl" data-ad="ad2" data-name="anima-ig-v4-ko-02-brain">↓ PNG</button></div>
-<div class="ad" id="ad2" data-slot="1">
+<div class="cap">KO 02 · <b>원리</b> · 뇌과학<button class="dl" data-ad="ad2">↓ PNG</button></div>
+<div class="ad" id="ad2" data-name="anima-ig-v4-ko-02-brain" style="--fs-hl:92px;">
   <div class="inner">
     <div class="topbar">
-      <div class="lockup"><span class="mk" data-w="38" data-stroke="#E7C77A" data-dot="#D85A30" data-sw="7"></span><span class="wm">anima</span></div>
+      <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
       <span class="eyebrow">NO.02 · 원리</span>
     </div>
 
     <div class="band">
-      <div class="hl" style="font-size:92px;">같은 문장을<br>매일 적으면,<br>뇌는 <em>길을 냅니다.</em></div>
+      <div class="hl">같은 문장을<br>매일 적으면,<br>뇌는 <em>길을 냅니다.</em></div>
     </div>
 
     <div class="rule"></div>
@@ -247,16 +254,16 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 </div>
 
 <!-- ═══ 03 · 설계 ═══ -->
-<div class="cap" data-slot="2">KO 03 · <b>설계</b> · 행동 코칭<button class="dl" data-ad="ad3" data-name="anima-ig-v4-ko-03-design">↓ PNG</button></div>
-<div class="ad" id="ad3" data-slot="2">
+<div class="cap">KO 03 · <b>설계</b> · 행동 코칭<button class="dl" data-ad="ad3">↓ PNG</button></div>
+<div class="ad" id="ad3" data-name="anima-ig-v4-ko-03-design" style="--fs-hl:88px;">
   <div class="inner">
     <div class="topbar">
-      <div class="lockup"><span class="mk" data-w="38" data-stroke="#E7C77A" data-dot="#D85A30" data-sw="7"></span><span class="wm">anima</span></div>
+      <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
       <span class="eyebrow">NO.03 · 설계</span>
     </div>
 
     <div class="band">
-      <div class="hl" style="font-size:88px;">적기만 하는<br>앱이 아닙니다.<br>행동을 <em>설계합니다.</em></div>
+      <div class="hl">적기만 하는<br>앱이 아닙니다.<br>행동을 <em>설계합니다.</em></div>
     </div>
 
     <div class="rule"></div>
@@ -273,16 +280,16 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 </div>
 
 <!-- ═══ 04 · 변화 ═══ -->
-<div class="cap" data-slot="3">KO 04 · <b>변화</b> · 훅 회수<button class="dl" data-ad="ad4" data-name="anima-ig-v4-ko-04-grow">↓ PNG</button></div>
-<div class="ad" id="ad4" data-slot="3">
+<div class="cap">KO 04 · <b>변화</b> · 훅 회수<button class="dl" data-ad="ad4">↓ PNG</button></div>
+<div class="ad" id="ad4" data-name="anima-ig-v4-ko-04-grow" style="--fs-hl:96px;">
   <div class="inner">
     <div class="topbar">
-      <div class="lockup"><span class="mk" data-w="38" data-stroke="#E7C77A" data-dot="#D85A30" data-sw="7"></span><span class="wm">anima</span></div>
+      <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
       <span class="eyebrow">NO.04 · 변화</span>
     </div>
 
     <div class="band">
-      <div class="hl" style="font-size:96px;">84일째.<br>나이와 함께<br><em>꿈도 자랍니다.</em></div>
+      <div class="hl">84일째.<br>나이와 함께<br><em>꿈도 자랍니다.</em></div>
     </div>
 
     <div class="rule"></div>
@@ -299,21 +306,21 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 </div>
 
 <!-- ═══ 05 · 시작 (CTA) ═══ -->
-<div class="cap" data-slot="4">KO 05 · <b>시작</b> · CTA<button class="dl" data-ad="ad5" data-name="anima-ig-v4-ko-05-start">↓ PNG</button></div>
-<div class="ad" id="ad5" data-slot="4">
+<div class="cap">KO 05 · <b>시작</b> · CTA<button class="dl" data-ad="ad5">↓ PNG</button></div>
+<div class="ad" id="ad5" data-name="anima-ig-v4-ko-05-start" style="--fs-hl:96px;">
   <div class="inner">
     <div class="topbar">
-      <div class="lockup"><span class="mk" data-w="38" data-stroke="#E7C77A" data-dot="#D85A30" data-sw="7"></span><span class="wm">anima</span></div>
+      <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
       <span class="eyebrow">NO.05 · 시작</span>
     </div>
 
     <div class="band">
-      <div class="hl" style="font-size:96px;">꿈이 늙기 전에,<br><em>오늘 밤</em><br>첫 줄을 적으세요.</div>
+      <div class="hl">꿈이 늙기 전에,<br><em>오늘 밤</em><br>첫 줄을 적으세요.</div>
     </div>
 
     <div class="rule"></div>
     <!-- 오렌지 1개소: CTA 버튼 -->
-    <div class="card" style="border-color:rgba(217,164,65,.18);">
+    <div class="card soft">
       <div style="display:flex;align-items:center;gap:30px;">
         <a class="cta" href="https://www.successfulfuture.app/go/app">앱 받기 <span style="font-size:26px;">→</span></a>
         <span class="cta-sub">iOS · Android<br>무료로 시작</span>
@@ -324,16 +331,16 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 </div>
 
 <!-- ═══ 01-B · 훅 변형 (A/B 테스트용) ═══ -->
-<div class="cap alt" data-slot="5">KO 01-B · <b>훅 · 제품형</b> · 변형<button class="dl" data-ad="adB" data-name="anima-ig-v4-ko-01b-hook-alt">↓ PNG</button></div>
-<div class="ad" id="adB" data-slot="5">
+<div class="cap alt">KO 01-B · <b>훅 · 제품형</b> · 변형<button class="dl" data-ad="adB">↓ PNG</button></div>
+<div class="ad" id="adB" data-name="anima-ig-v4-ko-01b-hook-alt" style="--fs-hl:88px;">
   <div class="inner">
     <div class="topbar">
-      <div class="lockup"><span class="mk" data-w="38" data-stroke="#E7C77A" data-dot="#D85A30" data-sw="7"></span><span class="wm">anima</span></div>
+      <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
       <span class="eyebrow">NO.01 · 훅</span>
     </div>
 
     <div class="band">
-      <div class="hl" style="font-size:88px;">핸드폰을 켜는 순간,<br>꿈이 먼저<br><em>말을 겁니다.</em></div>
+      <div class="hl">핸드폰을 켜는 순간,<br>꿈이 먼저<br><em>말을 겁니다.</em></div>
     </div>
 
     <div class="rule"></div>
@@ -347,16 +354,16 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 </div>
 
 <!-- ═══ 01-C · 훅 변형 (A/B 테스트용) ═══ -->
-<div class="cap alt" data-slot="6">KO 01-C · <b>훅 · 관용구형</b> · 변형<button class="dl" data-ad="adC" data-name="anima-ig-v4-ko-01c-hook-alt">↓ PNG</button></div>
-<div class="ad" id="adC" data-slot="6">
+<div class="cap alt">KO 01-C · <b>훅 · 관용구형</b> · 변형<button class="dl" data-ad="adC">↓ PNG</button></div>
+<div class="ad" id="adC" data-name="anima-ig-v4-ko-01c-hook-alt" style="--fs-hl:118px;">
   <div class="inner">
     <div class="topbar">
-      <div class="lockup"><span class="mk" data-w="38" data-stroke="#E7C77A" data-dot="#D85A30" data-sw="7"></span><span class="wm">anima</span></div>
+      <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
       <span class="eyebrow">NO.01 · 훅</span>
     </div>
 
     <div class="band">
-      <div class="hl" style="font-size:118px;">작심삼일 말고,<br><em>작심 84일.</em></div>
+      <div class="hl">작심삼일 말고,<br><em>작심 84일.</em></div>
     </div>
 
     <div class="rule"></div>
@@ -385,29 +392,41 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   </div>
 </div>
 
-<script src="https://unpkg.com/html-to-image@1.11.13/dist/html-to-image.js"></script>
+<!-- defer: 라이브러리는 내보내기 클릭 때만 필요하다. 동기 로드면 CDN 응답이
+     올 때까지 아래 인라인 스크립트(보드 내용 전부)가 막혀 백지로 보인다. -->
+<script defer src="https://unpkg.com/html-to-image@1.11.13/dist/html-to-image.js"></script>
 <script>
 (function () {
   'use strict';
 
-  /* ── 레이아웃 상수 (CSS 커스텀 프로퍼티와 동일 값) ─────────── */
-  var GUTTER = 1260;          // 보드 간 가로 간격
-  var EXPORT_W = 1080;
-  var EXPORT_H = 1350;
+  /* ── 레이아웃 상수 — 기하의 단일 원본은 :root 커스텀 프로퍼티 ─ */
+  var rootStyle = getComputedStyle(document.documentElement);
+  function cssPx(name) { return parseInt(rootStyle.getPropertyValue(name), 10); }
+  var GUTTER = cssPx('--gutter');   // 보드 간 가로 간격
+  var EXPORT_W = cssPx('--w');
+  var EXPORT_H = cssPx('--h');
   var PIXEL_RATIO = 2;        // → 2160 × 2700
   var BATCH_PAUSE_MS = 400;   // 브라우저가 다운로드를 flush 할 여유
   var CARRYOVER = ['adA', 'ad2', 'ad3', 'ad4', 'ad5'];   // 실제 게재 5장
   var HOOK_VARIANTS = ['adA', 'adB', 'adC'];             // 훅 A/B 테스트 3안
 
-  /* ── 보드를 가로로 배치 ────────────────────────────────────── */
-  document.querySelectorAll('[data-slot]').forEach(function (el) {
-    el.style.left = (Number(el.dataset.slot) * GUTTER) + 'px';
+  /* ── 보드를 가로로 배치 — 순서 = 마크업 등장 순서(.cap 과 .ad 는 짝) ── */
+  ['.cap', '.ad'].forEach(function (sel) {
+    document.querySelectorAll(sel).forEach(function (el, i) {
+      el.style.left = (i * GUTTER) + 'px';
+    });
   });
   var stage = document.getElementById('stage');
   var boardCount = document.querySelectorAll('.ad').length;
   stage.style.width = ((boardCount - 1) * GUTTER + EXPORT_W) + 'px';
 
-  /* ── 조리개 마크 (v3 과 동일 도형) ─────────────────────────── */
+  /* 버튼 라벨은 실제 게재 수·출력 해상도에서 파생한다 — 상수를 바꿔도 라벨이 거짓말하지 않게 */
+  document.getElementById('dlall').textContent =
+    '↓ ' + CARRYOVER.length + '장 일괄 저장 (PNG · ' + (EXPORT_W * PIXEL_RATIO) + '×' + (EXPORT_H * PIXEL_RATIO) + ')';
+  document.getElementById('dlhooks').textContent = '↓ 훅 ' + HOOK_VARIANTS.length + '안만 저장';
+
+  /* ── 조리개 마크 (v3 과 동일 도형) ──────────────────────────
+     도형 원본은 public/icons/anima-mark-*.svg — 마크 개편 시 함께 갱신할 것. */
   function apertureSVG(size, stroke, dot, sw) {
     var cx = 50, cy = 50, r = 42, gap = 16;
     function polar(rr, deg) {
@@ -423,9 +442,9 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
       '" stroke-width="' + sw + '" stroke-linecap="round"/>' +
       '<circle cx="' + cx + '" cy="' + cy + '" r="' + dotR + '" fill="' + dot + '"/></svg>';
   }
-  document.querySelectorAll('.mk').forEach(function (el) {
-    el.innerHTML = apertureSVG(+el.dataset.w, el.dataset.stroke, el.dataset.dot, +el.dataset.sw);
-  });
+  // 마크는 전 보드 공통 상수 — 한 번 만들어 모든 자리에 꽂는다.
+  var MARK_SVG = apertureSVG(38, '#E7C77A', '#D85A30', 7);
+  document.querySelectorAll('.mk').forEach(function (el) { el.innerHTML = MARK_SVG; });
 
   /* ── 다짐 반복 기록 (02) ────────────────────────────────────
      같은 문장이 날마다 진해진다 — "반복이 뇌에 길을 낸다"를 투명도
@@ -474,7 +493,9 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     }).join('');
   });
 
-  /* ── 성장 사다리 (이모지 없이 CSS 세그먼트) ────────────────── */
+  /* ── 성장 사다리 (이모지 없이 CSS 세그먼트) ──────────────────
+     단계 명칭·개수의 원본은 lib/growthStage.ts 의 GROWTH_STAGES
+     (라벨은 lib/i18n/dictionaries/ko.ts growth.stage.*) — 개편 시 함께 갱신할 것. */
   var STAGES = [
     { label: '씨앗',   state: 'done' },
     { label: '새싹',   state: 'done' },
@@ -525,31 +546,31 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     live:   { bg: 'rgba(216,90,48,.22)',   fg: '#F5A882' },
     todo:   { bg: 'rgba(247,243,236,.06)', fg: 'rgba(247,243,236,.45)' }
   };
+  // 두 변형은 같은 날·같은 위젯이다 — 다른 것은 시각·라이브 여부·칩 상태뿐.
+  var LOCK_COMMON = {
+    date: '8월 14일 금요일',
+    label: '오늘의 한 걸음',
+    text: '이력서 첫 문단 다시 쓰기'
+  };
   var LOCK = {
-    morning: {
+    morning: Object.assign({
       time: '7:02',
-      date: '8월 14일 금요일',
-      label: '오늘의 한 걸음',
-      text: '이력서 첫 문단 다시 쓰기',
       live: true,                                   // 오렌지 = 위젯 라이브 바
       chips: [
         { label: '다짐', state: 'todo' },
         { label: '행동', state: 'todo' },
         { label: '잘한 일', state: 'todo' }
       ]
-    },
-    night: {
+    }, LOCK_COMMON),
+    night: Object.assign({
       time: '21:40',
-      date: '8월 14일 금요일',
-      label: '오늘의 한 걸음',
-      text: '이력서 첫 문단 다시 쓰기',
       live: false,
       chips: [
         { label: '다짐', state: 'done' },
         { label: '행동', state: 'done' },
         { label: '잘한 일', state: 'live' }         // 오렌지 = 마지막으로 닫히는 칸
       ]
-    }
+    }, LOCK_COMMON)
   };
   function lockHTML(cfg) {
     var chips = cfg.chips.map(function (c) {
@@ -614,6 +635,20 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     '300 40px "Fraunces"',
     '500 24px "JetBrains Mono"'
   ];
+  /* @font-face 수집·인라인은 전 보드 공통이므로 첫 내보내기에서 한 번만
+     수행해 재사용한다. cacheBust 는 한글 unicode-range 서브셋 수백 파일을
+     매번 재다운로드하게 만들므로 쓰지 않는다(Google Fonts 파일은 불변). */
+  var fontEmbedPromise = null;
+  function fontEmbedOnce(node) {
+    if (!fontEmbedPromise) {
+      fontEmbedPromise = htmlToImage.getFontEmbedCSS(node).catch(function (err) {
+        fontEmbedPromise = null;   // 실패 시 다음 시도에서 재수집
+        throw err;
+      });
+    }
+    return fontEmbedPromise;
+  }
+
   var fontsPrimed = null;
   function primeFonts() {
     if (fontsPrimed) { return fontsPrimed; }
@@ -638,6 +673,9 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   // style:{left:'0'} 오버라이드는 복제된 computed style 에 덮여 무력하므로,
   // 캡처 직전 실제 노드를 원점으로 옮기고 finally 에서 복원한다.
   async function renderAd(id) {
+    if (typeof htmlToImage === 'undefined') {
+      throw new Error('html-to-image 로딩 전 — 잠시 후 다시 시도하세요');
+    }
     var node = document.getElementById(id);
     if (!node) { throw new Error('알 수 없는 보드: ' + id); }
     var chrome = Array.prototype.slice.call(document.querySelectorAll('.cap, #dlbar, #capbox'));
@@ -653,7 +691,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
         height: EXPORT_H,
         pixelRatio: PIXEL_RATIO,
         style: { margin: '0' },
-        cacheBust: true
+        fontEmbedCSS: await fontEmbedOnce(node)
       });
     } finally {
       node.style.left = parkedLeft;
@@ -661,11 +699,11 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
       chrome.forEach(function (c) { c.style.visibility = ''; });
     }
   }
-  window.renderAd = renderAd;
 
+  /* 파일명(data-name)은 내보내는 보드 자신이 갖는다 — chrome 마크업과 무관하게 유지된다. */
   function nameFor(id) {
-    var btn = document.querySelector('.cap .dl[data-ad="' + id + '"]');
-    return btn ? btn.dataset.name : id;
+    var node = document.getElementById(id);
+    return (node && node.dataset.name) || id;
   }
 
   async function downloadAd(id, name) {
@@ -681,14 +719,15 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   document.querySelectorAll('.cap .dl').forEach(function (btn) {
     btn.addEventListener('click', async function (e) {
       e.stopPropagation();
+      var name = nameFor(btn.dataset.ad);
       var original = btn.textContent;
       btn.textContent = '…';
       try {
-        await downloadAd(btn.dataset.ad, btn.dataset.name);
+        await downloadAd(btn.dataset.ad, name);
         say('');
       } catch (err) {
-        console.error('[export]', btn.dataset.name, err);
-        say('실패 · ' + btn.dataset.name + ' · ' + (err && err.message ? err.message : err), true);
+        console.error('[export]', name, err);
+        say('실패 · ' + name + ' · ' + (err && err.message ? err.message : err), true);
       } finally {
         btn.textContent = original;
       }
@@ -709,7 +748,9 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
           console.error('[export]', ids[i], err);
           failed.push(nameFor(ids[i]));
         }
-        await new Promise(function (r) { setTimeout(r, BATCH_PAUSE_MS); });
+        if (i < ids.length - 1) {
+          await new Promise(function (r) { setTimeout(r, BATCH_PAUSE_MS); });
+        }
       }
       say(failed.length
         ? '완료 · 성공 ' + ok + ' / 실패 ' + failed.length + ': ' + failed.join(', ')
