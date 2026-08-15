@@ -124,6 +124,24 @@
      같이 실으면 1번과 6번이 같은 문장이 되므로 A/B 는 01-A 로만 돌릴 것.
      01-C 를 되살리려면 새 훅 문구를 주거나 보드를 내려야 한다.
 
+   2026-08-15 설치 유도 보강 — 이미지 안에 "무슨 앱인지"와 "언제 시작하는지"가
+   비어 있었다. 좌상단 워드마크(34px)를 빼면 앱 이름이 본문에 한 번도 나오지
+   않았고, 캡션은 피드에서 접히므로 이미지만 넘긴 사람에게는 소개가 0회였다.
+   설치 유도도 06 한 장뿐이라 중간 이탈자를 놓쳤다. 다섯 군데를 고쳤다.
+   · 06 deck 신설: "첫 줄은 오늘 밤. / anima 에서 시작합니다."
+     헤드라인을 선언으로 바꾸면서 이 보드에서 동사가 사라졌던 것을 되돌린다.
+   · 06 CTA 라벨: "앱 받기" → "지금 설치하기". Meta 광고 관리자 CTA 버튼이
+     "설치하기"이므로 이미지 안 버튼과 광고 버튼이 같은 동사를 쓰게 맞췄다.
+   · 04 deck 신설: "anima · 다짐을 행동으로 옮기는 코칭 앱". '앱'이라는 단어를
+     쓰는 유일한 보드라 소개가 가장 덜 튄다. 문구는 04 카드의 다짐 → 행동
+     흐름을 그대로 받는다(캡션의 소개문은 같은 말의 더 긴 판본이다).
+     이에 따라 --fs-hl 88 → 92px — 88px 이면 deck/hl 이 40.9% 라 주종 규칙 초과.
+   · 05 메트릭: "84일차" → "84일차 · 당신의 01일차는 오늘 밤". 러닝 메트릭이
+     여기서 처음 2인칭으로 꺾여 06 의 "01일차 · 당신의 차례"를 예고한다
+     (예고 → 확정). 06 문구를 이 줄과 똑같이 만들면 장치가 죽는다.
+   · 캡션 CTA 줄도 같은 동사로 교체("무료로 시작하기" → "지금 설치하기 · 무료").
+   실측(6장 전부): 넘침 없음 · 오렌지 정확히 1개소 · deck/hl 비율 40% 이하.
+
    v3 대비 변경점은 세 가지뿐이다.
    1) 디스플레이 서체: Fraunces → Noto Serif KR (워드마크만 Fraunces 유지)
    2) 강조 장치: 이탤릭 → 굵기 600 + 골드
@@ -400,7 +418,10 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 
 <!-- ═══ 04 · 설계 ═══ -->
 <div class="cap">KO 04 · <b>설계</b> · 행동 코칭<button class="dl" data-ad="ad3">↓ PNG</button></div>
-<div class="ad" id="ad3" data-name="anima-ig-v4-ko-04-design" style="--fs-hl:88px;">
+<!-- --fs-hl 은 02·03 과 같은 92px — deck 을 붙이면서 88px 로는 부연/헤드라인
+     비율이 40.9% 가 되어 주종 규칙(--fs-deck 주석의 40% 이하)을 넘긴다.
+     92px 에서 39.1%, 최장 줄 577px(안전폭 904px), 밴드 위 115 / 아래 171px. -->
+<div class="ad" id="ad3" data-name="anima-ig-v4-ko-04-design" style="--fs-hl:92px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
@@ -409,6 +430,10 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 
     <div class="band">
       <div class="hl">적기만 하는<br>앱이 아닙니다.<br>행동을 <em>설계합니다.</em></div>
+      <!-- 캐러셀에서 앱 이름·정체를 본문으로 밝히는 두 자리 중 앞쪽(뒤는 06 deck).
+           '앱'이라는 단어를 쓰는 보드가 여기뿐이라 소개가 가장 덜 튄다.
+           캡션은 피드에서 접히므로 이미지만 넘긴 사람에게는 이 줄이 유일한 소개다. -->
+      <div class="deck"><b>anima</b> · 다짐을 행동으로 옮기는 코칭 앱</div>
     </div>
 
     <div class="rule"></div>
@@ -450,7 +475,11 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
       </div>
       <div class="seg" data-seg></div>
     </div>
-    <div class="metric"><b>84</b>일차</div>
+    <!-- 마지막 장 전에 독자를 한 번 끌어오는 자리. 러닝 메트릭이 여기서 처음
+         2인칭으로 꺾여, 06 의 "01일차 · 당신의 차례"를 예고하고 받게 한다
+         (예고 → 확정이라 중복이 아니다 — 06 쪽 문구를 이 줄과 같게 만들지 말 것).
+         "오늘 밤"은 06 deck 의 "첫 줄은 오늘 밤."과 같은 시점을 가리킨다. -->
+    <div class="metric"><b>84</b>일차 · 당신의 <b>01</b>일차는 오늘 밤</div>
   </div>
 </div>
 
@@ -469,13 +498,21 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
            아래 메트릭 "01일차 · 당신의 차례"가 이 '내'를 독자에게 넘긴다.
            오렌지 1개소는 CTA 버튼이 계속 갖는다 — em 은 골드로 둘 것(.hl em). -->
       <div class="hl">내 미래는<br><em>내가</em><br>만들어갑니다.</div>
+      <!-- 헤드라인이 선언이라 이 보드에서 동사가 사라진다. deck 이 그 선언을
+           실행으로 내리는 자리다 — 시점(오늘 밤) + 앱 이름 + 행동.
+           캐러셀 6장 중 앱 이름이 본문에 나오는 곳이 여기뿐이므로
+           (나머지는 좌상단 워드마크 34px) 이 줄에서 anima 를 빼지 말 것. -->
+      <div class="deck">첫 줄은 오늘 밤.<br><b>anima 에서 시작합니다.</b></div>
     </div>
 
     <div class="rule"></div>
     <!-- 오렌지 1개소: CTA 버튼 -->
     <div class="card soft">
       <div style="display:flex;align-items:center;gap:30px;">
-        <a class="cta" href="https://www.successfulfuture.app/go/app">앱 받기 <span style="font-size:26px;">→</span></a>
+        <!-- 라벨은 Meta 광고 관리자 CTA 버튼("설치하기")과 같은 동사로 맞춘다 —
+             이미지 안 버튼과 광고 버튼이 다른 말을 하면 행동이 갈린다.
+             "앱 받기"는 수동태에 가까워 설치 동사보다 약했다. -->
+        <a class="cta" href="https://www.successfulfuture.app/go/app">지금 설치하기 <span style="font-size:26px;">→</span></a>
         <span class="cta-sub">iOS · Android<br>무료로 시작</span>
       </div>
     </div>
@@ -717,7 +754,8 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     '30일 중 25일 — 의지가 아니라 설계입니다.',
     '84일 뒤엔, 본 게 아니라 살아낸 하루들이 남아 있을 거예요.',
     '',
-    '→ 무료로 시작하기 (iOS · Android)',
+    /* 동사는 이미지 안 CTA 버튼·Meta 광고 관리자 CTA("설치하기")와 맞춘다 */
+    '→ 지금 설치하기 · 무료 (iOS · Android)',
     '',
     '#자기계발 #다짐 #습관만들기 #모닝루틴 #동기부여 #목표달성',
     '#확언 #성공일기 #갓생 #자기관리 #루틴 #꿈 #시각화'
