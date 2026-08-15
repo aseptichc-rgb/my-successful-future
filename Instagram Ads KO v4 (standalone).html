@@ -442,9 +442,12 @@
      헤드라인을 둔 채로는 --fs-name 이 180px 을 못 넘고 밴드 위 여백이 24px
      까지 좁아진다(220px→4px · 260px→메트릭이 하단 안전영역 33px 침범).
      그래서 이 보드는 .hl 이 없는 유일한 장이다. 보드를 훑는 스크립트 주의.
-   · --fs-name 300px. 실측(글자 폭 / 안전폭 904px): 180→518 · 220→633 ·
-     260→749 · 300→864(96%) · 340→979(초과). 훅(895px·99%)과 같은 급으로
-     꽉 채우되 한 단계 물러선 값이다. 밴드 위 87px · 넘침 없음.
+   · --fs-name 260px. 실측(글자 폭 / 안전폭 904px): 180→518 · 220→633 ·
+     260→749(83%) · 300→864(96%) · 340→979(초과).
+     처음 잡은 300px 은 훅(895px·99%)과 같은 급으로 꽉 채우는 값이었는데
+     한 단계 낮췄다 — 749px 은 이 파일이 편안한 채움으로 삼아 온 83%
+     (03 헤드라인 750px·83%)와 같은 비율이다. 가로 상한은 여전히 약 310px
+     이므로 키울 여지는 남아 있다. 밴드 위 107px · 넘침 없음.
    · .band-center 는 이 보드 전용이다. 나머지 여덟 장이 전부 왼쪽에 붙어
      있기 때문에 이 장이 특별해 보이는 것이므로 다른 보드에 쓰지 말 것.
    · 색은 크림 고정 — 골드는 구조 전용이고 오렌지 1개소는 카드 화살표가
@@ -924,7 +927,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 
 <!-- ═══ 05 · 이름 ═══ -->
 <div class="cap">KO 05 · <b>이름</b> · anima 의 뜻<button class="dl" data-ad="adN">↓ PNG</button></div>
-<div class="ad" id="adN" data-name="anima-ig-v4-ko-05-name" style="--fs-name:300px;--name-margin:44px;">
+<div class="ad" id="adN" data-name="anima-ig-v4-ko-05-name" style="--fs-name:260px;--name-margin:44px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
