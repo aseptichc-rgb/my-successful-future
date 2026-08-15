@@ -354,6 +354,39 @@
      노출이 0회다 — 되살릴 거라면 04 를 되돌리지 말고 새 보드를 만들 것
      (04·05 사이가 자리다: 확장 → 비전 → 설계).
 
+   2026-08-15 08 CTA 카드에 약속 줄(.vow)과 다운로드 주소 신설.
+   · 약속 줄: "당신의 위대한 여정에, / anima 가 끝까지 동반자가 되겠습니다."
+     08 헤드라인은 독자의 1인칭 선언("내 미래는 내가 만들어갑니다")인데 그
+     선언에 답하는 목소리가 캐러셀 어디에도 없었다 — 여덟 장이 전부 독자의
+     말이거나 제품 설명이라, 브랜드가 "함께 가겠다"고 말하는 자리가 0회다.
+     CTA 바로 위에 두어 약속 → 행동으로 읽히게 했다. 이 줄에서 기능을 다시
+     말하지 말 것(기능은 02~05 가 넉 장에 걸쳐 이미 말했다) — 몫은 "혼자
+     하는 게 아니다" 하나뿐이고, 그래야 아래 버튼이 그 동행의 첫 걸음이 된다.
+   · 다운로드 주소: successfulfuture.app/go/app 를 버튼 옆에 글자로 적었다.
+     PNG 안에서는 <a> 가 눌리지 않으므로, 이미지를 저장·캡처해 간 사람에게는
+     앱을 찾아갈 방법이 이미지에 하나도 남지 않았다(캡션은 피드에서 접히고
+     인스타는 캡션 URL 을 링크로 만들지도 않는다). 주소 원본은
+     app/go/app/route.ts — 기기 UA 로 App Store · Play 를 갈라 보내므로 한 줄이면
+     된다. 스토어 주소 두 개를 늘어놓지 말 것(옮겨 적을 사람에게는 짧은 한
+     줄이 낫다). 프로토콜(https://www.)은 뺀다 — 타이핑할 최소 단위만 남긴다.
+     버튼의 href 는 전체 주소 그대로다(이 파일을 브라우저에서 볼 때는 눌린다).
+   · cta-sub 를 "iOS · Android / 무료로 시작" → "iOS · Android · 무료 / 주소"로
+     바꿔 두 줄을 유지했다 — 줄이 늘지 않아 버튼 행 높이(96px)가 그대로다.
+   · 버튼 행의 인라인 style(flex) 을 .ctarow 로 옮기고 약속과 행동 사이에
+     구분선을 넣었다. 선 색은 06 파생어 줄(.etyd)과 같은 골드 계열이라
+     색이 늘지 않는다(§3-1).
+   · 오렌지 1개소는 버튼 배경 그대로다 — 약속 줄은 크림, 주소는 mono 크림이다.
+     여기에 오렌지를 쓰면 한 장에 둘이 된다.
+   · 카드가 175 → 317px 로 자라 밴드 위아래 여백이 116 → 45px 이 되었다.
+     --fs-hl 120px 은 유지한다(45px 은 기존 최저치 35px 보다 위다).
+     이 카드를 더 키울 일이 생기면 헤드라인을 112px 로 내려 28px(3줄 × 8px ×
+     행간 1.16)을 회수할 것 — 위아래 59px 이 된다. 훅(150px)보다는 계속 낮게.
+   · 실측: 헤드라인 최장 줄 718px(안전폭 904) · deck/hl 30% · 약속 줄 2줄 90px ·
+     주소 1줄, 카드 우측 여유 111px · 밴드 위 45 / 아래 45px(rule 여백 56 제외) ·
+     보드 넘침 0 · 카드 가로 넘침 0 · 오렌지 정확히 1개소(.cta).
+   · 캡션도 같은 줄로 닫고(마무리 문장 다음) CTA 줄 아래에 같은 주소를 넣었다.
+     보드와 캡션의 주소는 항상 같아야 한다 — 한쪽만 고치지 말 것.
+
    v3 대비 변경점은 세 가지뿐이다.
    1) 디스플레이 서체: Fraunces → Noto Serif KR (워드마크만 Fraunces 유지)
    2) 강조 장치: 이탤릭 → 굵기 600 + 골드
@@ -537,6 +570,21 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 
 .cta{text-decoration:none;display:inline-flex;align-items:center;gap:16px;background:var(--soul);color:var(--cream);font-family:var(--ui);font-size:30px;font-weight:500;letter-spacing:.02em;padding:26px 44px;border-radius:999px;}
 .cta-sub{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.08em;color:rgba(247,243,236,.6);line-height:1.65;}
+/* 다운로드 주소 — PNG 안에서는 버튼이 눌리지 않으므로, 주소는 눈으로 읽고
+   손으로 옮겨 적을 수 있어야 한다. 그래서 같은 mono 안에서 한 단계 밝게 두고
+   프로토콜(https://www.)은 뺀다 — 읽는 사람이 타이핑할 최소 단위만 남긴다.
+   주소 원본은 app/go/app/route.ts(기기별 스토어 리다이렉트)다. */
+.cta-url{color:rgba(247,243,236,.88);letter-spacing:.04em;}
+/* CTA 카드의 약속 줄 (08) — 캐러셀 여덟 장 중 브랜드가 1인칭으로 말하는
+   유일한 자리다. 헤드라인("내 미래는 내가 만들어갑니다")이 독자의 선언이라
+   그 선언에 답하는 목소리가 하나 필요했고, 답은 CTA 바로 위에 있어야
+   약속 → 행동으로 읽힌다. 강조는 굵기+밝기로만 준다 — 골드는 구조 전용이고
+   오렌지는 아래 버튼이 이미 쓴다(§3-1). */
+.vow{font-family:var(--display);font-weight:300;font-size:32px;line-height:1.4;color:rgba(247,243,236,.72);word-break:keep-all;}
+.vow b{font-weight:600;color:var(--cream);}
+/* 약속(위)과 행동(아래)을 가르는 선 — 06 파생어 줄(.etyd)과 같은 처리라
+   카드 보더와 같은 골드 계열이고 색이 늘지 않는다(§3-1). */
+.ctarow{display:flex;align-items:center;gap:30px;border-top:1px solid rgba(217,164,65,.18);margin-top:30px;padding-top:30px;}
 
 /* ── 편집 화면 chrome (PNG 내보내기 시 숨김) ─────────────────── */
 .cap{position:absolute;top:var(--chrome-cap-top);font-family:var(--mono);font-size:16px;letter-spacing:.08em;color:rgba(255,255,255,.6);white-space:nowrap;}
@@ -915,12 +963,24 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     <div class="rule"></div>
     <!-- 오렌지 1개소: CTA 버튼 -->
     <div class="card soft">
-      <div style="display:flex;align-items:center;gap:30px;">
+      <!-- 헤드라인이 독자의 선언이라, 그 선언에 답하는 목소리가 한 줄 필요하다 —
+           여덟 장 중 브랜드가 1인칭으로 말하는 유일한 자리다. 여기서 기능을
+           다시 말하지 말 것(기능은 02~05 가 넉 장에 걸쳐 이미 말했다). 이 줄의
+           몫은 "혼자 하는 게 아니다"뿐이고, 그래야 바로 아래 버튼이 그 동행의
+           첫 걸음으로 읽힌다. 캡션 마무리 줄과 한 벌로 움직인다. -->
+      <div class="vow">당신의 위대한 여정에,<br><b>anima 가 끝까지 동반자가 되겠습니다.</b></div>
+      <div class="ctarow">
         <!-- 라벨은 Meta 광고 관리자 CTA 버튼("설치하기")과 같은 동사로 맞춘다 —
              이미지 안 버튼과 광고 버튼이 다른 말을 하면 행동이 갈린다.
              "앱 받기"는 수동태에 가까워 설치 동사보다 약했다. -->
         <a class="cta" href="https://www.successfulfuture.app/go/app">지금 설치하기 <span style="font-size:26px;">→</span></a>
-        <span class="cta-sub">iOS · Android<br>무료로 시작</span>
+        <!-- 인스타 이미지 안에서는 버튼이 눌리지 않는다 — 주소를 글자로 함께
+             적어 두어야 앱을 찾아갈 방법이 이미지에 남는다. /go/app 은 기기
+             UA 로 App Store · Play 를 갈라 보내는 리다이렉트라 주소가 하나면
+             된다(lib/constants/storeLinks.ts · app/go/app/route.ts).
+             스토어 주소를 두 줄로 늘어놓지 말 것 — 옮겨 적을 사람에게는
+             짧은 한 줄이 두 개의 긴 주소보다 낫다. -->
+        <span class="cta-sub">iOS · Android · 무료<br><span class="cta-url">successfulfuture.app/go/app</span></span>
       </div>
     </div>
     <div class="metric"><b>01</b>일차 · 당신의 차례</div>
@@ -1194,8 +1254,15 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     '',
     '84일 뒤엔, 본 게 아니라 살아낸 하루들이 남아 있을 거예요.',
     '',
-    /* 동사는 이미지 안 CTA 버튼·Meta 광고 관리자 CTA("설치하기")와 맞춘다 */
+    /* 08 CTA 카드의 약속 줄(.vow)과 같은 말 — 캐러셀도 캡션도 같은 문장으로
+       닫힌다. 이미지를 넘기지 않은 사람에게 이 줄이 그 자리를 대신한다. */
+    '당신의 위대한 여정에, anima 가 끝까지 동반자가 되겠습니다.',
+    '',
+    /* 동사는 이미지 안 CTA 버튼·Meta 광고 관리자 CTA("설치하기")와 맞춘다.
+       주소는 08 카드에 적힌 것과 같아야 한다 — 캡션의 링크는 눌리지 않으므로
+       (인스타는 캡션 URL 을 링크로 만들지 않는다) 옮겨 적을 한 줄로 둔다. */
     '→ 지금 설치하기 · 무료 (iOS · Android)',
+    '→ successfulfuture.app/go/app',
     '',
     '#자기계발 #다짐 #습관만들기 #모닝루틴 #동기부여 #목표달성',
     '#확언 #성공일기 #갓생 #자기관리 #루틴 #꿈 #시각화'
