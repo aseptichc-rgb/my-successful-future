@@ -17,7 +17,7 @@
 /* ─────────────────────────────────────────────────────────────
    anima · Instagram Ads KO v4
    v3(EN)의 Obsidian & Gold 시스템을 그대로 상속한 한국어판.
-   슬라이드 5장 + 01번 훅 변형 2안(A/C) = 6보드.
+   슬라이드 6장 + 01번 훅 변형 2안(A/C) = 7보드.
 
    2026-08-14 카피 개편: 훅을 "꿈은 큰데 나이만 먹고 있다면."으로 교체.
    02 는 원리(같은 다짐 반복 → 뇌가 길을 낸다), 03 은 설계(다짐 → 행동 →
@@ -38,6 +38,18 @@
    실재하는 기능만 광고한다 — 없는 기능을 그리면 스토어 심사와 환불 사유가 된다.
    되살릴 땐 기능부터 확인할 것. 참고: 홈화면 위젯은 실재한다
    (android .../widget/QuoteWidget.kt · ios-templates/AnimaWidget).
+
+   2026-08-15 "미래 비전" 보드(03) 신설 — 캐러셀 5장 → 6장.
+   사용자가 적은 '미래의 나'(futurePersona)를 재료로, 그 미래가 이미 실현된 하루를
+   1인칭 현재형 장면으로 매일 새로 그려 주는 기능이 제품의 가장 큰 차별점인데
+   v4 어느 보드에도 없었다. 02(원리·뇌과학)와 04(설계·행동) 사이가 제자리다 —
+   "뇌가 길을 낸다"는 원리와 "행동을 설계한다"는 실행을 잇는 다리가 심상이기 때문.
+   근거: lib/futureVision.ts(하루 생성) · components/home/FutureVisionCard.tsx(카드) ·
+   lib/i18n/dictionaries/ko.ts "futureVision.headerLabel"(= 카드 라벨 원문).
+   보드 안의 장면 문안은 FALLBACK_VISIONS.ko 의 톤을 그대로 따왔다 — 실제 출력과
+   결이 다른 문장을 지어내면 설치 후 기대 배신이 된다.
+   이에 따라 03·04·05 는 각각 04·05·06 으로 번호를 밀었고(eyebrow·data-name·
+   메트릭), 러닝 메트릭에 07일차를 끼워 01 → 04 → 07 → 12 → 84 → 01 이 되었다.
 
    v3 대비 변경점은 세 가지뿐이다.
    1) 디스플레이 서체: Fraunces → Noto Serif KR (워드마크만 Fraunces 유지)
@@ -147,7 +159,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 .chead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:26px;}
 .ctext{font-family:var(--display);font-weight:300;line-height:1.3;color:var(--cream);word-break:keep-all;}
 
-/* ── [E] 러닝 메트릭 — 01 → 04 → 12 → 84 → 01(당신) ──────────── */
+/* ── [E] 러닝 메트릭 — 01 → 04 → 07 → 12 → 84 → 01(당신) ────── */
 .metric{font-family:var(--mono);font-size:var(--fs-metric);letter-spacing:.14em;color:rgba(247,243,236,.42);margin-top:var(--metric-margin);}
 .metric b{color:var(--gold);font-weight:500;}
 
@@ -159,7 +171,15 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 .reprow{display:flex;align-items:baseline;gap:24px;}
 .repday{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.08em;width:96px;flex:none;}
 .reptext{font-family:var(--display);font-weight:300;font-size:36px;line-height:1.3;color:var(--cream);word-break:keep-all;}
-/* 하루 코칭 루프 (03) — 다짐 → 행동 → 회고 3단 설계 */
+/* 미래 비전 미리보기 (03) — 앱이 매일 새로 그려 주는 "이미 이룬 하루".
+   장면 라벨(골드 mono)과 본문(세리프)의 대비가 곧 "기록 UI 가 아니라 읽는 장면"
+   이라는 신호다. 마지막 한 줄만 오렌지 세로선으로 세운다(§3-1 살아있는 지점). */
+.vision{display:flex;flex-direction:column;gap:22px;}
+.visrow{display:flex;flex-direction:column;gap:10px;}
+.vismoment{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.1em;color:rgba(217,164,65,.72);}
+.vistext{font-family:var(--display);font-weight:300;font-size:32px;line-height:1.42;color:rgba(247,243,236,.86);word-break:keep-all;}
+.visclose{border-left:3px solid var(--soul);padding-left:22px;font-family:var(--display);font-weight:600;font-size:32px;line-height:1.35;color:var(--cream);word-break:keep-all;}
+/* 하루 코칭 루프 (04) — 다짐 → 행동 → 회고 3단 설계 */
 .loop{display:flex;flex-direction:column;gap:22px;}
 .looprow{display:flex;align-items:center;gap:24px;}
 .looptime{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.08em;width:80px;flex:none;color:rgba(247,243,236,.45);}
@@ -261,13 +281,42 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   </div>
 </div>
 
-<!-- ═══ 03 · 설계 ═══ -->
-<div class="cap">KO 03 · <b>설계</b> · 행동 코칭<button class="dl" data-ad="ad3">↓ PNG</button></div>
-<div class="ad" id="ad3" data-name="anima-ig-v4-ko-03-design" style="--fs-hl:88px;">
+<!-- ═══ 03 · 비전 ═══ -->
+<div class="cap">KO 03 · <b>비전</b> · 이미 이룬 하루<button class="dl" data-ad="adV">↓ PNG</button></div>
+<div class="ad" id="adV" data-name="anima-ig-v4-ko-03-vision" style="--fs-hl:92px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.03 · 설계</span>
+      <span class="eyebrow">NO.03 · 비전</span>
+    </div>
+
+    <div class="band">
+      <div class="hl">내가 적은 미래를,<br><em>이미 사는 하루</em>로<br>매일 보여줍니다.</div>
+      <!-- deck 은 헤드라인이 말하지 않은 것만 싣는다 — '내가 적은 미래'(출처)는
+           이미 hl 에 있으므로, 여기서는 하루가 매일 새로 그려진다는 사실만. -->
+      <div class="deck">어제와 다른 하루, <b>내일 또 다른 하루.</b></div>
+    </div>
+
+    <div class="rule"></div>
+    <!-- 오렌지 1개소: "지금 살고 있다"를 말하는 마지막 한 줄의 세로선 -->
+    <div class="card">
+      <div class="chead">
+        <span class="clabel">오늘, 그 꿈을 사는 하루</span>
+        <span class="clabel mute">1인칭 · 현재형</span>
+      </div>
+      <div class="vision" data-vision></div>
+    </div>
+    <div class="metric"><b>07</b>일차</div>
+  </div>
+</div>
+
+<!-- ═══ 04 · 설계 ═══ -->
+<div class="cap">KO 04 · <b>설계</b> · 행동 코칭<button class="dl" data-ad="ad3">↓ PNG</button></div>
+<div class="ad" id="ad3" data-name="anima-ig-v4-ko-04-design" style="--fs-hl:88px;">
+  <div class="inner">
+    <div class="topbar">
+      <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
+      <span class="eyebrow">NO.04 · 설계</span>
     </div>
 
     <div class="band">
@@ -287,13 +336,13 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   </div>
 </div>
 
-<!-- ═══ 04 · 변화 ═══ -->
-<div class="cap">KO 04 · <b>변화</b> · 훅 회수<button class="dl" data-ad="ad4">↓ PNG</button></div>
-<div class="ad" id="ad4" data-name="anima-ig-v4-ko-04-grow" style="--fs-hl:96px;">
+<!-- ═══ 05 · 변화 ═══ -->
+<div class="cap">KO 05 · <b>변화</b> · 훅 회수<button class="dl" data-ad="ad4">↓ PNG</button></div>
+<div class="ad" id="ad4" data-name="anima-ig-v4-ko-05-grow" style="--fs-hl:96px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.04 · 변화</span>
+      <span class="eyebrow">NO.05 · 변화</span>
     </div>
 
     <div class="band">
@@ -313,13 +362,13 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   </div>
 </div>
 
-<!-- ═══ 05 · 시작 (CTA) ═══ -->
-<div class="cap">KO 05 · <b>시작</b> · CTA<button class="dl" data-ad="ad5">↓ PNG</button></div>
-<div class="ad" id="ad5" data-name="anima-ig-v4-ko-05-start" style="--fs-hl:96px;">
+<!-- ═══ 06 · 시작 (CTA) ═══ -->
+<div class="cap">KO 06 · <b>시작</b> · CTA<button class="dl" data-ad="ad5">↓ PNG</button></div>
+<div class="ad" id="ad5" data-name="anima-ig-v4-ko-06-start" style="--fs-hl:96px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.05 · 시작</span>
+      <span class="eyebrow">NO.06 · 시작</span>
     </div>
 
     <div class="band">
@@ -372,7 +421,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   <h2>인스타그램 캡션 (복사해서 사용)</h2>
   <textarea id="captext" spellcheck="false" readonly></textarea>
   <div class="hint">
-    캐러셀 순서: 01-A → 02 → 03 → 04 → 05 (5장) · 훅 A/B 테스트는 1번만 01-B / 01-C 로 교체<br>
+    캐러셀 순서: 01-A → 02 → 03 → 04 → 05 → 06 (6장) · 훅 A/B 테스트는 1번만 01-C 로 교체<br>
     Meta 광고 관리자 CTA 버튼: “설치하기” · 랜딩: https://www.successfulfuture.app/go/app
   </div>
 </div>
@@ -392,7 +441,8 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   var EXPORT_H = cssPx('--h');
   var PIXEL_RATIO = 2;        // → 2160 × 2700
   var BATCH_PAUSE_MS = 400;   // 브라우저가 다운로드를 flush 할 여유
-  var CARRYOVER = ['adA', 'ad2', 'ad3', 'ad4', 'ad5'];   // 실제 게재 5장
+  // 실제 게재 6장 — 훅 → 원리 → 비전 → 설계 → 변화 → CTA (마크업 등장 순서와 동일)
+  var CARRYOVER = ['adA', 'ad2', 'adV', 'ad3', 'ad4', 'ad5'];
   var HOOK_VARIANTS = ['adA', 'adC'];                    // 훅 A/B 테스트 2안
 
   /* ── 보드를 가로로 배치 — 순서 = 마크업 등장 순서(.cap 과 .ad 는 짝) ── */
@@ -453,7 +503,27 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     }).join('');
   });
 
-  /* ── 하루 코칭 루프 (03) ────────────────────────────────────
+  /* ── 미래 비전 미리보기 (03) ────────────────────────────────
+     제품의 가장 큰 차별점: 사용자가 적은 '미래의 나'를 재료로, 그 미래가
+     이미 실현된 하루를 1인칭 현재형 장면으로 매일 새로 그려 준다.
+     문안은 lib/futureVision.ts 의 FALLBACK_VISIONS.ko 톤을 그대로 따온 것 —
+     실제 출력과 결이 다른 문장을 지어내면 설치 후 기대 배신이 된다.
+     오렌지는 "지금 살고 있다"를 말하는 마지막 한 줄 1개소. */
+  var VISION_SCENES = [
+    { moment: '오후 3시, 사무실', text: '내 이름이 적힌 문을 밀고 들어선다. 오래 바라던 이곳이, 지금은 그냥 나의 하루가 되어 있다.' },
+    { moment: '해질 무렵',       text: '창밖으로 하루가 저문다. 조급함 대신, 오늘로 충분했다는 감각이 낮게 내려앉는다.' }
+  ];
+  var VISION_CLOSING = '나는 지금, 그 하루 안에서 살고 있다.';
+  document.querySelectorAll('[data-vision]').forEach(function (el) {
+    el.innerHTML = VISION_SCENES.map(function (s) {
+      return '<div class="visrow">' +
+          '<span class="vismoment">' + s.moment + '</span>' +
+          '<span class="vistext">' + s.text + '</span>' +
+        '</div>';
+    }).join('') + '<div class="visclose">' + VISION_CLOSING + '</div>';
+  });
+
+  /* ── 하루 코칭 루프 (04) ────────────────────────────────────
      "단순 기록이 아니라 설계"의 증거 — 밤의 다짐이 아침의 행동
      제안으로, 다시 밤의 회고로 이어지는 3단 루프.
      오렌지는 '행동' 단계 1개소(다짐이 행동으로 바뀌는 지점). */
@@ -533,6 +603,11 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     '',
     '마법이나 단순한 동기부여가 아닙니다. 뇌과학입니다.',
     '',
+    '그리고 매일, 당신이 적어둔 ‘미래의 나’가 이미 실현된 하루를',
+    '1인칭 현재형 장면으로 눈앞에 그려 드려요.',
+    '막연한 상상으로 남겨두지 않고, 오늘 이미 그 하루를 살아보는 겁니다.',
+    '어제와 다른 하루, 내일 또 다른 하루 — 매일 새로 그려집니다.',
+    '',
     '적기만 하는 앱이 아니라, 행동을 설계하는 앱.',
     '30일 중 25일 — 의지가 아니라 설계입니다.',
     '84일 뒤엔, 나이와 함께 꿈도 자라 있을 거예요.',
@@ -540,7 +615,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     '→ 무료로 시작하기 (iOS · Android)',
     '',
     '#자기계발 #다짐 #습관만들기 #모닝루틴 #동기부여 #목표달성',
-    '#확언 #성공일기 #갓생 #자기관리 #루틴 #꿈'
+    '#확언 #성공일기 #갓생 #자기관리 #루틴 #꿈 #시각화'
   ].join('\n');
 
   /* ── PNG 내보내기 ───────────────────────────────────────────
