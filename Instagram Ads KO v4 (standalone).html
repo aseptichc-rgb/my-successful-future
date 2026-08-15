@@ -387,6 +387,27 @@
    · 캡션도 같은 줄로 닫고(마무리 문장 다음) CTA 줄 아래에 같은 주소를 넣었다.
      보드와 캡션의 주소는 항상 같아야 한다 — 한쪽만 고치지 말 것.
 
+   2026-08-15 05·06 순서 교체 — 설계 ↔ 이름. 이제 05 가 이름, 06 이 설계다.
+   02(그려보세요) → 03(적으세요) → 04(더해보세요)로 이어지는 지시 사슬 바로
+   뒤가 이름 보드 자리다 — "그래서 이 셋이 결국 뭐냐"에 한 단어로 답하며
+   사슬을 닫는다. 앞 순서(설계 → 이름)는 05 의 하루 루프와 07 의 84일 결과
+   사이에 뜻풀이가 끼어 인과가 한 번 끊겼는데, 교체로 그 둘이 붙었다.
+   · 메트릭은 보드가 아니라 자리를 따른다 — 러닝 메트릭이 오름차순이어야
+     하므로 이름 12일차 · 설계 30일차가 되어 01 → 02 → 04 → 07 → 12 → 30 → 84
+     → 01 이 그대로 유지된다. 보드를 옮길 때 숫자를 딸려 보내면 순서가 깨진다.
+     덤으로 설계(30일차)가 캡션의 "30일 중 25일"과 같은 지점이 되었다.
+   · 이름이 본문에 나오는 자리는 이제 05 헤드라인과 08 deck 둘뿐이다
+     (앞서 05 deck 의 앱 소개가 뇌과학 선언으로 교체되며 빠졌다).
+     05 → 08 사이가 세 장으로 벌어졌으므로 08 deck 의 anima 를 빼지 말 것.
+   · 이름 보드 deck 주석의 "앞선 넉 장을 묶는다"는 근거가 석 장(02·03·04)으로
+     줄었다. 설계는 이제 뒤에서 받으므로, 이 보드에서 기능을 말하면 06 과
+     겹친다 — 여전히 지시 사슬을 묶는 것까지가 몫이다.
+   · 함께 옮긴 것: cap·eyebrow·data-name(-05-name / -06-design) · CARRYOVER
+     순서 · CSS/JS 렌더러 주석 번호와 블록 순서 · 캡션 문단 순서(캡션은 보드
+     순서를 따라간다) · 03·04·08 주석의 "05 deck"(뇌과학) 참조 → 06 deck.
+     크기·문구·오렌지 위치는 건드리지 않았다 — 두 보드 모두 --fs-hl 92px 이라
+     실측치가 그대로 유효하다(이름: 최장 줄 751px · deck/hl 39.1% · 넘침 0).
+
    v3 대비 변경점은 세 가지뿐이다.
    1) 디스플레이 서체: Fraunces → Noto Serif KR (워드마크만 Fraunces 유지)
    2) 강조 장치: 이탤릭 → 굵기 600 + 골드
@@ -534,13 +555,13 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 /* then 줄만 세로선 + 굵기로 세운다. 알약은 양쪽 다 골드로 둘 것 —
    05 처럼 알약까지 오렌지로 물들이면 한 장에 오렌지가 둘이 된다(§3-1). */
 .planrow.then .plantext{border-left:3px solid var(--soul);padding-left:22px;font-weight:600;color:var(--cream);}
-/* 하루 코칭 루프 (05) — 다짐 → 행동 → 회고 3단 설계 */
+/* 하루 코칭 루프 (06) — 다짐 → 행동 → 회고 3단 설계 */
 .loop{display:flex;flex-direction:column;gap:22px;}
 .looprow{display:flex;align-items:center;gap:24px;}
 .looptime{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.08em;width:80px;flex:none;color:rgba(247,243,236,.45);}
 .loopstep{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.12em;width:104px;flex:none;text-align:center;padding:8px 0;border:1px solid;border-radius:999px;}
 .looptext{font-family:var(--display);font-weight:300;font-size:33px;line-height:1.3;color:var(--cream);word-break:keep-all;}
-/* 이름의 뜻 (06) — 라틴어 사전 항목 형식. 앞선 카드가 모두 나열형이라
+/* 이름의 뜻 (05) — 라틴어 사전 항목 형식. 앞선 카드가 모두 나열형이라
    같은 리듬을 여기서 한 번 끊는다. 형식 자체가 "이건 지어낸
    카피가 아니라 사실"이라는 신호이기도 하다 — 광고가 자기 이름으로 근거를
    대는 유일한 자리다. 뜻풀이 두 줄은 어원(사실), 마지막 파생어 줄이 그 사실을
@@ -642,7 +663,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
            "그럼 뭘 하라는 건데"에 답하는 대신 답이 있다는 것만 알려 스와이프를
            만든다 — 방법의 첫 단계는 02(그리기)가, 두 번째는 03(적기)이 쥔다.
            여기에 지시를 쓰면 두 장을 미리 써버리므로 예고 이상 나가지 말 것.
-           근거(뇌과학)는 05 deck 이 쥐고 있으니 이 줄에서 원리를 흘리지 말 것
+           근거(뇌과학)는 06 deck 이 쥐고 있으니 이 줄에서 원리를 흘리지 말 것
            — "방법이 있습니다"까지가 상한이다. -->
       <div class="deck">실제 행동을 바꾸는 <b>방법이 있습니다.</b></div>
     </div>
@@ -735,7 +756,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
            독자에게 요구하는 양이 곧 이탈률이므로, 요구를 늘리는 말("매일
            빠짐없이"·"자세히")을 여기에 쓰지 말 것 — 줄일수록 세진다.
            옛 근거 줄("마법이나 단순한 동기부여가 아닙니다. 뇌과학입니다.")은
-           여기서 내렸고, 지금은 05 deck 이 그 자리를 대신한다(§changelog).
+           여기서 내렸고, 지금은 06 deck 이 그 자리를 대신한다(§changelog).
            이 줄로 되돌리면 한 캐러셀에 같은 선언이 두 번 나온다. -->
       <div class="deck">처음에는 <b>딱 한 문장부터</b> 시작해보세요.</div>
     </div>
@@ -763,7 +784,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
      질문("그래서 계속 한 문장만?")에 답하는 자리다. 습관이 붙은 뒤에야
      행동을 얹는 순서 자체가 제품의 해금 정책과 같다 — lib/constants/growth.ts
      PLAN_UNLOCK_STREAK = 7(연속 7일이면 실행 설계가 열린다). 이 보드의
-     메트릭이 07일차인 것은 우연이 아니므로 숫자 셋(헤드라인의 습관 · 카드의
+     메트릭이 07일차인 것은 우연이 아니므로 셋(헤드라인의 "익숙해지면" · 카드의
      "7일 연속" · 메트릭 07)을 따로 놀게 두지 말 것. -->
 <div class="cap">KO 04 · <b>확장</b> · if-then<button class="dl" data-ad="adP">↓ PNG</button></div>
 <div class="ad" id="adP" data-name="anima-ig-v4-ko-04-ifthen" style="--fs-hl:92px;">
@@ -775,10 +796,13 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 
     <div class="band">
       <!-- 02(그려보세요) → 03(적으세요) → 04(더해보세요)로 이어지는 지시 사슬의
-           마지막 칸이다. 조건절("습관이 되면")이 앞에 있어야 03 의 "딱 한
+           마지막 칸이다. 조건절("익숙해지면")이 앞에 있어야 03 의 "딱 한
            문장부터"와 모순되지 않는다 — 순서를 뒤집어 "행동을 더하세요"를
-           앞세우면 03 이 깎아 둔 진입장벽이 되살아난다. -->
-      <div class="hl">한 문장 적기가<br>습관이 되면,<br>행동을 <em>더해보세요.</em></div>
+           앞세우면 03 이 깎아 둔 진입장벽이 되살아난다.
+           조건은 '습관'이 아니라 '익숙해짐'이다 — 습관은 독자에게 아직 못
+           이룬 목표로 읽혀 문턱이 되지만, 익숙해짐은 며칠이면 닿는 상태라
+           카드의 "7일 연속이면 열립니다"와 같은 크기의 약속이 된다. -->
+      <div class="hl">문장 적기가<br>익숙해지면,<br>행동을 <em>더해보세요.</em></div>
       <!-- 헤드라인은 '언제·무엇을'만 말하고 '어떻게'는 이 줄이 맡는다.
            if-then 은 제품 안의 기능 이름이자 화면 문구다(woop.section.title
            "실행 설계 (if-then)" · plan.today.title "오늘의 if-then") — 광고에서
@@ -814,73 +838,29 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   </div>
 </div>
 
-<!-- ═══ 05 · 설계 ═══ -->
-<div class="cap">KO 05 · <b>설계</b> · 행동 코칭<button class="dl" data-ad="ad3">↓ PNG</button></div>
-<!-- --fs-hl 은 03·04 와 같은 92px — deck 을 붙이면서 88px 로는 부연/헤드라인
-     비율이 40.9% 가 되어 주종 규칙(--fs-deck 주석의 40% 이하)을 넘긴다.
-     92px 에서 39.1%, 헤드라인 최장 줄 751px(3행, 안전폭 904px).
-     deck 이 뇌과학 선언으로 바뀌며 1줄 → 2줄이 되어 밴드가 50px 자랐다.
-     재실측: 밴드 위 89 / 아래 145px · 넘침 없음 · 메트릭 하단 여유 96px(=패딩).
-     deck 두 줄의 자연 폭은 602 / 221px 이라 사실 <br> 없이도 한 줄(835px)에
-     들어간다 — 줄바꿈은 부정(1행) → 선언(2행)의 박자를 만들려고 일부러 넣은
-     것이므로 "붙여도 들어가니까"라는 이유로 <br> 를 빼지 말 것. -->
-<div class="ad" id="ad3" data-name="anima-ig-v4-ko-05-design" style="--fs-hl:92px;">
+<!-- ═══ 05 · 이름 ═══ -->
+<div class="cap">KO 05 · <b>이름</b> · anima 의 뜻<button class="dl" data-ad="adN">↓ PNG</button></div>
+<div class="ad" id="adN" data-name="anima-ig-v4-ko-05-name" style="--fs-hl:92px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.05 · 설계</span>
+      <span class="eyebrow">NO.05 · 이름</span>
     </div>
 
     <div class="band">
-      <div class="hl">적기만 하는<br>앱이 아닙니다.<br>행동을 <em>설계합니다.</em></div>
-      <!-- 01-A 훅이 꺼낸 "동기부여"를 이미지 안에서 받는 유일한 자리다 —
-           자기계발 광고가 흔히 받는 '동기부여 뽕' 의심을 그 자리에서 끊는다.
-           헤드라인과 같은 부정 → 선언 꼴(X 가 아닙니다 → Y 입니다)이라
-           "적기만 하는 앱이 아닙니다 / 행동을 설계합니다"를 한 급 위에서
-           되풀이한다 — 설계의 근거가 곧 뇌과학이라는 배치다.
-           원래 03 deck 에 있다가 내려갔던 문장이고(§changelog), 같은 문장을
-           여러 장에 반복하면 선언이 슬로건으로 약해지므로 다른 보드로
-           복사하지 말 것. 캡션 본문에도 같은 문장이 한 번만 실린다.
-           앞서 이 자리에 있던 앱 소개("anima · 다짐을 행동으로 옮기는 코칭 앱")는
-           이 교체로 이미지에서 빠졌다 — 본문에 남은 이름은 06 헤드라인과
-           08 deck 이고, "무슨 앱인지"는 캡션 4행이 전담한다. -->
-      <div class="deck">마법이나 단순한 동기부여가 아닙니다.<br><b>뇌과학입니다.</b></div>
-    </div>
-
-    <div class="rule"></div>
-    <!-- 오렌지 1개소: '행동' 단계 — 다짐이 실제 행동으로 바뀌는 지점 -->
-    <div class="card">
-      <div class="chead">
-        <span class="clabel">하루의 설계</span>
-        <span class="clabel mute">다짐 → 행동 → 회고</span>
-      </div>
-      <div class="loop" data-loop></div>
-    </div>
-    <div class="metric"><b>12</b>일차</div>
-  </div>
-</div>
-
-<!-- ═══ 06 · 이름 ═══ -->
-<div class="cap">KO 06 · <b>이름</b> · anima 의 뜻<button class="dl" data-ad="adN">↓ PNG</button></div>
-<div class="ad" id="adN" data-name="anima-ig-v4-ko-06-name" style="--fs-hl:92px;">
-  <div class="inner">
-    <div class="topbar">
-      <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.06 · 이름</span>
-    </div>
-
-    <div class="band">
-      <!-- 05 deck 이 뇌과학 선언으로 바뀌면서, 이 헤드라인이 앱 이름을 본문에
-           처음 꺼내는 자리가 됐다 — 뜻풀이가 소개를 겸한다. 이 보드를 빼면
-           이미지 안에 이름이 08 deck 한 줄만 남으므로 순서에서 내리지 말 것.
-           헤드라인의 'anima' 는 --display(Noto Serif KR) 로 둔다 — 05·08 deck 의
+      <!-- 06(설계) deck 이 뇌과학 선언으로 바뀌며 앱 소개가 이미지에서 빠졌으므로,
+           이 헤드라인이 본문에서 이름을 처음 꺼내는 자리다 — 뜻풀이가 소개를
+           겸한다. 이 보드를 빼면 이미지 안에 이름이 08 deck 한 줄만 남으므로
+           순서에서 내리지 말 것.
+           헤드라인의 'anima' 는 --display(Noto Serif KR) 로 둔다 — 08 deck 의
            <b>anima</b> 와 같은 서체다. 좌상단 워드마크(Fraunces)와 갈리지만,
            본문 안의 이름은 본문 서체로 쓰는 것이 이 파일의 기존 처리다.
            em 은 골드(.hl em) — 오렌지 1개소는 아래 카드의 화살표가 갖는다. -->
       <div class="hl">anima 는<br>라틴어로 숨,<br>그리고 <em>생명</em>입니다.</div>
       <!-- 어원(사실)을 제품이 하는 일로 옮기는 줄. 여기서 기능을 설명하지 말 것 —
-           기능은 02~05 가 이미 넉 장에 걸쳐 말했고, 이 장의 몫은 그 넉 장을
-           한 단어로 묶는 것이다. 캡션의 같은 대목과 한 벌로 움직인다. -->
+           02·03·04 의 지시 사슬(그려보세요 → 적으세요 → 더해보세요)을 한 단어로
+           묶는 것이 이 장의 몫이고, "그래서 무슨 앱인가"는 바로 뒤 06(설계)이
+           받는다. 캡션의 같은 대목과 한 벌로 움직인다. -->
       <div class="deck">버티기만 하던 하루에<br><b>다시 숨을 불어넣습니다.</b></div>
     </div>
 
@@ -896,6 +876,52 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
         <span class="clabel mute">아니마 · 명사</span>
       </div>
       <div class="etym" data-etym></div>
+    </div>
+    <div class="metric"><b>12</b>일차</div>
+  </div>
+</div>
+
+<!-- ═══ 06 · 설계 ═══ -->
+<div class="cap">KO 06 · <b>설계</b> · 행동 코칭<button class="dl" data-ad="ad3">↓ PNG</button></div>
+<!-- --fs-hl 은 03·04 와 같은 92px — deck 을 붙이면서 88px 로는 부연/헤드라인
+     비율이 40.9% 가 되어 주종 규칙(--fs-deck 주석의 40% 이하)을 넘긴다.
+     92px 에서 39.1%, 헤드라인 최장 줄 751px(3행, 안전폭 904px).
+     deck 이 뇌과학 선언으로 바뀌며 1줄 → 2줄이 되어 밴드가 50px 자랐다.
+     재실측: 밴드 위 89 / 아래 145px · 넘침 없음 · 메트릭 하단 여유 96px(=패딩).
+     deck 두 줄의 자연 폭은 602 / 221px 이라 사실 <br> 없이도 한 줄(835px)에
+     들어간다 — 줄바꿈은 부정(1행) → 선언(2행)의 박자를 만들려고 일부러 넣은
+     것이므로 "붙여도 들어가니까"라는 이유로 <br> 를 빼지 말 것. -->
+<div class="ad" id="ad3" data-name="anima-ig-v4-ko-06-design" style="--fs-hl:92px;">
+  <div class="inner">
+    <div class="topbar">
+      <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
+      <span class="eyebrow">NO.06 · 설계</span>
+    </div>
+
+    <div class="band">
+      <div class="hl">적기만 하는<br>앱이 아닙니다.<br>행동을 <em>설계합니다.</em></div>
+      <!-- 01-A 훅이 꺼낸 "동기부여"를 이미지 안에서 받는 유일한 자리다 —
+           자기계발 광고가 흔히 받는 '동기부여 뽕' 의심을 그 자리에서 끊는다.
+           헤드라인과 같은 부정 → 선언 꼴(X 가 아닙니다 → Y 입니다)이라
+           "적기만 하는 앱이 아닙니다 / 행동을 설계합니다"를 한 급 위에서
+           되풀이한다 — 설계의 근거가 곧 뇌과학이라는 배치다.
+           원래 03 deck 에 있다가 내려갔던 문장이고(§changelog), 같은 문장을
+           여러 장에 반복하면 선언이 슬로건으로 약해지므로 다른 보드로
+           복사하지 말 것. 캡션 본문에도 같은 문장이 한 번만 실린다.
+           앞서 이 자리에 있던 앱 소개("anima · 다짐을 행동으로 옮기는 코칭 앱")는
+           이 교체로 이미지에서 빠졌다 — 본문에 남은 이름은 05 헤드라인과
+           08 deck 이고, "무슨 앱인지"는 캡션 4행이 전담한다. -->
+      <div class="deck">마법이나 단순한 동기부여가 아닙니다.<br><b>뇌과학입니다.</b></div>
+    </div>
+
+    <div class="rule"></div>
+    <!-- 오렌지 1개소: '행동' 단계 — 다짐이 실제 행동으로 바뀌는 지점 -->
+    <div class="card">
+      <div class="chead">
+        <span class="clabel">하루의 설계</span>
+        <span class="clabel mute">다짐 → 행동 → 회고</span>
+      </div>
+      <div class="loop" data-loop></div>
     </div>
     <div class="metric"><b>30</b>일차</div>
   </div>
@@ -954,9 +980,9 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
       <div class="hl">내 미래는<br><em>내가</em><br>만들어갑니다.</div>
       <!-- 헤드라인이 선언이라 이 보드에서 동사가 사라진다. deck 이 그 선언을
            실행으로 내리는 자리다 — 시점(오늘 밤) + 앱 이름 + 행동.
-           캐러셀 8장 중 앱 이름이 본문에 나오는 세 자리의 마지막이다
-           (05 deck 소개 → 06 보드 뜻풀이 → 여기 실행 · 나머지는 좌상단 워드마크
-           34px) — 스토어에서 검색할 이름이므로 이 줄에서 anima 를 빼지 말 것. -->
+           캐러셀 8장 중 앱 이름이 본문에 나오는 두 자리의 마지막이다
+           (05 보드 뜻풀이 → 여기 실행 · 나머지는 좌상단 워드마크 34px) —
+           스토어에서 검색할 이름이므로 이 줄에서 anima 를 빼지 말 것. -->
       <div class="deck">첫 줄은 오늘 밤.<br><b>anima 에서 시작합니다.</b></div>
     </div>
 
@@ -965,7 +991,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     <div class="card soft">
       <!-- 헤드라인이 독자의 선언이라, 그 선언에 답하는 목소리가 한 줄 필요하다 —
            여덟 장 중 브랜드가 1인칭으로 말하는 유일한 자리다. 여기서 기능을
-           다시 말하지 말 것(기능은 02~05 가 넉 장에 걸쳐 이미 말했다). 이 줄의
+           다시 말하지 말 것(기능은 02·03·04·06 이 이미 말했다). 이 줄의
            몫은 "혼자 하는 게 아니다"뿐이고, 그래야 바로 아래 버튼이 그 동행의
            첫 걸음으로 읽힌다. 캡션 마무리 줄과 한 벌로 움직인다. -->
       <div class="vow">당신의 위대한 여정에,<br><b>anima 가 끝까지 동반자가 되겠습니다.</b></div>
@@ -1043,8 +1069,8 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   var EXPORT_H = cssPx('--h');
   var PIXEL_RATIO = 2;        // → 2160 × 2700
   var BATCH_PAUSE_MS = 400;   // 브라우저가 다운로드를 flush 할 여유
-  // 실제 게재 8장 — 훅 → 그리기 → 적기 → 확장 → 설계 → 이름 → 변화 → CTA (마크업 등장 순서와 동일)
-  var CARRYOVER = ['adA', 'adF', 'ad2', 'adP', 'ad3', 'adN', 'ad4', 'ad5'];
+  // 실제 게재 8장 — 훅 → 그리기 → 적기 → 확장 → 이름 → 설계 → 변화 → CTA (마크업 등장 순서와 동일)
+  var CARRYOVER = ['adA', 'adF', 'ad2', 'adP', 'adN', 'ad3', 'ad4', 'ad5'];
   var HOOK_VARIANTS = ['adA', 'adC'];                    // 훅 A/B 테스트 2안
 
   /* ── 보드를 가로로 배치 — 순서 = 마크업 등장 순서(.cap 과 .ad 는 짝) ── */
@@ -1114,7 +1140,33 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
      비전 기능 자체는 제품에 그대로 있고(lib/futureVision.ts) 캡션에도 남아
      있으므로, 보드로 되살릴 땐 git 이력에서 장면 원문을 꺼내 쓸 것. */
 
-  /* ── 하루 코칭 루프 (05) ────────────────────────────────────
+  /* ── 이름의 뜻 (05) ────────────────────────────────────────
+     라틴어 사전 항목 형식. 앞선 카드가 모두 나열형이라 리듬을 한 번 끊고,
+     형식 자체가 "이건 지어낸 카피가 아니라 사실"이라는 신호를 준다.
+     뜻풀이는 어원 그대로이므로 광고 문구로 각색하지 말 것 — 사실이 아니게
+     되는 순간 이 보드는 근거가 아니라 말장난이 된다.
+     파생어 줄이 그 사실을 제품이 하는 일로 건너뛰고, 오렌지 1개소가 그
+     화살표다. 문구를 다듬을 땐 캡션의 같은 대목을 함께 볼 것. */
+  var ETYM_DEFS = [
+    { n: '01', text: '숨, 숨결' },
+    { n: '02', text: '생명 · 영혼' }
+  ];
+  var ETYM_DERIVE = { arrow: '→', word: 'animate', gloss: '생기를 불어넣다' };
+  document.querySelectorAll('[data-etym]').forEach(function (el) {
+    el.innerHTML = ETYM_DEFS.map(function (d) {
+      return '<div class="etyrow">' +
+          '<span class="etynum">' + d.n + '</span>' +
+          '<span class="etytext">' + d.text + '</span>' +
+        '</div>';
+    }).join('') +
+      '<div class="etyd">' +
+        '<span class="etyar">' + ETYM_DERIVE.arrow + '</span>' +
+        '<span class="etyw">' + ETYM_DERIVE.word + '</span>' +
+        '<span class="etygl">' + ETYM_DERIVE.gloss + '</span>' +
+      '</div>';
+  });
+
+  /* ── 하루 코칭 루프 (06) ────────────────────────────────────
      "단순 기록이 아니라 설계"의 증거 — 밤의 다짐이 아침의 행동
      제안으로, 다시 밤의 회고로 이어지는 3단 루프.
      오렌지는 '행동' 단계 1개소(다짐이 행동으로 바뀌는 지점). */
@@ -1137,32 +1189,6 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
           '<span class="looptext">' + r.text + '</span>' +
         '</div>';
     }).join('');
-  });
-
-  /* ── 이름의 뜻 (06) ────────────────────────────────────────
-     라틴어 사전 항목 형식. 앞선 다섯 장이 전부 나열형 카드라 리듬을 한 번
-     끊고, 형식 자체가 "이건 지어낸 카피가 아니라 사실"이라는 신호를 준다.
-     뜻풀이는 어원 그대로이므로 광고 문구로 각색하지 말 것 — 사실이 아니게
-     되는 순간 이 보드는 근거가 아니라 말장난이 된다.
-     파생어 줄이 그 사실을 제품이 하는 일로 건너뛰고, 오렌지 1개소가 그
-     화살표다. 문구를 다듬을 땐 05 deck(앱 소개)·캡션의 같은 대목을 함께 볼 것. */
-  var ETYM_DEFS = [
-    { n: '01', text: '숨, 숨결' },
-    { n: '02', text: '생명 · 영혼' }
-  ];
-  var ETYM_DERIVE = { arrow: '→', word: 'animate', gloss: '생기를 불어넣다' };
-  document.querySelectorAll('[data-etym]').forEach(function (el) {
-    el.innerHTML = ETYM_DEFS.map(function (d) {
-      return '<div class="etyrow">' +
-          '<span class="etynum">' + d.n + '</span>' +
-          '<span class="etytext">' + d.text + '</span>' +
-        '</div>';
-    }).join('') +
-      '<div class="etyd">' +
-        '<span class="etyar">' + ETYM_DERIVE.arrow + '</span>' +
-        '<span class="etyw">' + ETYM_DERIVE.word + '</span>' +
-        '<span class="etygl">' + ETYM_DERIVE.gloss + '</span>' +
-      '</div>';
   });
 
   /* ── 성장 사다리 (이모지 없이 CSS 세그먼트) ──────────────────
@@ -1239,18 +1265,18 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     /* 04(확장) 보드와 같은 말. 숫자와 기능 이름은 제품 원문이다 —
        7일은 lib/constants/growth.ts PLAN_UNLOCK_STREAK, 'if-then'은
        ko.ts woop.section.title 의 이름 그대로다. 임의로 바꾸지 말 것. */
-    '한 문장 적기가 습관이 되면, 행동을 하나씩 더해보세요.',
+    '문장 적기가 익숙해지면, 행동을 하나씩 더해보세요.',
     '‘만약 A면, 나는 B 한다’ — if-then 한 문장으로 미리 정해두면',
     '결정의 순간에 고민하지 않게 돼요. (7일 연속 적으면 열려요)',
     '',
-    '적기만 하는 앱이 아니라, 행동을 설계하는 앱.',
-    '30일 중 25일 — 의지가 아니라 설계입니다.',
-    '',
-    /* 06(이름) 보드와 같은 말. 어원은 사실이므로 각색하지 말 것 —
+    /* 05(이름) 보드와 같은 말. 어원은 사실이므로 각색하지 말 것 —
        라틴어 anima = 숨 · 생명 · 영혼이고 animate 는 같은 뿌리의 파생어다. */
     'anima 는 라틴어로 ‘숨’, 그리고 ‘생명’이에요.',
     '버티기만 하던 하루에 다시 숨을 불어넣는다 — 그래서 붙인 이름이에요.',
     '(멈춘 그림에 생명을 넣는 animation 도 같은 뿌리에서 나왔어요.)',
+    '',
+    '적기만 하는 앱이 아니라, 행동을 설계하는 앱.',
+    '30일 중 25일 — 의지가 아니라 설계입니다.',
     '',
     '84일 뒤엔, 본 게 아니라 살아낸 하루들이 남아 있을 거예요.',
     '',
