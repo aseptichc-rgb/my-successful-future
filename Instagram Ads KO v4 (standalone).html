@@ -46,7 +46,7 @@
    "뇌가 길을 낸다"는 원리와 "행동을 설계한다"는 실행을 잇는 다리가 심상이기 때문.
    근거: lib/futureVision.ts(하루 생성) · components/home/FutureVisionCard.tsx(카드) ·
    lib/i18n/dictionaries/ko.ts "futureVision.headerLabel"(= 카드 라벨 원문).
-   보드 안의 장면은 01-A·02 카드의 다짐 문장("나는 10억달러 가치 스타트업의
+   보드 안의 장면은 02·03 카드의 다짐 문장("나는 100억달러 가치 스타트업의
    CEO다")이 실현된 하루로 맞췄다 — 앞에서 세 번 보여준 문장과 무관한 미래를
    그리면 캐러셀의 서사가 끊긴다. 톤은 lib/futureVision.ts 의 작성 규칙(1인칭
    현재형·감각 디테일·감정어 직접 명명 금지·스톡 럭셔리 클리셰 금지)을 따랐다.
@@ -219,6 +219,20 @@
    · 캡션 밤 항목도 같은 축으로 교체("성공한 미래의 나를 매일 적으면, 뇌가
      그 방향으로 길을 찾습니다"). 캡션에는 02 가 앞에 없으므로 지시대명사
      대신 대상을 그대로 적는다.
+
+   2026-08-15 02 카드 인물 상향 — 기업 가치 10억달러 → 100억달러, 답변 4줄을
+   상장 준비 국면의 하루로 교체. "더 성공한 사람"을 숫자 하나로 올리지 않고
+   국면 자체를 옮긴 것이다(성장 중인 회사 → 상장을 앞둔 회사).
+   · 선언 문장은 02(.askdec) · 03(REP_SENTENCE) · 04 주석 세 곳이 공유한다.
+     한 곳만 고치면 03 의 "같은 문장을 네 번 반복" 그림이 반복으로 안 읽히므로
+     값을 또 바꿀 땐 반드시 세 곳을 같이 볼 것.
+   · 답변 4줄이 집는 차원이 하루·일·성취·가족 → 하루·성취·일·존경으로 바뀌었다
+     (매출 300% · 나스닥 상장 준비 · 포브스 인터뷰). 1행의 감각 디테일
+     ("통창으로 드는 빛")은 남겼다 — 넉 줄이 전부 숫자와 일정이면 '실현된 하루'가
+     아니라 실적표가 되고, lib/futureVision.ts 의 감각 디테일 규칙도 깨진다.
+   · 크기·여백은 손대지 않았다. 실측: askdec 597px · 답변 최장 줄 587px ·
+     03 반복 카드 .reptext 도 길어진 뒤 안전폭 904px 이내.
+     밴드 위 56px · 넘침 없음 · 오렌지 1개소(카드 커서).
 
    v3 대비 변경점은 세 가지뿐이다.
    1) 디스플레이 서체: Fraunces → Noto Serif KR (워드마크만 Fraunces 유지)
@@ -487,8 +501,10 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
          "onboarding.futureSelf.daily.q") — 광고에서 질문을 지어내면 설치 직후
          화면과 어긋난다. 선언 문장은 03 반복 카드의 REP_SENTENCE 와 글자까지
          같아야 서사가 이어진다.
-         답변 4줄은 8차원 중 하루·일·성취·가족을 하나씩 집는다(차원 이름은
-         쓰지 않는다 — 이름을 달면 다시 설문이 된다). 톤은 lib/futureVision.ts
+         답변 4줄은 8차원 중 하루·성취·일·존경을 하나씩 집는다(차원 이름은
+         쓰지 않는다 — 이름을 달면 다시 설문이 된다). 1행은 감각 디테일로
+         하루를 여는 닻이라 성취 문장으로 바꾸지 말 것 — 숫자만 넉 줄이면
+         '실현된 하루'가 아니라 실적표가 된다. 톤은 lib/futureVision.ts
          작성 규칙: 1인칭 현재형·감각 디테일·감정어 직접 명명 금지·스톡 럭셔리
          클리셰 금지. 럭셔리 소품(요트·펜트하우스) 을 넣지 말 것. -->
     <div class="card">
@@ -496,9 +512,9 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
         <span class="clabel">미래의 나</span>
       </div>
       <div class="ask">
-        <span class="askdec">나는 10억달러 가치 스타트업의 CEO다</span>
+        <span class="askdec">나는 100억달러 가치 스타트업의 CEO다</span>
         <span class="askq">그 꿈을 이룬 뒤, 당신의 평범한 하루는 어떻게 흘러가나요?</span>
-        <span class="aska">아침 7시, 통창으로 드는 빛에 눈을 뜬다.<br>팀원 마흔 명의 이름을 다 안다.<br>분기 보고서의 마지막 줄은 내가 쓴다.<br>여섯 시엔 노트북을 덮고 걸어서 집에 간다.<span class="caret" style="height:28px;vertical-align:-3px;"></span></span>
+        <span class="aska">아침 7시, 통창으로 드는 빛에 눈을 뜬다.<br>분기 매출이 전년 대비 300% 넘게 올라 있다.<br>오전은 나스닥 상장 준비 회의로 채워진다.<br>저녁 일곱 시엔 포브스 기자와 마주 앉는다.<span class="caret" style="height:28px;vertical-align:-3px;"></span></span>
       </div>
     </div>
     <div class="metric"><b>02</b>일차</div>
@@ -781,7 +797,9 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
      그라데이션으로 옮긴 것. 오렌지는 오늘 쓰는 줄의 커서 1개소.
      이 문장이 캐러셀의 척추다 — 04(비전)의 장면이 실현된 대상이고,
      02(그리기)의 답변 예시도 같은 인물의 하루다. 바꾸면 세 장을 같이 볼 것. */
-  var REP_SENTENCE = '나는 10억달러 가치 스타트업의 CEO다';
+  /* 02 카드의 .askdec 와 글자까지 같아야 한다 — 02 에서 선언한 문장을 03 이
+     네 번 반복하는 그림이라, 한쪽만 고치면 반복이 반복으로 안 읽힌다. */
+  var REP_SENTENCE = '나는 100억달러 가치 스타트업의 CEO다';
   var REP_ROWS = [
     { day: '01일차', alpha: .32 },
     { day: '02일차', alpha: .52 },
@@ -804,7 +822,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
      이미 실현된 하루를 1인칭 현재형 장면으로 매일 새로 그려 준다.
      02(그리기)가 "당신이 적으세요"라고 요구한 것을 여기서 앱이 대신 펼친다.
 
-     장면은 03 반복 카드의 다짐 문장("나는 10억달러 가치 스타트업의 CEO다")이
+     장면은 03 반복 카드의 다짐 문장("나는 100억달러 가치 스타트업의 CEO다")이
      실현된 하루여야 한다 — 앞 보드에서 네 줄로 반복해 보여준 문장과 무관한
      미래를 그리면 캐러셀의 서사가 끊긴다. 명예(무대에서 불리는 이름)와
      부(가격표를 보지 않는 선택) 두 축을 한 장면씩 맡겼다.
