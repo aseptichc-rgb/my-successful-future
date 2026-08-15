@@ -635,6 +635,30 @@
      줄일 때는 이 지면부터 "헤드라인 + 카드 없음" 판본을 시험할 것 —
      01-A 훅 보드가 이미 그 골격이다.
 
+   2026-08-15 9:16 라이트 세트 신설 — 스토리·릴스 A/B 판본(캐러셀 9장).
+   스토리·릴스는 체류가 2~3초라 카드의 촘촘한 글자가 사실상 읽히지 않는다.
+   카드를 내리고 그 자리를 여백으로 두어 헤드라인 하나만 남긴 판본을 만들어
+   일반 9:16 과 같이 돌려 비교한다(가설 검증용이므로 일반 9:16 을 지우지 말 것).
+   골격은 새로 만든 것이 아니다 — 01-A 훅 보드가 원래 근거 카드 없이
+   헤드라인 + deck 만 두는 구성이고, 그것을 나머지 여덟 장에 적용한 것이다.
+   · CTA 보드(09)의 카드는 남긴다. 그 안에 설치 버튼이 들어 있어 내리면
+     광고에서 행동 유도가 사라진다 — CSS 의 :not(.soft) 를 떼지 말 것.
+   · 카드가 빠져 세로가 남는 만큼 헤드라인을 안전폭(904px) 한계까지 키웠다.
+     보드별 --fs-hl-stl 실측(최장 줄 / 904):
+       01 훅 150(그대로 895) · 02 그리기 128→885 · 03 적기 108→880 ·
+       04 비전 98→893 · 05 확장 108→883 · 07 설계 108→883 · 08 변화 122→882 ·
+       09 동행 96(그대로 884 — 카드를 남겨 키울 세로가 없다)
+     06 이름은 .hl 이 없어 표제어를 키웠다: --fs-name-stl 300px(220 → 300).
+   · 훅 변형(01-C·D·E·G)은 라이트를 만들지 않았다. 원래 카드가 없어 일반
+     9:16 과 헤드라인 크기 말고는 차이가 없고, 01-A·01-E 는 이미 안전폭
+     상한이라 두 판본이 글자 그대로 같아진다.
+   · 잃는 것: 04(비전)의 장면 카드와 06(이름)의 사전 카드가 이 판본에서는
+     빠진다. 두 장은 카드가 곧 근거이므로, 라이트가 이기더라도 그 두 장만은
+     일반 9:16 을 쓰는 조합을 함께 볼 것.
+   · 실측(48보드 전부): 페이지 오류 0 · 세로 넘침 0 · 안전폭 초과 0 ·
+     오렌지 정확히 1개소 · 9:16 계열 22장 모두 워드마크 top 250px /
+     메트릭 bottom 1500px 안전영역 안 · 라이트 밴드 위 168~358px.
+
    v3 대비 변경점은 세 가지뿐이다.
    1) 디스플레이 서체: Fraunces → Noto Serif KR (워드마크만 Fraunces 유지)
    2) 강조 장치: 이탤릭 → 굵기 600 + 골드
@@ -920,8 +944,21 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 /* 9:16 (스토리·릴스) — 크기는 4:5 를 그대로 쓰고 안전영역만 비운다.
    .band 가 margin:auto 로 남는 공간을 위아래로 나눠 갖기 때문에, padding 만
    바꿔도 본문 덩어리가 안전영역 안에서 수직 중앙에 놓인다. */
-.ad.st{height:var(--h-st);}
-.ad.st .inner{padding:var(--pad-t-st) var(--pad-x) var(--pad-b-st);}
+.ad.st,
+.ad.stl{height:var(--h-st);}
+.ad.st .inner,
+.ad.stl .inner{padding:var(--pad-t-st) var(--pad-x) var(--pad-b-st);}
+
+/* 9:16 라이트 — 스토리·릴스는 체류가 2~3초라 카드의 촘촘한 글자가 읽히지
+   않는다. 카드를 내리고 그 자리를 여백으로 두어 헤드라인 하나만 남긴다
+   (01-A 훅 보드가 원래 이 골격이다 — 근거 카드 없이 헤드라인 + deck).
+   CTA 카드(.soft)만은 남긴다. 그 안에 설치 버튼이 들어 있어 내리면 광고에서
+   행동 유도가 사라진다 — :not(.soft) 를 떼지 말 것.
+   카드가 빠져 세로가 남으므로 헤드라인을 안전폭(904px) 한계까지 키운다.
+   보드별 값은 각 .ad 인라인의 --fs-hl-stl 이 갖는다(실측값). */
+.ad.stl .card:not(.soft){display:none;}
+.ad.stl .hl{font-size:var(--fs-hl-stl,var(--fs-hl));}
+.ad.stl .etyname{font-size:var(--fs-name-stl,var(--fs-name));}
 
 /* ── 편집 화면 chrome (PNG 내보내기 시 숨김) ─────────────────── */
 .cap{position:absolute;top:var(--chrome-cap-top);font-family:var(--mono);font-size:16px;letter-spacing:.08em;color:rgba(255,255,255,.6);white-space:nowrap;}
@@ -935,6 +972,16 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 #dlbar button[disabled]{opacity:.5;cursor:default;}
 #dlstat{font-family:var(--mono);font-size:14px;letter-spacing:.06em;color:rgba(255,255,255,.72);}
 #dlstat.err{color:#FF9E80;}
+/* 내보내기 상태 토스트 — 보드가 39장 가로로 늘어서 있어(左끝 0 → 右끝 47,880px)
+   오른쪽 보드의 ↓PNG 를 누를 때 #dlbar 의 상태 줄은 화면 밖이다. 실패 사유가
+   거기에만 뜨면 사용자에게는 "눌러도 아무 일도 안 일어남"으로 보이므로, 같은
+   말을 화면에 고정해 한 번 더 띄운다. #stage 밖 body 직속이라 캡처(보드 노드
+   서브트리)에 들어가지 않는다 — 위치를 #stage 안으로 옮기지 말 것. */
+#dltoast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:99;max-width:min(760px,88vw);
+  font-family:var(--mono);font-size:14px;letter-spacing:.04em;line-height:1.6;color:#16141A;background:var(--cream);
+  border-radius:12px;padding:12px 20px;box-shadow:0 12px 40px rgba(0,0,0,.5);}
+#dltoast.err{background:#FF9E80;}
+#dltoast[hidden]{display:none;}
 
 /* 캡션 판 — 보드 아래 일반 흐름. 캔버스가 아니므로 PNG 에 찍히지 않는다. */
 #capbox{margin-top:120px;max-width:1080px;color:rgba(255,255,255,.9);font-family:var(--ui);}
@@ -951,6 +998,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   <button id="dlall">↓ 4:5 9장</button>
   <button id="dlallsq">↓ 1:1 9장</button>
   <button id="dlallst">↓ 9:16 9장</button>
+  <button id="dlallstl">↓ 9:16 라이트 9장</button>
   <button id="dlhooks">↓ 훅 (4:5)</button>
   <button id="dlhookssq">↓ 훅 (1:1)</button>
   <button id="dlhooksst">↓ 훅 (9:16)</button>
@@ -999,7 +1047,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 
 <!-- ═══ 02 · 그리기 ═══ -->
 <div class="cap">KO 02 · <b>그리기</b> · 미래의 나<button class="dl" data-ad="adF">↓ PNG</button></div>
-<div class="ad" id="adF" data-name="anima-ig-v4-ko-02-imagine" style="--fs-hl:100px;--fs-hl-sq:78px;">
+<div class="ad" id="adF" data-name="anima-ig-v4-ko-02-imagine" style="--fs-hl:100px;--fs-hl-stl:128px;--fs-hl-sq:78px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
@@ -1057,7 +1105,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
      — 02(그리기) → 03(적기)로 헤드라인 짝(그려보세요 → 적으세요)과도 맞는다.
      data-name 도 -brain → -write 로 바꿨다(내보낸 PNG 파일명이 바뀐다). -->
 <div class="cap">KO 03 · <b>적기</b> · 한 문장부터<button class="dl" data-ad="ad2">↓ PNG</button></div>
-<div class="ad" id="ad2" data-name="anima-ig-v4-ko-03-write" style="--fs-hl:92px;--fs-hl-sq:72px;">
+<div class="ad" id="ad2" data-name="anima-ig-v4-ko-03-write" style="--fs-hl:92px;--fs-hl-stl:108px;--fs-hl-sq:72px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
@@ -1104,7 +1152,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
      근거: lib/futureVision.ts 가 Gemini 로 장면을 매일 새로 생성한다
      (generateText import). 지어낸 기능이 아니다. -->
 <div class="cap">KO 04 · <b>비전</b> · 이미 이룬 하루<button class="dl" data-ad="adV">↓ PNG</button></div>
-<div class="ad" id="adV" data-name="anima-ig-v4-ko-04-vision" style="--fs-hl:92px;--fs-hl-sq:72px;">
+<div class="ad" id="adV" data-name="anima-ig-v4-ko-04-vision" style="--fs-hl:92px;--fs-hl-stl:98px;--fs-hl-sq:72px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
@@ -1142,7 +1190,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
      셋(헤드라인의 "익숙해지면" · 카드의 "7일 연속" · 메트릭 07)을 따로 놀게
      두지 말 것. -->
 <div class="cap">KO 05 · <b>확장</b> · if-then<button class="dl" data-ad="adP">↓ PNG</button></div>
-<div class="ad" id="adP" data-name="anima-ig-v4-ko-05-ifthen" style="--fs-hl:92px;--fs-hl-sq:72px;">
+<div class="ad" id="adP" data-name="anima-ig-v4-ko-05-ifthen" style="--fs-hl:92px;--fs-hl-stl:108px;--fs-hl-sq:72px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
@@ -1196,7 +1244,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 
 <!-- ═══ 06 · 이름 ═══ -->
 <div class="cap">KO 06 · <b>이름</b> · anima 의 뜻<button class="dl" data-ad="adN">↓ PNG</button></div>
-<div class="ad" id="adN" data-name="anima-ig-v4-ko-06-name" style="--fs-name:220px;--fs-name-sq:170px;--name-margin:44px;">
+<div class="ad" id="adN" data-name="anima-ig-v4-ko-06-name" style="--fs-name:220px;--fs-name-sq:170px;--fs-name-stl:300px;--name-margin:44px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
@@ -1263,7 +1311,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
      deck 두 줄의 자연 폭은 602 / 221px 이라 사실 <br> 없이도 한 줄(835px)에
      들어간다 — 줄바꿈은 부정(1행) → 선언(2행)의 박자를 만들려고 일부러 넣은
      것이므로 "붙여도 들어가니까"라는 이유로 <br> 를 빼지 말 것. -->
-<div class="ad" id="ad3" data-name="anima-ig-v4-ko-07-design" style="--fs-hl:92px;--fs-hl-sq:72px;">
+<div class="ad" id="ad3" data-name="anima-ig-v4-ko-07-design" style="--fs-hl:92px;--fs-hl-stl:108px;--fs-hl-sq:72px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
@@ -1302,7 +1350,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 
 <!-- ═══ 08 · 변화 ═══ -->
 <div class="cap">KO 08 · <b>변화</b> · 훅 회수<button class="dl" data-ad="ad4">↓ PNG</button></div>
-<div class="ad" id="ad4" data-name="anima-ig-v4-ko-08-grow" style="--fs-hl:96px;--fs-hl-sq:76px;">
+<div class="ad" id="ad4" data-name="anima-ig-v4-ko-08-grow" style="--fs-hl:96px;--fs-hl-stl:122px;--fs-hl-sq:76px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
@@ -1525,14 +1573,41 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     지면별 규격 — <b>캐러셀 = 1:1</b>(2160×2160) · <b>단일 이미지·피드 게시물 = 4:5</b>(2160×2700) ·
     <b>스토리·릴스 = 9:16</b>(2160×3840). 캐러셀 카드는 정사각이라 4:5 를 올리면 워드마크와 메트릭이 잘린다<br>
     9:16 은 위 250px / 아래 420px 을 비워 두었다 — 앱 UI(프로필 줄 · 릴스 캡션 · 오디오 · CTA)가 덮는 구간이라
-    "여백이 많아 보인다"는 이유로 채우지 말 것. 세 세트는 같은 마크업에서 나오므로 문구를 고치면 함께 바뀐다<br>
+    "여백이 많아 보인다"는 이유로 채우지 말 것<br>
+    <b>9:16 라이트</b>는 카드를 내리고 헤드라인만 남긴 A/B 판본이다(CTA 카드는 설치 버튼이 있어 유지).
+    스토리·릴스는 체류가 2~3초라 카드 글자가 안 읽힌다는 가설을 시험하는 세트이므로, 일반 9:16 과 같이 돌려 비교할 것<br>
+    네 세트 모두 같은 마크업에서 나오므로 문구를 고치면 함께 바뀐다<br>
     Meta 광고 관리자 CTA 버튼: “설치하기” · 랜딩: https://www.successfulfuture.app/go/app
   </div>
 </div>
 
+<!-- 내보내기 상태 토스트(§CSS #dltoast). #stage 밖이라 PNG 에 찍히지 않는다. -->
+<div id="dltoast" hidden></div>
+
 <!-- defer: 라이브러리는 내보내기 클릭 때만 필요하다. 동기 로드면 CDN 응답이
      올 때까지 아래 인라인 스크립트(보드 내용 전부)가 막혀 백지로 보인다. -->
-<script defer src="https://unpkg.com/html-to-image@1.11.13/dist/html-to-image.js"></script>
+<!-- CDN 이 막히면(오프라인·사내망·광고 차단기) 보드는 멀쩡히 그려지고 내보내기만
+     조용히 죽는다 — 사용자에게는 "PNG 를 눌러도 아무 일이 없다"로만 보인다.
+     그래서 (1) 다른 CDN 으로 한 번 더 받아 보고, (2) 그마저 실패하면 이유를
+     window.__H2I_LOAD_ERR 에 남겨 클릭할 때 토스트가 대신 말하게 한다.
+     버전은 두 곳이 같아야 한다 — 올릴 땐 둘 다 올릴 것. -->
+<script defer id="h2i" src="https://unpkg.com/html-to-image@1.11.13/dist/html-to-image.js"></script>
+<script>
+(function () {
+  var MIRROR = 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.js';
+  var primary = document.getElementById('h2i');
+  if (!primary) { return; }
+  primary.addEventListener('error', function () {
+    var alt = document.createElement('script');
+    alt.defer = true;
+    alt.src = MIRROR;
+    alt.addEventListener('error', function () {
+      window.__H2I_LOAD_ERR = 'PNG 변환 라이브러리를 못 불러왔습니다 (unpkg · jsdelivr 모두 차단) — 네트워크·광고 차단기를 확인하세요';
+    });
+    document.head.appendChild(alt);
+  });
+})();
+</script>
 <script>
 (function () {
   'use strict';
@@ -1736,7 +1811,10 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
      클래스를 몰라도 되고, 지면이 늘어도 그 함수는 그대로다. */
   var FORMATS = {
     sq: { cls: 'sq', suffix: '-1x1',  label: '1:1',  h: cssPx('--h-sq') },
-    st: { cls: 'st', suffix: '-9x16', label: '9:16', h: cssPx('--h-st') }
+    st: { cls: 'st', suffix: '-9x16', label: '9:16', h: cssPx('--h-st') },
+    // 라이트는 캐러셀 9장만 만든다 — 훅 보드는 원래 카드가 없어 일반 9:16 과
+    // 헤드라인 크기 말고는 차이가 없다(01-A·E 는 이미 안전폭 상한이라 동일하다).
+    stl: { cls: 'stl', suffix: '-9x16-lite', label: '9:16 라이트', h: cssPx('--h-st') }
   };
   function makeDerivedSet(ids, fmt) {
     var stage = document.getElementById('stage');
@@ -1762,6 +1840,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   var HOOK_VARIANTS_SQ = ['adA-sq'].concat(makeDerivedSet(HOOK_ONLY, FORMATS.sq));
   var CARRYOVER_ST = makeDerivedSet(CARRYOVER, FORMATS.st);
   var HOOK_VARIANTS_ST = ['adA-st'].concat(makeDerivedSet(HOOK_ONLY, FORMATS.st));
+  var CARRYOVER_STL = makeDerivedSet(CARRYOVER, FORMATS.stl);
 
   /* ── 보드를 가로로 배치 — 순서 = 마크업 등장 순서(.cap 과 .ad 는 짝) ──
      정사각 복제본까지 만든 뒤에 돌려야 새 보드도 자리를 받는다. */
@@ -1782,6 +1861,8 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   document.getElementById('dlhooks').textContent = '↓ 훅 ' + HOOK_VARIANTS.length + '안 (4:5)';
   document.getElementById('dlallst').textContent =
     '↓ 9:16 ' + CARRYOVER_ST.length + '장 (PNG · ' + (EXPORT_W * PIXEL_RATIO) + '×' + (FORMATS.st.h * PIXEL_RATIO) + ')';
+  document.getElementById('dlallstl').textContent =
+    '↓ 9:16 라이트 ' + CARRYOVER_STL.length + '장 (카드 없음)';
   document.getElementById('dlhookssq').textContent = '↓ 훅 ' + HOOK_VARIANTS_SQ.length + '안 (1:1)';
   document.getElementById('dlhooksst').textContent = '↓ 훅 ' + HOOK_VARIANTS_ST.length + '안 (9:16)';
 
@@ -1880,6 +1961,73 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     return fontEmbedPromise;
   }
 
+  /* ── 쓰는 서브셋만 골라 싣는다 ─────────────────────────────────
+     getFontEmbedCSS 는 문서에 걸린 @font-face 를 전부 base64 로 인라인한다.
+     CJK 는 웨이트마다 unicode-range 서브셋이 100개가 넘어 759블록 · 38MB 가
+     나오고, 그게 통째로 SVG data: URL 에 실리면 보드 한 장이 41MB 짜리
+     문자열이 된다 — 렌더가 느려지고 메모리를 크게 먹으며, data: URL 길이
+     상한이 있는 브라우저에서는 그대로 실패한다.
+     보드가 실제로 그리는 문자와 unicode-range 가 겹치는 블록만 남기면
+     06 기준 759 → 63블록, 38MB → 2.2MB 다. 서브셋을 지우는 게 아니라
+     고르는 것이라 글자는 그대로 나오고, 새 문자를 쓰면 그 서브셋이 자동으로
+     따라오므로 카피를 고쳐도 손댈 것이 없다.
+     범위가 없는 블록(라틴 단일 face 등)은 대상이 불분명하므로 항상 남긴다.
+     ※ "PNG 가 저장되지 않던" 버그의 원인은 이 크기가 아니라 주석의 '--' 였다
+       (§renderAd dropComments). 이쪽은 속도·메모리 조치다. */
+  var fontBlocksPromise = null;
+  function parseUnicodeRanges(block) {
+    var m = block.match(/unicode-range\s*:\s*([^;}]+)/i);
+    if (!m) { return null; }
+    var ranges = [];
+    m[1].split(',').forEach(function (part) {
+      var t = part.trim().toUpperCase().replace(/^U\+/, '');
+      var lo, hi;
+      if (t.indexOf('-') > -1) {
+        var ab = t.split('-');
+        lo = parseInt(ab[0], 16); hi = parseInt(ab[1], 16);
+      } else if (t.indexOf('?') > -1) {
+        lo = parseInt(t.replace(/\?/g, '0'), 16); hi = parseInt(t.replace(/\?/g, 'F'), 16);
+      } else {
+        lo = hi = parseInt(t, 16);
+      }
+      if (!isNaN(lo) && !isNaN(hi)) { ranges.push([lo, hi]); }
+    });
+    return ranges.length ? ranges : null;
+  }
+  function fontBlocksOnce(node) {
+    if (!fontBlocksPromise) {
+      fontBlocksPromise = fontEmbedOnce(node).then(function (css) {
+        return css.split('@font-face').filter(function (s) { return s.trim(); })
+          .map(function (body) {
+            return { css: '@font-face' + body, ranges: parseUnicodeRanges(body) };
+          });
+      }).catch(function (err) {
+        fontBlocksPromise = null;   // 실패 시 다음 시도에서 재수집
+        throw err;
+      });
+    }
+    return fontBlocksPromise;
+  }
+  function usedCodePoints(node) {
+    var set = [];
+    var seen = {};
+    Array.from(node.textContent || '').forEach(function (ch) {
+      var cp = ch.codePointAt(0);
+      if (!seen[cp]) { seen[cp] = 1; set.push(cp); }
+    });
+    return set;
+  }
+  async function fontCssFor(node) {
+    var blocks = await fontBlocksOnce(node);
+    var used = usedCodePoints(node);
+    return blocks.filter(function (b) {
+      if (!b.ranges) { return true; }
+      return b.ranges.some(function (r) {
+        return used.some(function (cp) { return cp >= r[0] && cp <= r[1]; });
+      });
+    }).map(function (b) { return b.css; }).join('');
+  }
+
   var fontsPrimed = null;
   function primeFonts() {
     if (fontsPrimed) { return fontsPrimed; }
@@ -1892,10 +2040,24 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     return fontsPrimed;
   }
 
+  /* 상태는 두 곳에 같이 쓴다 — 툴바(#dlstat)는 배치 진행률의 자리이고,
+     토스트는 오른쪽 보드를 보는 중에도 눈에 들어오는 유일한 자리다.
+     성공은 잠깐 뒤 스스로 사라지고, 실패는 다음 동작까지 남긴다 —
+     실패를 자동으로 지우면 다시 "아무 일도 안 일어난 화면"이 된다. */
   var stat = document.getElementById('dlstat');
+  var toast = document.getElementById('dltoast');
+  var TOAST_MS = 2600;
+  var toastTimer = null;
   function say(msg, isErr) {
     stat.textContent = msg;
     stat.classList.toggle('err', !!isErr);
+    toast.textContent = msg;
+    toast.classList.toggle('err', !!isErr);
+    toast.hidden = !msg;
+    clearTimeout(toastTimer);
+    if (msg && !isErr) {
+      toastTimer = setTimeout(function () { toast.hidden = true; }, TOAST_MS);
+    }
   }
 
   // 보드는 left:0 / 1260 / 2520 … 로 가로 배치된다. html-to-image 는 노드를
@@ -1907,7 +2069,8 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   // 전역 --h 를 쓰면 정사각 보드가 아래 270px 을 빈 채로 달고 나온다.
   async function renderAd(id) {
     if (typeof htmlToImage === 'undefined') {
-      throw new Error('html-to-image 로딩 전 — 잠시 후 다시 시도하세요');
+      // CDN 두 곳이 다 막힌 경우엔 로더가 남긴 사유를 그대로 보여 준다(§head).
+      throw new Error(window.__H2I_LOAD_ERR || 'html-to-image 로딩 전 — 잠시 후 다시 시도하세요');
     }
     var node = document.getElementById(id);
     if (!node) { throw new Error('알 수 없는 보드: ' + id); }
@@ -1919,13 +2082,15 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     node.style.zIndex = '9999';
     try {
       await primeFonts();
-      return await htmlToImage.toPng(node, {
+      var blob = await htmlToImage.toBlob(node, {
         width: EXPORT_W,
         height: +node.dataset.exportH || EXPORT_H,
         pixelRatio: PIXEL_RATIO,
         style: { margin: '0' },
-        fontEmbedCSS: await fontEmbedOnce(node)
+        fontEmbedCSS: await fontCssFor(node)
       });
+      if (!blob) { throw new Error('PNG 변환 결과가 비었습니다 — 다시 시도하세요'); }
+      return blob;
     } finally {
       node.style.left = parkedLeft;
       node.style.zIndex = parkedZ;
@@ -1939,14 +2104,23 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     return (node && node.dataset.name) || id;
   }
 
+  /* blob: URL 로 내려받는다. 같은 그림을 data: URL 로 만들면 1:1 이 2.4MB,
+     9:16 이 4MB 짜리 주소가 되는데, 이 길이의 data: 다운로드는 브라우저·확장·
+     정책에 따라 오류 없이 무시되는 경우가 있다 — 그 실패는 화면에 "아무 일도
+     안 일어남"으로만 나타나 원인을 찾을 수 없다. blob 은 길이 문제가 없다.
+     해제는 60초 뒤에 한다: 클릭 직후 revoke 하면 저장이 시작되기 전에 URL 이
+     사라져 다운로드가 취소되는 브라우저가 있다. */
+  var BLOB_TTL_MS = 60000;
   async function downloadAd(id, name) {
-    var url = await renderAd(id);
+    var blob = await renderAd(id);
+    var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
     a.download = name + '.png';
     document.body.appendChild(a);
     a.click();
     a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, BLOB_TTL_MS);
   }
 
   document.querySelectorAll('.cap .dl').forEach(function (btn) {
@@ -1957,7 +2131,9 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
       btn.textContent = '…';
       try {
         await downloadAd(btn.dataset.ad, name);
-        say('');
+        // 성공도 말해 준다 — 브라우저가 다운로드 표시줄을 숨겨 두면 저장됐는지
+        // 알 길이 없어 "안 된다"로 읽힌다. 파일명까지 주면 찾아갈 수 있다.
+        say('저장됨 · ' + name + '.png');
       } catch (err) {
         console.error('[export]', name, err);
         say('실패 · ' + name + ' · ' + (err && err.message ? err.message : err), true);
@@ -2007,6 +2183,9 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   });
   document.getElementById('dlallst').addEventListener('click', function () {
     runBatch(this, CARRYOVER_ST, '캐러셀 9:16');
+  });
+  document.getElementById('dlallstl').addEventListener('click', function () {
+    runBatch(this, CARRYOVER_STL, '캐러셀 9:16 라이트');
   });
   document.getElementById('dlhookssq').addEventListener('click', function () {
     runBatch(this, HOOK_VARIANTS_SQ, '훅 1:1');
