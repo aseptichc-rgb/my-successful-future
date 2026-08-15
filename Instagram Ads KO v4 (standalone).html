@@ -89,8 +89,9 @@
    · 05: "나이와 함께 꿈도 자랍니다" → "영상 대신 내가 자랐습니다"(본 것 vs 한 것)
    · 06: "꿈이 늙기 전에," → "보는 건 여기까지."(영상 + 이 캐러셀, 두 겹으로 읽힘)
    · 캡션 첫 줄·마무리 줄도 같은 축으로 교체
-   훅을 또 바꾸면 05·06 과 02 의 .deck 을 반드시 같이 볼 것 — 이 넷이 한 벌이다.
-   (01-C 는 독립 변형이라 영향 없음)
+   훅을 또 바꾸면 05 와 02 의 .deck 을 반드시 같이 볼 것 — 이 셋이 한 벌이다.
+   (06 은 아래 2026-08-15 헤드라인 교체로 이 한 벌에서 빠졌다.
+    01-C 는 독립 변형이라 영향 없음)
 
    2026-08-15 01-A 근거 카드 삭제 — 훅 보드를 헤드라인 한 장으로 비웠다.
    도발("그만 보세요")과 그 답("보는 대신 적을 한 줄")이 한 장에 다 있으면
@@ -103,6 +104,25 @@
      01 카드가 사라졌으므로 1→2 를 잇는 접착제가 이 라벨뿐이다.
    · --fs-hl 144 → 150px. 152px 는 최장 줄이 안전폭 904px 를 넘어 줄바꿈이
      일어난다(실측: 144→859 · 148→883 · 150→895 · 152→넘침). 150 이 상한이다.
+
+   2026-08-15 06 헤드라인 교체: "보는 건 여기까지. / 오늘 밤 / 첫 줄을 적으세요."
+   → "내 미래는 / 내가 / 만들어갑니다." 마지막 장을 지시("적으세요")에서
+   독자의 1인칭 선언으로 바꿨다 — 02 다짐 카드와 03 비전 보드가 모두 1인칭
+   현재형이라 캐러셀이 같은 목소리로 닫히고, 바로 아래 메트릭
+   "01일차 · 당신의 차례"가 이 '내'를 독자에게 넘긴다. 행동 지시는 CTA
+   버튼("앱 받기")이 이미 하고 있어 헤드라인이 겹쳐 말할 필요가 없다.
+   · --fs-hl 96 → 120px. 구 헤드라인은 최장 줄이 안전폭 904px 의 94% 를
+     썼는데 새 문구를 96px 로 두면 63%(574px)라 마지막 장만 눈에 띄게 작아진다.
+     실측(최장 줄): 96→574 · 112→670 · 120→718 · 128→766.
+     CTA 카드는 하단 고정이라 세로는 120px 에서도 위 188 / 아래 244px 남는다.
+     훅(150px)보다는 확실히 낮게 유지할 것 — 1번이 계속 가장 커야 한다.
+   · 오렌지 1개소는 CTA 버튼 그대로. em "내가"는 골드다(.hl em) — 여기에
+     .soul 을 붙이면 한 장에 오렌지가 둘이 된다(§3-1).
+   · 이 교체로 06 은 더 이상 훅("영상")을 회수하지 않는다. 회수는 05
+     ("영상 대신 내가 자랐습니다") 한 장이 전담한다.
+   · 01-C(훅 선언형 변형)와 헤드라인이 글자 그대로 같아졌다. 한 캐러셀에
+     같이 실으면 1번과 6번이 같은 문장이 되므로 A/B 는 01-A 로만 돌릴 것.
+     01-C 를 되살리려면 새 훅 문구를 주거나 보드를 내려야 한다.
 
    v3 대비 변경점은 세 가지뿐이다.
    1) 디스플레이 서체: Fraunces → Noto Serif KR (워드마크만 Fraunces 유지)
@@ -436,7 +456,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 
 <!-- ═══ 06 · 시작 (CTA) ═══ -->
 <div class="cap">KO 06 · <b>시작</b> · CTA<button class="dl" data-ad="ad5">↓ PNG</button></div>
-<div class="ad" id="ad5" data-name="anima-ig-v4-ko-06-start" style="--fs-hl:96px;">
+<div class="ad" id="ad5" data-name="anima-ig-v4-ko-06-start" style="--fs-hl:120px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
@@ -444,10 +464,11 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     </div>
 
     <div class="band">
-      <!-- "보는 건 여기까지."는 두 겹으로 읽힌다 — 훅이 지목한 동기부여 영상,
-           그리고 방금까지 넘겨 본 이 캐러셀. 소비를 끝내고 행동으로 넘기는
-           자리라 CTA 바로 앞이 제자리다. -->
-      <div class="hl">보는 건 여기까지.<br><em>오늘 밤</em><br>첫 줄을 적으세요.</div>
+      <!-- 마지막 장은 독자가 앱에서 처음 적을 문장을 미리 입에 붙여 보는 자리다.
+           1인칭 현재형이라 02 다짐 카드·03 비전 보드의 톤과 한 줄로 이어지고,
+           아래 메트릭 "01일차 · 당신의 차례"가 이 '내'를 독자에게 넘긴다.
+           오렌지 1개소는 CTA 버튼이 계속 갖는다 — em 은 골드로 둘 것(.hl em). -->
+      <div class="hl">내 미래는<br><em>내가</em><br>만들어갑니다.</div>
     </div>
 
     <div class="rule"></div>
@@ -463,7 +484,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 </div>
 
 <!-- ═══ 01-C · 훅 변형 (A/B 테스트용) ═══ -->
-<div class="cap alt">KO 01-C · <b>훅 · 선언형</b> · 변형<button class="dl" data-ad="adC">↓ PNG</button></div>
+<div class="cap alt">KO 01-C · <b>훅 · 선언형</b> · 변형 (보류 — 06 과 헤드라인 중복)<button class="dl" data-ad="adC">↓ PNG</button></div>
 <div class="ad" id="adC" data-name="anima-ig-v4-ko-01c-hook-alt" style="--fs-hl:112px;">
   <div class="inner">
     <div class="topbar">
@@ -497,7 +518,8 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   <h2>인스타그램 캡션 (복사해서 사용)</h2>
   <textarea id="captext" spellcheck="false" readonly></textarea>
   <div class="hint">
-    캐러셀 순서: 01-A → 02 → 03 → 04 → 05 → 06 (6장) · 훅 A/B 테스트는 1번만 01-C 로 교체<br>
+    캐러셀 순서: 01-A → 02 → 03 → 04 → 05 → 06 (6장)<br>
+    01-C 는 현재 06 과 헤드라인이 같아 함께 실을 수 없다 — A/B 를 돌리려면 01-C 훅 문구부터 교체할 것<br>
     Meta 광고 관리자 CTA 버튼: “설치하기” · 랜딩: https://www.successfulfuture.app/go/app
   </div>
 </div>
