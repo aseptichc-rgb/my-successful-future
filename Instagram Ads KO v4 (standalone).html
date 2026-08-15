@@ -24,6 +24,12 @@
    회고 코칭 루프)로 재구성했고, 04 는 훅의 '나이'를 회수("나이와 함께
    꿈도 자랍니다"), 05 는 "꿈이 늙기 전에"로 훅을 닫는다.
 
+   2026-08-15: 02 헤드라인 아래에 근거 선언 한 줄(.deck)을 붙였다 —
+   "마법이나 단순한 동기부여가 아닙니다. 뇌과학입니다." 자기계발 광고가
+   흔히 받는 '동기부여 뽕' 의심을 그 자리에서 끊는 장치이므로, 원리를
+   말하는 02 이외의 보드로 옮기지 말 것(같은 문장을 여러 장에 반복하면
+   선언이 슬로건으로 약해진다). 캡션 본문에도 같은 문장을 싣는다.
+
    v3 대비 변경점은 세 가지뿐이다.
    1) 디스플레이 서체: Fraunces → Noto Serif KR (워드마크만 Fraunces 유지)
    2) 강조 장치: 이탤릭 → 굵기 600 + 골드
@@ -63,6 +69,7 @@
   --fs-label:var(--fs-mono);
   --fs-metric:24px;
   --fs-wordmark:34px;
+  --fs-deck:36px;        /* 헤드라인 아래 부연 — hl 의 40% 이하로 유지(주종 관계) */
   --lh-hl:1.16;          /* 한글은 라틴(.98)보다 행간이 필요하다 */
 
   /* card */
@@ -74,6 +81,7 @@
   /* rhythm */
   --rule-margin:56px 0 40px;
   --metric-margin:30px;
+  --deck-margin:34px;
 
   /* editor chrome */
   --chrome-cap-top:-58px;
@@ -114,6 +122,10 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 /* 크기는 보드별 파라미터 — 각 .ad 의 style="--fs-hl:…" 에서 지정 */
 .hl{font-family:var(--display);font-weight:200;font-size:var(--fs-hl);letter-spacing:-.02em;line-height:var(--lh-hl);color:var(--cream);word-break:keep-all;}
 .hl em{font-style:normal;font-weight:600;color:var(--gold);}
+/* 헤드라인 아래 근거 한 줄. 강조는 굵기+밝기로만 준다 — 골드는 구조 전용이고
+   오렌지는 슬라이드당 1개소라 카피에 쓸 수 없다(§3-1). */
+.deck{font-family:var(--display);font-weight:300;font-size:var(--fs-deck);line-height:1.4;color:rgba(247,243,236,.58);word-break:keep-all;margin-top:var(--deck-margin);}
+.deck b{font-weight:600;color:rgba(247,243,236,.94);}
 
 /* ── [C] 골드 헤어라인 ───────────────────────────────────────── */
 .rule{height:1px;background:linear-gradient(90deg,rgba(217,164,65,.55),rgba(217,164,65,0));margin:var(--rule-margin);}
@@ -238,6 +250,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 
     <div class="band">
       <div class="hl">같은 문장을<br>매일 적으면,<br>뇌는 <em>길을 냅니다.</em></div>
+      <div class="deck">마법이나 단순한 동기부여가 아닙니다.<br><b>뇌과학입니다.</b></div>
     </div>
 
     <div class="rule"></div>
@@ -610,6 +623,8 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     '· 밤 — 다짐 한 줄: 같은 문장을 매일 적으면, 뇌는 그 방향으로 길을 냅니다',
     '· 아침 — 잠금화면 위젯: 오늘의 한 걸음이 먼저 말을 겁니다',
     '· 밤 — 잘한 일 3가지: 작은 성공이 다음 행동을 부릅니다',
+    '',
+    '마법이나 단순한 동기부여가 아닙니다. 뇌과학입니다.',
     '',
     '적기만 하는 앱이 아니라, 행동을 설계하는 앱.',
     '30일 중 25일 — 의지가 아니라 설계입니다.',
