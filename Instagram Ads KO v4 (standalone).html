@@ -1487,7 +1487,10 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
         <!-- 라벨은 Meta 광고 관리자 CTA 버튼("설치하기")과 같은 동사로 맞춘다 —
              이미지 안 버튼과 광고 버튼이 다른 말을 하면 행동이 갈린다.
              "앱 받기"는 수동태에 가까워 설치 동사보다 약했다. -->
-        <a class="cta" href="https://www.successfulfuture.app/go/app">지금 설치하기 <span style="font-size:26px;">→</span></a>
+        <!-- href 는 스크립트가 AD_LANDING_URL 에서 채운다(§상수). 여기 주소를 다시
+             적지 말 것 — 캡션과 갈라지는 자리였다. PNG 에는 링크가 찍히지 않으므로
+             이 href 는 HTML 을 브라우저에서 볼 때 눌러 보기 위한 것이다. -->
+        <a class="cta" data-landing>지금 설치하기 <span style="font-size:26px;">→</span></a>
         <!-- 버튼 옆은 플랫폼 표시 한 줄만 남긴다. 주소(successfulfuture.app/go/app)와
              "· 무료"는 내렸다 — 가격은 스토어가, 주소는 캡션 마지막 줄이 맡는다.
              대가는 알고 치른 것이다: 이미지를 저장·캡처해 간 사람에게 앱을
@@ -1638,8 +1641,9 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     <b>9:16 라이트</b>는 카드를 내리고 헤드라인만 남긴 A/B 판본이다(CTA 카드는 설치 버튼이 있어 유지).
     스토리·릴스는 체류가 2~3초라 카드 글자가 안 읽힌다는 가설을 시험하는 세트이므로, 일반 9:16 과 같이 돌려 비교할 것<br>
     네 세트 모두 같은 마크업에서 나오므로 문구를 고치면 함께 바뀐다<br>
-    Meta 광고 관리자 CTA 버튼: “설치하기” · 랜딩: https://www.successfulfuture.app/go/app
-  </div>
+    Meta 광고 관리자 CTA 버튼: “설치하기” · 도착지 URL(웹사이트 URL 칸에 그대로 붙여넣기):<br>
+    <code id="addest"></code>
+</div>
 </div>
 
 <!-- 내보내기 상태 토스트(§CSS #dltoast). #stage 밖이라 PNG 에 찍히지 않는다. -->
@@ -1686,6 +1690,30 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   // 훅 A/B 세트 — 채택안(A) + 변형 4안. 카드 유무·크기를 맞춰 카피만 비교한다
   // (A 는 근거 카드가 없고 C 만 대비 바를 갖는다 — C 를 함께 돌릴 땐 그 차이를 감안할 것).
   var HOOK_VARIANTS = ['adA', 'adC', 'adD', 'adE', 'adG'];
+
+  /* ── 광고 도착지 — 주소의 단일 원본 ────────────────────────────
+     같은 주소가 08 보드 CTA 의 href · 캡션 마지막 줄 · 아래 안내 문구 세 곳에 손으로
+     적혀 있었고, 보드만 www 가 붙어 캡션의 apex 와 갈라져 있었다. 한쪽만 고치면
+     나머지가 조용히 틀어지므로 여기 한 줄로 모은다 — 주소가 바뀌면 이 상수만 고친다.
+
+     ※ 호스트는 앱이 쓰는 호스트와 별개다. 안드로이드 TWA(asset_statements.xml)와
+       iOS WKWebView(capacitor.config.ts)는 my-successful-future.vercel.app 에
+       묶여 있고, 그쪽을 바꾸면 Digital Asset Links 재검증과 앱 재출시가 따라온다.
+       여기는 광고 클릭이 거쳐 가는 주소일 뿐이라 자유롭게 바꿔도 앱은 무관하다.
+
+     ※ 이 호스트는 Vercel 프로젝트에 도메인으로 등록돼 있어야 살아난다. 등록 전에는
+       DEPLOYMENT_NOT_FOUND 가 떨어진다 — 광고를 돌리기 전에 반드시 열어 볼 것.
+       (successfulfuture.app 은 DNS 미등록 상태라 여기서 뺐다. 그 도메인을 사서
+        붙이면 이 상수를 'successfulfuture.app' 으로 바꾸면 된다.) */
+  var AD_LANDING_HOST = 'successfulfuture.vercel.app';
+  /* 캡션에 적는 형태 — 사람이 눈으로 읽고 옮겨 적는 줄이라 스킴을 뺀다. */
+  var AD_LANDING_DISPLAY = AD_LANDING_HOST + '/go/app';
+  var AD_LANDING_URL = 'https://' + AD_LANDING_DISPLAY;
+  /* Meta 광고 관리자 "웹사이트 URL" 칸에 넣는 주소. utm 은 /go/app 이 스토어로 넘겨
+     Play 콘솔 획득 보고서와 App Store ct 로 이어진다([lib/constants/storeLinks.ts]).
+     캡션·보드에는 붙이지 않는다 — 옮겨 적을 수 없을 만큼 길어진다. */
+  var AD_DESTINATION_URL = AD_LANDING_URL +
+    '?utm_source=instagram&utm_medium=cpc&utm_campaign=anima_launch_kr';
 
   /* ── 조리개 마크 (v3 과 동일 도형) ──────────────────────────
      도형 원본은 public/icons/anima-mark-*.svg — 마크 개편 시 함께 갱신할 것. */
@@ -1862,6 +1890,15 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     }).join('');
   });
 
+  /* ── 도착지 주소 주입 ────────────────────────────────────────
+     주소를 쓰는 자리는 전부 AD_LANDING_* 에서 받는다. 파생 세트 복제(바로 아래)보다
+     반드시 먼저 돌아야 한다 — cloneNode 는 이 시점의 속성을 복사하므로, 뒤로 밀면
+     1:1·9:16 복제본의 버튼만 href 가 빈 채로 남는다. */
+  document.querySelectorAll('a.cta[data-landing]').forEach(function (a) {
+    a.href = AD_LANDING_URL;
+  });
+  document.getElementById('addest').textContent = AD_DESTINATION_URL;
+
   /* ── 파생 세트 생성 ──────────────────────────────────────────
      4:5 보드를 복제해 지면별 규격을 CSS 클래스로 입힌다. 카피를 여러 벌
      관리하지 않으려는 것이므로 여기서 복제본의 내용을 손대지 말 것 —
@@ -1985,10 +2022,11 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     '당신의 위대한 여정에, anima 가 끝까지 동반자가 되겠습니다.',
     '',
     /* 동사는 이미지 안 CTA 버튼·Meta 광고 관리자 CTA("설치하기")와 맞춘다.
-       주소는 08 카드에 적힌 것과 같아야 한다 — 캡션의 링크는 눌리지 않으므로
-       (인스타는 캡션 URL 을 링크로 만들지 않는다) 옮겨 적을 한 줄로 둔다. */
+       주소는 08 카드 버튼과 같은 상수(AD_LANDING_*)에서 나오므로 한쪽만 틀어질 수 없다.
+       캡션의 링크는 눌리지 않으므로(인스타는 캡션 URL 을 링크로 만들지 않는다)
+       옮겨 적을 한 줄로 둔다 — 그래서 utm 도 붙이지 않는다. */
     '→ 지금 설치하기 · 무료 (iOS · Android)',
-    '→ successfulfuture.app/go/app',
+    '→ ' + AD_LANDING_DISPLAY,
     '',
     '#자기계발 #다짐 #습관만들기 #모닝루틴 #동기부여 #목표달성',
     '#확언 #성공일기 #갓생 #자기관리 #루틴 #꿈 #시각화'
