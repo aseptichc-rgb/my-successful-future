@@ -8,12 +8,42 @@ import "./globals.css";
 // 호출하고 실패 시 시스템 폰트로 폴백. Inter/Noto Sans KR 의 별도 next/font 임베드는
 // 더 이상 참조되지 않아 제거 (번들 크기 절감).
 
+// 링크 미리보기(og/twitter)용 상수 — 같은 문구가 세 군데(title·og·twitter)에 들어가므로
+// 한 곳에서만 고친다. 이 문구를 바꾸면 public/og.png 의 카피도 같이 바꿀 것
+// (scripts/generate-og-image.mjs 의 HEADLINE_LINES·DECK) — 썸네일과 <meta> 가 다른 말을
+// 하면 스크래퍼 미리보기 안에서 두 문장이 서로 어긋나 보인다.
+const SITE_NAME = "Anima";
+const SITE_TITLE = "Anima — 꿈을 이루는 하루";
+const SITE_DESCRIPTION =
+  "당신의 꿈을 이루게 해주는 앱. 꿈을 한 줄 적으면 오늘 할 한 걸음이 정해지고, 그 걸음을 밀어줄 한 마디가 매일 도착합니다.";
+// 안드로이드 assetlinks·capacitor.config.ts 의 SERVER_URL 과 같은 호스트여야 한다.
+const SITE_URL = "https://my-successful-future.vercel.app";
+// OG 권장 규격(1.91:1). Meta·X·카카오·슬랙이 공통으로 받는 최대공약수다.
+const OG_IMAGE = { url: "/og.png", width: 1200, height: 630, alt: SITE_TITLE };
+
 export const metadata: Metadata = {
-  title: "Anima — 꿈을 이루는 하루",
-  description:
-    "당신의 꿈을 이루게 해주는 앱. 꿈을 한 줄 적으면 오늘 할 한 걸음이 정해지고, 그 걸음을 밀어줄 한 마디가 매일 도착합니다.",
-  applicationName: "Anima",
+  // 상대 경로(/og.png)를 절대 URL 로 승격시킨다. 이게 없으면 Next 가 경고만 남기고
+  // og:image 를 상대 경로 그대로 내보내는데, 스크래퍼는 상대 경로를 가져가지 못한다.
+  metadataBase: new URL(SITE_URL),
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
   formatDetection: { telephone: false },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    locale: "ko_KR",
+    url: "/",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: [OG_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: [OG_IMAGE.url],
+  },
 };
 
 export const viewport: Viewport = {

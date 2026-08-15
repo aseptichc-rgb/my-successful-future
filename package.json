@@ -16,7 +16,8 @@
     "preios:submit": "npm run ios:preflight",
     "ios:submit": "node scripts/ios-appstore-submit.mjs",
     "test": "vitest run",
-    "quotes:gen": "node scripts/gen-curated-quotes.mjs"
+    "quotes:gen": "node scripts/gen-curated-quotes.mjs",
+    "og:gen": "node scripts/generate-og-image.mjs"
   },
   "dependencies": {
     "@capacitor-firebase/authentication": "^8.2.0",
