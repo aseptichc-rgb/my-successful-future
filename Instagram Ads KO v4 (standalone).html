@@ -162,6 +162,55 @@
    · 캡션 첫 두 줄을 보드(헤드라인 + deck)와 같게 맞췄다. 피드에서 캡션은
      접히므로 이 두 줄(37자)이 잘리기 전에 보이는 전부다.
 
+   2026-08-15 "미래의 나" 보드(02) 신설 — 캐러셀 6장 → 7장.
+   01-A 의 deck 은 "실제 행동을 바꾸는 방법이 있습니다."로 답을 예고만 하는데,
+   바로 다음 장이 곧장 원리(뇌과학)로 넘어가 "그래서 뭘 하라는 건데"에 답하는
+   장이 없었다. 그 답의 첫 단계(성공한 미래의 나를 생생하게 그리는 것)를 1번
+   바로 뒤에 세운다. 순서는 훅 → 그리기 → 원리 → 비전 → 설계 → 변화 → CTA 로,
+   "무엇을 하라"(02) → "왜 되나"(03) → "그래서 뭘 받나"(04) 가 된다.
+   카드에 실은 질문·차원 목록은 전부 제품에 있는 문구다 — 차원은 lib/futureSelf.ts
+   FUTURE_SELF_DIMENSIONS(8개: 꿈은 온보딩 1문항, 나머지 7개는 설정 항목),
+   질문 문장은 lib/i18n/dictionaries/ko.ts "onboarding.futureSelf.daily.q" 원문.
+   질문을 지어내지 말 것 — 없는 화면을 그리면 스토어 심사와 환불 사유가 된다.
+   · 헤드라인의 "생생하게"는 04(비전)의 "생생하게 펼쳐집니다"와 일부러 겹친다.
+     02 는 당신이 그리는 쪽, 04 는 앱이 대신 펼치는 쪽이다(요구 → 대행).
+     한쪽만 고치면 이 짝이 깨지므로 문구 교체 시 두 장을 같이 볼 것.
+   · em 은 골드로 둔다(.hl em). 오렌지 1개소는 카드 안 커서다 — 헤드라인에
+     .soul 을 붙이면 한 장에 오렌지가 둘이 된다(§3-1).
+   · 이에 따라 02~06 은 각각 03~07 로 번호를 밀었고(eyebrow·data-name·cap),
+     러닝 메트릭에 02일차를 끼워 01 → 02 → 04 → 07 → 12 → 84 → 01 이 되었다.
+   · --fs-hl 108px. 최장 줄은 1행 "성공한 미래의 나를"이다
+     (재실측, 안전폭 904px: 100→815 · 104→847 · 108→880 · 110→896 ·
+      112→913(초과 → 4줄로 깨짐)). 최초 112px 은 잘못 잰 값이었다 —
+     브라우저에서 1행이 "성공한 미래의 / 나를"로 접혀 3줄 설계가 무너진다.
+     상한은 110px 이지만 여유가 8px 뿐이라 108px 을 쓴다(여유 24px).
+     훅(150px)보다 낮고 원리·비전·설계(92px)보다 높다 — 1번 다음으로 큰
+     보드여야 도발 직후의 지시가 힘을 잃지 않는다.
+     deck/hl 33.3% · 넘침 없음.
+
+   2026-08-15 03(원리) 헤드라인 교체: "같은 문장을 / 매일 되새기면, / 뇌가
+   길을 찾습니다." → "그리고 그 이미지를 / 매일 적으세요."
+   원리 서술을 02 를 이어받는 지시로 바꿨다. "그 이미지" = 02 에서 독자에게
+   그리라고 시킨 '성공한 미래의 나'이고, 접속사 "그리고"가 두 장을 한 문장처럼
+   잇는다 — 02(그려라) → 03(적어라)가 방법의 1·2단계가 된다.
+   그러므로 이 헤드라인은 02 없이 혼자 서지 못한다. 02 를 빼거나 순서를
+   바꾸면 지시대명사가 허공에 걸리므로 이 문장부터 다시 쓸 것.
+   원리(뇌과학)는 바로 아래 .deck 이 그대로 쥔다 — deck 은 건드리지 말 것
+   (§위 2026-08-15 항목). 지시만 남고 근거가 사라지면 '동기부여 뽕' 의심을
+   끊을 장치가 없어지고, 01-A 훅과 이어지는 "동기부여" 한 벌도 깨진다.
+   · --fs-hl 92px 유지(03·04·05 공통). 3줄 → 2줄이 되었지만 최장 줄이 750px 로
+     안전폭 904px 의 83% 라 키울 이유가 없다(07 때 키운 기준은 63% 였다).
+     실측(최장 줄 "그리고 그 이미지를"): 92→750 · 100→815 · 108→880 ·
+     112→913(안전폭 초과 → 3줄). 상한은 108px 이지만 여유가 24px 뿐이다.
+     deck/hl 39.1%(주종 규칙 40% 이하) · 밴드 위 123 / 아래 179px · 넘침 없음.
+   · 오렌지 1개소는 카드 커서 그대로 — em "적으세요."는 골드다(.hl em).
+     여기에 .soul 을 붙이면 한 장에 오렌지가 둘이 된다(§3-1).
+   · 카드 라벨("보는 대신, 매일 밤 적은 한 줄")은 그대로 둔다 — 헤드라인이
+     지시, 카드가 그 지시를 4일치 실행한 증거라 역할이 겹치지 않는다.
+   · 캡션 밤 항목도 같은 축으로 교체("성공한 미래의 나를 매일 적으면, 뇌가
+     그 방향으로 길을 찾습니다"). 캡션에는 02 가 앞에 없으므로 지시대명사
+     대신 대상을 그대로 적는다.
+
    v3 대비 변경점은 세 가지뿐이다.
    1) 디스플레이 서체: Fraunces → Noto Serif KR (워드마크만 Fraunces 유지)
    2) 강조 장치: 이탤릭 → 굵기 600 + 골드
@@ -275,19 +324,27 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 .chead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:26px;}
 .ctext{font-family:var(--display);font-weight:300;line-height:1.3;color:var(--cream);word-break:keep-all;}
 
-/* ── [E] 러닝 메트릭 — 01 → 04 → 07 → 12 → 84 → 01(당신) ────── */
+/* ── [E] 러닝 메트릭 — 01 → 02 → 04 → 07 → 12 → 84 → 01(당신) ── */
 .metric{font-family:var(--mono);font-size:var(--fs-metric);letter-spacing:.14em;color:rgba(247,243,236,.42);margin-top:var(--metric-margin);}
 .metric b{color:var(--gold);font-weight:500;}
 
 /* ── 카드 내부 공용 부품 ─────────────────────────────────────── */
 .caret{display:inline-block;width:3px;height:38px;background:var(--soul);vertical-align:-7px;margin-left:8px;}
-/* 다짐 반복 기록 (02) — 같은 문장이 날마다 진해진다 = 반복이 회로를
+/* 미래의 나 질문 (02) — 앱이 실제로 묻는 8차원 중 한 문항과, 그 답을 지금
+   쓰고 있는 상태. "생생하게 그려보세요"라는 지시를 제품이 어떻게 대신 수행하는지
+   보이는 자리다(막연한 상상 → 답해야 하는 질문). 문구 원본은 위 changelog 참조.
+   오렌지는 지금 쓰는 답 끝의 커서 1개소. */
+.ask{display:flex;flex-direction:column;gap:18px;}
+.askq{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.06em;line-height:1.5;color:rgba(217,164,65,.78);}
+.aska{font-family:var(--display);font-weight:300;font-size:34px;line-height:1.42;color:var(--cream);word-break:keep-all;}
+.askmore{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.06em;color:rgba(247,243,236,.4);}
+/* 다짐 반복 기록 (03) — 같은 문장이 날마다 진해진다 = 반복이 회로를
    강화한다는 헤드라인을 투명도 그라데이션으로 옮긴 것 */
 .rep{display:flex;flex-direction:column;gap:16px;}
 .reprow{display:flex;align-items:baseline;gap:24px;}
 .repday{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.08em;width:96px;flex:none;}
 .reptext{font-family:var(--display);font-weight:300;font-size:36px;line-height:1.3;color:var(--cream);word-break:keep-all;}
-/* 미래 비전 미리보기 (03) — 앱이 매일 새로 그려 주는 "이미 이룬 하루".
+/* 미래 비전 미리보기 (04) — 앱이 매일 새로 그려 주는 "이미 이룬 하루".
    장면 라벨(골드 mono)과 본문(세리프)의 대비가 곧 "기록 UI 가 아니라 읽는 장면"
    이라는 신호다. 마지막 한 줄만 오렌지 세로선으로 세운다(§3-1 살아있는 지점). */
 .vision{display:flex;flex-direction:column;gap:22px;}
@@ -295,7 +352,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 .vismoment{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.1em;color:rgba(217,164,65,.72);}
 .vistext{font-family:var(--display);font-weight:300;font-size:32px;line-height:1.42;color:rgba(247,243,236,.86);word-break:keep-all;}
 .visclose{border-left:3px solid var(--soul);padding-left:22px;font-family:var(--display);font-weight:600;font-size:32px;line-height:1.35;color:var(--cream);word-break:keep-all;}
-/* 하루 코칭 루프 (04) — 다짐 → 행동 → 회고 3단 설계 */
+/* 하루 코칭 루프 (05) — 다짐 → 행동 → 회고 3단 설계 */
 .loop{display:flex;flex-direction:column;gap:22px;}
 .looprow{display:flex;align-items:center;gap:24px;}
 .looptime{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.08em;width:80px;flex:none;color:rgba(247,243,236,.45);}
@@ -342,7 +399,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 <div id="stage">
 
 <div id="dlbar">
-  <button id="dlall">↓ 5장 일괄 저장 (PNG · 2160×2700)</button>
+  <button id="dlall">↓ 7장 일괄 저장 (PNG · 2160×2700)</button>
   <button id="dlhooks">↓ 훅 3안만 저장</button>
   <span id="dlstat"></span>
 </div>
@@ -362,7 +419,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     <div class="band">
       <!-- 이 광고를 보는 사람이 '지금 하고 있는 행동'을 지목하는 훅이다 —
            인스타에서 자기계발 광고가 노출된다는 건 이미 동기부여 콘텐츠를
-           소비 중이라는 뜻이다. 02 의 .deck("마법이나 단순한 동기부여가
+           소비 중이라는 뜻이다. 03 의 .deck("마법이나 단순한 동기부여가
            아닙니다. 뇌과학입니다")이 같은 단어로 이 훅을 받아 근거가 된다 —
            둘은 한 몸이므로 한쪽만 고치지 말 것.
            금지형 명령이라 조건절(~다면,)과 달리 첫 줄부터 찌른다.
@@ -371,32 +428,84 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
       <div class="hl">동기부여 영상<br><em class="soul">그만</em><br>보세요.</div>
       <!-- 도발만 남기면 1번에서 이탈한 독자는 아무것도 받지 못한다. 이 줄이
            "그럼 뭘 하라는 건데"에 답하는 대신 답이 있다는 것만 알려 스와이프를
-           만든다 — 방법의 정체(뇌과학)는 여전히 02 가 쥐고 있어야 한다.
-           여기에 원리나 기능을 쓰면 02 를 미리 써버리므로 예고 이상 나가지 말 것. -->
+           만든다 — 방법의 첫 단계는 02(그리기)가, 그것이 되는 이유(뇌과학)는
+           03 이 쥐고 있어야 한다. 여기에 지시나 원리를 쓰면 두 장을 미리
+           써버리므로 예고 이상 나가지 말 것. -->
       <div class="deck">실제 행동을 바꾸는 <b>방법이 있습니다.</b></div>
     </div>
 
     <div class="rule"></div>
     <!-- 근거 카드는 일부러 두지 않는다. 도발("그만 보세요")에 대한 답을 같은
          장에서 다 주면 넘길 이유가 사라진다 — 답은 02 가 한다(위 deck 은 답이
-         아니라 답의 예고다). 카드에 있던 다짐 문장은 02 반복 카드에 이미 4줄로
+         아니라 답의 예고다). 카드에 있던 다짐 문장은 03 반복 카드에 이미 4줄로
          들어 있으므로 옮길 것도 없다. 이 자리의 여백이 보드의 장치이므로
          카드·목업 따위로 채우지 말 것. -->
     <div class="metric"><b>01</b>일차</div>
   </div>
 </div>
 
-<!-- ═══ 02 · 원리 ═══ -->
-<div class="cap">KO 02 · <b>원리</b> · 뇌과학<button class="dl" data-ad="ad2">↓ PNG</button></div>
-<div class="ad" id="ad2" data-name="anima-ig-v4-ko-02-brain" style="--fs-hl:92px;">
+<!-- ═══ 02 · 그리기 ═══ -->
+<div class="cap">KO 02 · <b>그리기</b> · 미래의 나<button class="dl" data-ad="adF">↓ PNG</button></div>
+<div class="ad" id="adF" data-name="anima-ig-v4-ko-02-imagine" style="--fs-hl:108px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.02 · 원리</span>
+      <span class="eyebrow">NO.02 · 그리기</span>
     </div>
 
     <div class="band">
-      <div class="hl">같은 문장을<br>매일 되새기면,<br>뇌가 <em>길을 찾습니다.</em></div>
+      <!-- 01-A 의 도발("그만 보세요")과 예고("방법이 있습니다")를 받아, 그 방법의
+           첫 단계를 지시로 준다. 원리(뇌과학)는 여전히 03 이 쥔다 — 여기서
+           "왜 되는지"를 설명하면 03 을 미리 써버리므로 지시 이상 나가지 말 것.
+           "생생하게"는 04(비전)의 "생생하게 펼쳐집니다"와 짝이다(요구 → 대행).
+           em 은 골드 — 오렌지 1개소는 아래 카드의 커서가 갖는다. -->
+      <div class="hl">성공한 미래의 나를<br>최대한 <em>생생하게</em><br>그려보세요.</div>
+      <!-- 지시만 있고 이유가 없으면 넘기면서 잊는다. 이 줄은 '왜 생생해야 하나'를
+           뇌과학(03)·비전(04)을 건드리지 않는 선에서만 답한다 — 막연함의 반대말이
+           헤드라인의 '생생하게'라는 것만 세운다. -->
+      <div class="deck">막연한 미래는 <b>오늘을 움직이지 못합니다.</b></div>
+    </div>
+
+    <div class="rule"></div>
+    <!-- 오렌지 1개소: 지금 쓰고 있는 답 끝의 커서.
+         질문 문장과 차원 목록은 제품 원문이다(changelog 참조) — 광고에서
+         질문을 지어내면 설치 직후 화면과 어긋난다. 답변 예시는 03·04 와 같은
+         인물(10억달러 스타트업 CEO)의 '평범한 하루' 차원이라 서사가 이어진다.
+         톤은 lib/futureVision.ts 작성 규칙(1인칭 현재형·감각 디테일·감정어
+         직접 명명 금지·스톡 럭셔리 클리셰 금지)을 따랐다. -->
+    <div class="card">
+      <div class="chead">
+        <span class="clabel">미래의 나</span>
+        <span class="clabel mute">앱이 8가지로 묻습니다</span>
+      </div>
+      <div class="ask">
+        <span class="askq">그 꿈을 이룬 뒤, 당신의 평범한 하루는 어떻게 흘러가나요?</span>
+        <span class="aska">아침 7시, 통창으로 드는 빛에 눈을 뜬다. 오늘 무엇을 할지는 내가 정한다.<span class="caret" style="height:28px;vertical-align:-3px;"></span></span>
+        <span class="askmore">다음 질문 — 일 · 자산 · 가족 · 성취 · 존경 · 성장</span>
+      </div>
+    </div>
+    <div class="metric"><b>02</b>일차</div>
+  </div>
+</div>
+
+<!-- ═══ 03 · 원리 ═══ -->
+<div class="cap">KO 03 · <b>원리</b> · 뇌과학<button class="dl" data-ad="ad2">↓ PNG</button></div>
+<div class="ad" id="ad2" data-name="anima-ig-v4-ko-03-brain" style="--fs-hl:92px;">
+  <div class="inner">
+    <div class="topbar">
+      <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
+      <span class="eyebrow">NO.03 · 원리</span>
+    </div>
+
+    <div class="band">
+      <!-- 02 의 지시("성공한 미래의 나를 생생하게 그려보세요")를 접속사로 이어
+           받는 2단계다 — "그 이미지"의 선행어가 02 헤드라인에 있으므로 02 를
+           빼거나 순서를 바꾸면 이 문장부터 다시 써야 한다.
+           em 은 골드(.hl em) — 오렌지 1개소는 아래 카드의 커서가 갖는다. -->
+      <div class="hl">그리고 그 이미지를<br>매일 <em>적으세요.</em></div>
+      <!-- 헤드라인이 지시가 되면서 이 줄이 이 보드의 유일한 근거가 됐다.
+           01-A 훅("동기부여 영상")과 같은 단어로 맞물리는 한 벌이기도 하므로
+           원리를 말하는 이 자리에서 옮기거나 지우지 말 것. -->
       <div class="deck">마법이나 단순한 동기부여가 아닙니다.<br><b>뇌과학입니다.</b></div>
     </div>
 
@@ -405,8 +514,10 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     <div class="card">
       <div class="chead">
         <!-- 01 이 남긴 turn("보는 대신")을 여기서 받는다 — 01 카드를 없앴으므로
-             1→2 를 잇는 접착제가 이 라벨뿐이다. '같은 다짐'이라는 반복 표시는
-             오른쪽 mute 라벨과 아래 4일치 기록이 대신한다. -->
+             훅과 이 보드를 잇는 접착제가 이 라벨뿐이다(사이에 02 가 들어왔지만
+             02 는 '무엇을 하라'만 말하고 훅의 '영상'은 건드리지 않는다).
+             '같은 다짐'이라는 반복 표시는 오른쪽 mute 라벨과 아래 4일치 기록이
+             대신한다. -->
         <span class="clabel">보는 대신, 매일 밤 적은 한 줄</span>
         <span class="clabel mute">쓸수록 선명해집니다</span>
       </div>
@@ -416,16 +527,19 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   </div>
 </div>
 
-<!-- ═══ 03 · 비전 ═══ -->
-<div class="cap">KO 03 · <b>비전</b> · 이미 이룬 하루<button class="dl" data-ad="adV">↓ PNG</button></div>
-<div class="ad" id="adV" data-name="anima-ig-v4-ko-03-vision" style="--fs-hl:92px;">
+<!-- ═══ 04 · 비전 ═══ -->
+<div class="cap">KO 04 · <b>비전</b> · 이미 이룬 하루<button class="dl" data-ad="adV">↓ PNG</button></div>
+<div class="ad" id="adV" data-name="anima-ig-v4-ko-04-vision" style="--fs-hl:92px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.03 · 비전</span>
+      <span class="eyebrow">NO.04 · 비전</span>
     </div>
 
     <div class="band">
+      <!-- "생생하게"는 02 헤드라인의 지시를 여기서 회수한다 — 02 는 독자에게
+           그리라고 요구하고, 04 는 앱이 대신 펼쳐 준다(요구 → 대행).
+           둘 중 한쪽 문구만 바꾸면 이 짝이 깨진다. -->
       <div class="hl">꿈꾸는 미래가<br><em>이미 이루어진 듯</em><br>생생하게 펼쳐집니다.</div>
       <!-- deck 은 헤드라인이 말하지 않은 것만 싣는다 — hl 이 '이미 이루어진 듯'을
            맡으므로, 여기서는 그 하루가 매일 새로 그려진다는 사실만. -->
@@ -445,21 +559,21 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   </div>
 </div>
 
-<!-- ═══ 04 · 설계 ═══ -->
-<div class="cap">KO 04 · <b>설계</b> · 행동 코칭<button class="dl" data-ad="ad3">↓ PNG</button></div>
-<!-- --fs-hl 은 02·03 과 같은 92px — deck 을 붙이면서 88px 로는 부연/헤드라인
+<!-- ═══ 05 · 설계 ═══ -->
+<div class="cap">KO 05 · <b>설계</b> · 행동 코칭<button class="dl" data-ad="ad3">↓ PNG</button></div>
+<!-- --fs-hl 은 03·04 와 같은 92px — deck 을 붙이면서 88px 로는 부연/헤드라인
      비율이 40.9% 가 되어 주종 규칙(--fs-deck 주석의 40% 이하)을 넘긴다.
      92px 에서 39.1%, 최장 줄 577px(안전폭 904px), 밴드 위 115 / 아래 171px. -->
-<div class="ad" id="ad3" data-name="anima-ig-v4-ko-04-design" style="--fs-hl:92px;">
+<div class="ad" id="ad3" data-name="anima-ig-v4-ko-05-design" style="--fs-hl:92px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.04 · 설계</span>
+      <span class="eyebrow">NO.05 · 설계</span>
     </div>
 
     <div class="band">
       <div class="hl">적기만 하는<br>앱이 아닙니다.<br>행동을 <em>설계합니다.</em></div>
-      <!-- 캐러셀에서 앱 이름·정체를 본문으로 밝히는 두 자리 중 앞쪽(뒤는 06 deck).
+      <!-- 캐러셀에서 앱 이름·정체를 본문으로 밝히는 두 자리 중 앞쪽(뒤는 07 deck).
            '앱'이라는 단어를 쓰는 보드가 여기뿐이라 소개가 가장 덜 튄다.
            캡션은 피드에서 접히므로 이미지만 넘긴 사람에게는 이 줄이 유일한 소개다. -->
       <div class="deck"><b>anima</b> · 다짐을 행동으로 옮기는 코칭 앱</div>
@@ -478,13 +592,13 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   </div>
 </div>
 
-<!-- ═══ 05 · 변화 ═══ -->
-<div class="cap">KO 05 · <b>변화</b> · 훅 회수<button class="dl" data-ad="ad4">↓ PNG</button></div>
-<div class="ad" id="ad4" data-name="anima-ig-v4-ko-05-grow" style="--fs-hl:96px;">
+<!-- ═══ 06 · 변화 ═══ -->
+<div class="cap">KO 06 · <b>변화</b> · 훅 회수<button class="dl" data-ad="ad4">↓ PNG</button></div>
+<div class="ad" id="ad4" data-name="anima-ig-v4-ko-06-grow" style="--fs-hl:96px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.05 · 변화</span>
+      <span class="eyebrow">NO.06 · 변화</span>
     </div>
 
     <div class="band">
@@ -505,32 +619,32 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
       <div class="seg" data-seg></div>
     </div>
     <!-- 마지막 장 전에 독자를 한 번 끌어오는 자리. 러닝 메트릭이 여기서 처음
-         2인칭으로 꺾여, 06 의 "01일차 · 당신의 차례"를 예고하고 받게 한다
-         (예고 → 확정이라 중복이 아니다 — 06 쪽 문구를 이 줄과 같게 만들지 말 것).
-         "오늘 밤"은 06 deck 의 "첫 줄은 오늘 밤."과 같은 시점을 가리킨다. -->
+         2인칭으로 꺾여, 07 의 "01일차 · 당신의 차례"를 예고하고 받게 한다
+         (예고 → 확정이라 중복이 아니다 — 07 쪽 문구를 이 줄과 같게 만들지 말 것).
+         "오늘 밤"은 07 deck 의 "첫 줄은 오늘 밤."과 같은 시점을 가리킨다. -->
     <div class="metric"><b>84</b>일차 · 당신의 <b>01</b>일차는 오늘 밤</div>
   </div>
 </div>
 
-<!-- ═══ 06 · 시작 (CTA) ═══ -->
-<div class="cap">KO 06 · <b>시작</b> · CTA<button class="dl" data-ad="ad5">↓ PNG</button></div>
-<div class="ad" id="ad5" data-name="anima-ig-v4-ko-06-start" style="--fs-hl:120px;">
+<!-- ═══ 07 · 시작 (CTA) ═══ -->
+<div class="cap">KO 07 · <b>시작</b> · CTA<button class="dl" data-ad="ad5">↓ PNG</button></div>
+<div class="ad" id="ad5" data-name="anima-ig-v4-ko-07-start" style="--fs-hl:120px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.06 · 시작</span>
+      <span class="eyebrow">NO.07 · 시작</span>
     </div>
 
     <div class="band">
       <!-- 마지막 장은 독자가 앱에서 처음 적을 문장을 미리 입에 붙여 보는 자리다.
-           1인칭 현재형이라 02 다짐 카드·03 비전 보드의 톤과 한 줄로 이어지고,
+           1인칭 현재형이라 03 다짐 카드·04 비전 보드의 톤과 한 줄로 이어지고,
            아래 메트릭 "01일차 · 당신의 차례"가 이 '내'를 독자에게 넘긴다.
            오렌지 1개소는 CTA 버튼이 계속 갖는다 — em 은 골드로 둘 것(.hl em). -->
       <div class="hl">내 미래는<br><em>내가</em><br>만들어갑니다.</div>
       <!-- 헤드라인이 선언이라 이 보드에서 동사가 사라진다. deck 이 그 선언을
            실행으로 내리는 자리다 — 시점(오늘 밤) + 앱 이름 + 행동.
-           캐러셀 6장 중 앱 이름이 본문에 나오는 곳이 여기뿐이므로
-           (나머지는 좌상단 워드마크 34px) 이 줄에서 anima 를 빼지 말 것. -->
+           캐러셀 7장 중 앱 이름이 본문에 나오는 두 자리 중 뒤쪽이다(앞은 05 deck ·
+           나머지는 좌상단 워드마크 34px) — 이 줄에서 anima 를 빼지 말 것. -->
       <div class="deck">첫 줄은 오늘 밤.<br><b>anima 에서 시작합니다.</b></div>
     </div>
 
@@ -550,7 +664,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 </div>
 
 <!-- ═══ 01-C · 훅 변형 (A/B 테스트용) ═══ -->
-<div class="cap alt">KO 01-C · <b>훅 · 선언형</b> · 변형 (보류 — 06 과 헤드라인 중복)<button class="dl" data-ad="adC">↓ PNG</button></div>
+<div class="cap alt">KO 01-C · <b>훅 · 선언형</b> · 변형 (보류 — 07 과 헤드라인 중복)<button class="dl" data-ad="adC">↓ PNG</button></div>
 <div class="ad" id="adC" data-name="anima-ig-v4-ko-01c-hook-alt" style="--fs-hl:112px;">
   <div class="inner">
     <div class="topbar">
@@ -584,8 +698,8 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   <h2>인스타그램 캡션 (복사해서 사용)</h2>
   <textarea id="captext" spellcheck="false" readonly></textarea>
   <div class="hint">
-    캐러셀 순서: 01-A → 02 → 03 → 04 → 05 → 06 (6장)<br>
-    01-C 는 현재 06 과 헤드라인이 같아 함께 실을 수 없다 — A/B 를 돌리려면 01-C 훅 문구부터 교체할 것<br>
+    캐러셀 순서: 01-A → 02 → 03 → 04 → 05 → 06 → 07 (7장)<br>
+    01-C 는 현재 07 과 헤드라인이 같아 함께 실을 수 없다 — A/B 를 돌리려면 01-C 훅 문구부터 교체할 것<br>
     Meta 광고 관리자 CTA 버튼: “설치하기” · 랜딩: https://www.successfulfuture.app/go/app
   </div>
 </div>
@@ -605,8 +719,8 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   var EXPORT_H = cssPx('--h');
   var PIXEL_RATIO = 2;        // → 2160 × 2700
   var BATCH_PAUSE_MS = 400;   // 브라우저가 다운로드를 flush 할 여유
-  // 실제 게재 6장 — 훅 → 원리 → 비전 → 설계 → 변화 → CTA (마크업 등장 순서와 동일)
-  var CARRYOVER = ['adA', 'ad2', 'adV', 'ad3', 'ad4', 'ad5'];
+  // 실제 게재 7장 — 훅 → 그리기 → 원리 → 비전 → 설계 → 변화 → CTA (마크업 등장 순서와 동일)
+  var CARRYOVER = ['adA', 'adF', 'ad2', 'adV', 'ad3', 'ad4', 'ad5'];
   var HOOK_VARIANTS = ['adA', 'adC'];                    // 훅 A/B 테스트 2안
 
   /* ── 보드를 가로로 배치 — 순서 = 마크업 등장 순서(.cap 과 .ad 는 짝) ── */
@@ -645,10 +759,11 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   var MARK_SVG = apertureSVG(38, '#E7C77A', '#D85A30', 7);
   document.querySelectorAll('.mk').forEach(function (el) { el.innerHTML = MARK_SVG; });
 
-  /* ── 다짐 반복 기록 (02) ────────────────────────────────────
+  /* ── 다짐 반복 기록 (03) ────────────────────────────────────
      같은 문장이 날마다 진해진다 — "반복이 뇌에 길을 낸다"를 투명도
      그라데이션으로 옮긴 것. 오렌지는 오늘 쓰는 줄의 커서 1개소.
-     문장은 01 훅 카드와 동일해야 서사가 이어진다. */
+     이 문장이 캐러셀의 척추다 — 04(비전)의 장면이 실현된 대상이고,
+     02(그리기)의 답변 예시도 같은 인물의 하루다. 바꾸면 세 장을 같이 볼 것. */
   var REP_SENTENCE = '나는 10억달러 가치 스타트업의 CEO다';
   var REP_ROWS = [
     { day: '01일차', alpha: .32 },
@@ -667,12 +782,13 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     }).join('');
   });
 
-  /* ── 미래 비전 미리보기 (03) ────────────────────────────────
+  /* ── 미래 비전 미리보기 (04) ────────────────────────────────
      제품의 가장 큰 차별점: 사용자가 적은 '미래의 나'를 재료로, 그 미래가
      이미 실현된 하루를 1인칭 현재형 장면으로 매일 새로 그려 준다.
+     02(그리기)가 "당신이 적으세요"라고 요구한 것을 여기서 앱이 대신 펼친다.
 
-     장면은 01-A·02 카드의 다짐 문장("나는 10억달러 가치 스타트업의 CEO다")이
-     실현된 하루여야 한다 — 앞 보드에서 그 문장을 세 번 보여주고 여기서 무관한
+     장면은 03 반복 카드의 다짐 문장("나는 10억달러 가치 스타트업의 CEO다")이
+     실현된 하루여야 한다 — 앞 보드에서 네 줄로 반복해 보여준 문장과 무관한
      미래를 그리면 캐러셀의 서사가 끊긴다. 명예(무대에서 불리는 이름)와
      부(가격표를 보지 않는 선택) 두 축을 한 장면씩 맡겼다.
      톤은 lib/futureVision.ts 의 작성 규칙을 그대로 따른다 — 1인칭 현재형,
@@ -693,7 +809,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     }).join('') + '<div class="visclose">' + VISION_CLOSING + '</div>';
   });
 
-  /* ── 하루 코칭 루프 (04) ────────────────────────────────────
+  /* ── 하루 코칭 루프 (05) ────────────────────────────────────
      "단순 기록이 아니라 설계"의 증거 — 밤의 다짐이 아침의 행동
      제안으로, 다시 밤의 회고로 이어지는 3단 루프.
      오렌지는 '행동' 단계 1개소(다짐이 행동으로 바뀌는 지점). */
@@ -771,7 +887,14 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     '',
     'Anima 는 꿈을 매일의 행동으로 바꿔주는 행동 코칭 앱이에요.',
     '',
-    '· 밤 — 다짐 한 줄: 같은 문장을 매일 되새기면, 뇌가 그 방향으로 길을 찾습니다',
+    /* 02(그리기) 보드와 같은 말 — 이미지 순서대로 캡션도 이어진다.
+       질문 개수와 차원 이름은 제품 원문(lib/futureSelf.ts FUTURE_SELF_DIMENSIONS)
+       이므로 임의로 늘리거나 줄이지 말 것. */
+    '먼저, 성공한 미래의 내 모습을 최대한 생생하게 그려보세요.',
+    '막연한 미래는 오늘을 움직이지 못하니까요.',
+    '꿈 · 하루 · 일 · 자산 · 가족 · 성취 · 존경 · 성장 — 8가지 질문이 당신 대신 구체적으로 물어봐요.',
+    '',
+    '· 밤 — 다짐 한 줄: 성공한 미래의 나를 매일 적으면, 뇌가 그 방향으로 길을 찾습니다',
     '· 아침 — 알림 한 번: 오늘의 한 걸음이 먼저 말을 겁니다',
     '· 밤 — 잘한 일 3가지: 작은 성공이 다음 행동을 부릅니다',
     '',
