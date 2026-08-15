@@ -548,6 +548,22 @@
    · 01-C 는 08 헤드라인이 "동행"으로 바뀌며 중복이 풀려 다시 쓸 수 있다.
      다만 셋과 달리 근거 카드를 갖고 있어 비교 조건이 다르다.
 
+   2026-08-15 eyebrow 삭제 — 보드 우상단의 "NO.01 · 훅" 칩을 13장 전부에서
+   내렸다. 슬라이드 번호도, '훅 · 적기 · 확장' 같은 역할 이름도 제작용 메타이지
+   독자에게는 뜻이 없다. 피드에서는 오히려 "이건 광고 소재다"라는 신호로
+   읽히므로, 이미지에 찍히면 안 되는 정보였다. 순서·역할은 편집 화면의
+   .cap(캡션 줄)과 data-name 이 계속 쥐고 있어 작업에는 지장이 없다.
+   · 함께 내린 것: .eyebrow 규칙과 --fs-eyebrow 변수(유일한 사용처였다).
+     mono 하한(--fs-mono 22px)은 라벨·메트릭이 계속 쓰므로 그대로 둔다.
+   · §3-1 "골드 = 구조 전용" 목록에서 eyebrow 를 뺐다. 남은 골드 구조는
+     헤어라인·카드 보더·라벨이고, 오렌지 1개소 규칙은 영향 없다.
+   · .topbar 의 space-between 은 남겨 뒀다 — 오른쪽에 다시 무언가를 놓을 때
+     수정 없이 양끝 정렬로 돌아온다. 다만 거기 놓을 것은 독자에게 뜻이 있어야
+     한다(번호·역할 이름을 되살리지 말 것).
+   · 레이아웃 영향 없음: 상단바 높이는 조리개 마크 38px 이 정하고 eyebrow 는
+     22px 이라 최대 높이에 관여하지 않았다. 실측으로 13장 전부 밴드 위 여백과
+     넘침이 삭제 전과 같음을 확인했다.
+
    v3 대비 변경점은 세 가지뿐이다.
    1) 디스플레이 서체: Fraunces → Noto Serif KR (워드마크만 Fraunces 유지)
    2) 강조 장치: 이탤릭 → 굵기 600 + 골드
@@ -555,7 +571,7 @@
    3) 줄바꿈: word-break:keep-all — 한글 단어 중간 분리 방지
 
    불변 규칙(v3 §3-1 승계):
-   · 골드 #D9A441 = 구조 전용(eyebrow·헤어라인·보더·라벨)
+   · 골드 #D9A441 = 구조 전용(헤어라인·보더·라벨 — eyebrow 는 아래 항목에서 내렸다)
    · 오렌지 #D85A30 = 슬라이드당 "살아있는 지점" 정확히 1개소
      (로고 조리개 점은 전 장 공통 브랜드 상수이므로 카운트 제외)
    · 이모지 0건 · mono 22px 하한
@@ -567,7 +583,7 @@
   --gold:#D9A441;
   --soul:#D85A30;
 
-  /* type families — 한글 폴백을 mono 에도 반드시 물려야 eyebrow 가 깨지지 않는다 */
+  /* type families — 한글 폴백을 mono 에도 반드시 물려야 라벨·메트릭이 깨지지 않는다 */
   --display:'Noto Serif KR','Apple SD Gothic Neo',serif;
   --wordmark:'Fraunces','Times New Roman',serif;
   --ui:'Noto Sans KR',-apple-system,BlinkMacSystemFont,sans-serif;
@@ -583,7 +599,6 @@
   /* type scale — mono 하한 22px (피드 렌더 약 350px 폭에서 실효 7px)
      하한을 올릴 땐 --fs-mono 하나만 고치면 전 보드에 적용된다. */
   --fs-mono:22px;
-  --fs-eyebrow:var(--fs-mono);
   --fs-label:var(--fs-mono);
   --fs-metric:24px;
   --fs-wordmark:34px;
@@ -630,10 +645,13 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 .inner>*{flex:none;}  /* .band 만 margin:auto 로 수직 중앙 배치 */
 
 /* ── [A] 상단바 ──────────────────────────────────────────────── */
+/* 지금은 좌측 워드마크 하나뿐이다(우측 eyebrow 를 내렸다 — §changelog).
+   space-between 은 그대로 둔다: 오른쪽에 무언가를 다시 놓을 때 별도 수정 없이
+   양끝 정렬로 돌아온다. 다만 그 자리는 독자에게 뜻이 있는 것만 놓을 것 —
+   슬라이드 번호·역할 이름 같은 제작용 메타는 이미지에 찍히면 안 된다. */
 .topbar{display:flex;justify-content:space-between;align-items:center;}
 .lockup{display:flex;align-items:center;gap:14px;}
 .lockup .wm{font-family:var(--wordmark);font-weight:300;font-size:var(--fs-wordmark);letter-spacing:-.02em;line-height:1;color:var(--cream);}
-.eyebrow{font-family:var(--mono);font-size:var(--fs-eyebrow);letter-spacing:.2em;color:rgba(217,164,65,.9);}
 
 /* ── [B] 헤드라인 밴드 — 1:1 크롭 안전지대(수직 중앙) ────────── */
 .band{margin:auto 0;}
@@ -796,7 +814,6 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.01 · 훅</span>
     </div>
 
     <div class="band">
@@ -834,7 +851,6 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.02 · 그리기</span>
     </div>
 
     <div class="band">
@@ -893,7 +909,6 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.03 · 적기</span>
     </div>
 
     <div class="band">
@@ -941,7 +956,6 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.04 · 비전</span>
     </div>
 
     <div class="band">
@@ -980,7 +994,6 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.05 · 확장</span>
     </div>
 
     <div class="band">
@@ -1035,7 +1048,6 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.06 · 이름</span>
     </div>
 
     <div class="band band-center">
@@ -1100,7 +1112,6 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.07 · 설계</span>
     </div>
 
     <div class="band">
@@ -1138,7 +1149,6 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.08 · 변화</span>
     </div>
 
     <div class="band">
@@ -1174,7 +1184,6 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.09 · 동행</span>
     </div>
 
     <div class="band">
@@ -1235,7 +1244,6 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.01 · 훅</span>
     </div>
 
     <div class="band">
@@ -1285,7 +1293,6 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.01 · 훅</span>
     </div>
 
     <div class="band">
@@ -1310,7 +1317,6 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.01 · 훅</span>
     </div>
 
     <div class="band">
@@ -1337,7 +1343,6 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.01 · 훅</span>
     </div>
 
     <div class="band">
