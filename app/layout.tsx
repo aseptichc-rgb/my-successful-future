@@ -9,7 +9,7 @@ import "./globals.css";
 // 더 이상 참조되지 않아 제거 (번들 크기 절감).
 
 // 링크 미리보기(og/twitter)용 상수 — 같은 문구가 세 군데(title·og·twitter)에 들어가므로
-// 한 곳에서만 고친다. 이 문구를 바꾸면 public/og.png 의 카피도 같이 바꿀 것
+// 한 곳에서만 고친다. 이 문구를 바꾸면 public/anima_og.png 의 카피도 같이 바꿀 것
 // (scripts/generate-og-image.mjs 의 HEADLINE_LINES·DECK) — 썸네일과 <meta> 가 다른 말을
 // 하면 스크래퍼 미리보기 안에서 두 문장이 서로 어긋나 보인다.
 const SITE_NAME = "Anima";
@@ -19,10 +19,10 @@ const SITE_DESCRIPTION =
 // 안드로이드 assetlinks·capacitor.config.ts 의 SERVER_URL 과 같은 호스트여야 한다.
 const SITE_URL = "https://my-successful-future.vercel.app";
 // OG 권장 규격(1.91:1). Meta·X·카카오·슬랙이 공통으로 받는 최대공약수다.
-const OG_IMAGE = { url: "/og.png", width: 1200, height: 630, alt: SITE_TITLE };
+const OG_IMAGE = { url: "/anima_og.png", width: 1200, height: 630, alt: SITE_TITLE };
 
 export const metadata: Metadata = {
-  // 상대 경로(/og.png)를 절대 URL 로 승격시킨다. 이게 없으면 Next 가 경고만 남기고
+  // 상대 경로(OG_IMAGE.url)를 절대 URL 로 승격시킨다. 이게 없으면 Next 가 경고만 남기고
   // og:image 를 상대 경로 그대로 내보내는데, 스크래퍼는 상대 경로를 가져가지 못한다.
   metadataBase: new URL(SITE_URL),
   title: SITE_TITLE,

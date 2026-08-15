@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { apertureSVG, buildHTML, markAccent } from "./generate-og-image.mjs";
+import { apertureSVG, buildHTML, markAccent, HEADLINE_LINES, DECK } from "./generate-og-image.mjs";
 
 /**
  * OG 이미지 생성기의 순수 함수 검증.
@@ -45,10 +45,11 @@ describe("apertureSVG", () => {
 describe("buildHTML", () => {
   const html = buildHTML();
 
-  it("워드마크·헤드라인 두 줄·deck 이 모두 들어간다", () => {
+  it("워드마크·헤드라인·deck 이 모두 들어간다", () => {
     expect(html).toContain(">anima<");
-    expect((html.match(/class="hl-line"/g) ?? []).length).toBe(2);
+    expect((html.match(/class="hl-line"/g) ?? []).length).toBe(HEADLINE_LINES.length);
     expect(html).toContain('class="deck"');
+    expect(html).toContain(DECK);
   });
 
   it("금색 강조가 정확히 한 곳이다", () => {
@@ -68,14 +69,32 @@ describe("buildHTML", () => {
   /**
    * 이미지 카피와 <meta> 문구가 갈라지면 스크래퍼 미리보기 안에서 썸네일과 설명이 서로 다른
    * 말을 한다. 사람이 한쪽만 고치기 쉬운 자리라 여기서 묶어 둔다.
+   *
+   * 문장을 그대로 맞추라는 뜻은 아니다 — 썸네일은 짧게 찌르고 description 은 풀어 쓰는
+   * 자리라 문장이 달라야 정상이다. 대신 **금색으로 강조한 단어**만큼은 양쪽에 다 있어야
+   * 한다. 그 단어가 이 제품이 파는 것이고, 한쪽에만 있으면 둘이 다른 제품을 말하게 된다.
    */
-  it("헤드라인·deck 이 layout.tsx 의 description 안에 그대로 있다", () => {
+  it("금색 강조어가 layout.tsx 의 description 에도 있다", () => {
     const layout = readFileSync(join(ROOT, "app", "layout.tsx"), "utf8");
     const description = layout.match(/const SITE_DESCRIPTION\s*=\s*\n?\s*"([^"]+)"/)?.[1];
     expect(description, "layout.tsx 의 SITE_DESCRIPTION 을 찾지 못했습니다").toBeTruthy();
 
-    for (const phrase of ["꿈을 한 줄 적으면", "오늘 할 한 걸음이", "매일 도착합니다"]) {
-      expect(description).toContain(phrase);
+    const accents = HEADLINE_LINES.map((l) => l.accent).filter(Boolean);
+    expect(accents.length, "강조어가 하나도 없습니다").toBeGreaterThan(0);
+    for (const accent of accents) {
+      expect(description).toContain(accent);
     }
+  });
+
+  /** og:image 경로가 실제 생성 파일과 같아야 한다 — 다르면 404 를 og:image 로 내보낸다. */
+  it("layout.tsx 의 og:image 경로가 생성기의 출력 파일과 같다", () => {
+    const layout = readFileSync(join(ROOT, "app", "layout.tsx"), "utf8");
+    const ogUrl = layout.match(/const OG_IMAGE\s*=\s*\{\s*url:\s*"([^"]+)"/)?.[1];
+    const script = readFileSync(join(ROOT, "scripts", "generate-og-image.mjs"), "utf8");
+    const outFile = script.match(/join\(ROOT,\s*"public",\s*"([^"]+)"\)/)?.[1];
+
+    expect(ogUrl, "layout.tsx 의 OG_IMAGE.url 을 찾지 못했습니다").toBeTruthy();
+    expect(outFile, "생성기의 OUT_PATH 파일명을 찾지 못했습니다").toBeTruthy();
+    expect(ogUrl).toBe(`/${outFile}`);
   });
 });

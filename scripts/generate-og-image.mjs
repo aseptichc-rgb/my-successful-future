@@ -1,5 +1,5 @@
 /**
- * OG 이미지 생성기 — `public/og.png` (1200×630) 를 만든다. `npm run og:gen`
+ * OG 이미지 생성기 — `public/anima_og.png` (1200×630) 를 만든다. `npm run og:gen`
  *
  * 왜 있나: 이 사이트는 og:image 가 없어서 링크를 어디에 붙이든(Meta 광고 링크 미리보기,
  * 카카오, 슬랙, iMessage) 썸네일이 빈 회색 상자로 나왔다. 스크래퍼는 이미지가 없으면
@@ -23,7 +23,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const OUT_PATH = join(ROOT, "public", "og.png");
+const OUT_PATH = join(ROOT, "public", "anima_og.png");
 
 /* ── 캔버스 ─────────────────────────────────────────────────────
    1200×630 은 OG 권장 규격(1.91:1). Meta·X·카카오·슬랙이 공통으로 받는 최대공약수라
@@ -50,12 +50,17 @@ const MARK_STROKE = "#E7C77A";
 
 /* ── 카피 ───────────────────────────────────────────────────────
    app/layout.tsx 의 description 과 같은 약속을 말한다 — 썸네일과 <meta> 가 다른 말을
-   하면 스크래퍼 미리보기 안에서 두 문장이 서로 어긋나 보인다. 카피를 고칠 땐 둘 다. */
-const HEADLINE_LINES = [
-  { text: "꿈을 한 줄 적으면", accent: null },
-  { text: "오늘 할 한 걸음이 정해집니다", accent: "한 걸음" },
-];
-const DECK = "그 걸음을 밀어줄 한 마디가 매일 도착합니다";
+   하면 스크래퍼 미리보기 안에서 두 문장이 서로 어긋나 보인다. 카피를 고칠 땐 둘 다.
+
+   헤드라인 한 줄 + deck 한 줄 구성이다. 헤드라인은 독자가 얻는 것(그 꿈에 다가섬)을,
+   deck 은 그것이 왜 되는지(반복)를 말한다 — 약속과 근거가 한 몸이라 한쪽만 고치지 말 것. */
+export const HEADLINE_LINES = [{ text: "그 꿈에 한 걸음 다가섭니다.", accent: "한 걸음" }];
+export const DECK = "위대함은 매일의 작은 행동의 반복입니다.";
+
+/* 헤드라인이 한 줄이라 두 줄일 때(68px)보다 키울 수 있다. 썸네일은 피드에서 500px 안팎으로
+   줄어들므로 큰 글자가 이긴다. 상한은 안전폭 — 넘기면 렌더 때 REJECT 로 잡힌다. */
+const HEADLINE_FS = 78;
+const DECK_FS = 28;
 
 /**
  * 브랜드 마크(조리개) SVG. 보드의 apertureSVG() 와 같은 기하 — 값이 갈리면 두 자산의
@@ -119,12 +124,12 @@ export function buildHTML() {
       letter-spacing:-.02em;line-height:1;color:${CREAM};}
   .band{margin:auto 0;}
   .hl-line{font-family:'Noto Serif KR','Apple SD Gothic Neo',serif;font-weight:200;
-           font-size:68px;letter-spacing:-.02em;line-height:1.28;color:${CREAM};
+           font-size:${HEADLINE_FS}px;letter-spacing:-.02em;line-height:1.28;color:${CREAM};
            word-break:keep-all;white-space:nowrap;}
   /* 금색 강조는 판 전체에 정확히 한 곳 — 여러 곳이면 시선이 갈라져 아무 데도 안 간다. */
   .hl-line em{font-style:normal;font-weight:600;color:${GOLD};}
   .deck{font-family:'Noto Serif KR','Apple SD Gothic Neo',serif;font-weight:300;
-        font-size:28px;line-height:1.4;color:rgba(247,243,236,.58);
+        font-size:${DECK_FS}px;line-height:1.4;color:rgba(247,243,236,.58);
         word-break:keep-all;white-space:nowrap;margin-top:32px;}
 </style>
 </head>
@@ -226,7 +231,9 @@ async function main() {
     await writeFile(OUT_PATH, buf);
 
     const written = await stat(OUT_PATH);
-    console.log(`✓ public/og.png — ${CANVAS_W}×${CANVAS_H}, ${(written.size / 1024).toFixed(1)}KB`);
+    // 경로는 OUT_PATH 에서 뽑는다 — 하드코딩하면 파일명을 바꿨을 때 로그만 옛 이름을 말한다.
+    const rel = OUT_PATH.slice(ROOT.length + 1).replace(/\\/g, "/");
+    console.log(`✓ ${rel} — ${CANVAS_W}×${CANVAS_H}, ${(written.size / 1024).toFixed(1)}KB`);
     console.log(`  안전폭 최장 줄 ${measured.widest}px / ${SAFE_W}px · 세로 넘침 0`);
   } catch (err) {
     console.error(err instanceof Error ? err.message : String(err));
