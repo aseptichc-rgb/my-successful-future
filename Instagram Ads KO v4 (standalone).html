@@ -481,6 +481,22 @@
      여유가 31px 뿐이므로 이 헤드라인에 글자를 더하지 말 것.
      07(96px)과 같은 급이 되었지만 카드가 작아 마지막 장이 눌리지는 않는다.
      deck/hl 37.5%(주종 규칙 40% 이하) · 넘침 0 · 오렌지 1개소(.cta).
+   · 헤드라인 3줄 → 2줄: "anima 가 / 끝까지 함께합니다." → "anima가 함께합니다."
+     조사를 붙여 쓴 것은 교정 실수가 아니라 폭 때문이다 — "anima 가"로 띄우면
+     2행이 912px 이 되어 안전폭 904px 을 넘고 3줄로 깨진다(96px 기준, 붙여
+     쓰면 885px). 공백을 되살리려면 --fs-hl 부터 내릴 것. 05 표제어는 조사가
+     없으므로 이 보드만의 예외이고 다른 보드로 옮길 규칙이 아니다.
+   · CTA 카드 보조 줄에서 "· 무료"와 다운로드 주소를 내렸다
+     ("iOS · Android · 무료 / successfulfuture.app/go/app" → "iOS · Android").
+     가격은 스토어가, 주소는 캡션 마지막 줄이 맡는다. 바로 위 항목에서 주소를
+     넣은 이유(이미지를 저장·캡처해 간 사람에게 앱을 찾아갈 방법을 남긴다)는
+     그대로 유효하므로, 이건 그 근거를 뒤집은 게 아니라 카드를 비우는 쪽을
+     택한 것이다 — 되살릴 땐 .cta-url 과 함께 git 이력에서 꺼낼 것.
+     .cta-url 은 유일한 사용처가 사라져 CSS 도 함께 지웠다.
+     카드 높이는 166px 그대로다 — 보조 줄이 두 줄이든 한 줄이든 카드 높이는
+     버튼(96px) + 카드 패딩이 정한다. 주소를 되살려도 카드는 커지지 않는다.
+   · 재실측(2줄 헤드라인 + 한 줄 보조): 최장 줄 884px(안전폭 904px) ·
+     deck/hl 37.5% · 밴드 위 217 / 아래 273px · 넘침 0 · 오렌지 1개소(.cta).
    · 01-C(훅 선언형 변형)의 보류가 풀렸다. "내 미래는 내가 만들어갑니다."를
      쓰는 보드가 01-C 하나뿐이 되어 01-A 와 A/B 를 돌릴 수 있다(캡션 아래
      안내 문구도 함께 고쳤다). 08 을 다시 1인칭 선언으로 되돌린다면 이
@@ -680,12 +696,10 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 .vsval{font-family:var(--mono);font-size:var(--fs-metric);letter-spacing:.06em;width:104px;flex:none;text-align:right;}
 
 .cta{text-decoration:none;display:inline-flex;align-items:center;gap:16px;background:var(--soul);color:var(--cream);font-family:var(--ui);font-size:30px;font-weight:500;letter-spacing:.02em;padding:26px 44px;border-radius:999px;}
+/* 버튼 옆 보조 줄 — 지금은 플랫폼 표시 한 줄이다. 다운로드 주소를 밝게
+   두던 .cta-url 은 주소를 내리면서 함께 지웠다(§changelog) — 되살릴 땐 git
+   이력에서 꺼내 쓸 것. 주소 원본은 app/go/app/route.ts(기기별 리다이렉트)다. */
 .cta-sub{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.08em;color:rgba(247,243,236,.6);line-height:1.65;}
-/* 다운로드 주소 — PNG 안에서는 버튼이 눌리지 않으므로, 주소는 눈으로 읽고
-   손으로 옮겨 적을 수 있어야 한다. 그래서 같은 mono 안에서 한 단계 밝게 두고
-   프로토콜(https://www.)은 뺀다 — 읽는 사람이 타이핑할 최소 단위만 남긴다.
-   주소 원본은 app/go/app/route.ts(기기별 스토어 리다이렉트)다. */
-.cta-url{color:rgba(247,243,236,.88);letter-spacing:.04em;}
 /* CTA 버튼 행 (08). 약속 줄(.vow)이 헤드라인으로 올라가면서 이 행 위에는
    가를 것이 남지 않았다 — .bare 는 구분선과 그 여백을 걷어낸다.
    약속을 카드로 되돌린다면 .bare 를 떼는 것으로 선이 돌아온다(§changelog). */
@@ -1084,7 +1098,10 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
            (05 보드 표제어 → 여기 약속 · 나머지는 좌상단 워드마크 34px) —
            스토어에서 검색할 이름이므로 이 헤드라인에서 anima 를 빼지 말 것.
            오렌지 1개소는 CTA 버튼이 계속 갖는다 — em 은 골드로 둘 것(.hl em). -->
-      <div class="hl">당신의 위대한 여정에<br>anima 가<br><em>끝까지 함께합니다.</em></div>
+      <!-- 조사를 "anima 가"로 띄우면 2행이 912px 이 되어 안전폭 904px 을 넘고
+           3줄로 깨진다(96px 기준). 이 보드에서만 붙여 쓰는 이유이므로
+           교정한다는 이유로 공백을 넣지 말 것 — 넣으려면 --fs-hl 부터 내릴 것. -->
+      <div class="hl">당신의 위대한 여정에<br>anima가 <em>함께합니다.</em></div>
       <!-- 헤드라인이 약속이라 이 보드에서 독자가 할 일이 사라진다. deck 이
            그 약속을 오늘 밤의 행동으로 내리는 자리다 — 시점 + 주어(당신).
            약속(브랜드) → 차례(독자) → 버튼(설치)으로 이어져야 마지막 장이
@@ -1105,13 +1122,13 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
              이미지 안 버튼과 광고 버튼이 다른 말을 하면 행동이 갈린다.
              "앱 받기"는 수동태에 가까워 설치 동사보다 약했다. -->
         <a class="cta" href="https://www.successfulfuture.app/go/app">지금 설치하기 <span style="font-size:26px;">→</span></a>
-        <!-- 인스타 이미지 안에서는 버튼이 눌리지 않는다 — 주소를 글자로 함께
-             적어 두어야 앱을 찾아갈 방법이 이미지에 남는다. /go/app 은 기기
-             UA 로 App Store · Play 를 갈라 보내는 리다이렉트라 주소가 하나면
-             된다(lib/constants/storeLinks.ts · app/go/app/route.ts).
-             스토어 주소를 두 줄로 늘어놓지 말 것 — 옮겨 적을 사람에게는
-             짧은 한 줄이 두 개의 긴 주소보다 낫다. -->
-        <span class="cta-sub">iOS · Android · 무료<br><span class="cta-url">successfulfuture.app/go/app</span></span>
+        <!-- 버튼 옆은 플랫폼 표시 한 줄만 남긴다. 주소(successfulfuture.app/go/app)와
+             "· 무료"는 내렸다 — 가격은 스토어가, 주소는 캡션 마지막 줄이 맡는다.
+             대가는 알고 치른 것이다: 이미지를 저장·캡처해 간 사람에게 앱을
+             찾아갈 단서가 워드마크와 버튼 글자뿐이 된다(인스타는 캡션 URL 을
+             링크로 만들지 않는다). 되살릴 땐 git 이력에서 .cta-url 과 함께
+             꺼낼 것. -->
+        <span class="cta-sub">iOS · Android</span>
       </div>
     </div>
     <div class="metric"><b>01</b>일차 · 당신의 차례</div>
