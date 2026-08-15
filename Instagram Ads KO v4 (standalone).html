@@ -506,6 +506,48 @@
      보드는 세 줄로 끊기고 캡션은 한 문장으로 풀어 쓰지만 뜻이 같으므로,
      한쪽 문구를 고치면 다른 쪽도 같이 볼 것.
 
+   2026-08-15 "비전" 보드 복귀 (04) — 캐러셀 8장 → 9장.
+   3ef2960 에서 내렸던 보드를 if-then(확장) 앞에 되살렸다. 내린 뒤의 캐러셀은
+   02(그려라) → 03(적어라) → 04(더해라)로 지시가 세 번 연속이라, 읽는 사람이
+   받는 것은 숙제 세 개였다. 제품의 가장 큰 차별점(적어 둔 '미래의 나'를
+   재료로 그 미래가 이미 실현된 하루를 매일 새로 써 주는 것)이 이미지 어디에도
+   없었던 것도 같은 자리의 공백이다 — lib/futureVision.ts 가 Gemini 로
+   생성한다(generateText import). 실재 기능이므로 광고에 쓸 수 있다.
+   이제 요구(02·03) → 대행(04) → 요구(05)가 되어, 다시 요구하기 전에 대가를
+   한 번 돌려준다. 05 앞에서 이 보드를 내리면 그 구조가 무너진다.
+   · 마크업·CSS(.vision 계열)·JS(VISION_SCENES)·장면 원문은 3ef2960^ 에서
+     그대로 복원했다. 장면은 03 반복 카드의 다짐 문장이 실현된 하루여야
+     한다는 제약도 그대로다.
+   · 05~08 은 각각 06~09 로 번호를 밀었고(cap·eyebrow·data-name·주석),
+     러닝 메트릭에 05일차를 끼워 01 → 02 → 04 → 05 → 07 → 12 → 30 → 84 → 01 이
+     되었다. 04·07 사이에 들어가야 하므로 05 말고는 쓸 수 있는 값이 좁다.
+   · 02 헤드라인의 "생생하게"가 짝("생생하게 펼쳐집니다")을 되찾았다 —
+     요구 → 대행 쌍이므로 한쪽만 고치지 말 것.
+   · 실측: --fs-hl 92px · 최장 줄 838px(안전폭 904) · deck/hl 39.1% ·
+     밴드 위 36px · 넘침 0 · 오렌지 1개소(.visclose 세로선).
+     밴드 위 36px 은 9장 중 최저치다(카드가 가장 크다). 이 보드에서 헤드라인을
+     키우려면 폭이 아니라 이 값부터 볼 것.
+   · 9장은 캐러셀로 길다. 완주율을 보고 줄일 때 이 보드를 먼저 빼지 말 것 —
+     여기가 유일한 대행 구간이다. 07(설계)·05(확장)이 기능 설명으로 겹친다.
+
+   2026-08-15 훅 A/B 세트 확장 — 변형 3안 신설(01-D 고백형 · 01-E 대행형 ·
+   01-G 장면형). 채택안 01-A("동기부여 영상 그만 보세요.")는 광고가 노출된
+   맥락을 지목하는 도발인데, 첫 문장이 독자를 비난하는 형태라 스와이프 대신
+   스크롤이 나올 수 있다. 그 가설을 시험할 축을 셋으로 나눴다.
+   · 01-D 고백형 — 같은 소재를 1인칭으로 뒤집는다. 지목이 사라져도 훅의 씨앗
+     ("영상")은 남아 08(변화)의 회수가 그대로 작동한다. 가장 보수적인 대안.
+   · 01-E 대행형 — 노력의 총량을 먼저 깎는다("당신은 한 줄만"). 04(비전)의
+     약속을 1번으로 끌어올린 것이라 04 를 내리면 지키지 못할 약속이 된다.
+   · 01-G 장면형 — 같은 약속을 조건이 아니라 결과 장면으로 말한다. E 와 함께
+     돌리면 "무엇을 약속하나"가 아니라 "어떻게 말하나"를 가르는 시험이 된다.
+   · 알파벳 F 는 건너뛰었다 — id adF 가 02(그리기)에 이미 쓰였고, 이 파일은
+     변형 라벨의 알파벳과 id 를 맞춘다. 01-B 는 과거 삭제된 보드의 번호라
+     재사용하지 않는다(§2026-08-15 잠금화면 항목).
+   · 셋 다 카드를 두지 않고 크기를 통일했다 — 이유와 실측은 01-D 보드
+     주석 참조. HOOK_VARIANTS 는 5안(A·C·D·E·G)이 되었다.
+   · 01-C 는 08 헤드라인이 "동행"으로 바뀌며 중복이 풀려 다시 쓸 수 있다.
+     다만 셋과 달리 근거 카드를 갖고 있어 비교 조건이 다르다.
+
    v3 대비 변경점은 세 가지뿐이다.
    1) 디스플레이 서체: Fraunces → Noto Serif KR (워드마크만 Fraunces 유지)
    2) 강조 장치: 이탤릭 → 굵기 600 + 골드
@@ -619,7 +661,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 .chead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:26px;}
 .ctext{font-family:var(--display);font-weight:300;line-height:1.3;color:var(--cream);word-break:keep-all;}
 
-/* ── [E] 러닝 메트릭 — 01 → 02 → 04 → 07 → 12 → 30 → 84 → 01(당신) ── */
+/* ── [E] 러닝 메트릭 — 01 → 02 → 04 → 05 → 07 → 12 → 30 → 84 → 01(당신) ── */
 .metric{font-family:var(--mono);font-size:var(--fs-metric);letter-spacing:.14em;color:rgba(247,243,236,.42);margin-top:var(--metric-margin);}
 .metric b{color:var(--gold);font-weight:500;}
 
@@ -641,10 +683,18 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 .reprow{display:flex;align-items:baseline;gap:24px;}
 .repday{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.08em;width:96px;flex:none;}
 .reptext{font-family:var(--display);font-weight:300;font-size:36px;line-height:1.3;color:var(--cream);word-break:keep-all;}
-/* if-then 한 문장 (04) — 제품의 실행 설계(WOOP) 카드를 그대로 옮긴 것.
-   라벨 알약은 05 의 .loopstep 과 같은 부품이지만 여기서는 '만약 / 그러면'
+/* 미래 비전 미리보기 (04) — 앱이 매일 새로 그려 주는 "이미 이룬 하루".
+   장면 라벨(골드 mono)과 본문(세리프)의 대비가 곧 "기록 UI 가 아니라 읽는 장면"
+   이라는 신호다. 마지막 한 줄만 오렌지 세로선으로 세운다(§3-1 살아있는 지점). */
+.vision{display:flex;flex-direction:column;gap:22px;}
+.visrow{display:flex;flex-direction:column;gap:10px;}
+.vismoment{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.1em;color:rgba(217,164,65,.72);}
+.vistext{font-family:var(--display);font-weight:300;font-size:32px;line-height:1.42;color:rgba(247,243,236,.86);word-break:keep-all;}
+.visclose{border-left:3px solid var(--soul);padding-left:22px;font-family:var(--display);font-weight:600;font-size:32px;line-height:1.35;color:var(--cream);word-break:keep-all;}
+/* if-then 한 문장 (05) — 제품의 실행 설계(WOOP) 카드를 그대로 옮긴 것.
+   라벨 알약은 07 의 .loopstep 과 같은 부품이지만 여기서는 '만약 / 그러면'
    두 칸이 한 문장을 이룬다 — 두 줄이 세로로 붙어 있어야 조건 → 행동으로
-   읽히므로 gap 을 05(22px)보다 좁게 준다.
+   읽히므로 gap 을 07(22px)보다 좁게 준다.
    오렌지 1개소는 then 줄의 세로선이다(조건이 아니라 '행동'이 살아있는 지점). */
 .plan{display:flex;flex-direction:column;gap:18px;}
 .planrow{display:flex;align-items:center;gap:24px;}
@@ -653,7 +703,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 /* then 줄만 세로선 + 굵기로 세운다. 알약은 양쪽 다 골드로 둘 것 —
    05 처럼 알약까지 오렌지로 물들이면 한 장에 오렌지가 둘이 된다(§3-1). */
 .planrow.then .plantext{border-left:3px solid var(--soul);padding-left:22px;font-weight:600;color:var(--cream);}
-/* 하루 코칭 루프 (06) — 다짐 → 행동 → 회고 3단 설계 */
+/* 하루 코칭 루프 (07) — 다짐 → 행동 → 회고 3단 설계 */
 .loop{display:flex;flex-direction:column;gap:22px;}
 .looprow{display:flex;align-items:center;gap:24px;}
 .looptime{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.08em;width:80px;flex:none;color:rgba(247,243,236,.45);}
@@ -732,8 +782,8 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 <div id="stage">
 
 <div id="dlbar">
-  <button id="dlall">↓ 8장 일괄 저장 (PNG · 2160×2700)</button>
-  <button id="dlhooks">↓ 훅 3안만 저장</button>
+  <button id="dlall">↓ 9장 일괄 저장 (PNG · 2160×2700)</button>
+  <button id="dlhooks">↓ 훅 5안만 저장</button>
   <span id="dlstat"></span>
 </div>
 
@@ -879,23 +929,62 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   </div>
 </div>
 
-<!-- ═══ 04 · 확장 ═══
-     03 까지가 "한 문장만 적으세요"로 진입장벽을 깎는 구간이라, 그 다음
-     질문("그래서 계속 한 문장만?")에 답하는 자리다. 습관이 붙은 뒤에야
-     행동을 얹는 순서 자체가 제품의 해금 정책과 같다 — lib/constants/growth.ts
-     PLAN_UNLOCK_STREAK = 7(연속 7일이면 실행 설계가 열린다). 이 보드의
-     메트릭이 07일차인 것은 우연이 아니므로 셋(헤드라인의 "익숙해지면" · 카드의
-     "7일 연속" · 메트릭 07)을 따로 놀게 두지 말 것. -->
-<div class="cap">KO 04 · <b>확장</b> · if-then<button class="dl" data-ad="adP">↓ PNG</button></div>
-<div class="ad" id="adP" data-name="anima-ig-v4-ko-04-ifthen" style="--fs-hl:92px;">
+<!-- ═══ 04 · 비전 ═══
+     캐러셀에서 유일하게 "당신이 하세요"가 아니라 "앱이 대신 합니다"를 보이는
+     자리다. 02·03 이 요구한 것(그려라 · 적어라)을 여기서 앱이 되돌려주고,
+     그 대가가 있어야 05 가 다시 요구("행동을 더해보세요")할 수 있다 —
+     요구 → 대행 → 요구의 가운데 칸이므로 05(if-then) 앞에서 내리지 말 것.
+     근거: lib/futureVision.ts 가 Gemini 로 장면을 매일 새로 생성한다
+     (generateText import). 지어낸 기능이 아니다. -->
+<div class="cap">KO 04 · <b>비전</b> · 이미 이룬 하루<button class="dl" data-ad="adV">↓ PNG</button></div>
+<div class="ad" id="adV" data-name="anima-ig-v4-ko-04-vision" style="--fs-hl:92px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.04 · 확장</span>
+      <span class="eyebrow">NO.04 · 비전</span>
     </div>
 
     <div class="band">
-      <!-- 02(그려보세요) → 03(적으세요) → 04(더해보세요)로 이어지는 지시 사슬의
+      <!-- "생생하게"는 02 헤드라인의 지시를 여기서 회수한다 — 02 는 독자에게
+           그리라고 요구하고, 04 는 앱이 대신 펼쳐 준다(요구 → 대행).
+           둘 중 한쪽 문구만 바꾸면 이 짝이 깨진다. -->
+      <div class="hl">꿈꾸는 미래가<br><em>이미 이루어진 듯</em><br>생생하게 펼쳐집니다.</div>
+      <!-- deck 은 헤드라인이 말하지 않은 것만 싣는다 — hl 이 '이미 이루어진 듯'을
+           맡으므로, 여기서는 그 하루가 매일 새로 그려진다는 사실만. -->
+      <div class="deck">어제와 다른 하루, <b>내일 또 다른 하루.</b></div>
+    </div>
+
+    <div class="rule"></div>
+    <!-- 오렌지 1개소: "지금 살고 있다"를 말하는 마지막 한 줄의 세로선 -->
+    <div class="card">
+      <div class="chead">
+        <span class="clabel">오늘, 그 꿈을 사는 하루</span>
+        <span class="clabel mute">1인칭 · 현재형</span>
+      </div>
+      <div class="vision" data-vision></div>
+    </div>
+    <div class="metric"><b>05</b>일차</div>
+  </div>
+</div>
+
+<!-- ═══ 05 · 확장 ═══
+     04 까지가 "한 문장만 적으세요 → 그러면 이런 하루를 받습니다"로 진입장벽을
+     깎고 대가를 보인 구간이라, 그 다음 질문("그래서 계속 한 문장만?")에
+     답하는 자리다. 습관이 붙은 뒤에야 행동을 얹는 순서 자체가 제품의 해금
+     정책과 같다 — lib/constants/growth.ts PLAN_UNLOCK_STREAK = 7(연속 7일이면
+     실행 설계가 열린다). 이 보드의 메트릭이 07일차인 것은 우연이 아니므로
+     셋(헤드라인의 "익숙해지면" · 카드의 "7일 연속" · 메트릭 07)을 따로 놀게
+     두지 말 것. -->
+<div class="cap">KO 05 · <b>확장</b> · if-then<button class="dl" data-ad="adP">↓ PNG</button></div>
+<div class="ad" id="adP" data-name="anima-ig-v4-ko-05-ifthen" style="--fs-hl:92px;">
+  <div class="inner">
+    <div class="topbar">
+      <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
+      <span class="eyebrow">NO.05 · 확장</span>
+    </div>
+
+    <div class="band">
+      <!-- 02(그려보세요) → 03(적으세요) → 05(더해보세요)로 이어지는 지시 사슬의
            마지막 칸이다. 조건절("문장이 익숙해지면")이 앞에 있어야 03 의 "딱 한
            문장부터"와 모순되지 않는다 — 순서를 뒤집어 "행동을 더하세요"를
            앞세우면 03 이 깎아 둔 진입장벽이 되살아난다.
@@ -940,21 +1029,21 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   </div>
 </div>
 
-<!-- ═══ 05 · 이름 ═══ -->
-<div class="cap">KO 05 · <b>이름</b> · anima 의 뜻<button class="dl" data-ad="adN">↓ PNG</button></div>
-<div class="ad" id="adN" data-name="anima-ig-v4-ko-05-name" style="--fs-name:220px;--name-margin:44px;">
+<!-- ═══ 06 · 이름 ═══ -->
+<div class="cap">KO 06 · <b>이름</b> · anima 의 뜻<button class="dl" data-ad="adN">↓ PNG</button></div>
+<div class="ad" id="adN" data-name="anima-ig-v4-ko-06-name" style="--fs-name:220px;--name-margin:44px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.05 · 이름</span>
+      <span class="eyebrow">NO.06 · 이름</span>
     </div>
 
     <div class="band band-center">
-      <!-- 06(설계) deck 이 뇌과학 선언으로 바뀌며 앱 소개가 이미지에서 빠졌으므로,
+      <!-- 07(설계) deck 이 뇌과학 선언으로 바뀌며 앱 소개가 이미지에서 빠졌으므로,
            이 헤드라인이 본문에서 이름을 처음 꺼내는 자리다 — 뜻풀이가 소개를
-           겸한다. 이 보드를 빼면 이미지 안에 이름이 08 deck 한 줄만 남으므로
+           겸한다. 이 보드를 빼면 이미지 안에 이름이 09 deck 한 줄만 남으므로
            순서에서 내리지 말 것.
-           헤드라인의 'anima' 는 --display(Noto Serif KR) 로 둔다 — 08 deck 의
+           헤드라인의 'anima' 는 --display(Noto Serif KR) 로 둔다 — 09 deck 의
            <b>anima</b> 와 같은 서체다. 좌상단 워드마크(Fraunces)와 갈리지만,
            본문 안의 이름은 본문 서체로 쓰는 것이 이 파일의 기존 처리다.
            em 은 골드(.hl em) — 오렌지 1개소는 아래 카드의 화살표가 갖는다. -->
@@ -973,9 +1062,10 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
            맡는다 — 이 자리에 설명을 다시 넣지 말 것. -->
       <!-- .hl 이 없는 유일한 보드다. 보드를 훑는 스크립트를 쓸 때 주의. -->
       <!-- 어원(사실)을 제품이 하는 일로 옮기는 줄. 여기서 기능을 설명하지 말 것 —
-           02·03·04 의 지시 사슬(그려보세요 → 적으세요 → 더해보세요)을 한 단어로
-           묶는 것이 이 장의 몫이고, "그래서 무슨 앱인가"는 바로 뒤 06(설계)이
-           받는다. 캡션의 같은 대목과 한 벌로 움직인다. -->
+           02·03·05 의 지시 사슬(그려보세요 → 적으세요 → 더해보세요)과 04 의
+           대행(앱이 하루를 펼쳐 줌)을 한 단어로 묶는 것이 이 장의 몫이고,
+           "그래서 무슨 앱인가"는 바로 뒤 07(설계)이 받는다.
+           캡션의 같은 대목과 한 벌로 움직인다. -->
       <div class="deck">버티기만 하던 하루에<br><b>다시 숨을 불어넣습니다.</b></div>
     </div>
 
@@ -996,9 +1086,9 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   </div>
 </div>
 
-<!-- ═══ 06 · 설계 ═══ -->
-<div class="cap">KO 06 · <b>설계</b> · 행동 코칭<button class="dl" data-ad="ad3">↓ PNG</button></div>
-<!-- --fs-hl 은 03·04 와 같은 92px — deck 을 붙이면서 88px 로는 부연/헤드라인
+<!-- ═══ 07 · 설계 ═══ -->
+<div class="cap">KO 07 · <b>설계</b> · 행동 코칭<button class="dl" data-ad="ad3">↓ PNG</button></div>
+<!-- --fs-hl 은 03·05 와 같은 92px — deck 을 붙이면서 88px 로는 부연/헤드라인
      비율이 40.9% 가 되어 주종 규칙(--fs-deck 주석의 40% 이하)을 넘긴다.
      92px 에서 39.1%, 헤드라인 최장 줄 751px(3행, 안전폭 904px).
      deck 이 뇌과학 선언으로 바뀌며 1줄 → 2줄이 되어 밴드가 50px 자랐다.
@@ -1006,11 +1096,11 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
      deck 두 줄의 자연 폭은 602 / 221px 이라 사실 <br> 없이도 한 줄(835px)에
      들어간다 — 줄바꿈은 부정(1행) → 선언(2행)의 박자를 만들려고 일부러 넣은
      것이므로 "붙여도 들어가니까"라는 이유로 <br> 를 빼지 말 것. -->
-<div class="ad" id="ad3" data-name="anima-ig-v4-ko-06-design" style="--fs-hl:92px;">
+<div class="ad" id="ad3" data-name="anima-ig-v4-ko-07-design" style="--fs-hl:92px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.06 · 설계</span>
+      <span class="eyebrow">NO.07 · 설계</span>
     </div>
 
     <div class="band">
@@ -1042,13 +1132,13 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   </div>
 </div>
 
-<!-- ═══ 07 · 변화 ═══ -->
-<div class="cap">KO 07 · <b>변화</b> · 훅 회수<button class="dl" data-ad="ad4">↓ PNG</button></div>
-<div class="ad" id="ad4" data-name="anima-ig-v4-ko-07-grow" style="--fs-hl:96px;">
+<!-- ═══ 08 · 변화 ═══ -->
+<div class="cap">KO 08 · <b>변화</b> · 훅 회수<button class="dl" data-ad="ad4">↓ PNG</button></div>
+<div class="ad" id="ad4" data-name="anima-ig-v4-ko-08-grow" style="--fs-hl:96px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.07 · 변화</span>
+      <span class="eyebrow">NO.08 · 변화</span>
     </div>
 
     <div class="band">
@@ -1078,13 +1168,13 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   </div>
 </div>
 
-<!-- ═══ 08 · 동행 (CTA) ═══ -->
-<div class="cap">KO 08 · <b>동행</b> · CTA<button class="dl" data-ad="ad5">↓ PNG</button></div>
-<div class="ad" id="ad5" data-name="anima-ig-v4-ko-08-together" style="--fs-hl:96px;">
+<!-- ═══ 09 · 동행 (CTA) ═══ -->
+<div class="cap">KO 09 · <b>동행</b> · CTA<button class="dl" data-ad="ad5">↓ PNG</button></div>
+<div class="ad" id="ad5" data-name="anima-ig-v4-ko-09-together" style="--fs-hl:96px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.08 · 동행</span>
+      <span class="eyebrow">NO.09 · 동행</span>
     </div>
 
     <div class="band">
@@ -1168,13 +1258,107 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   </div>
 </div>
 
+<!-- ═══ 01-D · 훅 변형 · 고백형 ═══
+     01-A 는 독자를 지목해 "그만 보세요"라고 말한다. 첫 문장이 비난이면
+     스와이프 대신 스크롤이 나올 수 있어, 같은 소재(동기부여 영상)를 1인칭
+     고백으로 뒤집은 안이다. 지목이 사라져도 훅의 씨앗은 그대로라 08(변화)의
+     회수("영상 대신 내가 자랐습니다")가 깨지지 않는다.
+     deck 이 "84일 전까지는."으로 반전을 열어 스와이프를 만든다 — 이 84 는
+     08 메트릭·캡션의 84일과 같은 숫자여야 한다(한쪽만 고치지 말 것).
+     세 변형 모두 카드를 두지 않는다. 01-A 와 같은 골격(헤드라인 + deck +
+     여백)으로 두어야 A/B 가 카피 하나만 비교한다 — 카드를 넣으면 무엇이
+     성과를 냈는지 못 가른다.
+
+     크기도 셋이 같아야 한다(--fs-hl:118px · --fs-deck:46px). 활자 크기 자체가
+     성과에 영향을 주므로 변형마다 다르면 카피를 비교하는 시험이 아니게 된다.
+     118 은 셋 중 가장 빡빡한 01-E 의 상한이다.
+     실측(최장 줄 / 안전폭 904px):
+       01-D "동기부여 영상만"  110→760 · 118→816 · 130→899          (상한 130)
+       01-E "anima 가 씁니다." 110→836 · 118→897 · 122→927(초과)     (상한 118)
+       01-G "도착해 있습니다." 110→795 · 118→853 · 126→911(초과)     (상한 122)
+     셋 다 118px 에서 밴드 위 141px · 넘침 0 · deck/hl 39.0%(주종 40% 이하).
+     한 안만 단독으로 돌릴 땐 위 상한까지 키워도 되지만, 같이 돌리는 동안은
+     건드리지 말 것. 01-A(150px)보다 작은 것은 문구가 길어서이지 위계가
+     아니다 — 변형은 A 를 대체하는 자리이므로 한 캐러셀에 같이 싣지 않는다. -->
+<div class="cap alt">KO 01-D · <b>훅 · 고백형</b> · 변형<button class="dl" data-ad="adD">↓ PNG</button></div>
+<div class="ad" id="adD" data-name="anima-ig-v4-ko-01d-hook-confess" style="--fs-hl:118px;--fs-deck:46px;--deck-margin:120px;">
+  <div class="inner">
+    <div class="topbar">
+      <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
+      <span class="eyebrow">NO.01 · 훅</span>
+    </div>
+
+    <div class="band">
+      <!-- 오렌지 1개소: 숫자 "3년" — 이 훅에서 찌르는 것은 동사가 아니라
+           흘려보낸 기간이다(01-A 는 명령어 "그만"이 그 자리였다). -->
+      <div class="hl"><em class="soul">3년</em> 동안<br>동기부여 영상만<br>봤습니다.</div>
+      <div class="deck">바뀐 건 없었어요.<br><b>84일 전까지는.</b></div>
+    </div>
+
+    <div class="rule"></div>
+    <div class="metric"><b>01</b>일차</div>
+  </div>
+</div>
+
+<!-- ═══ 01-E · 훅 변형 · 대행형 ═══
+     "당신이 하세요"가 아니라 "당신은 한 줄만, 나머지는 앱이"로 노력의 총량을
+     먼저 깎는 안이다. 04(비전) 보드의 약속을 1번으로 끌어올린 것이라
+     캐러셀 전체와 한 몸이다 — 04 를 다시 내리면 이 훅은 지키지 못할 약속이
+     되므로 함께 확인할 것. 앱 이름이 1번에서 노출되는 유일한 훅이기도 하다. -->
+<div class="cap alt">KO 01-E · <b>훅 · 대행형</b> · 변형<button class="dl" data-ad="adE">↓ PNG</button></div>
+<div class="ad" id="adE" data-name="anima-ig-v4-ko-01e-hook-delegate" style="--fs-hl:118px;--fs-deck:46px;--deck-margin:120px;">
+  <div class="inner">
+    <div class="topbar">
+      <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
+      <span class="eyebrow">NO.01 · 훅</span>
+    </div>
+
+    <div class="band">
+      <!-- 오렌지 1개소: "한 줄만" — 독자가 치를 대가의 전부라 여기가 이 훅의
+           살아있는 지점이다. 'anima 가'는 골드로 둘 것(.hl em). -->
+      <div class="hl">당신은 <em class="soul">한 줄만</em>.<br>나머지 하루는<br>anima 가 씁니다.</div>
+      <div class="deck">그 꿈을 이룬 하루가<br><b>내일 아침 도착합니다.</b></div>
+    </div>
+
+    <div class="rule"></div>
+    <div class="metric"><b>01</b>일차</div>
+  </div>
+</div>
+
+<!-- ═══ 01-G · 훅 변형 · 장면형 ═══
+     설명도 지시도 없이 장면 하나만 던지는 안이다. 01-E 와 약속은 같지만
+     (매일 도착하는 하루) 말하는 방식이 다르다 — E 는 거래 조건을, G 는
+     결과 장면을 먼저 보인다. 둘을 같이 돌리면 "무엇을 약속하나"가 아니라
+     "어떻게 말하나"를 가르는 테스트가 된다.
+     알파벳 F 를 건너뛴 것은 id adF 가 02(그리기) 보드에 이미 쓰였기 때문이다
+     — 이 파일은 변형 라벨의 알파벳과 id 의 알파벳을 맞춘다. -->
+<div class="cap alt">KO 01-G · <b>훅 · 장면형</b> · 변형<button class="dl" data-ad="adG">↓ PNG</button></div>
+<div class="ad" id="adG" data-name="anima-ig-v4-ko-01g-hook-scene" style="--fs-hl:118px;--fs-deck:46px;--deck-margin:120px;">
+  <div class="inner">
+    <div class="topbar">
+      <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
+      <span class="eyebrow">NO.01 · 훅</span>
+    </div>
+
+    <div class="band">
+      <!-- 오렌지 1개소: "도착해 있습니다" — 이 훅에서 유일하게 움직이는 것이
+           동사이고, 그 동사의 주어가 독자가 아니라는 게 이 안의 전부다. -->
+      <div class="hl">내일 아침,<br>당신의 하루가<br><em class="soul">도착해 있습니다.</em></div>
+      <div class="deck">꿈을 이룬 뒤의 하루를,<br><b>매일 새로 써 드립니다.</b></div>
+    </div>
+
+    <div class="rule"></div>
+    <div class="metric"><b>01</b>일차</div>
+  </div>
+</div>
+
 </div><!-- /#stage -->
 
 <div id="capbox">
   <h2>인스타그램 캡션 (복사해서 사용)</h2>
   <textarea id="captext" spellcheck="false" readonly></textarea>
   <div class="hint">
-    캐러셀 순서: 01-A → 02 → 03 → 04 → 05 → 06 → 07 → 08 (8장)<br>
+    캐러셀 순서: 01-A → 02 → 03 → 04 → 05 → 06 → 07 → 08 → 09 (9장)<br>
     01-C 는 01-A 와 A/B 로 돌릴 수 있다 — 08 이 동행 약속으로 바뀌어 헤드라인 중복이 풀렸다<br>
     Meta 광고 관리자 CTA 버튼: “설치하기” · 랜딩: https://www.successfulfuture.app/go/app
   </div>
@@ -1195,9 +1379,11 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   var EXPORT_H = cssPx('--h');
   var PIXEL_RATIO = 2;        // → 2160 × 2700
   var BATCH_PAUSE_MS = 400;   // 브라우저가 다운로드를 flush 할 여유
-  // 실제 게재 8장 — 훅 → 그리기 → 적기 → 확장 → 이름 → 설계 → 변화 → CTA (마크업 등장 순서와 동일)
-  var CARRYOVER = ['adA', 'adF', 'ad2', 'adP', 'adN', 'ad3', 'ad4', 'ad5'];
-  var HOOK_VARIANTS = ['adA', 'adC'];                    // 훅 A/B 테스트 2안
+  // 실제 게재 9장 — 훅 → 그리기 → 적기 → 비전 → 확장 → 이름 → 설계 → 변화 → CTA (마크업 등장 순서와 동일)
+  var CARRYOVER = ['adA', 'adF', 'ad2', 'adV', 'adP', 'adN', 'ad3', 'ad4', 'ad5'];
+  // 훅 A/B 세트 — 채택안(A) + 변형 4안. 카드 유무·크기를 맞춰 카피만 비교한다
+  // (A 는 근거 카드가 없고 C 만 대비 바를 갖는다 — C 를 함께 돌릴 땐 그 차이를 감안할 것).
+  var HOOK_VARIANTS = ['adA', 'adC', 'adD', 'adE', 'adG'];
 
   /* ── 보드를 가로로 배치 — 순서 = 마크업 등장 순서(.cap 과 .ad 는 짝) ── */
   ['.cap', '.ad'].forEach(function (sel) {
@@ -1266,7 +1452,35 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
      비전 기능 자체는 제품에 그대로 있고(lib/futureVision.ts) 캡션에도 남아
      있으므로, 보드로 되살릴 땐 git 이력에서 장면 원문을 꺼내 쓸 것. */
 
-  /* ── 이름의 뜻 (05) ────────────────────────────────────────
+  /* ── 미래 비전 미리보기 (04) ────────────────────────────────
+     제품의 가장 큰 차별점: 사용자가 적은 '미래의 나'를 재료로, 그 미래가
+     이미 실현된 하루를 1인칭 현재형 장면으로 매일 새로 그려 준다.
+     02(그리기)가 "당신이 적으세요"라고 요구한 것을 여기서 앱이 대신 펼친다.
+     생성은 lib/futureVision.ts 가 Gemini 로 한다(generateText) — 실재 기능이다.
+
+     장면은 03 반복 카드의 다짐 문장("나는 100억달러 가치 스타트업의 CEO다")이
+     실현된 하루여야 한다 — 앞 보드에서 네 줄로 반복해 보여준 문장과 무관한
+     미래를 그리면 캐러셀의 서사가 끊긴다. 명예(무대에서 불리는 이름)와
+     부(가격표를 보지 않는 선택) 두 축을 한 장면씩 맡겼다.
+     톤은 lib/futureVision.ts 의 작성 규칙을 그대로 따른다 — 1인칭 현재형,
+     장면당 감각 디테일 1개 이상, 감정어 직접 명명 금지("뿌듯"·"행복" 없이
+     장면이 느끼게 할 것), 스톡 럭셔리 클리셰(스포츠카·요트·샴페인) 금지.
+     오렌지는 "지금 살고 있다"를 말하는 마지막 한 줄 1개소. */
+  var VISION_SCENES = [
+    { moment: '오전 9시, 기조연설',  text: '2천 명이 앉은 홀의 불이 꺼지고, 사회자가 내 이름 앞에 회사 가치를 붙여 부른다.' },
+    { moment: '저녁 8시, 부모님 집', text: '어머니가 새 집 거실 창가에 오래 서 계신다. 이제 나는 가격표를 보지 않고 고른다.' }
+  ];
+  var VISION_CLOSING = '그때 적기만 하던 문장을, 나는 지금 살고 있다.';
+  document.querySelectorAll('[data-vision]').forEach(function (el) {
+    el.innerHTML = VISION_SCENES.map(function (s) {
+      return '<div class="visrow">' +
+          '<span class="vismoment">' + s.moment + '</span>' +
+          '<span class="vistext">' + s.text + '</span>' +
+        '</div>';
+    }).join('') + '<div class="visclose">' + VISION_CLOSING + '</div>';
+  });
+
+  /* ── 이름의 뜻 (06) ────────────────────────────────────────
      라틴어 사전 항목 형식. 앞선 카드가 모두 나열형이라 리듬을 한 번 끊고,
      형식 자체가 "이건 지어낸 카피가 아니라 사실"이라는 신호를 준다.
      뜻풀이는 어원 그대로이므로 광고 문구로 각색하지 말 것 — 사실이 아니게
@@ -1292,7 +1506,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
       '</div>';
   });
 
-  /* ── 하루 코칭 루프 (06) ────────────────────────────────────
+  /* ── 하루 코칭 루프 (07) ────────────────────────────────────
      "단순 기록이 아니라 설계"의 증거 — 밤의 다짐이 아침의 행동
      제안으로, 다시 밤의 회고로 이어지는 3단 루프.
      오렌지는 '행동' 단계 1개소(다짐이 행동으로 바뀌는 지점). */
@@ -1383,19 +1597,21 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     '',
     '마법이나 단순한 동기부여가 아닙니다. 뇌과학입니다.',
     '',
+    /* 04(비전) 보드와 같은 말. 매일 새로 생성된다는 사실이 이 문단의 핵심이다
+       — lib/futureVision.ts 가 Gemini 로 장면을 만든다. 지어낸 기능이 아니다. */
     '그리고 매일, 당신이 적어둔 ‘미래의 나’가 이미 실현된 하루를',
     '1인칭 현재형 장면으로 눈앞에 그려 드려요.',
     '막연한 상상으로 남겨두지 않고, 오늘 이미 그 하루를 살아보는 겁니다.',
     '어제와 다른 하루, 내일 또 다른 하루 — 매일 새로 그려집니다.',
     '',
-    /* 04(확장) 보드와 같은 말. 숫자와 기능 이름은 제품 원문이다 —
+    /* 05(확장) 보드와 같은 말. 숫자와 기능 이름은 제품 원문이다 —
        7일은 lib/constants/growth.ts PLAN_UNLOCK_STREAK, 'if-then'은
        ko.ts woop.section.title 의 이름 그대로다. 임의로 바꾸지 말 것. */
     '문장이 익숙해지면, 행동을 하나씩 더해보세요.',
     '‘만약 A면, 나는 B 한다’ — if-then 한 문장으로 미리 정해두면',
     '결정의 순간에 고민하지 않게 돼요. (7일 연속 적으면 열려요)',
     '',
-    /* 05(이름) 보드와 같은 말. 어원은 사실이므로 각색하지 말 것 —
+    /* 06(이름) 보드와 같은 말. 어원은 사실이므로 각색하지 말 것 —
        라틴어 anima = 숨 · 생명 · 영혼이고 animate 는 같은 뿌리의 파생어다. */
     'anima 는 라틴어로 ‘숨’, 그리고 ‘생명’이에요.',
     '버티기만 하던 하루에 다시 숨을 불어넣는다 — 그래서 붙인 이름이에요.',
@@ -1406,7 +1622,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     '',
     '84일 뒤엔, 본 게 아니라 살아낸 하루들이 남아 있을 거예요.',
     '',
-    /* 08 헤드라인과 같은 말 — 캐러셀도 캡션도 같은 약속으로 닫힌다.
+    /* 09 헤드라인과 같은 말 — 캐러셀도 캡션도 같은 약속으로 닫힌다.
        이미지를 넘기지 않은 사람에게 이 줄이 그 자리를 대신한다.
        보드는 세 줄로 끊어 읽히므로("…여정에 / anima 가 / 끝까지 함께합니다")
        캡션에서는 한 문장으로 풀어 쓴다 — 뜻이 같으면 형태는 매체를 따른다. */
