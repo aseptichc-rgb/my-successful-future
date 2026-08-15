@@ -46,8 +46,10 @@
    "뇌가 길을 낸다"는 원리와 "행동을 설계한다"는 실행을 잇는 다리가 심상이기 때문.
    근거: lib/futureVision.ts(하루 생성) · components/home/FutureVisionCard.tsx(카드) ·
    lib/i18n/dictionaries/ko.ts "futureVision.headerLabel"(= 카드 라벨 원문).
-   보드 안의 장면 문안은 FALLBACK_VISIONS.ko 의 톤을 그대로 따왔다 — 실제 출력과
-   결이 다른 문장을 지어내면 설치 후 기대 배신이 된다.
+   보드 안의 장면은 01-A·02 카드의 다짐 문장("나는 10억달러 가치 스타트업의
+   CEO다")이 실현된 하루로 맞췄다 — 앞에서 세 번 보여준 문장과 무관한 미래를
+   그리면 캐러셀의 서사가 끊긴다. 톤은 lib/futureVision.ts 의 작성 규칙(1인칭
+   현재형·감각 디테일·감정어 직접 명명 금지·스톡 럭셔리 클리셰 금지)을 따랐다.
    이에 따라 03·04·05 는 각각 04·05·06 으로 번호를 밀었고(eyebrow·data-name·
    메트릭), 러닝 메트릭에 07일차를 끼워 01 → 04 → 07 → 12 → 84 → 01 이 되었다.
 
@@ -291,9 +293,9 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     </div>
 
     <div class="band">
-      <div class="hl">내가 적은 미래를,<br><em>이미 사는 하루</em>로<br>매일 보여줍니다.</div>
-      <!-- deck 은 헤드라인이 말하지 않은 것만 싣는다 — '내가 적은 미래'(출처)는
-           이미 hl 에 있으므로, 여기서는 하루가 매일 새로 그려진다는 사실만. -->
+      <div class="hl">꿈꾸는 미래가<br><em>이미 이루어진 듯</em><br>생생하게 펼쳐집니다.</div>
+      <!-- deck 은 헤드라인이 말하지 않은 것만 싣는다 — hl 이 '이미 이루어진 듯'을
+           맡으므로, 여기서는 그 하루가 매일 새로 그려진다는 사실만. -->
       <div class="deck">어제와 다른 하루, <b>내일 또 다른 하루.</b></div>
     </div>
 
@@ -506,14 +508,20 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   /* ── 미래 비전 미리보기 (03) ────────────────────────────────
      제품의 가장 큰 차별점: 사용자가 적은 '미래의 나'를 재료로, 그 미래가
      이미 실현된 하루를 1인칭 현재형 장면으로 매일 새로 그려 준다.
-     문안은 lib/futureVision.ts 의 FALLBACK_VISIONS.ko 톤을 그대로 따온 것 —
-     실제 출력과 결이 다른 문장을 지어내면 설치 후 기대 배신이 된다.
+
+     장면은 01-A·02 카드의 다짐 문장("나는 10억달러 가치 스타트업의 CEO다")이
+     실현된 하루여야 한다 — 앞 보드에서 그 문장을 세 번 보여주고 여기서 무관한
+     미래를 그리면 캐러셀의 서사가 끊긴다. 명예(무대에서 불리는 이름)와
+     부(가격표를 보지 않는 선택) 두 축을 한 장면씩 맡겼다.
+     톤은 lib/futureVision.ts 의 작성 규칙을 그대로 따른다 — 1인칭 현재형,
+     장면당 감각 디테일 1개 이상, 감정어 직접 명명 금지("뿌듯"·"행복" 없이
+     장면이 느끼게 할 것), 스톡 럭셔리 클리셰(스포츠카·요트·샴페인) 금지.
      오렌지는 "지금 살고 있다"를 말하는 마지막 한 줄 1개소. */
   var VISION_SCENES = [
-    { moment: '오후 3시, 사무실', text: '내 이름이 적힌 문을 밀고 들어선다. 오래 바라던 이곳이, 지금은 그냥 나의 하루가 되어 있다.' },
-    { moment: '해질 무렵',       text: '창밖으로 하루가 저문다. 조급함 대신, 오늘로 충분했다는 감각이 낮게 내려앉는다.' }
+    { moment: '오전 9시, 기조연설',  text: '2천 명이 앉은 홀의 불이 꺼지고, 사회자가 내 이름 앞에 회사 가치를 붙여 부른다.' },
+    { moment: '저녁 8시, 부모님 집', text: '어머니가 새 집 거실 창가에 오래 서 계신다. 이제 나는 가격표를 보지 않고 고른다.' }
   ];
-  var VISION_CLOSING = '나는 지금, 그 하루 안에서 살고 있다.';
+  var VISION_CLOSING = '그때 적기만 하던 문장을, 나는 지금 살고 있다.';
   document.querySelectorAll('[data-vision]').forEach(function (el) {
     el.innerHTML = VISION_SCENES.map(function (s) {
       return '<div class="visrow">' +
