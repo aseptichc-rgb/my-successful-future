@@ -168,10 +168,11 @@
    장이 없었다. 그 답의 첫 단계(성공한 미래의 나를 생생하게 그리는 것)를 1번
    바로 뒤에 세운다. 순서는 훅 → 그리기 → 원리 → 비전 → 설계 → 변화 → CTA 로,
    "무엇을 하라"(02) → "왜 되나"(03) → "그래서 뭘 받나"(04) 가 된다.
-   카드에 실은 질문·차원 목록은 전부 제품에 있는 문구다 — 차원은 lib/futureSelf.ts
-   FUTURE_SELF_DIMENSIONS(8개: 꿈은 온보딩 1문항, 나머지 7개는 설정 항목),
-   질문 문장은 lib/i18n/dictionaries/ko.ts "onboarding.futureSelf.daily.q" 원문.
-   질문을 지어내지 말 것 — 없는 화면을 그리면 스토어 심사와 환불 사유가 된다.
+   카드의 질문은 제품 원문 그대로다(lib/i18n/dictionaries/ko.ts
+   "onboarding.futureSelf.daily.q"). 캡션이 나열하는 8가지는 lib/futureSelf.ts
+   FUTURE_SELF_DIMENSIONS 와 같은 목록이다(꿈은 온보딩 1문항, 나머지 7개는 설정
+   항목). 질문도 개수도 지어내지 말 것 — 없는 화면을 그리면 스토어 심사와 환불
+   사유가 되고, 설치 직후 첫 화면과 어긋나면 광고비가 이탈로 바뀐다.
    · 헤드라인의 "생생하게"는 04(비전)의 "생생하게 펼쳐집니다"와 일부러 겹친다.
      02 는 당신이 그리는 쪽, 04 는 앱이 대신 펼치는 쪽이다(요구 → 대행).
      한쪽만 고치면 이 짝이 깨지므로 문구 교체 시 두 장을 같이 볼 것.
@@ -179,14 +180,22 @@
      .soul 을 붙이면 한 장에 오렌지가 둘이 된다(§3-1).
    · 이에 따라 02~06 은 각각 03~07 로 번호를 밀었고(eyebrow·data-name·cap),
      러닝 메트릭에 02일차를 끼워 01 → 02 → 04 → 07 → 12 → 84 → 01 이 되었다.
-   · --fs-hl 108px. 최장 줄은 1행 "성공한 미래의 나를"이다
-     (재실측, 안전폭 904px: 100→815 · 104→847 · 108→880 · 110→896 ·
-      112→913(초과 → 4줄로 깨짐)). 최초 112px 은 잘못 잰 값이었다 —
-     브라우저에서 1행이 "성공한 미래의 / 나를"로 접혀 3줄 설계가 무너진다.
-     상한은 110px 이지만 여유가 8px 뿐이라 108px 을 쓴다(여유 24px).
-     훅(150px)보다 낮고 원리·비전·설계(92px)보다 높다 — 1번 다음으로 큰
-     보드여야 도발 직후의 지시가 힘을 잃지 않는다.
-     deck/hl 33.3% · 넘침 없음.
+   · --fs-hl 100px. 1행을 "성공한 미래의 나를" → "성공한 미래를"로 줄이면서
+     최장 줄이 1행에서 2행 "최대한 생생하게"로 옮겨갔다 — 상한을 정하는 줄이
+     바뀌었으므로 1행 기준으로 잰 옛 수치(100→815 … 112→913)는 더 이상
+     이 보드의 한계가 아니다. 문구를 고치면 어느 줄이 최장인지부터 다시 볼 것.
+     재실측(2행 "최대한 생생하게" 기준, 카드는 선언+4줄 답변 상태):
+     100→691 · 108→747 · 116→802 · 124→857 · 130→899 · 136→4줄로 깨짐.
+     가로 상한은 130px(안전폭 904px)이지만 실제 한계는 세로다 — 124px 에서
+     헤드라인이 상단바에 붙고(밴드 위 0px), 130px 은 메트릭이 하단 안전영역을
+     21px 넘는다. 100px 에서 밴드 위 56px · 하단 침범 0 · 가로 여유 213px.
+     세로가 먼저 막히는 보드이므로(카드가 6장 중 가장 크다) 키울 땐 폭이 아니라
+     밴드 위 여백을 볼 것 — 비전 35px 이 기존 최저치다.
+     훅(150px)·CTA(120px)보다 낮고 원리·비전·설계(92px)보다 높다.
+     deck/hl 36% · 넘침 없음 · 오렌지 1개소(카드 커서).
+   · 헤드라인이 "미래의 나" → "미래"로 바뀌면 바로 아래 카드 라벨("미래의 나")과
+     제품 개념(futurePersona = 미래의 '나')에서 한 칸 멀어진다. 지금은 카드가
+     그 자리를 받쳐 주지만, 헤드라인에서 '나'를 더 지우지는 말 것.
 
    2026-08-15 03(원리) 헤드라인 교체: "같은 문장을 / 매일 되새기면, / 뇌가
    길을 찾습니다." → "그리고 그 이미지를 / 매일 적으세요."
@@ -330,14 +339,16 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 
 /* ── 카드 내부 공용 부품 ─────────────────────────────────────── */
 .caret{display:inline-block;width:3px;height:38px;background:var(--soul);vertical-align:-7px;margin-left:8px;}
-/* 미래의 나 질문 (02) — 앱이 실제로 묻는 8차원 중 한 문항과, 그 답을 지금
-   쓰고 있는 상태. "생생하게 그려보세요"라는 지시를 제품이 어떻게 대신 수행하는지
-   보이는 자리다(막연한 상상 → 답해야 하는 질문). 문구 원본은 위 changelog 참조.
+/* 미래의 나 (02) — 선언 한 줄과, 그 선언이 실제로 어떤 하루인지 채워진 상태.
+   "생생하게 그려보세요"라는 지시가 무엇을 뜻하는지 카드가 직접 시연한다
+   (막연한 상상 → 시각·시간·숫자가 박힌 장면). 문구 원본은 위 changelog 참조.
    오렌지는 지금 쓰는 답 끝의 커서 1개소. */
 .ask{display:flex;flex-direction:column;gap:18px;}
+/* 선언 줄 — 아래 질문의 "그 꿈"이 가리키는 선행어다. 질문보다 위에 있어야
+   카드가 혼자 읽힌다. 강조는 굵기로만(골드는 구조 전용·오렌지는 커서가 씀). */
+.askdec{font-family:var(--display);font-weight:600;font-size:34px;line-height:1.35;color:var(--cream);word-break:keep-all;}
 .askq{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.06em;line-height:1.5;color:rgba(217,164,65,.78);}
-.aska{font-family:var(--display);font-weight:300;font-size:34px;line-height:1.42;color:var(--cream);word-break:keep-all;}
-.askmore{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.06em;color:rgba(247,243,236,.4);}
+.aska{font-family:var(--display);font-weight:300;font-size:30px;line-height:1.42;color:rgba(247,243,236,.88);word-break:keep-all;}
 /* 다짐 반복 기록 (03) — 같은 문장이 날마다 진해진다 = 반복이 회로를
    강화한다는 헤드라인을 투명도 그라데이션으로 옮긴 것 */
 .rep{display:flex;flex-direction:column;gap:16px;}
@@ -446,7 +457,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 
 <!-- ═══ 02 · 그리기 ═══ -->
 <div class="cap">KO 02 · <b>그리기</b> · 미래의 나<button class="dl" data-ad="adF">↓ PNG</button></div>
-<div class="ad" id="adF" data-name="anima-ig-v4-ko-02-imagine" style="--fs-hl:108px;">
+<div class="ad" id="adF" data-name="anima-ig-v4-ko-02-imagine" style="--fs-hl:100px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
@@ -459,7 +470,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
            "왜 되는지"를 설명하면 03 을 미리 써버리므로 지시 이상 나가지 말 것.
            "생생하게"는 04(비전)의 "생생하게 펼쳐집니다"와 짝이다(요구 → 대행).
            em 은 골드 — 오렌지 1개소는 아래 카드의 커서가 갖는다. -->
-      <div class="hl">성공한 미래의 나를<br>최대한 <em>생생하게</em><br>그려보세요.</div>
+      <div class="hl">성공한 미래를<br>최대한 <em>생생하게</em><br>그려보세요.</div>
       <!-- 지시만 있고 이유가 없으면 넘기면서 잊는다. 이 줄은 '왜 생생해야 하나'를
            뇌과학(03)·비전(04)을 건드리지 않는 선에서만 답한다 — 막연함의 반대말이
            헤드라인의 '생생하게'라는 것만 세운다. -->
@@ -468,20 +479,26 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 
     <div class="rule"></div>
     <!-- 오렌지 1개소: 지금 쓰고 있는 답 끝의 커서.
-         질문 문장과 차원 목록은 제품 원문이다(changelog 참조) — 광고에서
-         질문을 지어내면 설치 직후 화면과 어긋난다. 답변 예시는 03·04 와 같은
-         인물(10억달러 스타트업 CEO)의 '평범한 하루' 차원이라 서사가 이어진다.
-         톤은 lib/futureVision.ts 작성 규칙(1인칭 현재형·감각 디테일·감정어
-         직접 명명 금지·스톡 럭셔리 클리셰 금지)을 따랐다. -->
+         카드는 "앱이 몇 개를 묻는다"가 아니라 "다 답한 뒤 무엇이 남는가"를 보인다 —
+         질문 개수·다음 질문 목록은 설문 UI 를 그리는 것이라 헤드라인의 지시
+         ("생생하게 그려보세요")를 스스로 배반했다. 지금은 선언 한 줄 + 그 선언이
+         실제로 어떤 하루인지를 채워 보여준다.
+         질문 문장은 제품 원문이다(lib/i18n/dictionaries/ko.ts
+         "onboarding.futureSelf.daily.q") — 광고에서 질문을 지어내면 설치 직후
+         화면과 어긋난다. 선언 문장은 03 반복 카드의 REP_SENTENCE 와 글자까지
+         같아야 서사가 이어진다.
+         답변 4줄은 8차원 중 하루·일·성취·가족을 하나씩 집는다(차원 이름은
+         쓰지 않는다 — 이름을 달면 다시 설문이 된다). 톤은 lib/futureVision.ts
+         작성 규칙: 1인칭 현재형·감각 디테일·감정어 직접 명명 금지·스톡 럭셔리
+         클리셰 금지. 럭셔리 소품(요트·펜트하우스) 을 넣지 말 것. -->
     <div class="card">
       <div class="chead">
         <span class="clabel">미래의 나</span>
-        <span class="clabel mute">앱이 8가지로 묻습니다</span>
       </div>
       <div class="ask">
+        <span class="askdec">나는 10억달러 가치 스타트업의 CEO다</span>
         <span class="askq">그 꿈을 이룬 뒤, 당신의 평범한 하루는 어떻게 흘러가나요?</span>
-        <span class="aska">아침 7시, 통창으로 드는 빛에 눈을 뜬다. 오늘 무엇을 할지는 내가 정한다.<span class="caret" style="height:28px;vertical-align:-3px;"></span></span>
-        <span class="askmore">다음 질문 — 일 · 자산 · 가족 · 성취 · 존경 · 성장</span>
+        <span class="aska">아침 7시, 통창으로 드는 빛에 눈을 뜬다.<br>팀원 마흔 명의 이름을 다 안다.<br>분기 보고서의 마지막 줄은 내가 쓴다.<br>여섯 시엔 노트북을 덮고 걸어서 집에 간다.<span class="caret" style="height:28px;vertical-align:-3px;"></span></span>
       </div>
     </div>
     <div class="metric"><b>02</b>일차</div>
@@ -890,7 +907,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     /* 02(그리기) 보드와 같은 말 — 이미지 순서대로 캡션도 이어진다.
        질문 개수와 차원 이름은 제품 원문(lib/futureSelf.ts FUTURE_SELF_DIMENSIONS)
        이므로 임의로 늘리거나 줄이지 말 것. */
-    '먼저, 성공한 미래의 내 모습을 최대한 생생하게 그려보세요.',
+    '먼저, 성공한 미래를 최대한 생생하게 그려보세요.',
     '막연한 미래는 오늘을 움직이지 못하니까요.',
     '꿈 · 하루 · 일 · 자산 · 가족 · 성취 · 존경 · 성장 — 8가지 질문이 당신 대신 구체적으로 물어봐요.',
     '',
