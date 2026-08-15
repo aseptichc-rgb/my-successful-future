@@ -53,6 +53,14 @@
    이에 따라 03·04·05 는 각각 04·05·06 으로 번호를 밀었고(eyebrow·data-name·
    메트릭), 러닝 메트릭에 07일차를 끼워 01 → 04 → 07 → 12 → 84 → 01 이 되었다.
 
+   2026-08-15 01-C 훅 변형 교체: "작심삼일 말고, 작심 84일." → "내 미래는
+   내가 만들어갑니다." 관용구를 비트는 훅에서 1인칭 선언으로 성격을 바꿨다 —
+   01-A(찔림형)와 대비되는 축이 '관용구 vs 직설'보다 '문제 제기 vs 선언'일 때
+   A/B 가 더 분명해지고, 다짐 카드·비전 보드의 1인칭 현재형 톤과도 맞는다.
+   3줄이 되어 --fs-hl 은 118 → 112px(01-A 와 동일)로 낮췄다.
+   아래 3일 vs 84일 대비 바는 그대로 둔다 — 헤드라인의 직역 그림에서
+   "그 선언이 사흘로 끝나지 않는다"는 근거로 역할만 바뀐다.
+
    v3 대비 변경점은 세 가지뿐이다.
    1) 디스플레이 서체: Fraunces → Noto Serif KR (워드마크만 Fraunces 유지)
    2) 강조 장치: 이탤릭 → 굵기 600 + 골드
@@ -390,8 +398,8 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 </div>
 
 <!-- ═══ 01-C · 훅 변형 (A/B 테스트용) ═══ -->
-<div class="cap alt">KO 01-C · <b>훅 · 관용구형</b> · 변형<button class="dl" data-ad="adC">↓ PNG</button></div>
-<div class="ad" id="adC" data-name="anima-ig-v4-ko-01c-hook-alt" style="--fs-hl:118px;">
+<div class="cap alt">KO 01-C · <b>훅 · 선언형</b> · 변형<button class="dl" data-ad="adC">↓ PNG</button></div>
+<div class="ad" id="adC" data-name="anima-ig-v4-ko-01c-hook-alt" style="--fs-hl:112px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
@@ -399,13 +407,14 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     </div>
 
     <div class="band">
-      <div class="hl">작심삼일 말고,<br><em>작심 84일.</em></div>
+      <div class="hl">내 미래는<br><em>내가</em><br>만들어갑니다.</div>
     </div>
 
     <div class="rule"></div>
     <!-- 오렌지 1개소: 84일 바의 끝점.
          훅은 메트릭이 01일차이므로 누적 기록(히트맵)을 근거로 쓸 수 없다.
-         대신 헤드라인 그대로를 그림으로 옮긴 3일 vs 84일 대비 바를 쓴다. -->
+         대신 "내가 만들어간다"는 선언이 사흘로 끝나지 않는다는 근거로
+         3일 vs 84일 대비 바를 쓴다. -->
     <div class="card">
       <div class="chead">
         <span class="clabel">다짐이 살아남는 기간</span>
@@ -581,7 +590,8 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   });
 
   /* ── 3일 vs 84일 대비 바 (01-C) ────────────────────────────
-     헤드라인 "작심삼일 말고, 작심 84일."을 그대로 그림으로 옮긴 것.
+     헤드라인 "내 미래는 내가 만들어갑니다."의 근거 — 그 선언이 사흘로
+     끝나지 않는다는 것을 두 기간의 길이로 보인다.
      누적 기록이 아니라 두 기간의 비교이므로 01일차 메트릭과 충돌하지 않는다. */
   var VS_MAX_DAYS = 84;
   var VS_ROWS = [
