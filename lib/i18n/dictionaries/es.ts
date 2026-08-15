@@ -381,15 +381,32 @@ const dict: Record<DictKey, string> = {
   "settings.notifications.evening.desc": "Llega solo si aún no marcaste la meta de hoy.",
   "settings.notifications.weekly.title": "Repaso del domingo",
   "settings.notifications.weekly.desc": "Un aviso por la tarde cuando tu repaso semanal esté listo.",
+  "settings.notifications.pending.title": "Avisos de lo que falta",
+  "settings.notifications.pending.desc":
+    "Solo en las tardes en que ya terminaste el día — como máximo dos veces por semana.",
   "settings.notifications.time": "Hora",
 
   // Textos de notificación (iOS — Android usa recursos nativos)
   "notify.morning.title": "Un paso más hacia tu sueño",
   "notify.morning.body": "Empieza el día escribiendo tu afirmación.",
+  "notify.morning.quoteBody": "— {author} · Escríbelo y empieza tu día",
   "notify.evening.title": "La meta de hoy sigue esperando",
   "notify.evening.body": "Solo toma un momento — marca el paso de hoy.",
+  "notify.evening.bodyGoal": "Solo toma un momento — marca \"{goal}\".",
   "notify.weekly.title": "Hora de repasar tu semana",
   "notify.weekly.body": "El registro de tu semana está listo. Tómate un momento para verlo.",
+
+  // ── Avisos de tareas pendientes (reemplazan el hueco silencioso de la tarde) ──
+  "notify.pending.title": "Aún queda una cosa",
+  "notify.pending.futureSelf.body":
+    "Has completado {filled} de {total} partes de tu yo futuro. ¿Añades una más?",
+  "notify.pending.affirmations.body":
+    "Tienes {filled} afirmaciones. Con {total} tendrás más para escribir cada día.",
+  "notify.pending.portrait.body":
+    "Completa un poco más y se abrirá tu retrato de dentro de 10 años.",
+  "notify.pending.goals.body": "Aún no hay ninguna meta. Una línea hoy cambia el mañana.",
+  "notify.pending.plan.body":
+    "Decidir \"cuándo y dónde\" mejora tus probabilidades. ¿Creamos un plan si-entonces?",
 
   // Anima Pro (compra dentro de la app)
   "settings.pro.header": "ANIMA PRO",

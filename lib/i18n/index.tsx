@@ -29,25 +29,14 @@ import {
   normalizeLocale,
   type Locale,
 } from "./types";
-import koDict, { type DictKey } from "./dictionaries/ko";
-import enDict from "./dictionaries/en";
-import esDict from "./dictionaries/es";
-import zhDict from "./dictionaries/zh";
+// 사전·보간은 React 무의존 모듈이 소유한다 — 서버 라우트(알림 문구 조립)도 같은 사전을 봐야 한다.
+import { translate, type DictKey, type Translator } from "./translate";
 
 export { SUPPORTED_LOCALES, LOCALE_META, DEFAULT_LOCALE, isLocale, normalizeLocale };
 export type { Locale };
-export type { DictKey };
-
-const DICTIONARIES: Readonly<Record<Locale, Record<DictKey, string>>> = {
-  ko: koDict,
-  en: enDict,
-  es: esDict,
-  zh: zhDict,
-};
+export type { DictKey, Translator };
 
 const STORAGE_KEY = "anima.locale";
-
-export type Translator = (key: DictKey, vars?: Record<string, string | number>) => string;
 
 interface LanguageContextValue {
   locale: Locale;
@@ -56,15 +45,6 @@ interface LanguageContextValue {
 }
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
-
-/** {name} 형식 보간. 누락된 변수는 토큰을 그대로 둠. */
-function interpolate(template: string, vars?: Record<string, string | number>): string {
-  if (!vars) return template;
-  return template.replace(/\{(\w+)\}/g, (full, name: string) => {
-    const v = vars[name];
-    return v === undefined || v === null ? full : String(v);
-  });
-}
 
 function readStoredLocale(): Locale | null {
   if (typeof window === "undefined") return null;
@@ -145,14 +125,7 @@ export function LanguageProvider({ serverLocale, children }: LanguageProviderPro
     [server],
   );
 
-  const t = useCallback<Translator>(
-    (key, vars) => {
-      const dict = DICTIONARIES[locale] ?? DICTIONARIES[DEFAULT_LOCALE];
-      const template = dict[key] ?? DICTIONARIES[DEFAULT_LOCALE][key] ?? key;
-      return interpolate(template, vars);
-    },
-    [locale],
-  );
+  const t = useCallback<Translator>((key, vars) => translate(locale, key, vars), [locale]);
 
   const value = useMemo<LanguageContextValue>(() => ({ locale, setLocale, t }), [locale, setLocale, t]);
 
@@ -166,7 +139,7 @@ export function useLanguage(): LanguageContextValue {
     return {
       locale: DEFAULT_LOCALE,
       setLocale: () => {},
-      t: (key, vars) => interpolate(DICTIONARIES[DEFAULT_LOCALE][key] ?? key, vars),
+      t: (key, vars) => translate(DEFAULT_LOCALE, key, vars),
     };
   }
   return ctx;

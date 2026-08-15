@@ -370,15 +370,32 @@ const dict = {
   "settings.notifications.evening.desc": "오늘 목표를 아직 체크하지 않았을 때만 도착해요.",
   "settings.notifications.weekly.title": "일요일 회고 알림",
   "settings.notifications.weekly.desc": "한 주를 닫는 회고가 준비되면 저녁에 알려드려요.",
+  "settings.notifications.pending.title": "남은 과업 알려주기",
+  "settings.notifications.pending.desc": "오늘 할 일을 다 한 날 저녁에만, 주 2회까지 조용히 알려드려요.",
   "settings.notifications.time": "시각",
 
-  // ── 알림 문구 (iOS 로컬 알림 본문 — Android 는 네이티브 리소스) ──
+  // ── 알림 문구 (서버가 조립해 iOS/Android 양쪽에 내려보낸다) ──
   "notify.morning.title": "꿈에 한 발 더",
   "notify.morning.body": "오늘도 다짐을 따라 적으며 하루를 시작해요.",
+  // 오늘의 명언을 실을 때의 본문 — 제목이 명언 본문이므로 여기엔 출처와 행동만.
+  "notify.morning.quoteBody": "— {author} · 따라 적고 하루를 시작해요",
   "notify.evening.title": "오늘의 목표, 아직 남아 있어요",
   "notify.evening.body": "잠깐이면 돼요 — 오늘 한 걸음을 체크해 주세요.",
+  "notify.evening.bodyGoal": "잠깐이면 돼요 — \"{goal}\" 를 체크해 주세요.",
   "notify.weekly.title": "이번 주를 돌아볼 시간",
   "notify.weekly.body": "일주일의 기록이 정리됐어요. 잠깐 돌아보세요.",
+
+  // ── 미완 과업 넛지 (오늘 할 일을 다 한 날 저녁의 침묵 슬롯을 대체) ──
+  // 본문에 사용자가 쓴 원문은 절대 넣지 않는다 — 잠금화면 노출 지점이라 진행도 숫자만.
+  "notify.pending.title": "아직 남은 한 가지",
+  "notify.pending.futureSelf.body":
+    "꿈을 이룬 나의 모습, {total}칸 중 {filled}칸을 채웠어요. 한 칸만 더 적어볼까요?",
+  "notify.pending.affirmations.body":
+    "꿈을 이룬 나 다짐이 {filled}개예요. {total}개가 되면 매일 새길 문장이 늘어나요.",
+  "notify.pending.portrait.body": "답변을 조금만 더 채우면 10년 후 나의 초상이 열려요.",
+  "notify.pending.goals.body": "오늘의 목표가 비어 있어요. 한 줄만 적어두면 내일이 달라져요.",
+  "notify.pending.plan.body":
+    "\"언제·어디서\"를 정해두면 실행 확률이 올라가요. 실행설계를 하나 만들어볼까요?",
 
   // ── Anima Pro (인앱결제) ──────────────────────────
   "settings.pro.header": "ANIMA PRO",

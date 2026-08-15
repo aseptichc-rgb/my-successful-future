@@ -70,11 +70,12 @@ class MainActivity : ComponentActivity() {
         // 명시적 deep-link 이므로 첫 실행 온보딩보다 우선시한다.
         // finishAfterLaunch=true: TWA 가 실제로 뜬 뒤 MainActivity 를 종료 — 그렇게 안 하면
         // 빈 윈도(흰 화면) 가 백스택에 남아 TWA 에서 뒤로가기를 누르면 흰 화면에 멈춘다.
-        if (shouldOpenHomeFromIntent(intent)) {
+        val openPath = resolveOpenPath(intent)
+        if (openPath != null) {
             // 위젯/알림에서 진입한 케이스 — 캐시가 최대 3시간 stale 일 수 있다.
             // 비동기 Worker 만으로는 TWA 가 먼저 열려 위젯(stale) 과 /home(최신) 이
             // 그 순간 어긋나 보이므로, TWA 를 띄우기 전에 동기로 한번 더 fetch.
-            refreshWidgetCacheThenOpenHome()
+            refreshWidgetCacheThenOpen(openPath)
             return
         }
         // 이미 로그인된 사용자는 네이티브 컨트롤 패널을 거치지 않고 곧장 TWA /home 으로 보낸다.
@@ -82,7 +83,7 @@ class MainActivity : ComponentActivity() {
         // 위젯 탭과 동일하게 TWA 진입 전 위젯 캐시를 동기 갱신 — 앱 아이콘으로 들어와도
         // 홈 화면 위젯(stale 로컬 캐시) 과 /home(서버 최신) 의 명언이 어긋나지 않도록.
         if (AuthRepository.isSignedIn) {
-            refreshWidgetCacheThenOpenHome()
+            refreshWidgetCacheThenOpen(PATH_HOME)
             return
         }
         setContent {
@@ -103,19 +104,22 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (shouldOpenHomeFromIntent(intent)) {
-            refreshWidgetCacheThenOpenHome()
+        val openPath = resolveOpenPath(intent)
+        if (openPath != null) {
+            refreshWidgetCacheThenOpen(openPath)
             return
         }
         // singleTop 이 아니므로 LAUNCHER 재진입에서 이 경로는 잘 안 타지만, 안전을 위해 동일 가드 유지.
         if (AuthRepository.isSignedIn) {
-            refreshWidgetCacheThenOpenHome()
+            refreshWidgetCacheThenOpen(PATH_HOME)
         }
     }
 
     /**
-     * /home TWA 진입 직전, 위젯 로컬 캐시를 한번 동기로 갱신해 /home 과의 명언 불일치를 봉합.
+     * TWA 진입 직전, 위젯 로컬 캐시를 한번 동기로 갱신해 /home 과의 명언 불일치를 봉합.
      * 모든 진입 경로(위젯 탭 · 알림 탭 · 앱 아이콘) 가 이 함수를 거쳐 들어온다.
+     *
+     * @param path 열 웹 경로 — 알림 종류에 따라 /home 또는 설정 시트 딥링크가 된다.
      *
      * - 미로그인이면 TWA 진입 대신 네이티브 HomeScreen 으로 떨어뜨린다 — iframe 기반
      *   native-bridge 신뢰성 문제를 피하기 위함 (자세한 사유는 함수 안 주석 참고).
@@ -123,7 +127,7 @@ class MainActivity : ComponentActivity() {
      *   잠시 stale 한 위젯을 한번 더 봐도, TWA 탭이 무한 대기하는 것보다 사용자 경험이 나음.
      * - 타임아웃/예외 시에는 비동기 Worker 를 폴백으로 큐잉해 다음 fetch 에서 봉합.
      */
-    private fun refreshWidgetCacheThenOpenHome() {
+    private fun refreshWidgetCacheThenOpen(path: String) {
         // 사용자가 위젯에서 실제로 본 카드의 날짜. 동기 갱신이 실패해도 이 키로
         // /home 을 고정하면 "방금 탭한 그 카드"와 화면이 일치한다.
         val clickedYmd = intent?.getStringExtra(EXTRA_QUOTE_YMD)
@@ -192,19 +196,32 @@ class MainActivity : ComponentActivity() {
             }
             val authoritativeYmd = if (completed == true) (syncedYmd ?: clickedYmd) else clickedYmd
             openAnimaInTwa(
-                path = "/home",
+                path = path,
                 finishAfterLaunch = true,
-                qDate = authoritativeYmd,
+                // qDate 는 /home 이 오늘 카드를 고정하는 키 — 설정 시트로 갈 땐 의미가 없어 싣지 않는다.
+                qDate = if (path.startsWith(PATH_HOME)) authoritativeYmd else null,
                 prefetchedToken = tokenDeferred,
             )
         }
     }
 
-    private fun shouldOpenHomeFromIntent(intent: Intent?): Boolean {
-        val target = intent?.getStringExtra(EXTRA_OPEN_TARGET) ?: return false
-        return target == OPEN_TARGET_WINS ||
-            target == OPEN_TARGET_HOME ||
-            target == OPEN_TARGET_AFFIRMATIONS
+    /**
+     * 외부 진입점(위젯/알림)이 지시한 화면 → 웹 경로.
+     *
+     * 알림 본문이 "무엇을 하라"를 말하게 되면서 도착지도 갈라졌다 — 명언/기록 알림은 /home 이지만,
+     * 미완 과업 넛지는 그 과업을 편집하는 설정 시트로 곧장 보내야 "탭 → 바로 작성"이 된다.
+     * `?sheet=` 값은 웹 app/settings/page.tsx 의 readSheetDeepLink 와 1:1 로 맞춰져 있다.
+     *
+     * @return 알 수 없는/없는 타깃이면 null — 호출부는 기본 진입 흐름을 탄다.
+     */
+    private fun resolveOpenPath(intent: Intent?): String? {
+        return when (intent?.getStringExtra(EXTRA_OPEN_TARGET)) {
+            OPEN_TARGET_WINS, OPEN_TARGET_HOME, OPEN_TARGET_AFFIRMATIONS -> PATH_HOME
+            OPEN_TARGET_SETTINGS_FUTURE_SELF -> "/settings?sheet=futureSelf"
+            OPEN_TARGET_SETTINGS_AFFIRMATIONS -> "/settings?sheet=affirmations"
+            OPEN_TARGET_SETTINGS_GOALS -> "/settings?sheet=goals"
+            else -> null
+        }
     }
 
     /**
@@ -369,6 +386,14 @@ class MainActivity : ComponentActivity() {
         const val OPEN_TARGET_AFFIRMATIONS = "affirmations"
         // 잠금화면 위젯 탭 — /home 으로 보낸다.
         const val OPEN_TARGET_HOME = "home"
+        // 미완 과업 넛지 탭 — 그 과업을 편집하는 설정 시트로 곧장 보낸다.
+        // 값은 웹 types/index.ts 의 NotificationTapTarget 과 문자열까지 일치해야 한다
+        // (서버가 알림 문구와 함께 이 키를 내려준다).
+        const val OPEN_TARGET_SETTINGS_FUTURE_SELF = "settings-future-self"
+        const val OPEN_TARGET_SETTINGS_AFFIRMATIONS = "settings-affirmations"
+        const val OPEN_TARGET_SETTINGS_GOALS = "settings-goals"
+        /** TWA 기본 진입 경로. */
+        const val PATH_HOME = "/home"
         // 위젯이 탭 순간 "그리고 있던" 카드의 날짜(YYYY-MM-DD). /home 이 기기 시계로
         // ymd 를 다시 계산하지 않고 위젯과 같은 dailyMotivations 문서를 읽게 하는 권위 키.
         const val EXTRA_QUOTE_YMD = "quote_ymd"

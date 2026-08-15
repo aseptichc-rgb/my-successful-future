@@ -4,6 +4,7 @@
  */
 package com.michaelkim.anima.data
 
+import com.michaelkim.anima.MainActivity
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -64,6 +65,42 @@ data class WidgetNotificationPrefs(
     val eveningEnabled: Boolean = true,
     val eveningHour: Int = 21,
     val weeklyReviewEnabled: Boolean = true,
+    /**
+     * 미완 과업 넛지 — 오늘 할 일을 다 해서 저녁 리마인더가 침묵하는 날의 빈 슬롯만 쓴다.
+     * 발송 총량은 늘지 않는다(하루 최대 2건 유지).
+     */
+    val pendingTaskEnabled: Boolean = true,
+)
+
+/**
+ * 서버가 **사용자 언어로 완성해 내려준** 알림 한 건의 문구.
+ *
+ * 왜 서버가 조립하나: 이 앱의 res 는 `values/` 하나뿐이라(values-en 등 없음) 네이티브가
+ * 스스로 로컬라이즈하지 못한다. 게다가 본문에 그날의 명언·미완 과업 진행도처럼 서버만
+ * 아는 값이 들어간다. 조립 정의는 웹 lib/notificationContent.ts.
+ *
+ * 응답에 없으면(옛 서버/조립 실패) null → Worker 가 strings.xml 정적 문구로 폴백한다.
+ */
+@Serializable
+data class WidgetNotificationCopy(
+    val title: String,
+    val body: String,
+    /** 펼쳤을 때 보여줄 전문(BigTextStyle). 제목이 트렁케이트된 경우에만 실려 온다. */
+    val fullText: String? = null,
+    /** 탭 시 열 화면 — MainActivity.EXTRA_OPEN_TARGET 값과 같은 키. */
+    val target: String = MainActivity.OPEN_TARGET_HOME,
+)
+
+/**
+ * 오늘 발송 후보 알림 3종의 완성 문구 + 침묵 슬롯 대체분.
+ * pendingTask 가 null 이면 밀린 과업이 없거나 오늘이 넛지 허용일이 아니다 — 현행대로 침묵.
+ */
+@Serializable
+data class WidgetNotificationContent(
+    val morning: WidgetNotificationCopy? = null,
+    val evening: WidgetNotificationCopy? = null,
+    val weekly: WidgetNotificationCopy? = null,
+    val pendingTask: WidgetNotificationCopy? = null,
 )
 
 @Serializable
@@ -99,6 +136,11 @@ data class WidgetTodayResponse(
      * QuoteRepository 가 응답 저장 시 NotificationPrefsStore 에 동기화하고 재예약한다.
      */
     val notificationPrefs: WidgetNotificationPrefs? = null,
+    /**
+     * 사용자 언어로 조립된 알림 문구. 옛 캐시/옛 서버 응답이면 null →
+     * Worker 가 strings.xml 한국어 문구로 폴백한다(알림이 끊기지는 않는다).
+     */
+    val notificationContent: WidgetNotificationContent? = null,
 )
 
 /** DataStore 캐시 직렬화용 — 마지막 응답 + 디스크 기록 시각. */

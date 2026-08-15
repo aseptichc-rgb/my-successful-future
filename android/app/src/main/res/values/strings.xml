@@ -43,4 +43,12 @@
     <string name="weekly_review_channel_description">일요일 저녁, 한 주를 돌아보도록 알려드려요.</string>
     <string name="weekly_review_title">이번 주를 돌아볼 시간</string>
     <string name="weekly_review_body">일주일의 기록이 정리됐어요. 잠깐 돌아보세요.</string>
+
+    <!--
+      미완 과업 넛지 (오늘 할 일을 다 해 저녁 알림이 침묵하는 날의 빈 슬롯, 주 2회까지).
+      제목/본문은 서버가 사용자 언어로 조립해 내려주므로 여기엔 채널 라벨만 둔다 —
+      무엇이 밀렸는지 모르는 채로 보내는 폴백 문구는 두지 않는다(무엇을 하라는 건지 알 수 없다).
+    -->
+    <string name="pending_task_channel_name">남은 과업 알림</string>
+    <string name="pending_task_channel_description">오늘 할 일을 다 한 날 저녁에만, 아직 채우지 않은 것 하나를 조용히 알려드려요.</string>
 </resources>

@@ -63,3 +63,22 @@ export function kstWeekday(ymd: string): number {
   const ms = ymdToUtcMs(ymd);
   return Number.isNaN(ms) ? -1 : new Date(ms).getUTCDay();
 }
+
+/**
+ * 형식·달력 양쪽으로 유효한 YYYY-MM-DD 인가.
+ *
+ * Date 파싱은 관대해서 "2026-13-99" 를 다음 해로 굴려 버린다 — 그대로 두면 깨진 날짜가
+ * 조용히 **다른 날의 결과**를 내놓는다(요일 회전·해시 시드가 어긋나는 조용한 회귀).
+ * 그래서 정규식 + 왕복 검증을 함께 한다.
+ *
+ * ⚠️ admin 무의존 모듈에 둔다 — lib/dailyMotivation.ts 는 firebase-admin 을 끌고 오므로
+ *    클라이언트/순수 정책 모듈에서 import 할 수 없다(같은 파일이 이걸 re-export 한다).
+ */
+export function isValidYmd(ymd: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return false;
+  // 형식뿐 아니라 실존하는 달력 날짜인지 확인 (9999-13-99, 2026-02-30 등 차단).
+  const [y, m, d] = ymd.split("-").map(Number);
+  if (m < 1 || m > 12 || d < 1 || d > 31) return false;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
+}

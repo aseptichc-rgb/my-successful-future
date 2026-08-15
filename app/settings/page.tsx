@@ -23,6 +23,7 @@ import {
   summarizeNotificationHours,
 } from "@/lib/notificationPolicy";
 import { syncIosNotifications } from "@/lib/notificationBridge";
+import { fetchNotificationContent } from "@/lib/notificationSync";
 import {
   FUTURE_SELF_DIMENSIONS,
   FUTURE_SELF_FIELD_MAX,
@@ -410,14 +411,21 @@ function NotifHourRow({
   );
 }
 
-/** 홈에서 넘어온 딥링크(?sheet=goals[&refine=1] | ?sheet=affirmations) — 초기 state 용. */
-function readSheetDeepLink(): { sheet: "goals" | "affirmations" | null; refine: boolean } {
+/**
+ * 시트 딥링크로 열 수 있는 값. 미완 과업 넛지 알림이 "탭 → 바로 그 화면"이 되려면
+ * 여기에 있어야 한다 — 값은 types/index.ts 의 NotificationTapTarget(`settings-*`) 과 1:1 대응.
+ */
+const DEEP_LINK_SHEETS = ["goals", "affirmations", "futureSelf"] as const;
+type DeepLinkSheet = (typeof DEEP_LINK_SHEETS)[number];
+
+/** 홈/알림에서 넘어온 딥링크(?sheet=goals[&refine=1] | affirmations | futureSelf) — 초기 state 용. */
+function readSheetDeepLink(): { sheet: DeepLinkSheet | null; refine: boolean } {
   if (typeof window === "undefined") return { sheet: null, refine: false };
   try {
     const url = new URL(window.location.href);
     const sheet = url.searchParams.get("sheet");
     return {
-      sheet: sheet === "goals" || sheet === "affirmations" ? sheet : null,
+      sheet: DEEP_LINK_SHEETS.find((s) => s === sheet) ?? null,
       refine: url.searchParams.get("refine") === "1",
     };
   } catch {
@@ -433,19 +441,23 @@ export default function SettingsPage() {
 
   const [futureSelfDraft, setFutureSelfDraft] = useState<FutureSelfAnswers>({});
   const [futureSaving, setFutureSaving] = useState(false);
-  const [futureOpen, setFutureOpen] = useState(false);
+  // 시트 초기 열림은 딥링크에서 한 번만 읽는다(효과 없이) — 쿼리 제거는 아래 mount 효과가 담당.
+  const [deepLink] = useState(readSheetDeepLink);
+  const [futureOpen, setFutureOpen] = useState(deepLink.sheet === "futureSelf");
   const [portraitRegenLoading, setPortraitRegenLoading] = useState(false);
 
   const [goals, setGoals] = useState<string[]>([]);
-  // 시트 초기 열림은 딥링크에서 한 번만 읽는다(효과 없이) — 쿼리 제거는 아래 mount 효과가 담당.
-  const [deepLink] = useState(readSheetDeepLink);
   const [goalsOpen, setGoalsOpen] = useState(deepLink.sheet === "goals");
   /** 홈의 해금 배너에서 "더 구체적으로"로 들어온 경우 — 해당 줄의 구체성 힌트를 항상 펼친다. */
   const [refineIdx, setRefineIdx] = useState<number | null>(
     deepLink.sheet === "goals" && deepLink.refine ? 0 : null,
   );
-  /** 미래 서술 나머지 6문항 펼침 — 기본은 접힘(온보딩에서 묻지 않는 항목들). */
-  const [futureDetailOpen, setFutureDetailOpen] = useState(false);
+  /**
+   * 미래 서술 나머지 문항 펼침 — 기본은 접힘(온보딩에서 묻지 않는 항목들).
+   * 단, 미완 과업 넛지 알림을 타고 들어왔다면 처음부터 펼친다 — 그 알림이 요청한 게
+   * 정확히 이 칸들을 채우는 일인데 한 번 더 접혀 있으면 넛지가 목적지에 닿지 못한다.
+   */
+  const [futureDetailOpen, setFutureDetailOpen] = useState(deepLink.sheet === "futureSelf");
   // WOOP 실행설계 목록 — 홈과 동일한 섹션/시트를 설정에서도 노출(같은 훅·같은 게이트 정책).
   const { plans, plansLoaded } = useExecutionPlans(firebaseUser);
 
@@ -780,13 +792,24 @@ export default function SettingsPage() {
       // iOS: 네이티브 예약 동기화. 첫 활성화면 이 시점(저장이라는 가치 맥락)에 권한 요청이 뜬다.
       // Android 는 다음 위젯 refresh(포그라운드 복귀·정주기·알림 발화 시점)에 서버 응답으로 동기화.
       // todayGoalDone=false: 설정 화면은 오늘 진척도를 모른다 — 홈 방문 시 재동기화로 보정된다.
-      void syncIosNotifications({
-        prefs: notifPrefs,
-        todayGoalDone: false,
-        // 사용자가 방금 알림을 켜고 저장했다 — 권한 프롬프트에 가장 맥락 있는 순간.
-        allowPrompt: true,
-        texts: buildNotificationTexts(t),
-      });
+      //
+      // 여기서도 알림 콘텐츠를 받아 오는 이유: sync 는 예약 전체를 재구성하므로, 정적 문구만
+      // 넘기면 홈에서 실어 둔 "오늘의 명언" 문구가 저장 한 번에 지워지고 다음 홈 방문까지
+      // 밋밋한 알림이 나간다. 실패하면 어차피 정적 폴백이라 결과를 기다리지 않는다.
+      void fetchNotificationContent()
+        .catch(() => null)
+        .then((content) =>
+          syncIosNotifications({
+            prefs: notifPrefs,
+            todayGoalDone: false,
+            // 사용자가 방금 알림을 켜고 저장했다 — 권한 프롬프트에 가장 맥락 있는 순간.
+            allowPrompt: true,
+            texts: buildNotificationTexts(t, {
+              morningByYmd: content?.morningOverrides,
+              eveningPendingTask: content?.eveningPendingTask,
+            }),
+          }),
+        );
       setNotifOpen(false);
     } catch (err) {
       console.error("[settings] 알림 설정 저장 실패:", err);
@@ -1518,6 +1541,16 @@ export default function SettingsPage() {
               desc={t("settings.notifications.weekly.desc")}
               checked={notifPrefs.weeklyReviewEnabled}
               onChange={(next) => setNotifPrefs((p) => ({ ...p, weeklyReviewEnabled: next }))}
+            />
+            {/*
+              저녁 시각을 공유하지만 별도 토글로 둔다 — 이것만 끄고 싶은 사용자가
+              리마인더 전체를 꺼 버리는 게 opt-out 의 가장 흔한 경로다.
+            */}
+            <NotifToggleRow
+              title={t("settings.notifications.pending.title")}
+              desc={t("settings.notifications.pending.desc")}
+              checked={notifPrefs.pendingTaskEnabled}
+              onChange={(next) => setNotifPrefs((p) => ({ ...p, pendingTaskEnabled: next }))}
               isLast
             />
           </div>

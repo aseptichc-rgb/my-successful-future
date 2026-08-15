@@ -14,12 +14,16 @@
  *     (프롬프트/큐 BCT 7.1 은 "아직 안 한 행동" 에만 의미가 있다.)
  *   - 일요일엔 저녁 리마인더가 주간 회고 알림으로 대체된다(추가 발송 아님) —
  *     lib/homeMode.ts 의 WEEKLY_REVIEW_WEEKDAY 와 같은 날, 홈 회고 카드와 정합.
+ *   - 그 "침묵하는 저녁"의 빈 슬롯만 미완 과업 넛지(lib/pendingTasks.ts)로 재활용한다.
+ *     주 2회 상한 — 총 발송량은 늘지 않는다.
  *
  * 기본값은 기존 Android 동작(08:00/21:00, 전부 켜짐)을 그대로 보존한다 — 레거시
  * 사용자의 알림이 이 변경으로 꺼지거나 시각이 바뀌면 안 된다.
  */
 import { WEEKLY_REVIEW_WEEKDAY } from "@/lib/homeMode";
-import type { DictKey } from "@/lib/i18n";
+import { diffKstDays, isValidYmd, kstWeekday } from "@/lib/kstDate";
+import { fnv1a } from "@/lib/planRotation";
+import type { Translator } from "@/lib/i18n/translate";
 import type { NotificationPrefs } from "@/types";
 
 export const DEFAULT_MORNING_HOUR = 8;
@@ -31,6 +35,7 @@ export const DEFAULT_NOTIFICATION_PREFS: Readonly<NotificationPrefs> = {
   eveningEnabled: true,
   eveningHour: DEFAULT_EVENING_HOUR,
   weeklyReviewEnabled: true,
+  pendingTaskEnabled: true,
 };
 
 /**
@@ -65,6 +70,7 @@ export function normalizeNotificationPrefs(raw: unknown): NotificationPrefs {
     eveningEnabled: toBool(r.eveningEnabled, d.eveningEnabled),
     eveningHour: clampHour(r.eveningHour, d.eveningHour),
     weeklyReviewEnabled: toBool(r.weeklyReviewEnabled, d.weeklyReviewEnabled),
+    pendingTaskEnabled: toBool(r.pendingTaskEnabled, d.pendingTaskEnabled),
   };
 }
 
@@ -81,33 +87,150 @@ export function isWeeklyReviewDay(weekday: number): boolean {
   return weekday === WEEKLY_REVIEW_WEEKDAY;
 }
 
+// ── 미완 과업 넛지 ────────────────────────────────────
+
+/** 미완 과업 넛지의 주간 상한. 밀린 과업이 5개여도 이 이상은 보내지 않는다. */
+export const PENDING_NUDGE_DAYS_PER_WEEK = 2;
+
+/** 넛지 허용 요일 회전의 기준일 — 바꾸면 전 사용자의 요일 위상이 밀린다. */
+const PENDING_NUDGE_EPOCH_YMD = "2026-01-01";
+
+/**
+ * 오늘이 미완 과업 넛지를 허용하는 요일인가.
+ *
+ * 영속 카운터("이번 주 몇 건 보냈나") 대신 **결정론적 요일**로 상한을 건다. 이유:
+ * Android 는 발송 직전 런타임에, iOS 는 14일치를 미리 예약하는 시점에 판정하므로
+ * 공유 카운터를 두면 두 플랫폼이 서로 다른 답을 내고 동기화 지점도 없다. 순수 함수면
+ * 저장소 없이 양쪽이 같은 답을 내고 테스트도 된다.
+ *
+ * 일요일은 주간 회고가 저녁 슬롯을 이미 점유하므로 후보에서 제외한다.
+ */
+export function isPendingNudgeDay(uid: string, ymd: string): boolean {
+  // Date 파싱이 관대해 "2026-13-99" 같은 값이 조용히 다른 날로 굴러가는 걸 먼저 막는다.
+  if (!isValidYmd(ymd)) return false;
+  const weekday = kstWeekday(ymd);
+  // 회고 요일이면 저녁 슬롯이 이미 점유돼 있다.
+  if (isWeeklyReviewDay(weekday)) return false;
+
+  const dayIndex = diffKstDays(PENDING_NUDGE_EPOCH_YMD, ymd);
+  if (!Number.isFinite(dayIndex)) return false;
+  // epoch 이전(음수)에서도 0..6 으로 떨어지도록 유클리드 나머지.
+  const weekIndex = Math.floor(dayIndex / 7);
+
+  // 회고 요일을 뺀 나머지 6일이 후보. 그중 상한 개수만큼을 uid·주차 시드로 고른다.
+  const candidates: number[] = [];
+  for (let d = 0; d < 7; d++) {
+    if (!isWeeklyReviewDay(d)) candidates.push(d);
+  }
+  const seed = fnv1a(`${uid}|${weekIndex}|pendingNudge`);
+  // 시드로 시작 위치를 흩고 거기서부터 균등 간격으로 뽑는다 — 두 넛지가 붙어 있지 않게.
+  const stride = Math.floor(candidates.length / PENDING_NUDGE_DAYS_PER_WEEK);
+  const start = seed % candidates.length;
+  for (let i = 0; i < PENDING_NUDGE_DAYS_PER_WEEK; i++) {
+    if (candidates[(start + i * stride) % candidates.length] === weekday) return true;
+  }
+  return false;
+}
+
+/** 저녁 슬롯이 무엇을 보낼지 — 목표 넛지 / 과업 넛지 / 침묵. */
+export type EveningSlotDecision = "goalNudge" | "pendingTask" | "silent";
+
+/**
+ * 저녁 슬롯 판정. 기존 "한 일에는 침묵" 을 뒤집지 않고, **침묵하던 자리에만** 과업 넛지를 넣는다
+ * — 오늘 할 일이 남아 있는 사람에게 다른 걸 권하면 본래 리마인더가 묻힌다.
+ *
+ * (일요일 주간 회고는 이 판정보다 앞선다 — 호출부가 먼저 분기한다.)
+ */
+export function decideEveningSlot(input: {
+  todayActionsDone: boolean | undefined;
+  eveningEnabled: boolean;
+  pendingTaskEnabled: boolean;
+  hasPendingTask: boolean;
+  isNudgeDay: boolean;
+}): EveningSlotDecision {
+  if (input.eveningEnabled && shouldSendEveningReminder(input.todayActionsDone)) {
+    return "goalNudge";
+  }
+  if (input.pendingTaskEnabled && input.hasPendingTask && input.isNudgeDay) {
+    return "pendingTask";
+  }
+  return "silent";
+}
+
+// ── 문구 조립 ────────────────────────────────────────
+
+/** 알림 한 건의 표시 문구. iOS 예약은 이 둘만 필요하다(탭 타깃은 웹 화면이 이미 열려 있어 불필요). */
+export interface NotificationCopy {
+  title: string;
+  body: string;
+}
+
 /** 알림 종류별 로컬라이즈 문구 — iOS 브릿지가 네이티브 예약 시 그대로 싣는다. */
 export interface NotificationTexts {
-  morning: { title: string; body: string };
-  evening: { title: string; body: string };
-  weekly: { title: string; body: string };
+  /** 정적 폴백 — 실제 콘텐츠(명언·과업)를 못 실을 때 쓴다. */
+  morning: NotificationCopy;
+  evening: NotificationCopy;
+  weekly: NotificationCopy;
+  /**
+   * 날짜(yyyy-MM-dd)별 아침 문구 덮어쓰기 — 실제 오늘의 명언을 싣는 자리.
+   * iOS 는 14일치를 미리 예약하므로 D+0·D+1 만 채워지고 나머지는 위 폴백을 쓴다.
+   * (Android 는 발송 직전에 서버를 직접 부르므로 이 필드를 쓰지 않는다.)
+   */
+  morningOverrides?: Record<string, NotificationCopy>;
+  /**
+   * 오늘 저녁이 침묵할 때 대신 예약할 미완 과업 넛지. null/미지정이면 현행대로 침묵.
+   * 미래 날짜는 "그날 할 일을 다 했는지" 를 알 수 없어 오늘(D+0)에만 적용된다.
+   */
+  eveningPendingTask?: NotificationCopy | null;
 }
 
 /**
  * 현재 언어의 알림 문구 조립. 호출부(설정/홈)가 useLanguage() 의 t 를 넘긴다 —
  * 이 모듈이 훅에 의존하지 않아야 서버·워커 어디서든 임포트가 안전하다.
+ *
+ * @param content 서버가 조립해 준 실제 콘텐츠(/api/widget/today 의 notificationContent).
+ *   없으면 정적 문구만으로 조립한다 — 오프라인/조회 실패에도 알림은 계속 나가야 한다.
+ *   title/body 만 읽는다 — target 은 iOS 예약에 쓰이지 않으므로 요구하지 않는다.
  */
-export function buildNotificationTexts(t: (key: DictKey) => string): NotificationTexts {
-  return {
+export function buildNotificationTexts(
+  t: Translator,
+  content?: {
+    morningByYmd?: Record<string, NotificationCopy>;
+    eveningPendingTask?: NotificationCopy | null;
+  },
+): NotificationTexts {
+  const texts: NotificationTexts = {
     morning: { title: t("notify.morning.title"), body: t("notify.morning.body") },
     evening: { title: t("notify.evening.title"), body: t("notify.evening.body") },
     weekly: { title: t("notify.weekly.title"), body: t("notify.weekly.body") },
   };
+  if (content?.morningByYmd) {
+    const overrides: Record<string, NotificationCopy> = {};
+    for (const [ymd, copy] of Object.entries(content.morningByYmd)) {
+      overrides[ymd] = { title: copy.title, body: copy.body };
+    }
+    if (Object.keys(overrides).length > 0) texts.morningOverrides = overrides;
+  }
+  if (content?.eveningPendingTask) {
+    texts.eveningPendingTask = {
+      title: content.eveningPendingTask.title,
+      body: content.eveningPendingTask.body,
+    };
+  }
+  return texts;
 }
 
 /**
  * 설정 행의 요약 문구 재료 — 켜진 알림 시각만 "08:00 · 21:00" 형태로 나열.
  * 전부 꺼져 있으면 null (호출부가 "꺼짐" 라벨로 대체).
+ *
+ * 저녁 시각은 저녁 리마인더·주간 회고·과업 넛지가 함께 쓴다 — 셋 중 하나라도 켜져 있으면
+ * 그 시각에 알림이 올 수 있으므로 표기한다("꺼짐"인데 알림이 오는 모순 방지).
  */
 export function summarizeNotificationHours(prefs: NotificationPrefs): string | null {
   const parts: string[] = [];
   if (prefs.morningEnabled) parts.push(`${String(prefs.morningHour).padStart(2, "0")}:00`);
-  if (prefs.eveningEnabled || prefs.weeklyReviewEnabled) {
+  if (prefs.eveningEnabled || prefs.weeklyReviewEnabled || prefs.pendingTaskEnabled) {
     parts.push(`${String(prefs.eveningHour).padStart(2, "0")}:00`);
   }
   return parts.length > 0 ? parts.join(" · ") : null;

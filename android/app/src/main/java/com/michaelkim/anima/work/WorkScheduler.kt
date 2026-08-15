@@ -73,15 +73,16 @@ object WorkScheduler {
     /**
      * 다음 저녁 알림 시각(기기 타임존, NotificationPrefsStore 의 eveningHour)까지의 지연으로
      * OneTime Worker 를 enqueue.
-     * - 저녁 리마인더와 일요일 회고가 모두 꺼져 있으면 예약을 취소한다 (Worker 가 이 이름을
-     *   자기 재예약하므로 취소가 곧 루프 종료).
+     * - 저녁 리마인더·일요일 회고·미완 과업 넛지가 **모두** 꺼져 있으면 예약을 취소한다
+     *   (Worker 가 이 이름을 자기 재예약하므로 취소가 곧 루프 종료).
+     *   ⚠️ 과업 넛지도 이 Worker 가 발송하므로 조건에서 빠지면 그 토글이 조용히 죽는다.
      * - 같은 날 시각이 아직 안 지났으면 오늘, 지났으면 내일.
      * - REPLACE 정책: 앱이 다시 열리거나 Worker 가 자기 재예약을 호출해도 항상 단 하나만 큐잉.
      * - 네트워크 제약 없음 — 로컬 알림이라 오프라인에서도 떠야 함.
      */
     fun scheduleDailyWinsReminder(context: Context) {
         val prefs = NotificationPrefsStore.read(context)
-        if (!prefs.eveningEnabled && !prefs.weeklyReviewEnabled) {
+        if (!prefs.eveningEnabled && !prefs.weeklyReviewEnabled && !prefs.pendingTaskEnabled) {
             WorkManager.getInstance(context).cancelUniqueWork(WINS_REMINDER_NAME)
             return
         }

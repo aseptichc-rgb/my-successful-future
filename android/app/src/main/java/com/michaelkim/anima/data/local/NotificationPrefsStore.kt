@@ -23,6 +23,7 @@ object NotificationPrefsStore {
     private const val KEY_EVENING_ENABLED = "evening_enabled"
     private const val KEY_EVENING_HOUR = "evening_hour"
     private const val KEY_WEEKLY_ENABLED = "weekly_enabled"
+    private const val KEY_PENDING_TASK_ENABLED = "pending_task_enabled"
 
     /** 기본값(전부 켜짐, 08/21시) — 서버 응답을 아직 못 본 첫 실행에서도 기존 동작 유지. */
     fun read(context: Context): WidgetNotificationPrefs {
@@ -35,6 +36,7 @@ object NotificationPrefsStore {
                 eveningEnabled = p.getBoolean(KEY_EVENING_ENABLED, d.eveningEnabled),
                 eveningHour = p.getInt(KEY_EVENING_HOUR, d.eveningHour).coerceIn(0, 23),
                 weeklyReviewEnabled = p.getBoolean(KEY_WEEKLY_ENABLED, d.weeklyReviewEnabled),
+                pendingTaskEnabled = p.getBoolean(KEY_PENDING_TASK_ENABLED, d.pendingTaskEnabled),
             )
         } catch (_: Exception) {
             WidgetNotificationPrefs()
@@ -56,6 +58,7 @@ object NotificationPrefsStore {
                 .putBoolean(KEY_EVENING_ENABLED, prefs.eveningEnabled)
                 .putInt(KEY_EVENING_HOUR, prefs.eveningHour.coerceIn(0, 23))
                 .putBoolean(KEY_WEEKLY_ENABLED, prefs.weeklyReviewEnabled)
+                .putBoolean(KEY_PENDING_TASK_ENABLED, prefs.pendingTaskEnabled)
                 .apply()
             true
         } catch (_: Exception) {

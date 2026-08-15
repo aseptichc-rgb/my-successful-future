@@ -225,6 +225,12 @@ export interface NotificationPrefs {
   eveningHour: number;
   /** 일요일 주간 회고 알림 (저녁 시각에 기록 리마인더 대신 도착). */
   weeklyReviewEnabled: boolean;
+  /**
+   * 미완 과업 넛지 — 오늘 할 일을 이미 다 해서 저녁 리마인더가 침묵하는 날,
+   * 그 빈 슬롯에 "아직 채우지 않은 것" 하나를 대신 알린다(주 2회 상한).
+   * 발송 총량은 늘지 않는다(하루 최대 2건 유지). 미설정(레거시)이면 켜짐.
+   */
+  pendingTaskEnabled: boolean;
 }
 
 // ── 홈 대시보드: 일일 체크리스트/회고 ───────────────
@@ -509,6 +515,55 @@ export interface WidgetExecutionPlan {
   thenText: string;
 }
 
+/**
+ * 알림을 탭했을 때 열 화면. 위젯/알림 등 외부 진입점이 공유하는 키로,
+ * Android 는 MainActivity.EXTRA_OPEN_TARGET 으로, 웹/iOS 는 경로로 해석한다.
+ * `settings-*` 는 설정의 `?sheet=` 딥링크(app/settings/page.tsx readSheetDeepLink)와 1:1 대응.
+ */
+export type NotificationTapTarget =
+  | "home"
+  | "wins"
+  | "affirmations"
+  | "settings-future-self"
+  | "settings-affirmations"
+  | "settings-goals";
+
+/**
+ * 알림 한 건의 완성된 문구. **서버가 사용자 언어로 조립해서 내려준다** —
+ * Android 는 strings.xml 이 한국어 하드코딩이라 스스로 로컬라이즈하지 못하고,
+ * iOS 는 사전 예약 시점에 문구가 이미 확정돼 있어야 하기 때문이다.
+ */
+export interface WidgetNotificationCopy {
+  /** 알림 제목. 잠금화면에서 한 줄로 잘리므로 짧게 조립된다. */
+  title: string;
+  /** 알림 본문(축약형). */
+  body: string;
+  /**
+   * 펼쳤을 때 보여줄 전문(Android BigTextStyle). title 이 트렁케이트된 경우에만 채워진다.
+   * iOS 는 확장 본문 개념이 없어 사용하지 않는다.
+   */
+  fullText?: string;
+  target: NotificationTapTarget;
+}
+
+/**
+ * 오늘 발송할 알림 3종의 완성 문구 + 침묵 슬롯 대체분.
+ * 응답 호환성: 필드 자체가 생략될 수 있다(조립 실패) — 플랫폼은 기존 정적 문구로 폴백한다.
+ */
+export interface WidgetNotificationContent {
+  /** 아침 — 오늘의 명언 실문구를 싣는다. */
+  morning: WidgetNotificationCopy;
+  /** 저녁 — 오늘의 목표 문구를 실은 기록 리마인더. */
+  evening: WidgetNotificationCopy;
+  /** 일요일 주간 회고. */
+  weekly: WidgetNotificationCopy;
+  /**
+   * 오늘 할 일을 다 해 저녁 슬롯이 침묵할 때 대신 보낼 미완 과업 넛지.
+   * null 이면 보낼 것이 없거나 오늘이 넛지 허용일이 아니다 — 현행대로 침묵한다.
+   */
+  pendingTask: WidgetNotificationCopy | null;
+}
+
 export interface WidgetTodayResponse {
   generatedAt: string;
   ymd: string;
@@ -556,4 +611,10 @@ export interface WidgetTodayResponse {
    * 응답 호환성: 누락 시 클라이언트는 기본값(전부 켜짐, 08/21시)으로 동작.
    */
   notificationPrefs?: NotificationPrefs;
+  /**
+   * 사용자 언어로 조립된 알림 문구 묶음. Android Worker 가 발송 직전에 그대로 표시하고,
+   * iOS 는 웹이 이 값을 읽어 네이티브 예약에 싣는다.
+   * 응답 호환성: 조립 실패 시 생략 — 플랫폼은 각자의 정적 문구로 폴백한다.
+   */
+  notificationContent?: WidgetNotificationContent;
 }

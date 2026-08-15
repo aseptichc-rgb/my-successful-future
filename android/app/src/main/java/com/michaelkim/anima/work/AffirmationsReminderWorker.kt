@@ -1,24 +1,19 @@
 /**
- * 매일 아침 8시(KST) "성공한 나에게 한 발 더" 로컬 알림 Worker.
+ * 매일 아침(기본 08:00, 기기 타임존 — NotificationPrefsStore) 로컬 알림 Worker.
  *
- * - WorkScheduler 가 다음 08:00 KST 까지의 지연을 계산해 OneTime 으로 enqueue.
- * - 실행되면: 알림 채널 보장 → 알림 게시 → 다음날 08:00 으로 자기 자신 재예약.
+ * 본문 정책: **오늘의 명언 실문구**를 그대로 싣는다(서버가 사용자 언어로 조립해
+ * /api/widget/today 의 notificationContent.morning 으로 내려준다). 알림만 봐도 오늘 한 마디를
+ * 읽게 하려는 것 — 매일 같은 고정 문구는 곧 알림 피로 → opt-out 으로 이어진다.
+ * 조회 실패/옛 서버 응답이면 strings.xml 정적 문구로 폴백한다(알림은 끊기지 않는다).
+ *
+ * - WorkScheduler 가 다음 아침 시각까지의 지연을 계산해 OneTime 으로 enqueue.
+ * - 실행되면: 알림 채널 보장 → 문구 확보 → 알림 게시 → 다음 아침으로 자기 자신 재예약.
  * - POST_NOTIFICATIONS 권한이 없으면 silent skip — 재예약은 무조건 수행해 다음 기회에 권한이 허용된 경우 정상 동작.
- * - 알림 탭 → MainActivity 로 진입하며 EXTRA_OPEN_TARGET="affirmations" 로 /home (다짐 따라쓰기 영역) 진입을 트리거.
+ * - 알림 탭 → MainActivity 로 진입하며 /home (다짐 따라쓰기 영역) 진입을 트리거.
  */
 package com.michaelkim.anima.work
 
-import android.Manifest
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.michaelkim.anima.MainActivity
@@ -34,9 +29,16 @@ class AffirmationsReminderWorker(
     override suspend fun doWork(): Result {
         val ctx = applicationContext
         try {
-            ensureChannel(ctx)
             // 발화 직전에도 설정을 확인한다 — 예약 후 사용자가 껐다면(다음 refresh 전) 침묵.
-            if (hasNotificationPermission(ctx) && NotificationPrefsStore.read(ctx).morningEnabled) {
+            if (ReminderSupport.hasNotificationPermission(ctx) &&
+                NotificationPrefsStore.read(ctx).morningEnabled
+            ) {
+                ReminderSupport.ensureChannel(
+                    ctx,
+                    CHANNEL_ID,
+                    R.string.affirmations_reminder_channel_name,
+                    R.string.affirmations_reminder_channel_description,
+                )
                 postAffirmationsReminder(ctx)
             }
             // 권한 유무와 무관하게 다음 아침으로 재예약 — 끊기면 영영 안 옴.
@@ -50,48 +52,22 @@ class AffirmationsReminderWorker(
         }
     }
 
-    private fun hasNotificationPermission(ctx: Context): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
-        val granted = ContextCompat.checkSelfPermission(
-            ctx, Manifest.permission.POST_NOTIFICATIONS,
-        ) == PackageManager.PERMISSION_GRANTED
-        return granted && NotificationManagerCompat.from(ctx).areNotificationsEnabled()
-    }
-
-    private fun ensureChannel(ctx: Context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (nm.getNotificationChannel(CHANNEL_ID) != null) return
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            ctx.getString(R.string.affirmations_reminder_channel_name),
-            NotificationManager.IMPORTANCE_DEFAULT,
-        ).apply {
-            description = ctx.getString(R.string.affirmations_reminder_channel_description)
-        }
-        nm.createNotificationChannel(channel)
-    }
-
-    private fun postAffirmationsReminder(ctx: Context) {
-        val tapIntent = Intent(ctx, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra(MainActivity.EXTRA_OPEN_TARGET, MainActivity.OPEN_TARGET_AFFIRMATIONS)
-        }
-        val pending = PendingIntent.getActivity(
-            ctx,
-            REQUEST_CODE_TAP,
-            tapIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    /** 서버 조립 문구(오늘의 명언)를 우선 쓰고, 없으면 정적 폴백. */
+    private suspend fun postAffirmationsReminder(ctx: Context) {
+        val copy = ReminderSupport.fetchTodayBestEffort(ctx)?.notificationContent?.morning
+        ReminderSupport.postNotification(
+            ctx = ctx,
+            channelId = CHANNEL_ID,
+            notificationId = NOTIFICATION_ID,
+            requestCode = REQUEST_CODE_TAP,
+            title = copy?.title?.takeIf { it.isNotBlank() }
+                ?: ctx.getString(R.string.affirmations_reminder_title),
+            body = copy?.body?.takeIf { it.isNotBlank() }
+                ?: ctx.getString(R.string.affirmations_reminder_body),
+            openTarget = copy?.target ?: MainActivity.OPEN_TARGET_AFFIRMATIONS,
+            // 명언이 제목 길이를 넘어 잘린 경우에만 전문이 실려 온다 — 펼치면 전문을 보여준다.
+            bigText = copy?.fullText,
         )
-        val notif = NotificationCompat.Builder(ctx, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification_wins)
-            .setContentTitle(ctx.getString(R.string.affirmations_reminder_title))
-            .setContentText(ctx.getString(R.string.affirmations_reminder_body))
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setAutoCancel(true)
-            .setContentIntent(pending)
-            .build()
-        NotificationManagerCompat.from(ctx).notify(NOTIFICATION_ID, notif)
     }
 
     companion object {

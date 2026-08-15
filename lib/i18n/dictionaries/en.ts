@@ -375,15 +375,32 @@ const dict: Record<DictKey, string> = {
   "settings.notifications.evening.desc": "Arrives only if today's goal isn't checked yet.",
   "settings.notifications.weekly.title": "Sunday review",
   "settings.notifications.weekly.desc": "An evening nudge when your weekly review is ready.",
+  "settings.notifications.pending.title": "Unfinished setup nudges",
+  "settings.notifications.pending.desc":
+    "Only on evenings when you've already finished today — twice a week at most.",
   "settings.notifications.time": "Time",
 
   // Notification copy (iOS local notification body — Android uses native resources)
   "notify.morning.title": "One step closer to your dream",
   "notify.morning.body": "Start the day by writing your affirmation.",
+  "notify.morning.quoteBody": "— {author} · Write it out and start your day",
   "notify.evening.title": "Today's goal is still waiting",
   "notify.evening.body": "It only takes a moment — check off today's step.",
+  "notify.evening.bodyGoal": "It only takes a moment — check off \"{goal}\".",
   "notify.weekly.title": "Time to look back on your week",
   "notify.weekly.body": "Your week's record is ready. Take a moment to review it.",
+
+  // ── Unfinished-setup nudges (replaces the silent evening slot) ──
+  "notify.pending.title": "One thing still left",
+  "notify.pending.futureSelf.body":
+    "You've filled {filled} of {total} parts of your future self. Add just one more?",
+  "notify.pending.affirmations.body":
+    "You have {filled} dream affirmations. At {total}, you'll have more to write each day.",
+  "notify.pending.portrait.body":
+    "Fill in a little more and your 10-year-from-now portrait unlocks.",
+  "notify.pending.goals.body": "No goal set yet. One line today changes tomorrow.",
+  "notify.pending.plan.body":
+    "Deciding \"when and where\" raises your odds. Want to build one if-then plan?",
 
   // Anima Pro (in-app purchase)
   "settings.pro.header": "ANIMA PRO",

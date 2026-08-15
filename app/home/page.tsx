@@ -35,8 +35,9 @@ import { authedFetch } from "@/lib/authedFetch";
 import { isPaymentRequired } from "@/lib/paymentRequired";
 import { notifyAndroidWidgetRefresh } from "@/lib/widgetBridge";
 import { refreshIosWidget } from "@/lib/iosWidget";
-import { syncIosNotifications } from "@/lib/notificationBridge";
+import { isIosNotificationAvailable, syncIosNotifications } from "@/lib/notificationBridge";
 import { buildNotificationTexts, normalizeNotificationPrefs } from "@/lib/notificationPolicy";
+import { fetchNotificationContent, type NotificationServerContent } from "@/lib/notificationSync";
 import MotivationCard from "@/components/home/MotivationCard";
 import TodayCard from "@/components/home/TodayCard";
 import FutureVisionCard from "@/components/home/FutureVisionCard";
@@ -250,22 +251,49 @@ export default function HomeDashboardPage() {
   const entryLoaded = curEntry !== null;
   const entry = curEntry?.entry ?? null;
 
+  // 알림에 실을 실제 콘텐츠(오늘의 명언 · 미완 과업 넛지)를 서버에서 한 번만 받아 둔다.
+  // iOS 는 예약 시점에 문구가 확정돼 있어야 해서 필요하고, Android 는 Worker 가 발송 직전에
+  // 직접 부르므로 불필요하다 — 그래서 iOS 에서만 호출한다(웹/Android 는 요청 자체가 없다).
+  // 아래 sync 는 목표를 체크할 때마다 다시 도는데, 여기까지 매번 재요청하면 /api/widget/today 를
+  // 연타하게 되므로 (계정, 날짜) 당 1회로 묶는다.
+  const [notifContent, setNotifContent] = useState<{
+    key: string;
+    content: NotificationServerContent;
+  } | null>(null);
+  useEffect(() => {
+    if (!firebaseUser || !isIosNotificationAvailable()) return;
+    let cancelled = false;
+    const key = docKey(firebaseUser.uid, ymd);
+    void fetchNotificationContent().then((content) => {
+      if (!cancelled) setNotifContent({ key, content });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [firebaseUser, ymd]);
+
   // iOS 로컬 알림 재동기화 — 홈 방문/목표 체크 때마다 14일 예약 창을 앞으로 밀고,
-  // 오늘 목표를 모두 체크했으면 오늘 저녁 리마인더만 침묵시킨다("한 일에는 침묵",
-  // lib/notificationPolicy). 권한 프롬프트는 여기서 띄우지 않는다(allowPrompt=false) —
-  // 목표를 방금 다 채운 순간(가치 체감 직후)에만 허용해 맥락 없는 권한 요청을 막는다.
+  // 오늘 목표를 모두 체크했으면 오늘 저녁 리마인더를 침묵시킨다("한 일에는 침묵",
+  // lib/notificationPolicy). 그 침묵 자리에만 미완 과업 넛지가 대신 들어간다(총 발송량 증가 0).
+  // 권한 프롬프트는 여기서 띄우지 않는다(allowPrompt=false) — 목표를 방금 다 채운 순간
+  // (가치 체감 직후)에만 허용해 맥락 없는 권한 요청을 막는다.
   // 웹/Android 에서는 no-op. entryLoaded 전에는 achievedGoals 가 비어 "미완료"로 오판하므로 대기.
   const allGoalsDoneToday =
     goals.length > 0 && goals.every((g) => achievedGoals.includes(g));
   useEffect(() => {
     if (!user || !entryLoaded) return;
+    // 콘텐츠가 아직/영영 없어도 동기화는 진행한다 — 정적 폴백 문구로라도 알림은 나가야 한다.
+    const content = notifContent?.key === currentKey ? notifContent.content : undefined;
     void syncIosNotifications({
       prefs: normalizeNotificationPrefs(user.notificationPrefs),
       todayGoalDone: allGoalsDoneToday,
       allowPrompt: allGoalsDoneToday,
-      texts: buildNotificationTexts(t),
+      texts: buildNotificationTexts(t, {
+        morningByYmd: content?.morningOverrides,
+        eveningPendingTask: content?.eveningPendingTask,
+      }),
     });
-  }, [user, entryLoaded, allGoalsDoneToday, t]);
+  }, [user, entryLoaded, allGoalsDoneToday, t, notifContent, currentKey]);
 
   // 어제 저녁에 적은 "내일 첫 행동" — 아침 카드 보조 행. 실패해도 카드만 생략.
   // 같은 문서에서 "어제 잘한 일을 적었는가"도 함께 읽는다(잘한 일 해금의 보존 신호).

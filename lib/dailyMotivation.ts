@@ -17,7 +17,7 @@
  */
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
-import { KST_OFFSET_MS, todayKstYmd, yesterdayKstYmd } from "@/lib/kstDate";
+import { KST_OFFSET_MS, isValidYmd, todayKstYmd, yesterdayKstYmd } from "@/lib/kstDate";
 import { generateText } from "@/lib/gemini";
 import { type FamousQuoteSeed } from "@/lib/famousQuotesSeed";
 import { getQuoteSeedPool } from "@/lib/famousQuoteCatalog";
@@ -99,16 +99,9 @@ export function todayKst(): string {
   return todayKstYmd();
 }
 
-export function isValidYmd(ymd: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return false;
-  // 형식뿐 아니라 실존하는 달력 날짜인지 확인 (9999-13-99, 2026-02-30 등 차단).
-  const [y, m, d] = ymd.split("-").map(Number);
-  if (m < 1 || m > 12 || d < 1 || d > 31) return false;
-  const dt = new Date(Date.UTC(y, m - 1, d));
-  return (
-    dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d
-  );
-}
+// 구현은 lib/kstDate.ts(admin 무의존)로 옮겼다 — 순수 정책 모듈도 같은 검증을 써야 하는데
+// 이 파일을 import 하면 firebase-admin 이 클라이언트 번들까지 딸려온다. 기존 호출부 호환용 re-export.
+export { isValidYmd };
 
 /**
  * 클라이언트가 보낸 ymd 를 KST 오늘 기준 [어제, 오늘] 창으로 제한한다.

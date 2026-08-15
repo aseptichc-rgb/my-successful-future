@@ -25,11 +25,15 @@ import {
 import { ensureFutureVision } from "@/lib/futureVision";
 import { pickTodayPlan, pickTodayAffirmationIndex } from "@/lib/planRotation";
 import { normalizeNotificationPrefs } from "@/lib/notificationPolicy";
+import { buildNotificationContent } from "@/lib/notificationContent";
+import { normalizeLocale } from "@/lib/i18n/types";
+import type { PendingTaskInput } from "@/lib/pendingTasks";
 import type {
   FutureVision,
   NotificationPrefs,
   WidgetExecutionPlan,
   WidgetFutureVision,
+  WidgetNotificationContent,
   WidgetSlot,
   WidgetTodayProgress,
   WidgetTodayResponse,
@@ -139,12 +143,15 @@ async function fetchTodayProgress(
 /**
  * "오늘의 if-then" 실행설계 1개 — 홈 DailyPlanCard 와 동일한 순수 회전(pickTodayPlan)을
  * 써 위젯·홈이 항상 같은 플랜을 본다. 정렬(createdAt asc)도 클라 구독과 동일해야
- * 회전 인덱스가 일치한다. 조회/데이터 실패 시 undefined — 위젯은 섹션 자연 생략.
+ * 회전 인덱스가 일치한다. 조회/데이터 실패 시 plan 없음 — 위젯은 섹션 자연 생략.
+ *
+ * count 는 미완 과업 판정(lib/pendingTasks — "실행설계를 하나도 안 만들었나")에 쓴다.
+ * 같은 쿼리 결과를 재사용하므로 추가 라운드트립이 없다.
  */
 async function fetchTodayExecutionPlan(
   uid: string,
   ymd: string,
-): Promise<WidgetExecutionPlan | undefined> {
+): Promise<{ plan?: WidgetExecutionPlan; count: number }> {
   try {
     const snap = await getAdminDb()
       .collection(`users/${uid}/executionPlans`)
@@ -160,11 +167,16 @@ async function fetchTodayExecutionPlan(
       };
     });
     const picked = pickTodayPlan(plans, uid, ymd);
-    if (!picked || !picked.ifText || !picked.thenText) return undefined;
-    return { goal: picked.goal, ifText: picked.ifText, thenText: picked.thenText };
+    if (!picked || !picked.ifText || !picked.thenText) return { count: plans.length };
+    return {
+      plan: { goal: picked.goal, ifText: picked.ifText, thenText: picked.thenText },
+      count: plans.length,
+    };
   } catch (err) {
     console.error("[widget/today] 실행설계 조회 실패(생략):", err);
-    return undefined;
+    // 조회 실패를 "0개" 로 보면 이미 플랜이 있는 사용자에게 만들라고 넛지한다 —
+    // 모를 땐 "있다" 쪽으로 폴백해 잘못된 알림을 막는다.
+    return { count: 1 };
   }
 }
 
@@ -227,6 +239,14 @@ export async function GET(request: NextRequest) {
      *    잘린 목록에 그 줄이 없으면 필드를 생략한다(잘못된 줄을 강조하지 않는다).
      */
     let affirmationFocusIndex: number | undefined;
+    // 알림 문구 조립 재료 — 같은 user 스냅샷에서 함께 뽑아 추가 라운드트립을 만들지 않는다.
+    let locale = normalizeLocale(undefined);
+    /**
+     * null = user 문서를 못 읽었다. 이때는 과업 넛지를 아예 만들지 않는다 —
+     * 빈 재료를 그대로 판정에 넣으면 "목표가 비어 있어요" 를 목표가 있는 사용자에게 보낸다.
+     * (fetchTodayExecutionPlan 이 조회 실패를 count=1 로 폴백하는 것과 같은 판단.)
+     */
+    let pendingSeed: Omit<PendingTaskInput, "executionPlanCount"> | null = null;
     try {
       const userSnap = await getAdminDb().collection("users").doc(me.uid).get();
       const data = userSnap.data();
@@ -234,6 +254,15 @@ export async function GET(request: NextRequest) {
         userGoals = data.goals as string[];
       }
       notificationPrefs = normalizeNotificationPrefs(data?.notificationPrefs);
+      locale = normalizeLocale(data?.language);
+      pendingSeed = {
+        futureSelfAnswers: data?.futureSelfAnswers ?? undefined,
+        successAffirmations: Array.isArray(data?.successAffirmations)
+          ? (data.successAffirmations as string[])
+          : undefined,
+        hasPortrait: Boolean(data?.futureSelfPortrait),
+        goals: userGoals,
+      };
       const rawStreak = (data?.affirmationStreak as { count?: unknown } | undefined)?.count;
       const n = Number(rawStreak ?? 0);
       streakCount = Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
@@ -252,10 +281,11 @@ export async function GET(request: NextRequest) {
       console.error("[widget/today] user 문서 조회 실패:", err);
     }
     // 진척도와 실행설계는 서로 독립 — 병렬 조회로 응답 시간을 아낀다.
-    const [progressResult, executionPlan] = await Promise.all([
+    const [progressResult, executionPlanResult] = await Promise.all([
       fetchTodayProgress(me.uid, ymd, userGoals),
       fetchTodayExecutionPlan(me.uid, ymd),
     ]);
+    const executionPlan = executionPlanResult.plan;
 
     // 2-b) "그 꿈을 사는 하루" 비전 보장 + 위젯 티저 조립.
     //   동기부여 카드(ensureMotivation)와 동일하게 force=false 로, 오늘 비전이 없으면 생성하고
@@ -290,6 +320,29 @@ export async function GET(request: NextRequest) {
       gradient: motivation.gradient,
     };
 
+    // 4) 알림 문구 조립 — 사용자 언어로 완성해 내려보낸다(Android 는 스스로 로컬라이즈 못 함).
+    //    futureVision 티저와 동일한 격리 패턴: 어떤 실패든 필드만 생략하고 위젯 본문은 그대로 나간다.
+    //    (플랫폼은 각자의 정적 문구로 폴백하므로 알림이 끊기지는 않는다.)
+    let notificationContent: WidgetNotificationContent | undefined;
+    try {
+      notificationContent = buildNotificationContent({
+        locale,
+        uid: me.uid,
+        ymd,
+        quote: motivation.quote,
+        author: motivation.author,
+        goalText: motivation.goalsSnapshot?.[0],
+        pending: {
+          ...(pendingSeed ?? { hasPortrait: true }),
+          executionPlanCount: executionPlanResult.count,
+        },
+        // 재료를 못 읽었으면 넛지를 만들지 않는다(위 pendingSeed 주석) — 아침/저녁 문구는 그대로 조립된다.
+        pendingTaskEnabled: notificationPrefs.pendingTaskEnabled && pendingSeed !== null,
+      });
+    } catch (err) {
+      console.error("[widget/today] 알림 문구 조립 실패(생략):", err);
+    }
+
     const now = new Date();
     const body: WidgetTodayResponse = {
       generatedAt: now.toISOString(),
@@ -307,6 +360,7 @@ export async function GET(request: NextRequest) {
       // 응답 호환성: 플랜 미설정/조회 실패 시 필드 생략 — 옛 클라이언트는 무시, 신 클라이언트는 섹션 생략.
       ...(executionPlan ? { executionPlan } : {}),
       notificationPrefs,
+      ...(notificationContent ? { notificationContent } : {}),
     };
 
     // 캐시 정책: `_t` 쿼리(클라 측 cache-buster) 가 실려 있거나 Cache-Control: no-cache

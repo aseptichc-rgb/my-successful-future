@@ -365,15 +365,27 @@ const dict: Record<DictKey, string> = {
   "settings.notifications.evening.desc": "仅当今天的目标尚未打卡时才会送达。",
   "settings.notifications.weekly.title": "周日回顾提醒",
   "settings.notifications.weekly.desc": "每周回顾准备好后，晚间提醒你回看一周。",
+  "settings.notifications.pending.title": "未完成事项提醒",
+  "settings.notifications.pending.desc": "只在你已完成今天任务的晚上送达，每周最多两次。",
   "settings.notifications.time": "时间",
 
   // 通知文案（iOS 本地通知 — Android 使用原生资源）
   "notify.morning.title": "离梦想更近一步",
   "notify.morning.body": "以抄写誓言开始今天吧。",
+  "notify.morning.quoteBody": "— {author} · 抄写一遍，开启今天",
   "notify.evening.title": "今天的目标还在等你",
   "notify.evening.body": "只需片刻 — 为今天的一步打卡吧。",
+  "notify.evening.bodyGoal": "只需片刻 — 为\"{goal}\"打卡吧。",
   "notify.weekly.title": "该回顾这一周了",
   "notify.weekly.body": "一周的记录已整理好，花一点时间回看吧。",
+
+  // ── 未完成事项提醒（替代晚间的沉默时段）──
+  "notify.pending.title": "还差一件事",
+  "notify.pending.futureSelf.body": "梦想成真的自己，{total} 项中已填 {filled} 项。再补一项吧？",
+  "notify.pending.affirmations.body": "你有 {filled} 条梦想誓言。凑满 {total} 条，每天可写的就更多了。",
+  "notify.pending.portrait.body": "再多填一点，十年后的自己画像就会解锁。",
+  "notify.pending.goals.body": "还没有设定目标。今天写下一行，明天就会不同。",
+  "notify.pending.plan.body": "定好\"何时·何地\"能提高执行率。要不要建一个 if-then 计划？",
 
   // Anima Pro (应用内购买)
   "settings.pro.header": "ANIMA PRO",
