@@ -78,6 +78,20 @@
    자리가 아니라 독자를 끌어들이는 자리다 — 1번 카드 라벨에 결과·성취를
    쓰지 말 것(2인칭 + 시점만 준다).
 
+   2026-08-15 01-A 훅 교체(찔림형 → 도발형): "꿈은 큰데 나이만 먹고 있다면,"
+   → "동기부여 영상 그만 보세요." 광고가 노출되는 맥락 자체를 훅으로 쓴다 —
+   인스타에서 이 광고를 본다는 건 이미 동기부여 콘텐츠를 소비 중이라는 뜻이라,
+   독자가 지금 하는 행동을 지목한다. 조건절이 없어 첫 줄부터 찌른다.
+   --fs-hl 은 112 → 144px: 최장 줄이 짧아져 안전폭 904px 중 859px 까지 쓴다
+   (구 훅은 597px 로 폭의 66% 만 썼다). 피드에서는 크기 자체가 후킹이다.
+
+   훅의 씨앗이 '나이'에서 '영상'으로 바뀌었으므로 회수하는 두 장을 함께 고쳤다.
+   · 05: "나이와 함께 꿈도 자랍니다" → "영상 대신 내가 자랐습니다"(본 것 vs 한 것)
+   · 06: "꿈이 늙기 전에," → "보는 건 여기까지."(영상 + 이 캐러셀, 두 겹으로 읽힘)
+   · 캡션 첫 줄·마무리 줄도 같은 축으로 교체
+   훅을 또 바꾸면 05·06 과 02 의 .deck 을 반드시 같이 볼 것 — 이 넷이 한 벌이다.
+   (01-C 는 독립 변형이라 영향 없음)
+
    v3 대비 변경점은 세 가지뿐이다.
    1) 디스플레이 서체: Fraunces → Noto Serif KR (워드마크만 Fraunces 유지)
    2) 강조 장치: 이탤릭 → 굵기 600 + 골드
@@ -259,8 +273,8 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 </div>
 
 <!-- ═══ 01-A · 훅 (기본 채택) ═══ -->
-<div class="cap">KO 01-A · <b>훅 · 찔림형</b> · 채택<button class="dl" data-ad="adA">↓ PNG</button></div>
-<div class="ad" id="adA" data-name="anima-ig-v4-ko-01a-hook" style="--fs-hl:112px;">
+<div class="cap">KO 01-A · <b>훅 · 도발형</b> · 채택<button class="dl" data-ad="adA">↓ PNG</button></div>
+<div class="ad" id="adA" data-name="anima-ig-v4-ko-01a-hook" style="--fs-hl:144px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
@@ -268,20 +282,26 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     </div>
 
     <div class="band">
-      <!-- 마침표가 아니라 쉼표로 닫는다 — 문장을 미완으로 남겨 다음 장으로
-           넘기는 힘을 만든다. 캐러셀 1번은 닫으면 안 되는 자리다. -->
-      <div class="hl">꿈은 큰데<br><em>나이만</em><br>먹고 있다면,</div>
+      <!-- 이 광고를 보는 사람이 '지금 하고 있는 행동'을 지목하는 훅이다 —
+           인스타에서 자기계발 광고가 노출된다는 건 이미 동기부여 콘텐츠를
+           소비 중이라는 뜻이다. 02 의 .deck("마법이나 단순한 동기부여가
+           아닙니다. 뇌과학입니다")이 같은 단어로 이 훅을 받아 근거가 된다 —
+           둘은 한 몸이므로 한쪽만 고치지 말 것.
+           금지형 명령이라 조건절(~다면,)과 달리 첫 줄부터 찌른다. -->
+      <div class="hl">동기부여 영상<br><em>그만</em><br>보세요.</div>
     </div>
 
     <div class="rule"></div>
     <!-- 오렌지 1개소: 입력 커서 -->
     <div class="card">
-      <!-- 라벨은 카드를 해설하지 않고 독자에게 넘긴다. "꿈을 이룬 나" 류의
-           결과 라벨은 03(비전)의 "오늘, 그 꿈을 사는 하루"를 1번에서 미리
-           까버리는 스포일러이고, CEO 문장을 남의 자랑으로 읽히게 만든다.
-           2인칭 + "오늘 밤"은 문장을 독자의 차례로 돌리면서 06 CTA
-           ("오늘 밤 첫 줄을 적으세요")를 1번에 미리 심는다. -->
-      <div class="clabel">오늘 밤, 당신이 적을 문장</div>
+      <!-- 이 카드는 헤드라인이 진 빚을 갚는 자리다. "그만 보세요"는 금지형이라
+           읽는 사람에게 "그럼 뭘?"을 남기는데, 그 답이 카드다. 그래서 라벨은
+           헤드라인의 동사(보다)를 그대로 받아 "보는 대신"으로 turn 을 만든다 —
+           동사를 echo 하지 않으면 훅과 카드가 따로 논다.
+           나머지 두 조건도 지킨다. "오늘 밤"은 06 CTA("오늘 밤 첫 줄을
+           적으세요")를 1번에 미리 심고, 결과·성취는 말하지 않는다
+           ("꿈을 이룬 나" 류는 03 비전 보드의 스포일러다). -->
+      <div class="clabel">보는 대신, 오늘 밤 적을 한 줄</div>
       <div class="ctext" style="font-size:44px;margin-top:18px;">나는 10억달러 가치 스타트업의 CEO다<span class="caret"></span></div>
     </div>
     <div class="metric"><b>01</b>일차</div>
@@ -380,7 +400,11 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     </div>
 
     <div class="band">
-      <div class="hl">84일째.<br>나이와 함께<br><em>꿈도 자랍니다.</em></div>
+      <!-- 훅 회수 지점. 훅이 '나이'였을 땐 "나이와 함께 꿈도 자랍니다"였다 —
+           훅을 바꾸면 여기서 회수할 씨앗도 같이 바뀐다. 지금은 훅의 '영상'을
+           다시 불러와 본 것 vs 한 것으로 대비시킨다. 아래 씨앗→숲 카드가
+           "자랐다"를 그림으로 증명한다. 훅 교체 시 이 줄을 반드시 함께 볼 것. -->
+      <div class="hl">84일째.<br>영상 대신<br><em>내가 자랐습니다.</em></div>
     </div>
 
     <div class="rule"></div>
@@ -406,7 +430,10 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     </div>
 
     <div class="band">
-      <div class="hl">꿈이 늙기 전에,<br><em>오늘 밤</em><br>첫 줄을 적으세요.</div>
+      <!-- "보는 건 여기까지."는 두 겹으로 읽힌다 — 훅이 지목한 동기부여 영상,
+           그리고 방금까지 넘겨 본 이 캐러셀. 소비를 끝내고 행동으로 넘기는
+           자리라 CTA 바로 앞이 제자리다. -->
+      <div class="hl">보는 건 여기까지.<br><em>오늘 밤</em><br>첫 줄을 적으세요.</div>
     </div>
 
     <div class="rule"></div>
@@ -635,7 +662,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 
   /* ── 인스타그램 캡션 ────────────────────────────────────────── */
   document.getElementById('captext').value = [
-    '꿈은 큰데, 나이만 먹고 있다면.',
+    '동기부여 영상, 그만 보세요.',
     '',
     'Anima 는 꿈을 매일의 행동으로 바꿔주는 행동 코칭 앱이에요.',
     '',
@@ -652,7 +679,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     '',
     '적기만 하는 앱이 아니라, 행동을 설계하는 앱.',
     '30일 중 25일 — 의지가 아니라 설계입니다.',
-    '84일 뒤엔, 나이와 함께 꿈도 자라 있을 거예요.',
+    '84일 뒤엔, 본 게 아니라 살아낸 하루들이 남아 있을 거예요.',
     '',
     '→ 무료로 시작하기 (iOS · Android)',
     '',
