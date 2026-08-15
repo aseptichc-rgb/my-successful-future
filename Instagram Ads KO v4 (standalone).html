@@ -17,7 +17,7 @@
 /* ─────────────────────────────────────────────────────────────
    anima · Instagram Ads KO v4
    v3(EN)의 Obsidian & Gold 시스템을 그대로 상속한 한국어판.
-   슬라이드 5장 + 01번 훅 변형 3안(A/B/C) = 7보드.
+   슬라이드 5장 + 01번 훅 변형 2안(A/C) = 6보드.
 
    2026-08-14 카피 개편: 훅을 "꿈은 큰데 나이만 먹고 있다면."으로 교체.
    02 는 원리(같은 다짐 반복 → 뇌가 길을 낸다), 03 은 설계(다짐 → 행동 →
@@ -29,6 +29,15 @@
    흔히 받는 '동기부여 뽕' 의심을 그 자리에서 끊는 장치이므로, 원리를
    말하는 02 이외의 보드로 옮기지 말 것(같은 문장을 여러 장에 반복하면
    선언이 슬로건으로 약해진다). 캡션 본문에도 같은 문장을 싣는다.
+
+   2026-08-15 잠금화면 카피 전면 삭제: 제품에 잠금화면 기능이 없다.
+   · 01-B("핸드폰을 켜는 순간, 꿈이 먼저 말을 겁니다" + 잠금화면 목업) 보드 삭제
+     — 헤드라인·카드가 통째로 잠금화면 전제라 부분 수정이 불가능했다.
+   · 03 행동 단계: "잠금화면이" → "아침 알림이", 07:00 → 08:00
+     (lib/notificationPolicy.ts DEFAULT_MORNING_HOUR=8 과 맞춘 것)
+   실재하는 기능만 광고한다 — 없는 기능을 그리면 스토어 심사와 환불 사유가 된다.
+   되살릴 땐 기능부터 확인할 것. 참고: 홈화면 위젯은 실재한다
+   (android .../widget/QuoteWidget.kt · ios-templates/AnimaWidget).
 
    v3 대비 변경점은 세 가지뿐이다.
    1) 디스플레이 서체: Fraunces → Noto Serif KR (워드마크만 Fraunces 유지)
@@ -169,20 +178,6 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 .vsbar{height:100%;border-radius:999px;min-width:30px;}
 .vsval{font-family:var(--mono);font-size:var(--fs-metric);letter-spacing:.06em;width:104px;flex:none;text-align:right;}
 
-/* 잠금화면 목업 — 폰 프레임 없이 "시각 + 위젯" 두 컬럼으로 압축 */
-.lock{display:flex;align-items:center;gap:34px;border:1px solid rgba(247,243,236,.10);border-radius:16px;background:rgba(0,0,0,.28);padding:28px 30px;}
-.lock-l{flex:none;text-align:center;}
-.lock-time{font-family:var(--ui);font-weight:300;font-size:76px;line-height:1;letter-spacing:-.03em;color:var(--cream);}
-.lock-date{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.06em;color:rgba(247,243,236,.5);margin-top:12px;}
-.lock-w{flex:1;border:1px solid rgba(217,164,65,.30);border-radius:14px;background:rgba(247,243,236,.05);padding:20px 22px;}
-.lock-wlabel{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.1em;color:rgba(217,164,65,.85);}
-.lock-wtext{font-family:var(--display);font-weight:300;font-size:34px;line-height:1.25;color:var(--cream);margin-top:10px;word-break:keep-all;}
-.lock-chips{display:flex;gap:12px;margin-top:20px;}
-.lchip{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.06em;border-radius:999px;padding:8px 16px;}
-/* 체크 표시는 서체에 의존하지 않도록 CSS 로 그린다(글리프 폴백/이모지 회피) */
-.ck{display:inline-block;width:9px;height:16px;border-style:solid;border-width:0 3px 3px 0;transform:rotate(45deg);margin:-4px 2px 0 0;}
-.box{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-radius:4px;opacity:.5;}
-
 .cta{text-decoration:none;display:inline-flex;align-items:center;gap:16px;background:var(--soul);color:var(--cream);font-family:var(--ui);font-size:30px;font-weight:500;letter-spacing:.02em;padding:26px 44px;border-radius:999px;}
 .cta-sub{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.08em;color:rgba(247,243,236,.6);line-height:1.65;}
 
@@ -232,8 +227,8 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     <div class="rule"></div>
     <!-- 오렌지 1개소: 입력 커서 -->
     <div class="card">
-      <div class="clabel">오늘 밤의 다짐</div>
-      <div class="ctext" style="font-size:44px;margin-top:18px;">나는 내 이름으로 일하는 사람이다<span class="caret"></span></div>
+      <div class="clabel">꿈을 이룬 나</div>
+      <div class="ctext" style="font-size:44px;margin-top:18px;">나는 10억달러 가치 스타트업의 CEO다<span class="caret"></span></div>
     </div>
     <div class="metric"><b>01</b>일차</div>
   </div>
@@ -343,29 +338,6 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   </div>
 </div>
 
-<!-- ═══ 01-B · 훅 변형 (A/B 테스트용) ═══ -->
-<div class="cap alt">KO 01-B · <b>훅 · 제품형</b> · 변형<button class="dl" data-ad="adB">↓ PNG</button></div>
-<div class="ad" id="adB" data-name="anima-ig-v4-ko-01b-hook-alt" style="--fs-hl:88px;">
-  <div class="inner">
-    <div class="topbar">
-      <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.01 · 훅</span>
-    </div>
-
-    <div class="band">
-      <div class="hl">핸드폰을 켜는 순간,<br>꿈이 먼저<br><em>말을 겁니다.</em></div>
-    </div>
-
-    <div class="rule"></div>
-    <!-- 오렌지 1개소: 위젯 안 '오늘의 한 걸음' 라이브 바 -->
-    <div class="card">
-      <div class="clabel" style="margin-bottom:24px;">잠금화면 · 내일 아침</div>
-      <div class="lock" data-lock="morning"></div>
-    </div>
-    <div class="metric"><b>01</b>일차</div>
-  </div>
-</div>
-
 <!-- ═══ 01-C · 훅 변형 (A/B 테스트용) ═══ -->
 <div class="cap alt">KO 01-C · <b>훅 · 관용구형</b> · 변형<button class="dl" data-ad="adC">↓ PNG</button></div>
 <div class="ad" id="adC" data-name="anima-ig-v4-ko-01c-hook-alt" style="--fs-hl:118px;">
@@ -421,7 +393,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   var PIXEL_RATIO = 2;        // → 2160 × 2700
   var BATCH_PAUSE_MS = 400;   // 브라우저가 다운로드를 flush 할 여유
   var CARRYOVER = ['adA', 'ad2', 'ad3', 'ad4', 'ad5'];   // 실제 게재 5장
-  var HOOK_VARIANTS = ['adA', 'adB', 'adC'];             // 훅 A/B 테스트 3안
+  var HOOK_VARIANTS = ['adA', 'adC'];                    // 훅 A/B 테스트 2안
 
   /* ── 보드를 가로로 배치 — 순서 = 마크업 등장 순서(.cap 과 .ad 는 짝) ── */
   ['.cap', '.ad'].forEach(function (sel) {
@@ -463,7 +435,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
      같은 문장이 날마다 진해진다 — "반복이 뇌에 길을 낸다"를 투명도
      그라데이션으로 옮긴 것. 오렌지는 오늘 쓰는 줄의 커서 1개소.
      문장은 01 훅 카드와 동일해야 서사가 이어진다. */
-  var REP_SENTENCE = '나는 내 이름으로 일하는 사람이다';
+  var REP_SENTENCE = '나는 10억달러 가치 스타트업의 CEO다';
   var REP_ROWS = [
     { day: '01일차', alpha: .32 },
     { day: '02일차', alpha: .52 },
@@ -492,7 +464,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   };
   var LOOP_ROWS = [
     { time: '21:00', step: '다짐', tone: 'gold', text: '꿈을 오늘의 문장으로 적습니다' },
-    { time: '07:00', step: '행동', tone: 'soul', text: '잠금화면이 오늘의 한 걸음을 건넵니다' },
+    { time: '08:00', step: '행동', tone: 'soul', text: '아침 알림이 오늘의 한 걸음을 건넵니다' },
     { time: '22:00', step: '회고', tone: 'mute', text: '잘한 일 3가지로 하루를 닫습니다' }
   ];
   document.querySelectorAll('[data-loop]').forEach(function (el) {
@@ -549,71 +521,6 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     }).join('');
   });
 
-  /* ── 잠금화면 목업 ──────────────────────────────────────────
-     아침(할 일이 남은 상태) / 밤(하루가 닫힌 상태) 두 변형을 같은
-     렌더러로 그린다. 오렌지는 각 변형에서 정확히 1개소만 쓴다.
-     현재 게재분은 01-B(morning)만 쓴다 — night 는 구 02 카드였던
-     자산으로, 카드 변형 테스트용으로 유지한다. */
-  var CHIP_TONE = {
-    done:   { bg: 'rgba(217,164,65,.16)',  fg: 'rgba(217,164,65,.95)' },
-    live:   { bg: 'rgba(216,90,48,.22)',   fg: '#F5A882' },
-    todo:   { bg: 'rgba(247,243,236,.06)', fg: 'rgba(247,243,236,.45)' }
-  };
-  // 두 변형은 같은 날·같은 위젯이다 — 다른 것은 시각·라이브 여부·칩 상태뿐.
-  var LOCK_COMMON = {
-    date: '8월 14일 금요일',
-    label: '오늘의 한 걸음',
-    text: '이력서 첫 문단 다시 쓰기'
-  };
-  var LOCK = {
-    morning: Object.assign({
-      time: '7:02',
-      live: true,                                   // 오렌지 = 위젯 라이브 바
-      chips: [
-        { label: '다짐', state: 'todo' },
-        { label: '행동', state: 'todo' },
-        { label: '잘한 일', state: 'todo' }
-      ]
-    }, LOCK_COMMON),
-    night: Object.assign({
-      time: '21:40',
-      live: false,
-      chips: [
-        { label: '다짐', state: 'done' },
-        { label: '행동', state: 'done' },
-        { label: '잘한 일', state: 'live' }         // 오렌지 = 마지막으로 닫히는 칸
-      ]
-    }, LOCK_COMMON)
-  };
-  function lockHTML(cfg) {
-    var chips = cfg.chips.map(function (c) {
-      var t = CHIP_TONE[c.state];
-      var glyph = c.state === 'todo'
-        ? '<span class="box"></span>'
-        : '<span class="ck" style="border-color:' + t.fg + '"></span>';
-      return '<span class="lchip" style="background:' + t.bg + ';color:' + t.fg + '">' +
-        glyph + c.label + '</span>';
-    }).join('');
-    var liveBar = cfg.live
-      ? '<span style="display:inline-block;width:4px;height:34px;background:var(--soul);' +
-        'border-radius:2px;vertical-align:-8px;margin-right:14px;"></span>'
-      : '';
-    return '<div class="lock-l">' +
-        '<div class="lock-time">' + cfg.time + '</div>' +
-        '<div class="lock-date">' + cfg.date + '</div>' +
-      '</div>' +
-      '<div class="lock-w">' +
-        '<div class="lock-wlabel">' + cfg.label + '</div>' +
-        '<div class="lock-wtext">' + liveBar + cfg.text + '</div>' +
-        '<div class="lock-chips">' + chips + '</div>' +
-      '</div>';
-  }
-  document.querySelectorAll('[data-lock]').forEach(function (el) {
-    var cfg = LOCK[el.dataset.lock];
-    if (!cfg) { return; }
-    el.innerHTML = lockHTML(cfg);
-  });
-
   /* ── 인스타그램 캡션 ────────────────────────────────────────── */
   document.getElementById('captext').value = [
     '꿈은 큰데, 나이만 먹고 있다면.',
@@ -621,7 +528,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     'Anima 는 꿈을 매일의 행동으로 바꿔주는 행동 코칭 앱이에요.',
     '',
     '· 밤 — 다짐 한 줄: 같은 문장을 매일 적으면, 뇌는 그 방향으로 길을 냅니다',
-    '· 아침 — 잠금화면 위젯: 오늘의 한 걸음이 먼저 말을 겁니다',
+    '· 아침 — 알림 한 번: 오늘의 한 걸음이 먼저 말을 겁니다',
     '· 밤 — 잘한 일 3가지: 작은 성공이 다음 행동을 부릅니다',
     '',
     '마법이나 단순한 동기부여가 아닙니다. 뇌과학입니다.',
@@ -633,7 +540,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     '→ 무료로 시작하기 (iOS · Android)',
     '',
     '#자기계발 #다짐 #습관만들기 #모닝루틴 #동기부여 #목표달성',
-    '#잠금화면위젯 #성공일기 #갓생 #자기관리 #루틴 #꿈'
+    '#확언 #성공일기 #갓생 #자기관리 #루틴 #꿈'
   ].join('\n');
 
   /* ── PNG 내보내기 ───────────────────────────────────────────
