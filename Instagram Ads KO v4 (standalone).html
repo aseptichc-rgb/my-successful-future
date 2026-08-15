@@ -611,6 +611,30 @@
    · 게재 규칙: 캐러셀 = 1:1, 단일 이미지·피드 게시물 = 4:5.
      스토리·릴스(9:16)는 아직 없다 — 필요해지면 같은 방식으로 파생할 것.
 
+   2026-08-15 9:16 파생 세트 신설 — 스토리·릴스 지면. 이제 세 지면이 한 파일에서
+   나온다(4:5 피드 · 1:1 캐러셀 · 9:16 스토리/릴스, 각 13장 = 39보드).
+   1:1 과 반대로 9:16(1920)은 4:5(1350)보다 세로가 넓다. 줄일 것이 없으므로
+   헤드라인·카드 크기는 4:5 값을 그대로 물려받고, 바뀌는 것은 안전영역뿐이다.
+   · 위 250px / 아래 420px 을 padding 으로 비웠다. 위는 프로필·이름 줄,
+     아래는 릴스 캡션·오디오·CTA 가 덮는 구간이다. 스토리보다 릴스가 더 많이
+     먹으므로 큰 쪽에 맞춰 한 벌로 쓴다(스토리 전용을 따로 만들지 않았다).
+     남는 안전영역 1250px 은 4:5 의 본문 영역 1158px 보다 넓어 넘침이 없다.
+     이 값을 줄이면 UI 에 글자가 가린다 — 여백이 많아 보인다고 깎지 말 것.
+   · .band 가 margin:auto 로 남는 공간을 나눠 갖기 때문에 padding 만 바꿔도
+     본문 덩어리가 안전영역 안에서 수직 중앙에 놓인다. 별도 정렬 코드가 없다.
+   · 파생 생성기를 일반화했다: makeSquareSet → makeDerivedSet(ids, fmt) +
+     FORMATS 테이블(cls·suffix·label·h). 지면이 더 늘어도 이 테이블에 한 줄을
+     추가하면 되고, 내보내기 함수는 그대로다 — 캔버스 높이는 복제 시점에
+     dataset.exportH 로 박아 두고 renderAd 가 그것만 읽는다.
+   · 버튼 6개(지면 3 × 캐러셀·훅). #dlbar 에 flex-wrap 을 줬다.
+   · 실측(39보드 전부): 4:5 1350 · 1:1 1080 · 9:16 1920px · 세로 넘침 0 ·
+     오렌지 정확히 1개소 · 9:16 은 워드마크 top 250px / 메트릭 bottom 1500px
+     로 13장이 모두 안전영역 안. PNG 실측 2160×3840(비율 0.5625 = 9:16) ·
+     장당 약 3.1MB.
+   · 스토리·릴스는 체류가 짧아 카드의 촘촘한 글자가 잘 안 읽힌다. 성과를 보고
+     줄일 때는 이 지면부터 "헤드라인 + 카드 없음" 판본을 시험할 것 —
+     01-A 훅 보드가 이미 그 골격이다.
+
    v3 대비 변경점은 세 가지뿐이다.
    1) 디스플레이 서체: Fraunces → Noto Serif KR (워드마크만 Fraunces 유지)
    2) 강조 장치: 이탤릭 → 굵기 600 + 골드
@@ -675,6 +699,17 @@
   --fs-deck-sq:30px;
   --card-pad-sq:24px 30px;
   --name-margin-sq:30px;
+
+  /* 9:16 파생(스토리·릴스) — 4:5 보다 세로가 넓어(1920) 줄일 것이 없다.
+     대신 상하단을 앱 UI 가 덮으므로 그만큼을 padding 으로 비워 둔다.
+     위 250px: 프로필·이름 줄. 아래 420px: 릴스 캡션·오디오·CTA(스토리보다
+     릴스가 더 많이 먹으므로 둘 중 큰 쪽에 맞춰 한 벌로 쓴다).
+     남는 안전영역은 1250px 로 4:5 의 본문 영역(1158px)보다 넓다 —
+     그래서 헤드라인·카드 크기는 4:5 값을 그대로 물려받는다. 이 값을 줄이면
+     UI 에 글자가 가리므로 "여백이 많아 보인다"는 이유로 깎지 말 것. */
+  --h-st:1920px;
+  --pad-t-st:250px;
+  --pad-b-st:420px;
 
   /* editor chrome */
   --chrome-cap-top:-58px;
@@ -882,13 +917,19 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 .ad.sq .vs{gap:18px;}
 .ad.sq .cta{font-size:27px;padding:22px 38px;}
 
+/* 9:16 (스토리·릴스) — 크기는 4:5 를 그대로 쓰고 안전영역만 비운다.
+   .band 가 margin:auto 로 남는 공간을 위아래로 나눠 갖기 때문에, padding 만
+   바꿔도 본문 덩어리가 안전영역 안에서 수직 중앙에 놓인다. */
+.ad.st{height:var(--h-st);}
+.ad.st .inner{padding:var(--pad-t-st) var(--pad-x) var(--pad-b-st);}
+
 /* ── 편집 화면 chrome (PNG 내보내기 시 숨김) ─────────────────── */
 .cap{position:absolute;top:var(--chrome-cap-top);font-family:var(--mono);font-size:16px;letter-spacing:.08em;color:rgba(255,255,255,.6);white-space:nowrap;}
 .cap b{color:#fff;font-weight:500;}
 .cap.alt b{color:var(--gold);}
 .cap .dl{margin-left:16px;cursor:pointer;font:inherit;font-size:14px;color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:5px 13px;transition:background .15s;}
 .cap .dl:hover{background:rgba(255,255,255,.28);}
-#dlbar{position:absolute;left:0;top:var(--chrome-bar-top);display:flex;gap:16px;align-items:center;z-index:10;}
+#dlbar{position:absolute;left:0;top:var(--chrome-bar-top);display:flex;flex-wrap:wrap;gap:12px;align-items:center;z-index:10;}
 #dlbar button{cursor:pointer;font-family:var(--mono);font-size:15px;letter-spacing:.1em;color:#16141A;background:var(--cream);border:none;border-radius:999px;padding:13px 24px;}
 #dlbar button:hover{background:#fff;}
 #dlbar button[disabled]{opacity:.5;cursor:default;}
@@ -909,8 +950,10 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 <div id="dlbar">
   <button id="dlall">↓ 4:5 9장</button>
   <button id="dlallsq">↓ 1:1 9장</button>
+  <button id="dlallst">↓ 9:16 9장</button>
   <button id="dlhooks">↓ 훅 (4:5)</button>
   <button id="dlhookssq">↓ 훅 (1:1)</button>
+  <button id="dlhooksst">↓ 훅 (9:16)</button>
   <span id="dlstat"></span>
 </div>
 
@@ -1479,8 +1522,10 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   <div class="hint">
     캐러셀 순서: 01-A → 02 → 03 → 04 → 05 → 06 → 07 → 08 → 09 (9장)<br>
     01-C 는 01-A 와 A/B 로 돌릴 수 있다 — 08 이 동행 약속으로 바뀌어 헤드라인 중복이 풀렸다<br>
-    <b>캐러셀 광고에는 1:1(2160×2160) 세트를 쓸 것</b> — 캐러셀 카드는 정사각이라 4:5 를 올리면 워드마크와 메트릭이 잘린다.
-    4:5(2160×2700)는 단일 이미지 광고·피드 게시물용이다. 두 세트는 같은 마크업에서 나오므로 문구를 고치면 함께 바뀐다<br>
+    지면별 규격 — <b>캐러셀 = 1:1</b>(2160×2160) · <b>단일 이미지·피드 게시물 = 4:5</b>(2160×2700) ·
+    <b>스토리·릴스 = 9:16</b>(2160×3840). 캐러셀 카드는 정사각이라 4:5 를 올리면 워드마크와 메트릭이 잘린다<br>
+    9:16 은 위 250px / 아래 420px 을 비워 두었다 — 앱 UI(프로필 줄 · 릴스 캡션 · 오디오 · CTA)가 덮는 구간이라
+    "여백이 많아 보인다"는 이유로 채우지 말 것. 세 세트는 같은 마크업에서 나오므로 문구를 고치면 함께 바뀐다<br>
     Meta 광고 관리자 CTA 버튼: “설치하기” · 랜딩: https://www.successfulfuture.app/go/app
   </div>
 </div>
@@ -1498,7 +1543,6 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   var GUTTER = cssPx('--gutter');   // 보드 간 가로 간격
   var EXPORT_W = cssPx('--w');
   var EXPORT_H = cssPx('--h');
-  var EXPORT_H_SQ = cssPx('--h-sq');
   var PIXEL_RATIO = 2;        // → 2160 × 2700
   var BATCH_PAUSE_MS = 400;   // 브라우저가 다운로드를 flush 할 여유
   // 실제 게재 9장 — 훅 → 그리기 → 적기 → 비전 → 확장 → 이름 → 설계 → 변화 → CTA (마크업 등장 순서와 동일)
@@ -1682,34 +1726,42 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     }).join('');
   });
 
-  /* ── 1:1 파생 세트 생성 ──────────────────────────────────────
-     4:5 보드를 복제해 .sq 를 붙인다. 카피를 두 벌 관리하지 않으려는 것이므로
-     여기서 복제본의 내용을 손대지 말 것 — 크기 차이는 전부 CSS(§[F])가 진다.
-     복제는 카드 렌더러들이 끝난 뒤에 돌아야 카드 내용까지 함께 복사된다
-     (이 블록의 호출 위치를 위로 올리면 정사각 보드의 카드가 빈 채로 나온다).
-     id 는 원본 + '-sq', data-name 은 원본 + '-1x1' 이라 파일이 겹치지 않는다. */
-  function makeSquareSet(ids) {
+  /* ── 파생 세트 생성 ──────────────────────────────────────────
+     4:5 보드를 복제해 지면별 규격을 CSS 클래스로 입힌다. 카피를 여러 벌
+     관리하지 않으려는 것이므로 여기서 복제본의 내용을 손대지 말 것 —
+     크기·여백 차이는 전부 CSS(§[F])가 진다. 원본을 고치면 파생도 함께 바뀐다.
+     복제는 카드 렌더러들이 끝난 뒤에 돌아야 카드 내용까지 복사된다
+     (이 블록을 위로 올리면 파생 보드의 카드가 빈 채로 나온다).
+     내보내기 높이는 복제 시점에 dataset.exportH 로 박아 둔다 — renderAd 가
+     클래스를 몰라도 되고, 지면이 늘어도 그 함수는 그대로다. */
+  var FORMATS = {
+    sq: { cls: 'sq', suffix: '-1x1',  label: '1:1',  h: cssPx('--h-sq') },
+    st: { cls: 'st', suffix: '-9x16', label: '9:16', h: cssPx('--h-st') }
+  };
+  function makeDerivedSet(ids, fmt) {
     var stage = document.getElementById('stage');
     return ids.map(function (id) {
       var src = document.getElementById(id);
       var clone = src.cloneNode(true);
-      clone.id = id + '-sq';
-      clone.dataset.name = src.dataset.name + '-1x1';
-      clone.classList.add('sq');
+      clone.id = id + '-' + fmt.cls;
+      clone.dataset.name = src.dataset.name + fmt.suffix;
+      clone.dataset.exportH = fmt.h;
+      clone.classList.add(fmt.cls);
       var cap = document.createElement('div');
       cap.className = 'cap alt';
-      cap.innerHTML = '1:1 · <b>' + src.dataset.name.replace('anima-ig-v4-ko-', '') + '</b>' +
+      cap.innerHTML = fmt.label + ' · <b>' + src.dataset.name.replace('anima-ig-v4-ko-', '') + '</b>' +
         '<button class="dl" data-ad="' + clone.id + '">↓ PNG</button>';
       stage.appendChild(cap);
       stage.appendChild(clone);
       return clone.id;
     });
   }
-  var CARRYOVER_SQ = makeSquareSet(CARRYOVER);
-  var HOOK_VARIANTS_SQ = makeSquareSet(HOOK_VARIANTS.filter(function (id) {
-    return CARRYOVER.indexOf(id) === -1;   // 훅 A 는 캐러셀에 이미 있어 두 번 만들지 않는다
-  }));
-  HOOK_VARIANTS_SQ.unshift('adA-sq');
+  // 훅 변형은 캐러셀에 없는 것만 따로 만든다(훅 A 는 캐러셀 1번이라 이미 있다)
+  var HOOK_ONLY = HOOK_VARIANTS.filter(function (id) { return CARRYOVER.indexOf(id) === -1; });
+  var CARRYOVER_SQ = makeDerivedSet(CARRYOVER, FORMATS.sq);
+  var HOOK_VARIANTS_SQ = ['adA-sq'].concat(makeDerivedSet(HOOK_ONLY, FORMATS.sq));
+  var CARRYOVER_ST = makeDerivedSet(CARRYOVER, FORMATS.st);
+  var HOOK_VARIANTS_ST = ['adA-st'].concat(makeDerivedSet(HOOK_ONLY, FORMATS.st));
 
   /* ── 보드를 가로로 배치 — 순서 = 마크업 등장 순서(.cap 과 .ad 는 짝) ──
      정사각 복제본까지 만든 뒤에 돌려야 새 보드도 자리를 받는다. */
@@ -1726,9 +1778,12 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   document.getElementById('dlall').textContent =
     '↓ 4:5 ' + CARRYOVER.length + '장 (PNG · ' + (EXPORT_W * PIXEL_RATIO) + '×' + (EXPORT_H * PIXEL_RATIO) + ')';
   document.getElementById('dlallsq').textContent =
-    '↓ 1:1 ' + CARRYOVER_SQ.length + '장 (PNG · ' + (EXPORT_W * PIXEL_RATIO) + '×' + (EXPORT_H_SQ * PIXEL_RATIO) + ')';
+    '↓ 1:1 ' + CARRYOVER_SQ.length + '장 (PNG · ' + (EXPORT_W * PIXEL_RATIO) + '×' + (FORMATS.sq.h * PIXEL_RATIO) + ')';
   document.getElementById('dlhooks').textContent = '↓ 훅 ' + HOOK_VARIANTS.length + '안 (4:5)';
+  document.getElementById('dlallst').textContent =
+    '↓ 9:16 ' + CARRYOVER_ST.length + '장 (PNG · ' + (EXPORT_W * PIXEL_RATIO) + '×' + (FORMATS.st.h * PIXEL_RATIO) + ')';
   document.getElementById('dlhookssq').textContent = '↓ 훅 ' + HOOK_VARIANTS_SQ.length + '안 (1:1)';
+  document.getElementById('dlhooksst').textContent = '↓ 훅 ' + HOOK_VARIANTS_ST.length + '안 (9:16)';
 
   /* ── 인스타그램 캡션 ────────────────────────────────────────── */
   document.getElementById('captext').value = [
@@ -1866,7 +1921,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
       await primeFonts();
       return await htmlToImage.toPng(node, {
         width: EXPORT_W,
-        height: node.classList.contains('sq') ? EXPORT_H_SQ : EXPORT_H,
+        height: +node.dataset.exportH || EXPORT_H,
         pixelRatio: PIXEL_RATIO,
         style: { margin: '0' },
         fontEmbedCSS: await fontEmbedOnce(node)
@@ -1950,8 +2005,14 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   document.getElementById('dlhooks').addEventListener('click', function () {
     runBatch(this, HOOK_VARIANTS, '훅 4:5');
   });
+  document.getElementById('dlallst').addEventListener('click', function () {
+    runBatch(this, CARRYOVER_ST, '캐러셀 9:16');
+  });
   document.getElementById('dlhookssq').addEventListener('click', function () {
     runBatch(this, HOOK_VARIANTS_SQ, '훅 1:1');
+  });
+  document.getElementById('dlhooksst').addEventListener('click', function () {
+    runBatch(this, HOOK_VARIANTS_ST, '훅 9:16');
   });
 })();
 </script>
