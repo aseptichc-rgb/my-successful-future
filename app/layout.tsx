@@ -14,8 +14,12 @@ import "./globals.css";
 // 하면 스크래퍼 미리보기 안에서 두 문장이 서로 어긋나 보인다.
 const SITE_NAME = "Anima";
 const SITE_TITLE = "Anima — 꿈을 이루는 하루";
+// 첫 문장은 og 이미지의 deck 과 같은 말이다(generate-og-image.mjs 의 DECK) — 카카오·슬랙
+// 미리보기는 썸네일과 이 문장을 위아래로 붙여 보여주므로 한 벌로 읽혀야 한다. 마지막을 "앱"
+// 으로 닫는 것은 범주를 남기기 위한 것이다 — 썸네일에는 그 낱말이 없어서, 미리보기만 본
+// 사람에게 이게 무엇인지 말해 주는 자리가 여기뿐이다.
 const SITE_DESCRIPTION =
-  "당신의 꿈을 이루게 해주는 앱. 꿈을 한 줄 적으면 오늘 할 한 걸음이 정해지고, 그 걸음을 밀어줄 한 마디가 매일 도착합니다.";
+  "위대함은 매일의 작은 행동의 반복입니다. 꿈을 한 줄 적으면 오늘 할 한 걸음이 정해지고, 그 걸음을 밀어줄 한 마디가 매일 도착하는 앱.";
 // 안드로이드 assetlinks·capacitor.config.ts 의 SERVER_URL 과 같은 호스트여야 한다.
 const SITE_URL = "https://my-successful-future.vercel.app";
 // OG 권장 규격(1.91:1). Meta·X·카카오·슬랙이 공통으로 받는 최대공약수다.
