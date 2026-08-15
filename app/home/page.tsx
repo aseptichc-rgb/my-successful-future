@@ -36,7 +36,11 @@ import { isPaymentRequired } from "@/lib/paymentRequired";
 import { notifyAndroidWidgetRefresh } from "@/lib/widgetBridge";
 import { refreshIosWidget } from "@/lib/iosWidget";
 import { isIosNotificationAvailable, syncIosNotifications } from "@/lib/notificationBridge";
-import { buildNotificationTexts, normalizeNotificationPrefs } from "@/lib/notificationPolicy";
+import {
+  buildNotificationTexts,
+  decideEveningSlot,
+  normalizeNotificationPrefs,
+} from "@/lib/notificationPolicy";
 import { fetchNotificationContent, type NotificationServerContent } from "@/lib/notificationSync";
 import MotivationCard from "@/components/home/MotivationCard";
 import TodayCard from "@/components/home/TodayCard";
@@ -283,14 +287,30 @@ export default function HomeDashboardPage() {
   useEffect(() => {
     if (!user || !entryLoaded) return;
     // 콘텐츠가 아직/영영 없어도 동기화는 진행한다 — 정적 폴백 문구로라도 알림은 나가야 한다.
-    const content = notifContent?.key === currentKey ? notifContent.content : undefined;
+    const content = notifContent?.key === currentKey ? notifContent.content : null;
+    const prefs = normalizeNotificationPrefs(user.notificationPrefs);
+    // 오늘 저녁 슬롯이 무엇을 보낼지는 **여기서** 정한다. 서버는 "넛지 허용일인가 + 밀린 게
+    // 있는가" 까지만 판정해 문구를 내려주고, "오늘 할 일을 다 했는가" 는 이 화면만 안다.
+    // 과업 넛지는 침묵할 자리에만 들어가므로, 그 자리가 아니면 아예 넘기지 않는다 —
+    // 네이티브가 정책을 한 번 더 해석하지 않도록(플랫폼은 실행만) 판정을 여기서 닫는다.
+    const eveningPendingTask =
+      decideEveningSlot({
+        todayActionsDone: allGoalsDoneToday,
+        eveningEnabled: prefs.eveningEnabled,
+        pendingTaskEnabled: prefs.pendingTaskEnabled,
+        hasPendingTask: content?.eveningPendingTask != null,
+        // 서버가 이미 넛지 허용일에만 문구를 실어 준다 — 있다는 것 자체가 허용일이라는 뜻.
+        isNudgeDay: true,
+      }) === "pendingTask"
+        ? content?.eveningPendingTask
+        : null;
     void syncIosNotifications({
-      prefs: normalizeNotificationPrefs(user.notificationPrefs),
+      prefs,
       todayGoalDone: allGoalsDoneToday,
       allowPrompt: allGoalsDoneToday,
       texts: buildNotificationTexts(t, {
-        morningByYmd: content?.morningOverrides,
-        eveningPendingTask: content?.eveningPendingTask,
+        morningOverrides: content?.morningOverrides,
+        eveningPendingTask,
       }),
     });
   }, [user, entryLoaded, allGoalsDoneToday, t, notifContent, currentKey]);

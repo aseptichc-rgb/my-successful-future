@@ -12,6 +12,7 @@
  */
 import { getServerT } from "@/lib/i18n/translate";
 import { isPendingNudgeDay } from "@/lib/notificationPolicy";
+import { truncateText } from "@/lib/truncateText";
 import { pickPendingTask, type PendingTaskInput } from "@/lib/pendingTasks";
 import type { Locale } from "@/lib/i18n/types";
 import type { WidgetNotificationContent, WidgetNotificationCopy } from "@/types";
@@ -20,12 +21,7 @@ import type { WidgetNotificationContent, WidgetNotificationCopy } from "@/types"
  * 알림 제목의 최대 길이. 잠금화면은 제목을 한 줄로 자르므로, 명언을 제목에 실을 때
  * 시스템이 임의로 자르기 전에 우리가 "…" 로 마감한다(문장 중간에 끊긴 인상 방지).
  */
-export const NOTIFY_TITLE_MAX = 40;
-
-function truncate(text: string, max: number): string {
-  const trimmed = text.trim();
-  return trimmed.length > max ? `${trimmed.slice(0, max).trimEnd()}…` : trimmed;
-}
+const NOTIFY_TITLE_MAX = 40;
 
 export interface BuildNotificationContentInput {
   locale: Locale;
@@ -36,8 +32,11 @@ export interface BuildNotificationContentInput {
   author: string;
   /** 오늘의 목표 첫 문구. 있으면 저녁 리마인더 본문을 구체화한다(BCT 2.3 self-monitoring). */
   goalText?: string;
-  /** 미완 과업 판정 재료. */
-  pending: PendingTaskInput;
+  /**
+   * 미완 과업 판정 재료. **재료를 못 모았으면 생략한다** — 빈 값을 넘기면
+   * "목표가 비어 있어요" 를 목표가 있는 사용자에게 보내게 된다. 생략 시 넛지를 만들지 않는다.
+   */
+  pending?: PendingTaskInput;
   /** 사용자가 과업 넛지를 켜 두었는가. */
   pendingTaskEnabled: boolean;
 }
@@ -57,15 +56,18 @@ export function buildNotificationContent(
   // ── 아침: 오늘의 명언 실문구. 알림만 봐도 오늘 한 마디를 읽게 한다.
   const quote = input.quote.trim();
   const author = input.author.trim();
+  const quoteTitle = truncateText(quote, NOTIFY_TITLE_MAX);
   const morning: WidgetNotificationCopy =
     quote.length > 0
       ? {
-          title: truncate(quote, NOTIFY_TITLE_MAX),
+          title: quoteTitle,
           body: author
             ? t("notify.morning.quoteBody", { author })
             : t("notify.morning.body"),
-          // 제목이 잘렸을 때만 전문을 따로 싣는다(Android BigTextStyle 확장용).
-          ...(quote.length > NOTIFY_TITLE_MAX ? { fullText: quote } : {}),
+          // 제목이 실제로 잘렸을 때만 전문을 따로 싣는다(Android BigTextStyle 확장용).
+          // 길이 비교가 아니라 결과 비교여야 한다 — 이모지가 섞이면 UTF-16 길이와
+          // 코드 포인트 수가 달라 "안 잘렸는데 전문을 싣는" 경우가 생긴다.
+          ...(quoteTitle !== quote ? { fullText: quote } : {}),
           target: "affirmations",
         }
       : {
@@ -91,7 +93,7 @@ export function buildNotificationContent(
   // ── 침묵 슬롯 대체분: 오늘이 넛지 허용일이고 밀린 과업이 있을 때만.
   //    실제로 보낼지(오늘 할 일을 다 했는지)는 발송 시점에 플랫폼이 decideEveningSlot 으로 판정한다.
   let pendingTask: WidgetNotificationCopy | null = null;
-  if (input.pendingTaskEnabled && isPendingNudgeDay(input.uid, input.ymd)) {
+  if (input.pending && input.pendingTaskEnabled && isPendingNudgeDay(input.uid, input.ymd)) {
     const picked = pickPendingTask(input.pending, input.uid, input.ymd);
     if (picked) {
       pendingTask = {

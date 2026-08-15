@@ -17,7 +17,9 @@ import zhDict from "./dictionaries/zh";
 
 export type { DictKey };
 
-export const DICTIONARIES: Readonly<Record<Locale, Record<DictKey, string>>> = {
+// 비공개 — 소비처는 translate()/getServerT() 만 쓴다. 사전을 직접 읽게 열어 두면
+// 기본 로케일 폴백 체인을 우회해 누락된 키가 화면에 원문 그대로 노출된다.
+const DICTIONARIES: Readonly<Record<Locale, Record<DictKey, string>>> = {
   ko: koDict,
   en: enDict,
   es: esDict,
@@ -27,7 +29,7 @@ export const DICTIONARIES: Readonly<Record<Locale, Record<DictKey, string>>> = {
 export type Translator = (key: DictKey, vars?: Record<string, string | number>) => string;
 
 /** {name} 형식 보간. 누락된 변수는 토큰을 그대로 둠. */
-export function interpolate(template: string, vars?: Record<string, string | number>): string {
+function interpolate(template: string, vars?: Record<string, string | number>): string {
   if (!vars) return template;
   return template.replace(/\{(\w+)\}/g, (full, name: string) => {
     const v = vars[name];

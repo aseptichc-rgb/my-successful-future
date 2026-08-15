@@ -96,6 +96,14 @@ export const PENDING_NUDGE_DAYS_PER_WEEK = 2;
 const PENDING_NUDGE_EPOCH_YMD = "2026-01-01";
 
 /**
+ * 넛지가 갈 수 있는 요일 후보 — 주간 회고 요일만 뺀 나머지.
+ * 회고일 저녁 슬롯은 이미 회고가 점유하므로 후보에서 빠진다.
+ */
+const PENDING_NUDGE_CANDIDATE_WEEKDAYS: ReadonlyArray<number> = [0, 1, 2, 3, 4, 5, 6].filter(
+  (d) => !isWeeklyReviewDay(d),
+);
+
+/**
  * 오늘이 미완 과업 넛지를 허용하는 요일인가.
  *
  * 영속 카운터("이번 주 몇 건 보냈나") 대신 **결정론적 요일**로 상한을 건다. 이유:
@@ -114,14 +122,12 @@ export function isPendingNudgeDay(uid: string, ymd: string): boolean {
 
   const dayIndex = diffKstDays(PENDING_NUDGE_EPOCH_YMD, ymd);
   if (!Number.isFinite(dayIndex)) return false;
-  // epoch 이전(음수)에서도 0..6 으로 떨어지도록 유클리드 나머지.
+  // 주차 인덱스 — floor 나눗셈이라 epoch 이전(음수 dayIndex)에서도 같은 주가 같은 값으로 묶인다.
+  // (여기에 나머지 연산을 넣으면 주차가 7주마다 반복돼 전 사용자의 요일 위상이 밀린다.)
   const weekIndex = Math.floor(dayIndex / 7);
 
-  // 회고 요일을 뺀 나머지 6일이 후보. 그중 상한 개수만큼을 uid·주차 시드로 고른다.
-  const candidates: number[] = [];
-  for (let d = 0; d < 7; d++) {
-    if (!isWeeklyReviewDay(d)) candidates.push(d);
-  }
+  // 후보 중 상한 개수만큼을 uid·주차 시드로 고른다. fnv1a 는 `>>> 0` 로 이미 부호 없는 값이다.
+  const candidates = PENDING_NUDGE_CANDIDATE_WEEKDAYS;
   const seed = fnv1a(`${uid}|${weekIndex}|pendingNudge`);
   // 시드로 시작 위치를 흩고 거기서부터 균등 간격으로 뽑는다 — 두 넛지가 붙어 있지 않게.
   const stride = Math.floor(candidates.length / PENDING_NUDGE_DAYS_PER_WEEK);
@@ -140,6 +146,13 @@ export type EveningSlotDecision = "goalNudge" | "pendingTask" | "silent";
  * — 오늘 할 일이 남아 있는 사람에게 다른 걸 권하면 본래 리마인더가 묻힌다.
  *
  * (일요일 주간 회고는 이 판정보다 앞선다 — 호출부가 먼저 분기한다.)
+ *
+ * 소비처:
+ *   - iOS: app/home/page.tsx 가 예약 직전에 이 함수로 판정하고, 결과가 pendingTask 일 때만
+ *     문구를 네이티브로 넘긴다 — 플러그인은 받은 것을 꽂기만 한다.
+ *   - Android: Worker 가 발송 직전에 판정해야 해서(예약 시점엔 오늘 진척을 모른다) 같은 분기를
+ *     Kotlin 으로 **손으로 옮겨 두었다** — WinsReminderWorker.doWork.
+ *     ⚠️ 여기 순서·조건을 바꾸면 그쪽도 함께 고쳐야 한다. 이 파일만 고치면 Android 는 안 바뀐다.
  */
 export function decideEveningSlot(input: {
   todayActionsDone: boolean | undefined;
@@ -188,34 +201,29 @@ export interface NotificationTexts {
  * 현재 언어의 알림 문구 조립. 호출부(설정/홈)가 useLanguage() 의 t 를 넘긴다 —
  * 이 모듈이 훅에 의존하지 않아야 서버·워커 어디서든 임포트가 안전하다.
  *
- * @param content 서버가 조립해 준 실제 콘텐츠(/api/widget/today 의 notificationContent).
- *   없으면 정적 문구만으로 조립한다 — 오프라인/조회 실패에도 알림은 계속 나가야 한다.
- *   title/body 만 읽는다 — target 은 iOS 예약에 쓰이지 않으므로 요구하지 않는다.
+ * @param content 서버가 조립해 준 실제 콘텐츠(lib/notificationSync.fetchNotificationContent).
+ *   필드명을 그 타입과 똑같이 두어 호출부가 이름을 갈아끼우지 않고 그대로 넘기게 한다 —
+ *   중간에 rename 을 끼우면 필드가 늘 때 호출부마다 매핑을 고쳐야 하고, 하나를 빠뜨리면
+ *   그 경로에서만 문구가 조용히 사라진다. 없으면 정적 문구만으로 조립한다(오프라인/조회 실패).
  */
 export function buildNotificationTexts(
   t: Translator,
   content?: {
-    morningByYmd?: Record<string, NotificationCopy>;
+    morningOverrides?: Record<string, NotificationCopy>;
     eveningPendingTask?: NotificationCopy | null;
-  },
+  } | null,
 ): NotificationTexts {
   const texts: NotificationTexts = {
     morning: { title: t("notify.morning.title"), body: t("notify.morning.body") },
     evening: { title: t("notify.evening.title"), body: t("notify.evening.body") },
     weekly: { title: t("notify.weekly.title"), body: t("notify.weekly.body") },
   };
-  if (content?.morningByYmd) {
-    const overrides: Record<string, NotificationCopy> = {};
-    for (const [ymd, copy] of Object.entries(content.morningByYmd)) {
-      overrides[ymd] = { title: copy.title, body: copy.body };
-    }
-    if (Object.keys(overrides).length > 0) texts.morningOverrides = overrides;
+  // 빈 객체는 싣지 않는다 — 네이티브가 "덮어쓸 게 있다"고 오해할 필요가 없다.
+  if (content?.morningOverrides && Object.keys(content.morningOverrides).length > 0) {
+    texts.morningOverrides = content.morningOverrides;
   }
   if (content?.eveningPendingTask) {
-    texts.eveningPendingTask = {
-      title: content.eveningPendingTask.title,
-      body: content.eveningPendingTask.body,
-    };
+    texts.eveningPendingTask = content.eveningPendingTask;
   }
   return texts;
 }

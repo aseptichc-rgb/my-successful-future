@@ -4,7 +4,6 @@
  */
 package com.michaelkim.anima.data
 
-import com.michaelkim.anima.MainActivity
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -87,8 +86,14 @@ data class WidgetNotificationCopy(
     val body: String,
     /** 펼쳤을 때 보여줄 전문(BigTextStyle). 제목이 트렁케이트된 경우에만 실려 온다. */
     val fullText: String? = null,
-    /** 탭 시 열 화면 — MainActivity.EXTRA_OPEN_TARGET 값과 같은 키. */
-    val target: String = MainActivity.OPEN_TARGET_HOME,
+    /**
+     * 탭 시 열 화면 — MainActivity.EXTRA_OPEN_TARGET 에 그대로 실리는 키
+     * (웹 types/index.ts 의 NotificationTapTarget 과 문자열까지 일치).
+     * 기본값은 MainActivity.OPEN_TARGET_HOME 과 같은 "home" 이지만 상수를 참조하지 않는다 —
+     * data 레이어가 Activity 를 import 하면 의존 방향이 뒤집힌다. 값이 갈리지 않도록
+     * MainActivity.resolveOpenPath 가 알 수 없는 키를 홈으로 폴백한다.
+     */
+    val target: String = "home",
 )
 
 /**

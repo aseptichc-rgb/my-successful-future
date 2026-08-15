@@ -17,15 +17,13 @@
  */
 import { authedFetch } from "@/lib/authedFetch";
 import { addKstDays, todayKstYmd } from "@/lib/kstDate";
+// 문구 한 건의 모양은 정책 모듈이 소유한다 — 여기서 같은 모양을 다시 선언하면 필드가 늘 때
+// 구조적 타이핑 때문에 컴파일은 통과한 채 이 경로에서만 값이 조용히 누락된다.
+import type { NotificationCopy } from "@/lib/notificationPolicy";
 import type { WidgetNotificationCopy, WidgetTodayResponse } from "@/types";
 
 /** 내일 카드를 미리 확정하기 시작하는 기기 로컬 시각. */
 export const PREFETCH_MIN_HOUR = 18;
-
-interface NotificationCopy {
-  title: string;
-  body: string;
-}
 
 export interface NotificationServerContent {
   /** 기기 로컬 달력 날짜(yyyy-MM-dd) → 그날 아침 문구. 네이티브가 같은 키로 매칭한다. */

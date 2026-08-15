@@ -1,7 +1,9 @@
 /**
  * 매일 저녁(기본 21:00, 기기 타임존 — NotificationPrefsStore) 로컬 알림 Worker.
  *
- * 발송 정책 (정책 단일 소스: 웹 lib/notificationPolicy.ts decideEveningSlot — 이 Worker 는 실행만):
+ * 발송 정책 — 아래 분기는 웹 lib/notificationPolicy.ts 의 decideEveningSlot 을 Kotlin 으로 옮긴
+ * 것이다. 예약 시점이 아니라 **발송 직전**에 오늘 진척을 봐야 해서 네이티브가 직접 판정한다
+ * (iOS 는 웹이 판정해 결과만 넘긴다). ⚠️ 한쪽만 고치면 두 플랫폼이 갈라진다 — 반드시 함께 수정할 것:
  *   - 일요일 + 주간 회고 켜짐 → "이번 주를 돌아볼 시간" 회고 알림으로 **대체** (추가 발송 아님).
  *   - 평일 저녁, 오늘 목표가 남아 있으면 → 목표 넛지. 본문에 오늘의 목표 문구를 실어
  *     "무엇을 하면 되는지"를 알림만 봐도 알게 한다 (self-monitoring, BCT 2.3).

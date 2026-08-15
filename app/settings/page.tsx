@@ -22,7 +22,7 @@ import {
   normalizeNotificationPrefs,
   summarizeNotificationHours,
 } from "@/lib/notificationPolicy";
-import { syncIosNotifications } from "@/lib/notificationBridge";
+import { isIosNotificationAvailable, syncIosNotifications } from "@/lib/notificationBridge";
 import { fetchNotificationContent } from "@/lib/notificationSync";
 import {
   FUTURE_SELF_DIMENSIONS,
@@ -796,20 +796,23 @@ export default function SettingsPage() {
       // 여기서도 알림 콘텐츠를 받아 오는 이유: sync 는 예약 전체를 재구성하므로, 정적 문구만
       // 넘기면 홈에서 실어 둔 "오늘의 명언" 문구가 저장 한 번에 지워지고 다음 홈 방문까지
       // 밋밋한 알림이 나간다. 실패하면 어차피 정적 폴백이라 결과를 기다리지 않는다.
-      void fetchNotificationContent()
-        .catch(() => null)
-        .then((content) =>
-          syncIosNotifications({
-            prefs: notifPrefs,
-            todayGoalDone: false,
-            // 사용자가 방금 알림을 켜고 저장했다 — 권한 프롬프트에 가장 맥락 있는 순간.
-            allowPrompt: true,
-            texts: buildNotificationTexts(t, {
-              morningByYmd: content?.morningOverrides,
-              eveningPendingTask: content?.eveningPendingTask,
-            }),
-          }),
-        );
+      //
+      // ⚠️ 반드시 iOS 에서만 fetch 한다. syncIosNotifications 는 iOS 밖에서 no-op 이라
+      // 게이트가 없으면 웹/안드로이드 사용자가 알림 설정을 저장할 때마다 /api/widget/today 를
+      // 한 번(저녁 이후엔 내일치까지 두 번) 헛으로 호출하고, 그 두 번째 호출은 서버에서
+      // 내일 카드 Gemini 생성까지 트리거한다 — 결과는 그대로 버려진다.
+      void (isIosNotificationAvailable()
+        ? fetchNotificationContent().catch(() => null)
+        : Promise.resolve(null)
+      ).then((content) =>
+        syncIosNotifications({
+          prefs: notifPrefs,
+          todayGoalDone: false,
+          // 사용자가 방금 알림을 켜고 저장했다 — 권한 프롬프트에 가장 맥락 있는 순간.
+          allowPrompt: true,
+          texts: buildNotificationTexts(t, content),
+        }),
+      );
       setNotifOpen(false);
     } catch (err) {
       console.error("[settings] 알림 설정 저장 실패:", err);

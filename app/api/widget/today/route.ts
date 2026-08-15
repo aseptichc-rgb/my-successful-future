@@ -27,6 +27,7 @@ import { pickTodayPlan, pickTodayAffirmationIndex } from "@/lib/planRotation";
 import { normalizeNotificationPrefs } from "@/lib/notificationPolicy";
 import { buildNotificationContent } from "@/lib/notificationContent";
 import { normalizeLocale } from "@/lib/i18n/types";
+import { truncateText } from "@/lib/truncateText";
 import type { PendingTaskInput } from "@/lib/pendingTasks";
 import type {
   FutureVision,
@@ -69,11 +70,7 @@ function buildVisionTeaser(vision: FutureVision): WidgetFutureVision | null {
   const sceneText = typeof firstScene?.text === "string" ? firstScene.text.trim() : "";
   const source = hook || sceneText;
   if (!title || !source) return null;
-  const teaser =
-    source.length > WIDGET_VISION_TEASER_MAX
-      ? `${source.slice(0, WIDGET_VISION_TEASER_MAX).trimEnd()}…`
-      : source;
-  return { title, teaser };
+  return { title, teaser: truncateText(source, WIDGET_VISION_TEASER_MAX) };
 }
 
 /**
@@ -332,12 +329,12 @@ export async function GET(request: NextRequest) {
         quote: motivation.quote,
         author: motivation.author,
         goalText: motivation.goalsSnapshot?.[0],
-        pending: {
-          ...(pendingSeed ?? { hasPortrait: true }),
-          executionPlanCount: executionPlanResult.count,
-        },
-        // 재료를 못 읽었으면 넛지를 만들지 않는다(위 pendingSeed 주석) — 아침/저녁 문구는 그대로 조립된다.
-        pendingTaskEnabled: notificationPrefs.pendingTaskEnabled && pendingSeed !== null,
+        // 재료를 못 읽었으면(pendingSeed === null) 통째로 생략 — 넛지만 빠지고
+        // 아침/저녁 문구는 그대로 조립된다. "못 읽었다"를 표현하는 방법은 이 하나뿐이어야 한다.
+        pending: pendingSeed
+          ? { ...pendingSeed, executionPlanCount: executionPlanResult.count }
+          : undefined,
+        pendingTaskEnabled: notificationPrefs.pendingTaskEnabled,
       });
     } catch (err) {
       console.error("[widget/today] 알림 문구 조립 실패(생략):", err);

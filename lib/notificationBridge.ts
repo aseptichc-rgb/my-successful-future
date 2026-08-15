@@ -20,12 +20,7 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { WEEKLY_REVIEW_WEEKDAY } from "@/lib/homeMode";
 import type { NotificationPrefs } from "@/types";
-import type { NotificationTexts } from "@/lib/notificationPolicy";
-
-interface NotificationCopy {
-  title: string;
-  body: string;
-}
+import type { NotificationCopy, NotificationTexts } from "@/lib/notificationPolicy";
 
 interface NotificationBridgePlugin {
   sync(options: {

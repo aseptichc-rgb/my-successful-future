@@ -29,6 +29,7 @@ import type { DocumentSnapshot, Transaction } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { yesterdayKstYmd } from "@/lib/kstDate";
 import { fnv1a } from "@/lib/planRotation";
+import { truncateText } from "@/lib/truncateText";
 import type { IdentityEvidenceEntry } from "@/types";
 
 /** 하루에 적립 가능한 최대 표 수 — checkin + deep + goal + win 카테고리당 1표. */
@@ -45,10 +46,7 @@ function identityDocId(label: string): string {
 }
 
 function truncateDetail(s: string): string {
-  const trimmed = s.trim();
-  return trimmed.length > EVIDENCE_DETAIL_MAX
-    ? `${trimmed.slice(0, EVIDENCE_DETAIL_MAX).trimEnd()}…`
-    : trimmed;
+  return truncateText(s, EVIDENCE_DETAIL_MAX);
 }
 
 /** 결정론적 회전 — 같은 (uid, ymd, source) 면 항상 같은 라벨. */
