@@ -284,6 +284,76 @@
      animation 이 같은 뿌리라는 한 줄은 캡션에만 둔다 — 보드에 넣으면
      사전 카드가 잡담이 되고 오렌지 1개소 규칙도 흔들린다.
 
+   2026-08-15 05 deck 교체: "anima · 다짐을 행동으로 옮기는 코칭 앱"
+   → "마법이나 단순한 동기부여가 아닙니다. / 뇌과학입니다."
+   03 에서 내려간 뒤 캡션에만 남아 있던 근거 선언을 이미지로 되살린 것이다
+   (§2026-08-15 03 deck 교체 항목의 "되살릴 거라면 별도 자리를 만들 것").
+   01-A 훅이 "동기부여 영상 그만 보세요"로 꺼낸 단어를 이미지 안에서 받아
+   치는 자리가 다시 생겼다 — 훅과 이 deck 은 한 벌이므로 한쪽만 고치지 말 것.
+   · 05 를 고른 이유: 헤드라인이 이미 "적기만 하는 앱이 아닙니다 / 행동을
+     설계합니다"라는 부정 → 선언 꼴이라, deck 이 같은 꼴을 한 급 위에서
+     되풀이하면 설계의 근거가 곧 뇌과학이라는 배치가 된다. 03(적기)은
+     이제 진입장벽 담당이라 한 줄에 근거와 문턱을 같이 넣을 수 없다.
+   · 잃은 것: 이미지 안의 앱 소개가 사라졌다. '앱'이라는 단어로 정체를
+     밝히던 보드가 05 하나였다 — 본문에 남은 이름은 06 헤드라인("anima 는
+     라틴어로 숨")과 08 deck("anima 에서 시작합니다")뿐이고, "무슨 앱인지"는
+     캡션 4행("Anima 는 꿈을 매일의 행동으로 바꿔주는 행동 코칭 앱이에요")이
+     전담한다. 캡션은 피드에서 접히므로 이미지만 넘긴 사람에게는 소개가
+     0회다 — 되살릴 거라면 이 deck 이 아니라 06 이나 08 에서 볼 것.
+   · 06 주석의 전제도 함께 바뀌었다: 05 가 이름을 처음 꺼내던 자리가
+     아니게 되어, 이제 06 헤드라인이 본문에서 이름을 처음 꺼낸다
+     (뜻풀이가 소개를 겸한다). 06 을 순서에서 내리지 말 것.
+   · 크기는 그대로 --fs-hl 92px · --fs-deck 36px(기본값). deck 이 2줄이
+     되면서 밴드가 50px 자랐다. 재실측: deck/hl 39.1% · 헤드라인 최장 줄
+     751px · 밴드 위 89 / 아래 145px · 넘침 0 · 메트릭 하단 여유 96px.
+     deck 두 줄의 자연 폭은 602 / 221px 이라 br 없이도 한 줄(835px)에
+     들어가지만, 부정 → 선언의 박자를 만들려고 일부러 둘로 끊었다.
+   · 캡션의 같은 문장(본문 중간)은 그대로 둔다 — 한 캐러셀에 한 번, 캡션에
+     한 번이 상한이다. 다른 보드로 복사하면 선언이 슬로건으로 약해진다.
+
+   2026-08-15 04 교체: 비전 → 확장(if-then). 캐러셀 장수는 8장 그대로다.
+   "꿈꾸는 미래가 / 이미 이루어진 듯 / 생생하게 펼쳐집니다."
+   → "한 문장 적기가 / 습관이 되면, / 행동을 더해보세요."
+   03 이 "딱 한 문장부터"로 진입장벽을 깎고 나면 바로 "그래서 계속 한 문장만?"
+   이 남는데, 그 답이 캐러셀에 없었다. 02(그려보세요) → 03(적으세요) →
+   04(더해보세요)로 지시 사슬을 한 칸 늘려 답을 이미지 안에 둔다.
+   조건절("습관이 되면")을 반드시 앞에 둘 것 — 뒤집으면 03 이 깎아 둔
+   문턱이 되살아난다.
+   · deck 은 '어떻게'를 맡는다: "만약 A면, 나는 B 한다" / if-then 한 문장.
+     if-then 은 제품 안의 기능 이름이자 화면 문구다(ko.ts woop.section.title
+     "실행 설계 (if-then)" · plan.today.title "오늘의 if-then" · plan.today.if
+     "만약" · plan.today.then "그러면"). 광고에서 지어낸 말이 아니므로 다른
+     이름으로 바꿔 부르지 말 것 — 설치 직후 화면과 어긋난다.
+   · 카드 "7일 연속이면 열립니다"는 실제 해금 정책이다
+     (lib/constants/growth.ts PLAN_UNLOCK_STREAK = 7). 이 보드의 러닝 메트릭이
+     07일차인 것과 같은 숫자이므로 셋(헤드라인의 '습관' · 카드의 7일 ·
+     메트릭 07)을 따로 놀게 두지 말 것. 정책 상수가 바뀌면 이 보드부터 볼 것.
+   · 조건 문장은 장애물 입력 예시 원문("저녁이 되면 피곤해서 미루고
+     싶어진다", ko.ts woop.obstacle.placeholder)을 상황으로 옮긴 것이다.
+     앱이 '환경이 아니라 내 안의' 장애물을 묻는 자리라 조건에 날씨·회사
+     같은 외부 사정을 쓰지 말 것. then 은 03 의 한 줄 위에 행동 하나를
+     얹은 모양이어야 헤드라인이 카드로 증명된다("한 줄을 적고, + 10분").
+   · 오렌지 1개소는 then 줄의 세로선(.planrow.then .plantext) — 조건이
+     아니라 행동이 살아있는 지점이다. 라벨 알약은 양쪽 다 골드로 둘 것.
+     05 처럼 알약까지 오렌지로 물들이면 한 장에 오렌지가 둘이 된다(§3-1).
+   · --fs-hl 92px — 03·05·06 과 같은 급. 최장 줄 "행동을 더해보세요." 752px
+     로 안전폭 904px 의 83%(03·06 과 같은 비율)라 키울 이유가 없다.
+     deck/hl 39.1% · 밴드 위 127 / 아래 183px · 카드 249px · 넘침 0.
+   · 카드는 고정 두 줄이라 JS 없이 HTML 에 직접 쓴다. 함께 내린 것:
+     .vision/.visrow/.vismoment/.vistext/.visclose 와 VISION_SCENES 렌더러
+     (04 가 유일한 사용처였다). 비전 기능 자체는 제품에 그대로 있고
+     (lib/futureVision.ts) 캡션 문단도 남겼으므로, 보드로 되살릴 땐 git
+     이력에서 장면 원문을 꺼내 쓸 것.
+   · 딸려 온 정합 세 가지:
+     - 02 헤드라인 "생생하게"의 짝("생생하게 펼쳐집니다")이 사라졌다. 지금
+       이 단어는 이미지 안에서 혼자 서 있고 회수는 캡션 비전 문단이 맡는다.
+     - 08 주석의 "1인칭 현재형" 계보에서 04 를 빼고 02·03 으로 고쳤다.
+     - 캡션에 04 와 같은 말을 넣었다(비전 문단 다음, 05 소개 앞).
+   · 잃은 것: 제품의 가장 큰 차별점(매일 새로 그려 주는 '이미 이룬 하루')이
+     이미지에서 사라졌다. 캡션에만 남아 있으므로 이미지만 넘긴 사람에게는
+     노출이 0회다 — 되살릴 거라면 04 를 되돌리지 말고 새 보드를 만들 것
+     (04·05 사이가 자리다: 확장 → 비전 → 설계).
+
    v3 대비 변경점은 세 가지뿐이다.
    1) 디스플레이 서체: Fraunces → Noto Serif KR (워드마크만 Fraunces 유지)
    2) 강조 장치: 이탤릭 → 굵기 600 + 골드
@@ -437,8 +507,8 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 .looptime{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.08em;width:80px;flex:none;color:rgba(247,243,236,.45);}
 .loopstep{font-family:var(--mono);font-size:var(--fs-mono);letter-spacing:.12em;width:104px;flex:none;text-align:center;padding:8px 0;border:1px solid;border-radius:999px;}
 .looptext{font-family:var(--display);font-weight:300;font-size:33px;line-height:1.3;color:var(--cream);word-break:keep-all;}
-/* 이름의 뜻 (06) — 라틴어 사전 항목 형식. 앞선 다섯 장의 카드가 전부 나열형
-   (반복·비전·루프)이라 같은 리듬을 한 번 끊는다. 형식 자체가 "이건 지어낸
+/* 이름의 뜻 (06) — 라틴어 사전 항목 형식. 앞선 카드가 모두 나열형이라
+   같은 리듬을 여기서 한 번 끊는다. 형식 자체가 "이건 지어낸
    카피가 아니라 사실"이라는 신호이기도 하다 — 광고가 자기 이름으로 근거를
    대는 유일한 자리다. 뜻풀이 두 줄은 어원(사실), 마지막 파생어 줄이 그 사실을
    제품이 하는 일로 건너뛴다. 오렌지 1개소는 그 건너뛰는 화살표(.etyar). */
@@ -552,12 +622,15 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
       <!-- 01-A 의 도발("그만 보세요")과 예고("방법이 있습니다")를 받아, 그 방법의
            첫 단계를 지시로 준다. 두 번째 단계(적기)는 03 이 받으므로 여기서
            "적으세요"까지 가지 말 것 — 한 장에 두 단계를 넣으면 03 이 빈다.
-           "생생하게"는 04(비전)의 "생생하게 펼쳐집니다"와 짝이다(요구 → 대행).
+           "생생하게"를 받아 주던 04(비전)의 "생생하게 펼쳐집니다"는 04 가
+           확장(if-then)으로 교체되면서 사라졌다 — 지금 이 단어는 이미지 안에서
+           혼자 서 있고, 회수는 캡션의 비전 문단이 맡는다. 비전을 보드로
+           되살리면 그 짝(요구 → 대행)을 여기 주석과 함께 복구할 것.
            em 은 골드 — 오렌지 1개소는 아래 카드의 커서가 갖는다. -->
       <div class="hl">성공한 미래를<br>최대한 <em>생생하게</em><br>그려보세요.</div>
       <!-- 지시만 있고 이유가 없으면 넘기면서 잊는다. 이 줄은 '왜 생생해야 하나'를
-           04(비전)를 미리 쓰지 않는 선에서만 답한다 — 막연함의 반대말이
-           헤드라인의 '생생하게'라는 것만 세운다. -->
+           한 문장으로만 답한다 — 막연함의 반대말이 헤드라인의 '생생하게'라는
+           것만 세우고 근거는 대지 않는다(근거를 대면 03·04 가 빈다). -->
       <div class="deck">막연한 미래는 <b>오늘을 움직이지 못합니다.</b></div>
     </div>
 
@@ -637,33 +710,57 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   </div>
 </div>
 
-<!-- ═══ 04 · 비전 ═══ -->
-<div class="cap">KO 04 · <b>비전</b> · 이미 이룬 하루<button class="dl" data-ad="adV">↓ PNG</button></div>
-<div class="ad" id="adV" data-name="anima-ig-v4-ko-04-vision" style="--fs-hl:92px;">
+<!-- ═══ 04 · 확장 ═══
+     03 까지가 "한 문장만 적으세요"로 진입장벽을 깎는 구간이라, 그 다음
+     질문("그래서 계속 한 문장만?")에 답하는 자리다. 습관이 붙은 뒤에야
+     행동을 얹는 순서 자체가 제품의 해금 정책과 같다 — lib/constants/growth.ts
+     PLAN_UNLOCK_STREAK = 7(연속 7일이면 실행 설계가 열린다). 이 보드의
+     메트릭이 07일차인 것은 우연이 아니므로 숫자 셋(헤드라인의 습관 · 카드의
+     "7일 연속" · 메트릭 07)을 따로 놀게 두지 말 것. -->
+<div class="cap">KO 04 · <b>확장</b> · if-then<button class="dl" data-ad="adP">↓ PNG</button></div>
+<div class="ad" id="adP" data-name="anima-ig-v4-ko-04-ifthen" style="--fs-hl:92px;">
   <div class="inner">
     <div class="topbar">
       <div class="lockup"><span class="mk"></span><span class="wm">anima</span></div>
-      <span class="eyebrow">NO.04 · 비전</span>
+      <span class="eyebrow">NO.04 · 확장</span>
     </div>
 
     <div class="band">
-      <!-- "생생하게"는 02 헤드라인의 지시를 여기서 회수한다 — 02 는 독자에게
-           그리라고 요구하고, 04 는 앱이 대신 펼쳐 준다(요구 → 대행).
-           둘 중 한쪽 문구만 바꾸면 이 짝이 깨진다. -->
-      <div class="hl">꿈꾸는 미래가<br><em>이미 이루어진 듯</em><br>생생하게 펼쳐집니다.</div>
-      <!-- deck 은 헤드라인이 말하지 않은 것만 싣는다 — hl 이 '이미 이루어진 듯'을
-           맡으므로, 여기서는 그 하루가 매일 새로 그려진다는 사실만. -->
-      <div class="deck">어제와 다른 하루, <b>내일 또 다른 하루.</b></div>
+      <!-- 02(그려보세요) → 03(적으세요) → 04(더해보세요)로 이어지는 지시 사슬의
+           마지막 칸이다. 조건절("습관이 되면")이 앞에 있어야 03 의 "딱 한
+           문장부터"와 모순되지 않는다 — 순서를 뒤집어 "행동을 더하세요"를
+           앞세우면 03 이 깎아 둔 진입장벽이 되살아난다. -->
+      <div class="hl">한 문장 적기가<br>습관이 되면,<br>행동을 <em>더해보세요.</em></div>
+      <!-- 헤드라인은 '언제·무엇을'만 말하고 '어떻게'는 이 줄이 맡는다.
+           if-then 은 제품 안의 기능 이름이자 화면 문구다(woop.section.title
+           "실행 설계 (if-then)" · plan.today.title "오늘의 if-then") — 광고에서
+           만들어낸 말이 아니므로 다른 이름으로 바꿔 부르지 말 것. -->
+      <div class="deck">“만약 A면, 나는 B 한다”<br><b>if-then 한 문장</b>이면 됩니다.</div>
     </div>
 
     <div class="rule"></div>
-    <!-- 오렌지 1개소: "지금 살고 있다"를 말하는 마지막 한 줄의 세로선 -->
+    <!-- 오렌지 1개소: then 줄의 세로선(조건이 아니라 행동이 살아있는 지점).
+         라벨 '만약 / 그러면'은 제품 원문이다(ko.ts plan.today.if · plan.today.then).
+         조건 문장은 장애물 입력 예시("저녁이 되면 피곤해서 미루고 싶어진다",
+         woop.obstacle.placeholder)를 그대로 상황으로 옮긴 것 — 앱이 '내 안의
+         장애물'을 묻는 자리라 환경이 아니라 마음을 조건으로 쓴다.
+         then 은 03 의 한 줄 위에 행동 하나를 얹은 모양이어야 이 보드의
+         헤드라인("더해보세요")이 카드로 증명된다. -->
     <div class="card">
       <div class="chead">
-        <span class="clabel">오늘, 그 꿈을 사는 하루</span>
-        <span class="clabel mute">1인칭 · 현재형</span>
+        <span class="clabel">오늘의 if-then</span>
+        <span class="clabel mute">7일 연속이면 열립니다</span>
       </div>
-      <div class="vision" data-vision></div>
+      <div class="plan">
+        <div class="planrow">
+          <span class="planlb">만약</span>
+          <span class="plantext">저녁 아홉 시, 피곤해서 미루고 싶어지면</span>
+        </div>
+        <div class="planrow then">
+          <span class="planlb">그러면</span>
+          <span class="plantext">한 줄을 적고, 딱 10분만 책상에 앉는다</span>
+        </div>
+      </div>
     </div>
     <div class="metric"><b>07</b>일차</div>
   </div>
@@ -673,7 +770,12 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 <div class="cap">KO 05 · <b>설계</b> · 행동 코칭<button class="dl" data-ad="ad3">↓ PNG</button></div>
 <!-- --fs-hl 은 03·04 와 같은 92px — deck 을 붙이면서 88px 로는 부연/헤드라인
      비율이 40.9% 가 되어 주종 규칙(--fs-deck 주석의 40% 이하)을 넘긴다.
-     92px 에서 39.1%, 최장 줄 577px(안전폭 904px), 밴드 위 115 / 아래 171px. -->
+     92px 에서 39.1%, 헤드라인 최장 줄 751px(3행, 안전폭 904px).
+     deck 이 뇌과학 선언으로 바뀌며 1줄 → 2줄이 되어 밴드가 50px 자랐다.
+     재실측: 밴드 위 89 / 아래 145px · 넘침 없음 · 메트릭 하단 여유 96px(=패딩).
+     deck 두 줄의 자연 폭은 602 / 221px 이라 사실 <br> 없이도 한 줄(835px)에
+     들어간다 — 줄바꿈은 부정(1행) → 선언(2행)의 박자를 만들려고 일부러 넣은
+     것이므로 "붙여도 들어가니까"라는 이유로 <br> 를 빼지 말 것. -->
 <div class="ad" id="ad3" data-name="anima-ig-v4-ko-05-design" style="--fs-hl:92px;">
   <div class="inner">
     <div class="topbar">
@@ -798,7 +900,7 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
 
     <div class="band">
       <!-- 마지막 장은 독자가 앱에서 처음 적을 문장을 미리 입에 붙여 보는 자리다.
-           1인칭 현재형이라 03 다짐 카드·04 비전 보드의 톤과 한 줄로 이어지고,
+           1인칭 현재형이라 02 답변·03 다짐 카드의 톤과 한 줄로 이어지고,
            아래 메트릭 "01일차 · 당신의 차례"가 이 '내'를 독자에게 넘긴다.
            오렌지 1개소는 CTA 버튼이 계속 갖는다 — em 은 골드로 둘 것(.hl em). -->
       <div class="hl">내 미래는<br><em>내가</em><br>만들어갑니다.</div>
@@ -881,8 +983,8 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   var EXPORT_H = cssPx('--h');
   var PIXEL_RATIO = 2;        // → 2160 × 2700
   var BATCH_PAUSE_MS = 400;   // 브라우저가 다운로드를 flush 할 여유
-  // 실제 게재 8장 — 훅 → 그리기 → 원리 → 비전 → 설계 → 이름 → 변화 → CTA (마크업 등장 순서와 동일)
-  var CARRYOVER = ['adA', 'adF', 'ad2', 'adV', 'ad3', 'adN', 'ad4', 'ad5'];
+  // 실제 게재 8장 — 훅 → 그리기 → 적기 → 확장 → 설계 → 이름 → 변화 → CTA (마크업 등장 순서와 동일)
+  var CARRYOVER = ['adA', 'adF', 'ad2', 'adP', 'ad3', 'adN', 'ad4', 'ad5'];
   var HOOK_VARIANTS = ['adA', 'adC'];                    // 훅 A/B 테스트 2안
 
   /* ── 보드를 가로로 배치 — 순서 = 마크업 등장 순서(.cap 과 .ad 는 짝) ── */
@@ -924,8 +1026,9 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
   /* ── 다짐 반복 기록 (03) ────────────────────────────────────
      같은 문장이 날마다 진해진다 — "반복이 뇌에 길을 낸다"를 투명도
      그라데이션으로 옮긴 것. 오렌지는 오늘 쓰는 줄의 커서 1개소.
-     이 문장이 캐러셀의 척추다 — 04(비전)의 장면이 실현된 대상이고,
-     02(그리기)의 답변 예시도 같은 인물의 하루다. 바꾸면 세 장을 같이 볼 것. */
+     이 문장이 캐러셀의 척추다 — 02(그리기)의 답변 예시가 같은 인물의 하루이고,
+     04(확장)의 then 줄("한 줄을 적고")이 가리키는 '한 줄'도 이 문장이다.
+     바꾸면 세 장을 같이 볼 것. */
   /* 02 카드의 .askdec 와 글자까지 같아야 한다 — 02 에서 선언한 문장을 03 이
      네 번 반복하는 그림이라, 한쪽만 고치면 반복이 반복으로 안 읽힌다. */
   var REP_SENTENCE = '나는 100억달러 가치 스타트업의 CEO다';
@@ -946,32 +1049,10 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     }).join('');
   });
 
-  /* ── 미래 비전 미리보기 (04) ────────────────────────────────
-     제품의 가장 큰 차별점: 사용자가 적은 '미래의 나'를 재료로, 그 미래가
-     이미 실현된 하루를 1인칭 현재형 장면으로 매일 새로 그려 준다.
-     02(그리기)가 "당신이 적으세요"라고 요구한 것을 여기서 앱이 대신 펼친다.
-
-     장면은 03 반복 카드의 다짐 문장("나는 100억달러 가치 스타트업의 CEO다")이
-     실현된 하루여야 한다 — 앞 보드에서 네 줄로 반복해 보여준 문장과 무관한
-     미래를 그리면 캐러셀의 서사가 끊긴다. 명예(무대에서 불리는 이름)와
-     부(가격표를 보지 않는 선택) 두 축을 한 장면씩 맡겼다.
-     톤은 lib/futureVision.ts 의 작성 규칙을 그대로 따른다 — 1인칭 현재형,
-     장면당 감각 디테일 1개 이상, 감정어 직접 명명 금지("뿌듯"·"행복" 없이
-     장면이 느끼게 할 것), 스톡 럭셔리 클리셰(스포츠카·요트·샴페인) 금지.
-     오렌지는 "지금 살고 있다"를 말하는 마지막 한 줄 1개소. */
-  var VISION_SCENES = [
-    { moment: '오전 9시, 기조연설',  text: '2천 명이 앉은 홀의 불이 꺼지고, 사회자가 내 이름 앞에 회사 가치를 붙여 부른다.' },
-    { moment: '저녁 8시, 부모님 집', text: '어머니가 새 집 거실 창가에 오래 서 계신다. 이제 나는 가격표를 보지 않고 고른다.' }
-  ];
-  var VISION_CLOSING = '그때 적기만 하던 문장을, 나는 지금 살고 있다.';
-  document.querySelectorAll('[data-vision]').forEach(function (el) {
-    el.innerHTML = VISION_SCENES.map(function (s) {
-      return '<div class="visrow">' +
-          '<span class="vismoment">' + s.moment + '</span>' +
-          '<span class="vistext">' + s.text + '</span>' +
-        '</div>';
-    }).join('') + '<div class="visclose">' + VISION_CLOSING + '</div>';
-  });
+  /* 04(비전) 보드가 확장(if-then)으로 교체되면서 VISION_SCENES 렌더러를 함께
+     내렸다 — 04 카드는 고정 두 줄이라 JS 없이 HTML 에 직접 쓴다.
+     비전 기능 자체는 제품에 그대로 있고(lib/futureVision.ts) 캡션에도 남아
+     있으므로, 보드로 되살릴 땐 git 이력에서 장면 원문을 꺼내 쓸 것. */
 
   /* ── 하루 코칭 루프 (05) ────────────────────────────────────
      "단순 기록이 아니라 설계"의 증거 — 밤의 다짐이 아침의 행동
@@ -1094,6 +1175,13 @@ body{font-family:var(--ui);-webkit-font-smoothing:antialiased;padding:var(--stag
     '1인칭 현재형 장면으로 눈앞에 그려 드려요.',
     '막연한 상상으로 남겨두지 않고, 오늘 이미 그 하루를 살아보는 겁니다.',
     '어제와 다른 하루, 내일 또 다른 하루 — 매일 새로 그려집니다.',
+    '',
+    /* 04(확장) 보드와 같은 말. 숫자와 기능 이름은 제품 원문이다 —
+       7일은 lib/constants/growth.ts PLAN_UNLOCK_STREAK, 'if-then'은
+       ko.ts woop.section.title 의 이름 그대로다. 임의로 바꾸지 말 것. */
+    '한 문장 적기가 습관이 되면, 행동을 하나씩 더해보세요.',
+    '‘만약 A면, 나는 B 한다’ — if-then 한 문장으로 미리 정해두면',
+    '결정의 순간에 고민하지 않게 돼요. (7일 연속 적으면 열려요)',
     '',
     '적기만 하는 앱이 아니라, 행동을 설계하는 앱.',
     '30일 중 25일 — 의지가 아니라 설계입니다.',
