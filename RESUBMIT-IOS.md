@@ -1,12 +1,20 @@
 # 재심사 — Guideline 4 대응 build 1.0(9) 올리기
 
-> ## ✅ 현재 상태(2026-08-08): **1.0.2 (11) 심사 제출 완료** — INVALID_BINARY 해소
+> ## ✅ 현재 상태(2026-08-16): **1.0.3 (12) 심사 제출 완료** — 알림 개선 네이티브 반영
+>
+> 1.0.2 (11) 은 승인·출시됨(`READY_FOR_DISTRIBUTION`). 그 위에 1.0.3 (12) 를 올렸다 —
+> 이번에는 지난번과 달리 **네이티브 코드 변경이 있었다** (NotificationBridgePlugin.swift 신버전
+> + capacitor.config.json 재생성). 절차·함정은 [§ 1.0.3 제출 기록](#103-12-제출-기록-2026-08-16-mac) 참고.
+> **다음 빌드는 13 부터.**
+>
+> <details><summary>이전 상태(2026-08-08): 1.0.2 (11) 심사 제출 완료 — INVALID_BINARY 해소</summary>
 >
 > Mac 에서 아래 [§ 1.0.2 INVALID_BINARY 복구](#102-invalid_binary-복구-2026-08-07-진단) 절차를 그대로
 > 실행: `UPLOAD SUCCEEDED`(Delivery UUID `afa96583-5880-40cf-a796-0e15ac68e07d`) → TestFlight
 > `1.0.2 (11) VALID` → `--submit --cancel-stuck-submission` 으로 심사 대기열 진입.
 > 스토어 문구 4개 로케일(설명·키워드·릴리스 노트)도 같은 심사에 묶였다.
 > 실행 중 겪은 409 경합은 [§ 실행 기록](#실행-기록-2026-08-08-mac) 참고.
+> </details>
 >
 > <details><summary>이전 상태(2026-08-07): 1.0.2 가 <code>INVALID_BINARY</code></summary>
 >
@@ -20,6 +28,35 @@
 > Mac 빌드 시 참고용. App Store 거절(Guideline 4 — Design) 대응 후 **정식 재제출**을 위한 절차다.
 > 전체 iOS 셋업은 [README-IOS.md](README-IOS.md) 참고. 이 문서는 "이미 build 8까지 올린 상태에서
 > Guideline 4 수정본을 재심사에 넣는" 최소 절차만 담는다.
+
+---
+
+## 1.0.3 (12) 제출 기록 (2026-08-16, Mac)
+
+1.0.2 (11) 출시 후 쌓인 커밋(알림 콘텐츠 개선 `36fa552`+`3ca2025`, WKWebView 인스펙터 위임
+`1793666`, 무료 티어 `73c2778` 등)을 1.0.3 (12) 로 제출 완료. 이번 실행의 요점:
+
+- **이번엔 네이티브 변경이 있었다** — `cap sync 불필요` 전제가 깨지는 첫 사례.
+  1. [ios-templates/plugin/NotificationBridgePlugin.swift](ios-templates/plugin/NotificationBridgePlugin.swift)
+     신버전(아침 14일 창 + `morningOverrides` 명언 + `eveningPendingTask` 넛지)을
+     `ios/App/App/NotificationBridgePlugin.swift` 로 **직접 복사** (Xcode 타깃에는 이미 등록돼 있음).
+  2. `npx cap copy ios` 로 `ios/App/App/capacitor.config.json` 재생성 — `webContentsDebuggingEnabled`
+     키가 사라져 Release 아카이브는 인스펙터 자동 off. **`cap sync` 가 아니라 `cap copy`** 를 쓸 것:
+     플러그인 의존성 변경이 없으면 copy 로 충분하고 위젯 서명도 안 건드린다.
+  - 업로드 전 `strings App.app/App | grep morningOverrides` 로 신코드 포함 여부를 실측 확인했다.
+- **버전**: `agvtool new-marketing-version 1.0.3` + `agvtool new-version -all 12`, 그리고 지난번
+  함정대로 pbxproj 4곳(App/위젯 × Debug/Release)의 `MARKETING_VERSION` 을 sed 로 1.0.3 맞춤.
+- **릴리스 노트**: [scripts/ios-update-metadata.mjs](scripts/ios-update-metadata.mjs) 의 4로케일
+  `whatsNew` 를 1.0.3 내용(알림 개선)으로 고친 뒤 `--apply --version 1.0.3 --no-live-promo` 로
+  편집 버전 생성 + 문구 스테이징. 설명·키워드는 1.0.2 승인본과 동일해 사실상 재업서트.
+- **아카이브→업로드**: 기존 §4 와 동일 (키체인 잠금해제 → 수동 서명 archive → ExportOptions-widget
+  export → altool). 산출물은 `build/Anima-1.0.3.xcarchive` / `build/export-1.0.3` 로 버전별 분리.
+  `UPLOAD SUCCEEDED` — Delivery UUID `02ee5f81-26ef-4343-8cd9-cb408ee2c8ec`.
+- **제출**: TestFlight `1.0.3 (12) VALID` 확인(약 15분) 후 `node scripts/ios-appstore-submit.mjs
+  --submit` 한 번에 통과. 지난번의 409 상태 전이 경합은 이번엔 없었다 — 빌드 연결과 제출 사이에
+  TestFlight 처리 대기 시간이 자연스럽게 끼면 안 겪는 듯.
+- 제출 전 검증: vitest 141/141 통과, `next build` 성공, 웹↔네이티브 브리지 계약(최상위
+  `morningOverrides`/`eveningPendingTask` 키) 정합 확인. 프로덕션 호스트 200 확인.
 
 ---
 

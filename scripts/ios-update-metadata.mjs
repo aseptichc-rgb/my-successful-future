@@ -74,7 +74,8 @@ const COPY = {
       "Your future becomes what you believe. Daily affirmations from your future self.",
     keywords:
       "motivation,affirmations,daily quote,goals,habits,widget,self care,dream,mindset",
-    whatsNew: "Minor improvements and a refreshed app description.",
+    whatsNew:
+      "Morning notifications now carry the day's actual quote. If you've already completed today's goal, the evening reminder steps aside for a gentle nudge about an unfinished task instead. Plus small fixes and polish.",
     description: `What if there was an app that made your dreams come true?
 
 Not by magic. By the oldest rule there is: you become what you believe.
@@ -115,7 +116,8 @@ Take it with Anima.`,
       "나의 미래는 내가 믿는 대로 됩니다. 미래의 내가 오늘의 나에게 건네는, 매일 한 줄의 확언으로 하루를 시작하세요.",
     keywords:
       "동기부여,확언,다짐,명언,목표,습관,위젯,자기계발,꿈,성공,멘토,루틴,마인드셋,긍정,자존감",
-    whatsNew: "앱 소개 문구를 새로 다듬고 소소한 개선을 했습니다.",
+    whatsNew:
+      "아침 알림에 그날의 명언이 그대로 담깁니다. 오늘 목표를 이미 끝냈다면, 저녁 알림 자리에는 아직 남은 할 일을 부드럽게 알려드려요. 소소한 개선도 함께 했습니다.",
     description: `꿈을 이루어주는 앱이 있다면 어떨까요?
 
 마법이 아닙니다. 가장 오래된 진리 하나 때문입니다 — 사람은 자신이 믿는 대로 됩니다.
@@ -156,7 +158,8 @@ Anima와 함께 떼어보세요.`,
       "Tu futuro se convierte en lo que crees. Afirmaciones diarias de tu yo del futuro.",
     keywords:
       "motivación,afirmaciones,frase diaria,metas,hábitos,widget,sueño,mentalidad",
-    whatsNew: "Pequeñas mejoras y descripción renovada.",
+    whatsNew:
+      "Las notificaciones de la mañana ahora incluyen la cita del día. Si ya completaste tu meta de hoy, el recordatorio de la tarde deja paso a un aviso suave sobre una tarea pendiente. Además, pequeñas mejoras.",
     description: `¿Y si hubiera una app que hiciera realidad tus sueños?
 
 No por arte de magia. Por la regla más antigua que existe: te conviertes en lo que crees.
@@ -197,7 +200,8 @@ Dalo con Anima.`,
       "你的未来，取决于你相信什么。来自未来自己的每日肯定语，让微小的重复终将成真。",
     keywords:
       "励志,正能量,每日金句,目标,习惯,小组件,自我提升,梦想,名言,成功,坚持,语录,心态,自律,打卡",
-    whatsNew: "更新了应用介绍，并进行了小幅改进。",
+    whatsNew:
+      "早晨通知现在会附上当天的名言。如果你已完成今天的目标，晚间提醒会改为温和地提示你尚未完成的任务。另有若干小改进。",
     description: `如果有一款 App 能让你的梦想成真，会怎样？
 
 不是靠魔法，而是靠最古老的一条法则：你相信什么，就会成为什么。
