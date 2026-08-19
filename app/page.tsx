@@ -1,15 +1,26 @@
 /**
  * 마케팅 랜딩 페이지.
  *
- * 본 제품(매일 동기부여 카드 + 잠금화면 위젯)은 안드로이드 유료 앱이며, iOS 앱은 같은 웹 URL 을
+ * 본 제품(매일 동기부여 카드 + 위젯)은 안드로이드·iOS 유료 앱이며, iOS 앱은 같은 웹 URL 을
  * Capacitor WKWebView 로 로드하는 래퍼다([capacitor.config.ts]). 웹은 가치 제안 미리보기와
  * 회원 로그인 진입점 역할을 한다.
  *
  * iOS 심사 대응 (Apple Guideline 2.3.10 — Accurate Metadata):
- *   같은 URL 을 iOS 앱이 그대로 띄우므로, "Google Play 에서 받기" 버튼과 "안드로이드 앱에서
- *   동작"·"잠금화면" 같은 타 플랫폼 문구가 앱 안에 보이면 심사에서 거절된다(실제 거절 사유).
+ *   같은 URL 을 iOS 앱이 그대로 띄우므로, "Google Play 에서 받기"·"App Store 에서 받기" 버튼과
+ *   "안드로이드 앱에서 동작" 같은 타 플랫폼 참조가 앱 안에 보이면 심사에서 거절된다(실제 거절 사유).
  *   그래서 해당 요소는 [components/landing/PlatformGate] 의 WebOnly/PlatformText 로 감싸
  *   웹에서만 노출하고, iOS 앱에는 iOS 안전 문구만 그린다(SSR 기본값이 iOS 안전이라 깜빡임 없이 차단).
+ *
+ * 위젯 문구가 플랫폼별로 갈리는 이유 (거절 회피가 아니라 사실관계):
+ *   잠금화면 위젯이 실제로 되는 건 iOS 뿐이다. 안드로이드는 5.0 에서 잠금화면 위젯이 제거됐고
+ *   (WIDGET_CATEGORY_KEYGUARD 는 API 21 부터 deprecated), 15 QPR1 이후 돌아온 것도 태블릿
+ *   한정이라 폰에서는 홈 화면 위젯만 동작한다 — quote_widget_info.xml 의 keyguard 선언은
+ *   현행 기기에서 무시된다. iOS 는 AnimaWidgetBundle 이 accessoryRectangular/Inline/Circular
+ *   를 선언해 진짜 잠금화면 위젯을 제공한다.
+ *
+ *   PlatformText 의 게이트는 "iOS 앱 vs 웹 브라우저" 이지 안드로이드 vs iOS 가 아니다. web 변형은
+ *   데스크톱·안드로이드·아이폰 사파리가 모두 보므로 양쪽에서 참인 "홈 화면 위젯" 으로 쓰고,
+ *   플랫폼별 차이는 하단 안내 한 줄이 담당한다. ios 변형은 앱 안에서만 보이니 잠금화면을 명시한다.
  *
  * 이미 로그인된 사용자는 /home 으로, 비로그인은 그대로 보이게.
  * (로그인 후 /home 은 web preview 배너와 함께 동작 — 본격 사용은 앱 권장.)
@@ -59,7 +70,7 @@ export default function LandingPage() {
         <section className="grid items-center gap-10 sm:grid-cols-[1.1fr_1fr] sm:gap-14">
           <div>
             <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-[#1E1B4B]/60">
-              <PlatformText web="매일, 잠금화면에서." ios="매일, 한 줄." />
+              <PlatformText web="매일, 홈 화면 위젯에서." ios="매일, 잠금화면에서." />
             </p>
             <h1 className="mt-4 text-[40px] font-bold leading-[1.05] tracking-[-0.025em] text-[#1E1B4B] sm:text-[56px]">
               당신의 꿈을<br />
@@ -67,8 +78,8 @@ export default function LandingPage() {
             </h1>
             <p className="mt-5 max-w-xl text-[16px] leading-[1.55] tracking-[-0.01em] text-black/64 sm:text-[17px]">
               <PlatformText
-                web="꿈을 한 줄 적으면 오늘 할 한 걸음이 정해지고, 그 걸음을 밀어줄 실존 멘토의 한 마디가 매일 잠금화면 위젯에 도착합니다. 알림 없이, 광고 없이."
-                ios="꿈을 한 줄 적으면 오늘 할 한 걸음이 정해지고, 그 걸음을 밀어줄 실존 멘토의 한 마디가 매일 도착합니다. 알림 없이, 광고 없이."
+                web="꿈을 한 줄 적으면 오늘 할 한 걸음이 정해지고, 그 걸음을 밀어줄 실존 멘토의 한 마디가 매일 홈 화면 위젯에 도착합니다. 알림 없이, 광고 없이."
+                ios="꿈을 한 줄 적으면 오늘 할 한 걸음이 정해지고, 그 걸음을 밀어줄 실존 멘토의 한 마디가 매일 잠금화면 위젯에 도착합니다. 알림 없이, 광고 없이."
               />
             </p>
 
@@ -105,10 +116,12 @@ export default function LandingPage() {
               </span>
             </div>
 
-            {/* "웹은 미리보기 · 안드로이드 앱에서 동작": iOS 앱에서 보이면 타 플랫폼 참조라 웹 전용. */}
+            {/* 플랫폼별 위젯 위치 안내: 타 플랫폼 참조라 iOS 앱에는 노출하지 않는다(웹 전용).
+                안드로이드는 5.0 에서 잠금화면 위젯이 제거돼 홈 화면만 가능하고(quote_widget_info.xml
+                의 keyguard 선언은 현행 기기에서 무시됨), 잠금화면 위젯이 실제로 되는 건 iOS 뿐이다. */}
             <WebOnly>
               <p className="mt-6 text-[12px] leading-[1.6] tracking-[-0.01em] text-black/40">
-                웹은 미리보기 용도입니다. 위젯·잠금화면 기능은 안드로이드 앱에서 동작합니다.
+                웹은 미리보기 용도입니다. 위젯은 안드로이드 홈 화면, iOS 홈·잠금화면에서 동작합니다.
               </p>
             </WebOnly>
           </div>
@@ -143,7 +156,7 @@ export default function LandingPage() {
               </div>
             </div>
             <p className="mt-4 text-center text-[11px] tracking-[-0.005em] text-black/40">
-              <PlatformText web="잠금화면 위젯 미리보기" ios="오늘의 카드 미리보기" />
+              <PlatformText web="홈 화면 위젯 미리보기" ios="잠금화면 위젯 미리보기" />
             </p>
           </div>
         </section>
@@ -162,8 +175,8 @@ export default function LandingPage() {
             title="알림 없음, 광고 없음"
             body={
               <PlatformText
-                web="잠금화면을 한 번 켤 때마다 한 줄. 그것 하나로 충분합니다."
-                ios="하루 한 번, 한 줄. 그것 하나로 충분합니다."
+                web="홈 화면을 열 때마다 한 줄. 그것 하나로 충분합니다."
+                ios="잠금화면을 한 번 켤 때마다 한 줄. 그것 하나로 충분합니다."
               />
             }
           />
