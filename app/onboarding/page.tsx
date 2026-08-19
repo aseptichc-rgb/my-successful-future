@@ -448,8 +448,10 @@ export default function OnboardingPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F0EDE6]">
+      {/* sticky top-0 이라 스크롤 중 상태바 밑에 붙는다. viewportFit:"cover"(layout.tsx)
+          때문에 여백이 없으면 우측 "건너뛰기" 버튼이 상태바에 가려 탭이 먹지 않는다. */}
       <div className="sticky top-0 z-10 border-b border-black/[0.06] bg-white/80 backdrop-blur">
-        <div className="mx-auto flex max-w-2xl items-center gap-4 px-5 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-2xl items-center gap-4 px-5 pb-3 pt-[calc(env(safe-area-inset-top)+12px)] sm:px-6">
           {progress ? (
             <div className="flex flex-1 items-center gap-3">
               <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-black/10">

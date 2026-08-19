@@ -57,7 +57,7 @@ export default async function DeleteAccountPage({
 
   return (
     <div className="min-h-screen bg-[#F0EDE6]">
-      <header className="mx-auto flex max-w-3xl items-center justify-between px-5 py-6 sm:px-8">
+      <header className="mx-auto flex max-w-3xl items-center justify-between px-5 pb-6 pt-[calc(env(safe-area-inset-top)+24px)] sm:px-8">
         <Link
           href="/"
           className="text-[14px] font-semibold tracking-[-0.015em] text-[#1E1B4B]"
