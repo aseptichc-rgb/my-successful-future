@@ -73,8 +73,8 @@ say they want to be — not just dream about it.
 ■ Contact
 
 Support: support@successfulfuture.app
-Privacy: https://www.successfulfuture.app/privacy
-Terms:   https://www.successfulfuture.app/terms
+Privacy: https://my-successful-future.vercel.app/privacy
+Terms:   https://my-successful-future.vercel.app/terms
 ```
 
 ## Category
@@ -96,13 +96,20 @@ Terms:   https://www.successfulfuture.app/terms
 
 ## App Review Information
 
+> ⚠️ **Domain warning** — the custom domain `successfulfuture.app` is not registered (DNS
+> NXDOMAIN), so every URL and mailbox on it is dead. The addresses actually registered in App
+> Store Connect are the `my-successful-future.vercel.app` ones used above; the
+> `@successfulfuture.app` emails below still need replacing with a live mailbox before they are
+> copied into ASC, or App Review can reject on Guideline 1.5 / 5.1.1.
+
+
 - **Contact email**: support@successfulfuture.app
 - **Demo account**:
   - Email: `apple-reviewer@successfulfuture.app`
   - Password: `<set just before submission>`
   - Note: This account has lifetime entitlement pre-granted so the reviewer can
     explore every feature without making a purchase.
-- **Demo video**: `https://www.successfulfuture.app/demo/apple-review-2026.mp4`
+- **Demo video**: `https://my-successful-future.vercel.app/demo/apple-review-2026.mp4`
   - Walkthrough: add widget → see lock-screen card → re-type affirmation →
     log a win → IAP purchase flow → account deletion.
 

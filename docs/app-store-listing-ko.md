@@ -76,8 +76,8 @@ Anima 는 이루고 싶은 꿈을 오늘 할 한 걸음으로 바꿔주는 앱�
 ■ 개발자 안내
 
 문의: support@successfulfuture.app
-프라이버시 정책: https://www.successfulfuture.app/privacy
-서비스 약관: https://www.successfulfuture.app/terms
+프라이버시 정책: https://my-successful-future.vercel.app/privacy
+서비스 약관: https://my-successful-future.vercel.app/terms
 ```
 
 ## 카테고리
@@ -89,9 +89,16 @@ Anima 는 이루고 싶은 꿈을 오늘 할 한 걸음으로 바꿔주는 앱�
   17+ 로 강제 분류될 가능성 있음. 사용자 신고 기능을 추가하면 4+ 유지 가능.
 
 ## 지원 URL
-- 마케팅 URL: `https://www.successfulfuture.app`
-- 지원 URL: `https://www.successfulfuture.app/support`
-- 프라이버시 URL: `https://www.successfulfuture.app/privacy`
+> ⚠️ **도메인 주의** — 커스텀 도메인 `successfulfuture.app` 은 아직 등록되지 않은 상태다(DNS
+> NXDOMAIN, .app 레지스트리가 직접 응답). 이 도메인의 URL·이메일은 전부 열리지 않고 메일도
+> 반송된다. App Store Connect 에 실제로 등록된 주소는 아래 Vercel 도메인이며, 이 문서의 값을
+> ASC 에 그대로 옮기면 지원·프라이버시 URL 이 깨져 심사 반려(가이드라인 1.5 / 5.1.1) 위험이 있다.
+> 도메인을 구매·연결한 뒤에야 `successfulfuture.app` 으로 되돌릴 것.
+> `@successfulfuture.app` 이메일도 같은 이유로 살아 있는 주소로 바꿔야 한다.
+
+- 마케팅 URL: `https://my-successful-future.vercel.app`
+- 지원 URL: `https://my-successful-future.vercel.app`
+- 프라이버시 URL: `https://my-successful-future.vercel.app/privacy`
 
 ## App Privacy 답변 (Privacy Manifest 와 일치)
 
@@ -113,7 +120,7 @@ Anima 는 이루고 싶은 꿈을 오늘 할 한 걸음으로 바꿔주는 앱�
   - 이메일: `apple-reviewer@successfulfuture.app`
   - 비밀번호: `<출시 직전에 설정>`
   - 비고: 이 계정에는 평생 이용권이 사전 부여되어 있어 결제 없이 모든 기능 확인 가능.
-- **데모 영상**: `https://www.successfulfuture.app/demo/apple-review-2026.mp4`
+- **데모 영상**: `https://my-successful-future.vercel.app/demo/apple-review-2026.mp4`
   - 위젯 추가 → 잠금화면에서 카드 → 다짐 따라쓰기 → 잘한 일 입력 → 결제 → 계정 삭제 흐름.
 
 ## 출시 전 최종 체크리스트
