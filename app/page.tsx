@@ -23,7 +23,11 @@ import { PLAY_STORE_URL } from "@/lib/constants/storeLinks";
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-[#F0EDE6]">
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-5 py-5 sm:px-8 sm:py-7">
+      {/* 상단 여백에 safe-area inset 을 더한다. layout.tsx 가 viewportFit:"cover" 라
+          WKWebView 가 상태바·다이내믹 아일랜드 밑까지 확장되는데, 여백이 없으면 로그인 버튼이
+          그 밑에 깔려 탭이 시스템 상태바(스크롤 최상단 이동)로 먹혀 눌리지 않는다 — 실제 사고.
+          웹은 inset 이 0 이라 기존 값(20/28px)이 그대로 유지된다. */}
+      <header className="mx-auto flex max-w-5xl items-center justify-between px-5 pb-5 pt-[calc(env(safe-area-inset-top)+20px)] sm:px-8 sm:pb-7 sm:pt-[calc(env(safe-area-inset-top)+28px)]">
         <div className="flex items-center gap-2">
           <Image
             src="/icons/anima-mark-dark.svg"

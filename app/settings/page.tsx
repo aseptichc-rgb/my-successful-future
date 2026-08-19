@@ -975,7 +975,7 @@ export default function SettingsPage() {
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-[var(--bg-grouped)] pb-16">
       {/* Large Title nav */}
-      <header className="pt-3 pb-2 bg-[var(--bg-grouped)]">
+      <header className="pb-2 pt-[calc(env(safe-area-inset-top)+12px)] bg-[var(--bg-grouped)]">
         <div className="mx-auto max-w-3xl px-2 min-h-[44px] flex items-center">
           <button
             type="button"

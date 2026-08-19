@@ -779,7 +779,7 @@ export default function HomeDashboardPage() {
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-[var(--bg-grouped)] pb-12">
       {/* ── Large Title bar — Apple iOS native pattern ── */}
-      <header className="bg-[var(--bg-grouped)] pt-3 pb-2">
+      <header className="bg-[var(--bg-grouped)] pb-2 pt-[calc(env(safe-area-inset-top)+12px)]">
         {/* 상단 브랜드 로고 — 앱 진입 직후 가장 먼저 보이는 brand identity. */}
         <div className="mx-auto flex max-w-3xl items-center justify-center px-5 pt-1 pb-2">
           <Logo variant="lockup" tone="light" size={22} alt="Anima" priority />
