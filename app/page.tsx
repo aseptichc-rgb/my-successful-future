@@ -18,7 +18,14 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { PlatformText, WebOnly } from "@/components/landing/PlatformGate";
-import { PLAY_STORE_URL } from "@/lib/constants/storeLinks";
+import { APP_STORE_URL, PLAY_STORE_URL } from "@/lib/constants/storeLinks";
+
+/**
+ * 스토어 버튼 공통 스타일 — Play·App Store 를 같은 무게로 나란히 둔다.
+ * 두 스토어 모두 정식 출시된 같은 제품이라 한쪽을 부차적으로 보이게 할 이유가 없다.
+ */
+const STORE_BUTTON_CLASS =
+  "inline-flex items-center gap-2 rounded-pill bg-[#1E1B4B] px-6 py-3 text-[14px] font-semibold tracking-[-0.01em] text-white transition-colors hover:bg-[#2A2766]";
 
 export default function LandingPage() {
   return (
@@ -66,19 +73,31 @@ export default function LandingPage() {
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              {/* Google Play 버튼: iOS 앱 안에서는 타 스토어 참조라 심사 거절 사유(2.3.10) →
-                  WebOnly 로 감싸 웹에서만 노출한다. */}
+              {/* 스토어 버튼 2종: iOS 앱(WKWebView)이 이 페이지를 그대로 로드하므로, 앱 안에서
+                  Play 버튼은 타 스토어 참조(2.3.10)이고 App Store 버튼은 이미 설치한 앱을 다시
+                  받으라는 안내가 된다. 그래서 둘 다 WebOnly 로 감싸 웹 방문자에게만 노출한다. */}
               <WebOnly>
                 <a
                   href={PLAY_STORE_URL}
                   target="_blank"
                   rel="noopener"
-                  className="inline-flex items-center gap-2 rounded-pill bg-[#1E1B4B] px-6 py-3 text-[14px] font-semibold tracking-[-0.01em] text-white transition-colors hover:bg-[#2A2766]"
+                  className={STORE_BUTTON_CLASS}
                 >
                   <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                     <path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 01-.61-.92V2.734a1 1 0 01.609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.183-3.183l2.413 1.396a1 1 0 010 1.732l-2.41 1.395-2.5-2.5 2.497-2.497-.001-.026zm-3.183-3.183l-8.635-8.635 10.937 6.334-2.302 2.301z"/>
                   </svg>
                   Google Play 에서 받기
+                </a>
+                <a
+                  href={APP_STORE_URL}
+                  target="_blank"
+                  rel="noopener"
+                  className={STORE_BUTTON_CLASS}
+                >
+                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                    <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                  </svg>
+                  App Store 에서 받기
                 </a>
               </WebOnly>
               <span className="text-[12px] tracking-[-0.01em] text-black/48">
