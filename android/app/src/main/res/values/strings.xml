@@ -23,6 +23,8 @@
     <string name="purchase_error_launch_failed">결제 화면을 열지 못했습니다. 잠시 후 다시 시도해 주세요.</string>
     <string name="purchase_error_verify_failed">결제 확인에 실패했습니다. 이미 결제하셨다면 \'구매 복원\'을 눌러 주세요.</string>
     <string name="purchase_error_generic">결제 처리 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.</string>
+    <string name="purchase_error_linked_other_account">이 기기의 Google Play 구매가 다른 Anima 계정에 연결되어 있어요. 처음 구매할 때 사용한 계정으로 로그인해 주세요.</string>
+    <string name="purchase_error_already_owned">이 Google Play 계정으로 이미 구매된 상품이에요. \'구매 복원\'을 누르거나, 처음 구매한 Anima 계정으로 로그인해 주세요.</string>
 
     <!-- 저녁 기록 알림 (기본 21:00, 기기 타임존 — 시각·on/off 는 앱 설정을 따름) -->
     <string name="wins_reminder_channel_name">저녁 기록 알림</string>

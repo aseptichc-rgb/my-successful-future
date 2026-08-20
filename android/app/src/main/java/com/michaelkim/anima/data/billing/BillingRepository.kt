@@ -35,6 +35,16 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
 import kotlin.coroutines.resume
 
+/**
+ * Play 가 '이미 보유 중'(ITEM_ALREADY_OWNED)이라며 결제 시트를 거부한 경우.
+ *
+ * 일반 실행 실패와 분리하는 이유: 이 코드는 "다시 시도"로 해소되지 않는다 — 기기의 Google
+ * 계정이 이미 상품을 보유 중이므로, 호출부는 재시도 안내 대신 '구매 복원' 또는 원래 구매한
+ * Anima 계정으로의 로그인을 안내해야 한다.
+ */
+class ItemAlreadyOwnedException(debugMessage: String) :
+    IllegalStateException("launchBillingFlow 거부(ITEM_ALREADY_OWNED): $debugMessage")
+
 object BillingRepository {
 
     /** 결제 시트가 닫혀 PurchasesUpdatedListener 가 콜백할 때까지의 최대 대기(ms). */
@@ -142,10 +152,16 @@ object BillingRepository {
             )
             .build()
         val result = billing.launchBillingFlow(activity, flowParams)
-        if (result.responseCode != BillingClient.BillingResponseCode.OK &&
-            result.responseCode != BillingClient.BillingResponseCode.USER_CANCELED
-        ) {
-            error("launchBillingFlow 실패: ${result.debugMessage}")
+        when (result.responseCode) {
+            BillingClient.BillingResponseCode.OK,
+            BillingClient.BillingResponseCode.USER_CANCELED,
+            -> Unit
+
+            // 이미 보유 중 — 재시도가 아니라 복원/원 계정 로그인이 해법이므로 전용 예외로 구분.
+            BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED ->
+                throw ItemAlreadyOwnedException(result.debugMessage)
+
+            else -> error("launchBillingFlow 실패: ${result.debugMessage}")
         }
     }
 

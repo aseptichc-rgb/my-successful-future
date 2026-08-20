@@ -12,6 +12,8 @@
  *  - anima://purchase            : 구매. 이미 보유 중이면(복원 케이스) 결제 시트 없이 검증만.
  *  - anima://purchase?mode=restore : 결제 시트 없이 보유 영수증 검증(복원)만.
  *  1) EntitlementRepository.refreshEntitlement — 보유 영수증을 서버 검증(이미 샀으면 여기서 끝).
+ *     영수증이 다른 Anima 계정에 묶여 있으면(서버 409) 결제 시트 없이 원 계정 로그인 안내로 종료
+ *     — 그대로 진행하면 재구매(ITEM_ALREADY_OWNED)·복원(409) 모두 막히는 막다른 길이라서다.
  *  2) 미보유 + 구매 모드면 queryProductDetails → launchBillingFlowAndAwait → 다시 검증.
  *  3) 성공 시 서버가 paid claim 을 박았으므로, 웹 TWA 는 이 액티비티가 닫혀 복귀하면
  *     getIdToken(true) 강제 갱신으로 paid 를 즉시 반영한다(별도 토큰 전달 불필요 — 같은 uid).
@@ -30,8 +32,10 @@ import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import com.google.firebase.auth.FirebaseAuth
 import com.michaelkim.anima.data.auth.AuthRepository
+import com.michaelkim.anima.data.auth.EntitlementRefreshResult
 import com.michaelkim.anima.data.auth.EntitlementRepository
 import com.michaelkim.anima.data.billing.BillingRepository
+import com.michaelkim.anima.data.billing.ItemAlreadyOwnedException
 import com.michaelkim.anima.util.CrashReporter
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -82,8 +86,17 @@ class PurchaseBridgeActivity : ComponentActivity() {
                 }
 
                 // 1) 이미 보유 중인 영수증이 있으면 여기서 검증·권한 부여로 끝난다(복원 포함).
-                val alreadyEntitled = EntitlementRepository.refreshEntitlement(applicationContext)
-                    .getOrDefault(false)
+                val refresh = EntitlementRepository.refreshEntitlement(applicationContext)
+                    .getOrDefault(EntitlementRefreshResult.NOT_ENTITLED)
+                if (refresh == EntitlementRefreshResult.LINKED_TO_OTHER_ACCOUNT) {
+                    // 기기 Play 계정의 영수증이 다른 Anima 계정에 묶여 있다 — 이대로 진행하면
+                    // 재구매는 ITEM_ALREADY_OWNED, 복원은 서버 409 로 모두 막히는 막다른 길.
+                    // 결제 시트를 띄우지 않고 유일한 해법(원 계정 로그인)을 바로 안내한다.
+                    Log.w(TAG, "보유 영수증이 다른 계정에 연결됨(restoreOnly=$restoreOnly)")
+                    toast(R.string.purchase_error_linked_other_account)
+                    return@launch
+                }
+                val alreadyEntitled = refresh == EntitlementRefreshResult.ENTITLED
                 if (alreadyEntitled || restoreOnly) {
                     Log.i(TAG, "보유 영수증 검증 완료(restoreOnly=$restoreOnly, entitled=$alreadyEntitled)")
                     return@launch
@@ -97,8 +110,16 @@ class PurchaseBridgeActivity : ComponentActivity() {
                 }
                 val purchases = BillingRepository.launchBillingFlowAndAwait(this@PurchaseBridgeActivity, details)
                     .getOrElse {
-                        CrashReporter.record(TAG, "결제 시트 실행 실패", it)
-                        toast(R.string.purchase_error_launch_failed)
+                        if (it is ItemAlreadyOwnedException) {
+                            // 위 refreshEntitlement 가 (네트워크 등으로) 보유 사실을 못 알아챈 채
+                            // 내려온 경우 — 같은 계정이면 '구매 복원'으로 해소되고, 다른 계정이면
+                            // 복원 시도에서 LINKED_TO_OTHER_ACCOUNT 안내가 뜬다. 재시도 안내는 오답.
+                            Log.w(TAG, "결제 시트 거부 — 이미 보유 중(ITEM_ALREADY_OWNED)")
+                            toast(R.string.purchase_error_already_owned)
+                        } else {
+                            CrashReporter.record(TAG, "결제 시트 실행 실패", it)
+                            toast(R.string.purchase_error_launch_failed)
+                        }
                         return@launch
                     }
                 if (purchases.isEmpty()) {
@@ -108,9 +129,17 @@ class PurchaseBridgeActivity : ComponentActivity() {
                 }
 
                 // 3) 결제 직후 검증 — acknowledge + 서버 검증 + 네이티브 paid claim 적용.
-                val ok = EntitlementRepository.refreshEntitlement(applicationContext).getOrDefault(false)
-                Log.i(TAG, "결제 후 entitlement 검증 결과 ok=$ok")
-                if (!ok) toast(R.string.purchase_error_verify_failed)
+                val verified = EntitlementRepository.refreshEntitlement(applicationContext)
+                    .getOrDefault(EntitlementRefreshResult.NOT_ENTITLED)
+                Log.i(TAG, "결제 후 entitlement 검증 결과 $verified")
+                when (verified) {
+                    EntitlementRefreshResult.ENTITLED -> Unit
+                    // 방금 결제한 영수증이 다른 계정에 묶여 있는 극단 케이스도 사유는 정확히.
+                    EntitlementRefreshResult.LINKED_TO_OTHER_ACCOUNT ->
+                        toast(R.string.purchase_error_linked_other_account)
+                    EntitlementRefreshResult.NOT_ENTITLED ->
+                        toast(R.string.purchase_error_verify_failed)
+                }
             } catch (e: Exception) {
                 CrashReporter.record(TAG, "결제 브릿지 처리 실패", e)
                 toast(R.string.purchase_error_generic)

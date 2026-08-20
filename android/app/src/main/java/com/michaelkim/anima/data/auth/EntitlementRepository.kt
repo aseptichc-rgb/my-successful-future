@@ -24,6 +24,27 @@ import com.michaelkim.anima.data.api.ApiClient
 import com.michaelkim.anima.data.api.EntitlementVerifyRequest
 import com.michaelkim.anima.data.billing.BillingRepository
 import kotlinx.coroutines.tasks.await
+import retrofit2.HttpException
+import java.net.HttpURLConnection
+
+/**
+ * 보유 영수증 서버 검증의 3분류 결과.
+ *
+ * ENTITLED / NOT_ENTITLED 외에 LINKED_TO_OTHER_ACCOUNT 를 별도로 두는 이유:
+ * 기기의 Play 계정 영수증이 다른 Anima 계정에 묶여 있으면(서버 409) 재구매는 Play 가
+ * ITEM_ALREADY_OWNED 로, 복원은 서버가 409 로 막는 막다른 길이 된다. 이를 NOT_ENTITLED 와
+ * 구분하지 않으면 사용자에게 "복원할 내역 없음" 같은 오해할 안내가 나간다.
+ */
+enum class EntitlementRefreshResult {
+    /** 서버 검증 성공 — paid claim 적용 완료. */
+    ENTITLED,
+
+    /** 보유 영수증 없음 또는 검증 미통과(막다른 길 아님 — 구매/재시도로 해소 가능). */
+    NOT_ENTITLED,
+
+    /** 보유 영수증이 다른 Anima 계정에 연결됨(서버 409) — 원 계정 로그인만이 해법. */
+    LINKED_TO_OTHER_ACCOUNT,
+}
 
 object EntitlementRepository {
 
@@ -31,17 +52,20 @@ object EntitlementRepository {
 
     /**
      * 보유 영수증을 모두 서버에 검증시킨다.
-     * 하나라도 ok 면 paid=true 로 간주, signInWithCustomToken 으로 새 토큰을 즉시 적용한다.
+     * 하나라도 ok 면 ENTITLED — signInWithCustomToken 으로 새 토큰을 즉시 적용한다.
+     * 서버가 409(다른 계정에 연결된 영수증)로 거부하면 LINKED_TO_OTHER_ACCOUNT 로 분류해
+     * 호출부가 사용자에게 정확한 사유(원 계정 로그인 안내)를 보여줄 수 있게 한다.
      */
-    suspend fun refreshEntitlement(context: Context): Result<Boolean> = runCatching {
+    suspend fun refreshEntitlement(context: Context): Result<EntitlementRefreshResult> = runCatching {
         if (FirebaseAuth.getInstance().currentUser == null) {
-            return@runCatching false
+            return@runCatching EntitlementRefreshResult.NOT_ENTITLED
         }
 
         val owned = BillingRepository.queryOwnedPurchases(context)
-        if (owned.isEmpty()) return@runCatching false
+        if (owned.isEmpty()) return@runCatching EntitlementRefreshResult.NOT_ENTITLED
 
         var anyOk = false
+        var anyLinkedToOther = false
         for (purchase in owned) {
             if (purchase.purchaseState != Purchase.PurchaseState.PURCHASED) continue
 
@@ -51,20 +75,35 @@ object EntitlementRepository {
 
             val integrityToken = runCatching { fetchIntegrityToken() }.getOrNull()
 
-            val response = ApiClient.entitlementApi.verify(
-                EntitlementVerifyRequest(
-                    purchaseToken = purchase.purchaseToken,
-                    productId = BuildConfig.LIFETIME_PRODUCT_ID,
-                    packageName = PACKAGE_NAME,
-                    integrityToken = integrityToken,
-                ),
-            )
+            val response = try {
+                ApiClient.entitlementApi.verify(
+                    EntitlementVerifyRequest(
+                        purchaseToken = purchase.purchaseToken,
+                        productId = BuildConfig.LIFETIME_PRODUCT_ID,
+                        packageName = PACKAGE_NAME,
+                        integrityToken = integrityToken,
+                    ),
+                )
+            } catch (e: HttpException) {
+                // 409 = 이 purchaseToken 이 이미 다른(회수되지 않은) 계정에 등록됨
+                // (서버 /api/entitlement/verify 의 영수증 재사용 차단). 남은 영수증도 마저
+                // 검증해야 하므로 중단하지 않고 표시만 남긴다.
+                if (e.code() == HttpURLConnection.HTTP_CONFLICT) {
+                    anyLinkedToOther = true
+                    continue
+                }
+                throw e
+            }
             if (response.ok && !response.customToken.isNullOrBlank()) {
                 FirebaseAuth.getInstance().signInWithCustomToken(response.customToken).await()
                 anyOk = true
             }
         }
-        anyOk
+        when {
+            anyOk -> EntitlementRefreshResult.ENTITLED
+            anyLinkedToOther -> EntitlementRefreshResult.LINKED_TO_OTHER_ACCOUNT
+            else -> EntitlementRefreshResult.NOT_ENTITLED
+        }
     }
 
     /**
