@@ -1,11 +1,17 @@
 # 재심사 — Guideline 4 대응 build 1.0(9) 올리기
 
-> ## ✅ 현재 상태(2026-08-16): **1.0.3 (12) 심사 제출 완료** — 알림 개선 네이티브 반영
+> ## ✅ 현재 상태(2026-08-21): **1.0.4 (13) 심사 제출 완료** — safe-area·결제 안내 수정분
+>
+> 1.0.3 (12) 은 승인·출시됨(`READY_FOR_DISTRIBUTION`). 그 위에 1.0.4 (13) 를 올렸다 —
+> 네이티브 변경 0 인 정석 케이스(버전 값만 상향). [§ 1.0.4 제출 기록](#104-13-제출-기록-2026-08-21-mac) 참고.
+> **다음 빌드는 14 부터.**
+>
+> <details><summary>이전 상태(2026-08-16): 1.0.3 (12) 심사 제출 완료 — 알림 개선 네이티브 반영</summary>
 >
 > 1.0.2 (11) 은 승인·출시됨(`READY_FOR_DISTRIBUTION`). 그 위에 1.0.3 (12) 를 올렸다 —
 > 이번에는 지난번과 달리 **네이티브 코드 변경이 있었다** (NotificationBridgePlugin.swift 신버전
 > + capacitor.config.json 재생성). 절차·함정은 [§ 1.0.3 제출 기록](#103-12-제출-기록-2026-08-16-mac) 참고.
-> **다음 빌드는 13 부터.**
+> </details>
 >
 > <details><summary>이전 상태(2026-08-08): 1.0.2 (11) 심사 제출 완료 — INVALID_BINARY 해소</summary>
 >
@@ -28,6 +34,21 @@
 > Mac 빌드 시 참고용. App Store 거절(Guideline 4 — Design) 대응 후 **정식 재제출**을 위한 절차다.
 > 전체 iOS 셋업은 [README-IOS.md](README-IOS.md) 참고. 이 문서는 "이미 build 8까지 올린 상태에서
 > Guideline 4 수정본을 재심사에 넣는" 최소 절차만 담는다.
+
+---
+
+## 1.0.4 (13) 제출 기록 (2026-08-21, Mac)
+
+1.0.3 출시 후 풀 받은 커밋(iOS safe-area 헤더 수정 `81b2b28`+`0e1d705`, 구매 계정 충돌 안내
+`fd0c0bb`, 랜딩 App Store 버튼 `28f2672` 등)을 1.0.4 (13) 로 제출 완료. **네이티브 변경 0**
+(전부 웹 코드 = 이미 라이브) — 문서 첫머리 "빌드번호만 올리면 끝" 정석 케이스였다.
+
+- 검증: vitest 141/141 · `next build` 통과. ios-templates ↔ ios/ diff 없음, `cap copy` 불필요.
+- 버전: agvtool 1.0.4 / -all 13 + pbxproj 4곳 sed. 산출물 `build/Anima-1.0.4.xcarchive` / `export-1.0.4`.
+- 릴리스 노트 4로케일(safe-area·결제 안내)을 [scripts/ios-update-metadata.mjs](scripts/ios-update-metadata.mjs)
+  에 갱신 후 `--apply --version 1.0.4 --no-live-promo` 로 스테이징.
+- 업로드 `UPLOAD SUCCEEDED` — Delivery UUID `7a76441e-a2a7-419e-a5b1-bc2518d67d24` →
+  TestFlight VALID(약 3분) → `--submit` 한 번에 통과. 409 는 이번에도 없었다.
 
 ---
 

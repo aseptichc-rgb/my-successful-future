@@ -75,7 +75,7 @@ const COPY = {
     keywords:
       "motivation,affirmations,daily quote,goals,habits,widget,self care,dream,mindset",
     whatsNew:
-      "Morning notifications now carry the day's actual quote. If you've already completed today's goal, the evening reminder steps aside for a gentle nudge about an unfinished task instead. Plus small fixes and polish.",
+      "Fixed a layout issue where the iPhone status bar could overlap the sign-in button and page headers. Clearer guidance when a purchase is linked to another account. Plus small improvements.",
     description: `What if there was an app that made your dreams come true?
 
 Not by magic. By the oldest rule there is: you become what you believe.
@@ -117,7 +117,7 @@ Take it with Anima.`,
     keywords:
       "동기부여,확언,다짐,명언,목표,습관,위젯,자기계발,꿈,성공,멘토,루틴,마인드셋,긍정,자존감",
     whatsNew:
-      "아침 알림에 그날의 명언이 그대로 담깁니다. 오늘 목표를 이미 끝냈다면, 저녁 알림 자리에는 아직 남은 할 일을 부드럽게 알려드려요. 소소한 개선도 함께 했습니다.",
+      "iPhone 상태바가 로그인 버튼과 화면 상단을 가리던 문제를 고쳤습니다. 다른 계정에 연결된 구매에 대한 안내도 명확해졌어요. 소소한 개선도 함께 했습니다.",
     description: `꿈을 이루어주는 앱이 있다면 어떨까요?
 
 마법이 아닙니다. 가장 오래된 진리 하나 때문입니다 — 사람은 자신이 믿는 대로 됩니다.
@@ -159,7 +159,7 @@ Anima와 함께 떼어보세요.`,
     keywords:
       "motivación,afirmaciones,frase diaria,metas,hábitos,widget,sueño,mentalidad",
     whatsNew:
-      "Las notificaciones de la mañana ahora incluyen la cita del día. Si ya completaste tu meta de hoy, el recordatorio de la tarde deja paso a un aviso suave sobre una tarea pendiente. Además, pequeñas mejoras.",
+      "Corregido un problema por el que la barra de estado del iPhone podía tapar el botón de inicio de sesión y los encabezados. Guía más clara cuando una compra está vinculada a otra cuenta. Además, pequeñas mejoras.",
     description: `¿Y si hubiera una app que hiciera realidad tus sueños?
 
 No por arte de magia. Por la regla más antigua que existe: te conviertes en lo que crees.
@@ -201,7 +201,7 @@ Dalo con Anima.`,
     keywords:
       "励志,正能量,每日金句,目标,习惯,小组件,自我提升,梦想,名言,成功,坚持,语录,心态,自律,打卡",
     whatsNew:
-      "早晨通知现在会附上当天的名言。如果你已完成今天的目标，晚间提醒会改为温和地提示你尚未完成的任务。另有若干小改进。",
+      "修复了 iPhone 状态栏可能遮挡登录按钮和页面顶部的问题。当购买已关联其他账号时，提示更加清晰。另有若干小改进。",
     description: `如果有一款 App 能让你的梦想成真，会怎样？
 
 不是靠魔法，而是靠最古老的一条法则：你相信什么，就会成为什么。
