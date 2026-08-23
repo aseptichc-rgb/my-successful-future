@@ -1430,13 +1430,6 @@ export const FAMOUS_QUOTES_SEED: ReadonlyArray<FamousQuoteSeed> = [
     language: "ko",
   },
   {
-    id: "cl_yu_gwan_sun_freedom",
-    text: "나라에 바칠 목숨이 오직 하나뿐인 것만이 이 소녀의 유일한 슬픔입니다.",
-    author: "유관순",
-    category: "classic",
-    language: "ko",
-  },
-  {
     id: "cl_doseon_ohneul",
     text: "오늘 할 수 있는 일에 전력을 다하라. 그러면 내일은 한 걸음 더 나아가 있을 것이다.",
     author: "안창호",
