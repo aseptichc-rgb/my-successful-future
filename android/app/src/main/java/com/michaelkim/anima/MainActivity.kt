@@ -51,6 +51,8 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import java.time.LocalDate
+import java.time.ZoneId
 
 class MainActivity : ComponentActivity() {
 
@@ -194,7 +196,15 @@ class MainActivity : ComponentActivity() {
                 Log.w(TAG, "동기화된 캐시 ymd 조회 실패 — clickedYmd 폴백", e)
                 null
             }
-            val authoritativeYmd = if (completed == true) (syncedYmd ?: clickedYmd) else clickedYmd
+            val candidateYmd = if (completed == true) (syncedYmd ?: clickedYmd) else clickedYmd
+            // 신선도 상한: KST [어제, 오늘] 밖이면 qDate 를 싣지 않는다 — 웹이 기기 시계로 오늘을 쓴다.
+            // 동기 갱신이 타임아웃/실패해 며칠 된 위젯 캐시의 ymd 로 폴백하면 /home 전체(날짜·체크인·
+            // 목표·리듬 링)가 그 날짜에 고정되던 2026-08-27 실사고 차단. 웹(useResolvedYmd)도 같은 창으로
+            // 이중 방어한다 — 이 빌드가 깔리기 전의 기기도 웹 배포만으로 보호되게.
+            val authoritativeYmd = candidateYmd?.takeIf { isRecentKstYmd(it) }
+            if (candidateYmd != null && authoritativeYmd == null) {
+                Log.w(TAG, "stale qDate 폐기 — 위젯/캐시 ymd=$candidateYmd 가 KST [어제, 오늘] 밖")
+            }
             openAnimaInTwa(
                 path = path,
                 finishAfterLaunch = true,
@@ -400,6 +410,23 @@ class MainActivity : ComponentActivity() {
         // qDate 로 넘기기 전 형식 검증 — 잘못된 값이 URL 에 실리면 웹이 그냥 무시하지만
         // 애초에 안 싣는 게 안전하다.
         private val YMD_REGEX = Regex("""^\d{4}-\d{2}-\d{2}$""")
+
+        private val KST_ZONE: ZoneId = ZoneId.of("Asia/Seoul")
+
+        /**
+         * ymd 가 KST 기준 [어제, 오늘] 안인가 — qDate 로 실어도 되는 신선도 창.
+         * 웹 lib/kstDate.clampYmdToRecent 와 같은 정책(자정 직후의 어제 카드만 허용).
+         * 형식은 통과했지만 달력에 없는 날짜(2026-02-30)는 parse 가 던지므로 false.
+         */
+        private fun isRecentKstYmd(ymd: String): Boolean {
+            return try {
+                val target = LocalDate.parse(ymd)
+                val today = LocalDate.now(KST_ZONE)
+                target == today || target == today.minusDays(1)
+            } catch (_: Exception) {
+                false
+            }
+        }
 
         private const val PREFS_APP_FLAGS = "anima_app_flags"
         private const val KEY_HAS_LAUNCHED = "has_launched_v1"

@@ -17,7 +17,7 @@
  */
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
-import { KST_OFFSET_MS, isValidYmd, todayKstYmd, yesterdayKstYmd } from "@/lib/kstDate";
+import { KST_OFFSET_MS, clampYmdToRecent, isValidYmd, todayKstYmd } from "@/lib/kstDate";
 import { generateText } from "@/lib/gemini";
 import { type FamousQuoteSeed } from "@/lib/famousQuotesSeed";
 import { getQuoteSeedPool } from "@/lib/famousQuoteCatalog";
@@ -109,10 +109,7 @@ export { isValidYmd };
  * (자정 경계 전후의 시계 오차를 흡수하기 위해 어제까지 허용.) 창 밖이거나 형식 오류면 오늘로 폴백.
  */
 export function resolveRequestYmd(ymd: string | undefined | null): string {
-  const today = todayKst();
-  if (!ymd || !isValidYmd(ymd)) return today;
-  if (ymd === today || ymd === yesterdayKstYmd(today)) return ymd;
-  return today;
+  return clampYmdToRecent(ymd, todayKst());
 }
 
 /** 결정론적 32-bit 해시 (FNV-1a). uid+ymd 같은 짧은 키에 충분. */

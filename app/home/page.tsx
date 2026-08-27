@@ -17,7 +17,7 @@ import {
   getKstYmd,
 } from "@/lib/firebase";
 import { useExecutionPlans } from "@/lib/useExecutionPlans";
-import { kstWeekday, yesterdayKstYmd, addKstDays } from "@/lib/kstDate";
+import { addKstDays, clampYmdToRecent, kstWeekday, yesterdayKstYmd } from "@/lib/kstDate";
 import { currentHomeMode, WEEKLY_REVIEW_WEEKDAY } from "@/lib/homeMode";
 import { pickTodayPlan, pickTodayAffirmationIndex } from "@/lib/planRotation";
 import { computeGoalSlots } from "@/lib/goalSlots";
@@ -95,7 +95,11 @@ function readQDateFromUrl(): string | null {
 }
 
 function useResolvedYmd(): string {
-  const [ymd, setYmd] = useState<string>(() => readQDateFromUrl() ?? getKstYmd());
+  // qDate 는 [어제, 오늘] 만 신뢰한다(서버 resolveRequestYmd 와 같은 정책). 그보다 오래된 값 —
+  // 네이티브 동기 갱신 타임아웃 시 stale 위젯의 clickedYmd 폴백, Chrome 이 원래 인텐트 URL 로
+  // 재복원한 TWA 탭 — 을 그대로 쓰면 날짜·체크인·목표·리듬 링이 통째로 며칠 전에 고정되고,
+  // 그 상태에서 ↻ 를 누르면 서버는 오늘 카드를 재생성하는데 라벨은 옛날 날짜로 남는다.
+  const [ymd, setYmd] = useState<string>(() => clampYmdToRecent(readQDateFromUrl(), getKstYmd()));
   useEffect(() => {
     try {
       const url = new URL(window.location.href);

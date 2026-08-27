@@ -82,3 +82,19 @@ export function isValidYmd(ymd: string): boolean {
   const dt = new Date(Date.UTC(y, m - 1, d));
   return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
 }
+
+/**
+ * 외부에서 넘어온 ymd(위젯 qDate 딥링크·API 요청 본문)를 [어제, 오늘] 창으로 제한한다.
+ * 창 밖(더 과거·미래)이거나 형식이 깨졌으면 today 로 폴백.
+ *
+ * 왜 어제까지만: 위젯↔홈 일치 키(qDate)가 정당한 경우는 "자정 직후 위젯이 아직 어제 카드를
+ * 그리고 있는" 한 가지뿐이다. 그보다 오래된 값은 stale 캐시·동기 갱신 타임아웃 폴백의 산물이라
+ * 홈 전체(날짜·체크인·목표·리듬 링)를 며칠 전에 고정해 버린다 — 2026-08-27 실사고
+ * (22일 카드를 그리던 위젯 탭 → /home?qDate=2026-08-22 → 홈이 5일 전에 고정).
+ * 서버 resolveRequestYmd(쿼터 우회 차단)와 웹 useResolvedYmd 가 이 한 구현을 공유한다.
+ */
+export function clampYmdToRecent(ymd: string | null | undefined, today: string): string {
+  if (!ymd || !isValidYmd(ymd)) return today;
+  if (ymd === today || ymd === yesterdayKstYmd(today)) return ymd;
+  return today;
+}
