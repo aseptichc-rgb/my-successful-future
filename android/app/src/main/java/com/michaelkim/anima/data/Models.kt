@@ -108,6 +108,17 @@ data class WidgetNotificationContent(
     val pendingTask: WidgetNotificationCopy? = null,
 )
 
+/**
+ * 서버가 미리 내려준 "다음 날들" 명언 미리보기 1건 — 자정에 네트워크 없이도 위젯이
+ * 그날의 새 명언으로 스스로 교체하는 재료. 웹 types/index.ts 의 WidgetUpcomingQuote 와 1:1.
+ */
+@Serializable
+data class WidgetUpcomingQuote(
+    val ymd: String,
+    val text: String,
+    val author: String,
+)
+
 @Serializable
 data class WidgetTodayResponse(
     val generatedAt: String,
@@ -136,6 +147,11 @@ data class WidgetTodayResponse(
      */
     val goalsAchievedCount: Int = 0,
     val goalsTotalCount: Int = 0,
+    /**
+     * 내일부터 며칠간의 명언 미리보기. 옛 캐시/옛 서버 응답엔 없어 빈 리스트 기본값.
+     * QuoteRepository.effectiveResponseForDisplay 가 날짜 지난 캐시를 이걸로 보정한다.
+     */
+    val upcoming: List<WidgetUpcomingQuote> = emptyList(),
     /**
      * 알림 설정. 옛 캐시/옛 서버 응답이면 null → 리마인더는 기본값으로 동작.
      * QuoteRepository 가 응답 저장 시 NotificationPrefsStore 에 동기화하고 재예약한다.

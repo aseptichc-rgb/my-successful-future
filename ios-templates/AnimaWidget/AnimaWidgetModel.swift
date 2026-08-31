@@ -72,6 +72,13 @@ struct WidgetFutureVision: Codable {
     let teaser: String
 }
 
+/// 서버가 미리 내려준 "다음 날들" 명언 미리보기 — 자정 교체용(웹 types 의 WidgetUpcomingQuote 와 1:1).
+struct WidgetUpcomingQuote: Codable {
+    let ymd: String
+    let text: String
+    let author: String
+}
+
 struct WidgetToday: Codable {
     let ymd: String?
     let slots: [WidgetSlot]?
@@ -82,6 +89,8 @@ struct WidgetToday: Codable {
     let goalsAchievedCount: Int?
     let goalsTotalCount: Int?
     let generatedAt: String?
+    /// 내일부터 며칠간의 명언 미리보기 — 옛 캐시/옛 서버 응답엔 없어 nil.
+    let upcoming: [WidgetUpcomingQuote]?
 
     /// "지금 보여야 할" 슬롯 1건(= 오늘의 동기부여 카드). 웹 /home 과 동일하게 첫 장만.
     var primarySlot: WidgetSlot? { slots?.first }
@@ -95,6 +104,33 @@ struct WidgetToday: Codable {
     /// "이번 달 목표" 한 줄 카운트용 — 옛 응답엔 없어 0 폴백(total 0 이면 섹션 생략).
     var goalsTotal: Int { max(0, goalsTotalCount ?? 0) }
     var goalsAchieved: Int { min(max(0, goalsAchievedCount ?? 0), goalsTotal) }
+}
+
+extension WidgetToday {
+    /// [item] 의 미리보기 명언으로 교체한 표시용 사본.
+    /// 하루 단위 상태(진척도·이번 달 달성·비전 티저)는 새 날 기준으로 리셋/생략한다 —
+    /// 어제 값을 그대로 두면 "오늘 이미 다 한 것처럼" 보이는 거짓 상태가 된다.
+    func replacingForPreview(_ item: WidgetUpcomingQuote) -> WidgetToday {
+        let base = primarySlot
+        return WidgetToday(
+            ymd: item.ymd,
+            slots: [WidgetSlot(
+                kind: "motivation",
+                text: item.text,
+                author: item.author,
+                goalsSnapshot: base?.goalsSnapshot,
+                gradient: base?.gradient
+            )],
+            todayProgress: WidgetProgress(affirmation: false, actions: false, wins: false),
+            streakCount: streakCount,
+            affirmations: affirmations,
+            futureVision: nil,
+            goalsAchievedCount: 0,
+            goalsTotalCount: goalsTotalCount,
+            generatedAt: generatedAt,
+            upcoming: upcoming
+        )
+    }
 }
 
 // MARK: - 디자인 상수 (Android WidgetUi.kt 와 통일)

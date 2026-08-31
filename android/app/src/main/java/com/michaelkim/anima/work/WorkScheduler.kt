@@ -132,14 +132,13 @@ object WorkScheduler {
      * - 자정 직후 새 ymd 로 todayProgress / streak / date 메타 / time-of-day CTA 가
      *   곧장 위젯에 반영되도록.
      * - REPLACE 정책 + Worker 의 자기 재예약: 항상 단 하나만 큐잉, 매일 한 번 발사.
-     * - 네트워크 제약 추가 — 갱신은 /api/widget/today 호출이 필요. 오프라인이면 다음
-     *   네트워크 복귀 시 시도.
+     * - 네트워크 제약 없음 — 자정 재렌더(캐시 upcoming 미리보기로 그날 명언 교체)는
+     *   오프라인에서도 일어나야 한다. fetch 실패는 Worker 가 삼키고 다음 Periodic 이 봉합.
      */
     fun scheduleDailyMidnightRefresh(context: Context) {
         val delayMillis = computeMillisUntilNext(MIDNIGHT_REFRESH_AT)
         val request = OneTimeWorkRequestBuilder<MidnightQuoteRefreshWorker>()
             .setInitialDelay(delayMillis, TimeUnit.MILLISECONDS)
-            .setConstraints(networkConstraint())
             .build()
         WorkManager.getInstance(context).enqueueUniqueWork(
             MIDNIGHT_REFRESH_NAME,

@@ -17,7 +17,7 @@
  */
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
-import { KST_OFFSET_MS, clampYmdToRecent, isValidYmd, todayKstYmd } from "@/lib/kstDate";
+import { KST_OFFSET_MS, addKstDays, clampYmdToRecent, isValidYmd, todayKstYmd } from "@/lib/kstDate";
 import { generateText } from "@/lib/gemini";
 import { type FamousQuoteSeed } from "@/lib/famousQuotesSeed";
 import { getQuoteSeedPool } from "@/lib/famousQuoteCatalog";
@@ -31,6 +31,7 @@ import type {
   MotivationMission,
   QuotePreference,
   UserLanguage,
+  WidgetUpcomingQuote,
 } from "@/types";
 
 // KST_OFFSET_MS 는 위젯 라우트 등 기존 임포트 호환을 위해 재수출한다(단일 정의는 lib/kstDate).
@@ -1056,4 +1057,84 @@ export async function ensureMotivation(opts: {
   }
 
   return { motivation, cached: false };
+}
+
+/** 위젯에 실어 보낼 "다음 날들" 명언 미리보기 일수 — WidgetKit 자정 타임라인 한 주치. */
+export const UPCOMING_PREVIEW_DAYS = 7;
+
+/**
+ * (uid, ymd) 결정론으로 다음 [days]일치 명언 미리보기를 뽑는다 — LLM 호출 없음(순수 함수).
+ *
+ * 왜 필요한가: 위젯은 자정에 네트워크를 못 칠 수 있다(iOS 익스텐션은 인증 호출 불가,
+ * Android 는 오프라인/도즈). 이 미리보기를 캐시에 실어 두면 클라이언트가 날짜가 바뀌는
+ * 순간 스스로 그날의 새 명언으로 교체한다.
+ *
+ * 무료 티어 카드(curatedOnly)와 동일한 (풀 결정 → 과거 노출 제외 → 해시 선택) 경로를 그대로
+ * 따르므로, 무료 사용자가 그날 앱을 열어 만들어지는 정식 카드와 미리보기가 대부분 일치한다.
+ * (Pro 는 앱을 여는 순간 Gemini 개인화 카드로 자연 대체된다.)
+ *
+ * 하루하루 뽑은 텍스트를 exclude 에 누적해 미리보기끼리도 겹치지 않게 한다.
+ */
+export function pickUpcomingPreviewQuotes(opts: {
+  uid: string;
+  /** 오늘(KST, YYYY-MM-DD) — 미리보기는 이 다음 날부터 시작한다. */
+  startYmd: string;
+  days?: number;
+  preference: QuotePreference;
+  language: UserLanguage;
+  /** 과거 노출 텍스트 + 오늘 카드 텍스트 — 미리보기에서 제외할 명단. */
+  excludeTexts?: ReadonlyArray<string>;
+}): WidgetUpcomingQuote[] {
+  const { uid, startYmd, days = UPCOMING_PREVIEW_DAYS, preference, language } = opts;
+  if (!isValidYmd(startYmd) || days <= 0) return [];
+  const { candidates } = getLanguagePool(language);
+  const exclude = new Set(opts.excludeTexts ?? []);
+  const previews: WidgetUpcomingQuote[] = [];
+  for (let i = 1; i <= days; i++) {
+    const ymd = addKstDays(startYmd, i);
+    // 핀 인물이 시드 풀 밖이면(pool 이 비고 freeAuthor 만 옴) LLM 없이는 못 가져온다 —
+    // 전체 후보로 폴백해 미리보기가 끊기지 않게 한다.
+    const { pool: rawPool } = resolveTodaysPool(uid, ymd, preference, language);
+    const base = rawPool.length > 0 ? rawPool : candidates;
+    // ensureMotivation 과 같은 계층 폴백: 의도된 풀 → 전체 풀 → (모두 소진이면) 제외 무시.
+    const filtered = base.filter((q) => !exclude.has(q.text));
+    const widened =
+      filtered.length > 0 ? filtered : candidates.filter((q) => !exclude.has(q.text));
+    const pool = widened.length > 0 ? widened : base;
+    const picked = toPickedQuote(deterministicFallback(uid, ymd, pool, language), language);
+    exclude.add(picked.text);
+    previews.push({ ymd, text: picked.text, author: picked.author });
+  }
+  return previews;
+}
+
+/**
+ * [pickUpcomingPreviewQuotes] 의 서버 래퍼 — 사용자 컨텍스트(언어·핀 설정·노출 히스토리)를
+ * 읽어 미리보기를 만든다. 위젯 응답의 부가 필드이므로 어떤 실패도 throw 하지 않고 [] 로
+ * 폴백한다(본문 카드에는 영향 없음).
+ */
+export async function buildUpcomingPreviews(opts: {
+  uid: string;
+  startYmd: string;
+  days?: number;
+  /** 오늘 카드 텍스트 등 미리보기에서 추가로 제외할 명단. */
+  excludeTexts?: ReadonlyArray<string>;
+}): Promise<WidgetUpcomingQuote[]> {
+  try {
+    const ctx = await fetchUserContext(opts.uid);
+    return pickUpcomingPreviewQuotes({
+      uid: opts.uid,
+      startYmd: opts.startYmd,
+      days: opts.days,
+      preference: ctx.preference,
+      language: ctx.language,
+      excludeTexts: [...ctx.seenQuoteTexts, ...(opts.excludeTexts ?? [])],
+    });
+  } catch (err) {
+    console.warn(
+      "[dailyMotivation] upcoming 미리보기 생성 실패(생략):",
+      err instanceof Error ? err.message : err,
+    );
+    return [];
+  }
 }

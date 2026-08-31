@@ -18,6 +18,7 @@ import { verifyRequestUser, canUseAiFeatures, AuthError } from "@/lib/authServer
 import { enforceQuota, QuotaExceededError } from "@/lib/quota";
 import {
   KST_OFFSET_MS,
+  buildUpcomingPreviews,
   ensureMotivation,
   isValidYmd,
   todayKst,
@@ -277,10 +278,13 @@ export async function GET(request: NextRequest) {
     } catch (err) {
       console.error("[widget/today] user 문서 조회 실패:", err);
     }
-    // 진척도와 실행설계는 서로 독립 — 병렬 조회로 응답 시간을 아낀다.
-    const [progressResult, executionPlanResult] = await Promise.all([
+    // 진척도·실행설계·upcoming 미리보기는 서로 독립 — 병렬 조회로 응답 시간을 아낀다.
+    const [progressResult, executionPlanResult, upcoming] = await Promise.all([
       fetchTodayProgress(me.uid, ymd, userGoals),
       fetchTodayExecutionPlan(me.uid, ymd),
+      // 위젯이 자정에 네트워크 없이 그날의 새 명언으로 교체할 재료(다음 7일, 결정론적
+      // 큐레이션 — LLM 비용 0). 실패 시 [] 폴백이라 본문 카드에는 영향 없다.
+      buildUpcomingPreviews({ uid: me.uid, startYmd: ymd, excludeTexts: [motivation.quote] }),
     ]);
     const executionPlan = executionPlanResult.plan;
 
@@ -356,6 +360,8 @@ export async function GET(request: NextRequest) {
       goalsTotalCount: progressResult.goalsTotalCount,
       // 응답 호환성: 플랜 미설정/조회 실패 시 필드 생략 — 옛 클라이언트는 무시, 신 클라이언트는 섹션 생략.
       ...(executionPlan ? { executionPlan } : {}),
+      // 자정 오프라인에도 클라이언트가 그날 명언으로 스스로 교체할 재료 — 비면 필드 생략.
+      ...(upcoming.length > 0 ? { upcoming } : {}),
       notificationPrefs,
       ...(notificationContent ? { notificationContent } : {}),
     };

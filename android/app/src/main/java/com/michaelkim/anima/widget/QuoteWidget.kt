@@ -69,20 +69,23 @@ class QuoteWidget : GlanceAppWidget() {
             }
         }
 
-        val slot = QuoteRepository.currentSlot(cached)
-        val progress = cached?.response?.todayProgress
+        // 날짜가 지난 캐시는 upcoming 미리보기로 "오늘 명언" 을 보정한다 — 자정에 오프라인이거나
+        // 워커가 밀려도 위젯이 어제 명언에 고착되지 않는다. refresh 성공 시 정식 카드가 자연 대체.
+        val response = QuoteRepository.effectiveResponseForDisplay(cached?.response)
+        val slot = response?.slots?.firstOrNull()
+        val progress = response?.todayProgress
         // 위젯이 "지금 그리고 있는" 카드가 속한 날짜(ymd). 탭 시 이 값을 /home 으로
         // 넘겨, 웹이 기기 시계로 다시 계산하지 않고 위젯과 같은 문서를 읽게 한다.
-        val ymd = cached?.response?.ymd
+        val ymd = response?.ymd
         // 다짐 streak — 옛 캐시는 0 으로 기본값 처리되어 자연스레 숨겨진다.
-        val streak = cached?.response?.streakCount ?: 0
+        val streak = response?.streakCount ?: 0
         // "성공한 나에게 한 발 더" 다짐 본문 — 옛 캐시엔 없어 빈 리스트로 폴백된다.
-        val affirmations = cached?.response?.affirmations ?: emptyList()
+        val affirmations = response?.affirmations ?: emptyList()
         // "그 꿈을 사는 하루" 비전 티저 — 옛 캐시/미생성이면 null 로 폴백돼 섹션이 자연 생략된다.
-        val futureVision = cached?.response?.futureVision
+        val futureVision = response?.futureVision
         // "이번 달 목표" 한 줄 카운트용 — 옛 캐시엔 없어 0 폴백(total 0 이면 섹션 생략).
-        val goalsAchieved = cached?.response?.goalsAchievedCount ?: 0
-        val goalsTotal = cached?.response?.goalsTotalCount ?: 0
+        val goalsAchieved = response?.goalsAchievedCount ?: 0
+        val goalsTotal = response?.goalsTotalCount ?: 0
         // EmptyState 가 "로그인 안내" 와 "불러오는 중" 을 구분하도록 인증 상태를 함께 넘긴다.
         // (로그인했는데도 "로그인 후 표시됩니다" 라고 거짓 안내하던 UX 버그 제거.)
         val signedIn = AuthRepository.isSignedIn

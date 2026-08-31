@@ -20,6 +20,8 @@ import com.michaelkim.anima.data.local.QuoteCache
 import com.michaelkim.anima.work.WorkScheduler
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.time.LocalDate
+import java.time.ZoneId
 
 object QuoteRepository {
 
@@ -183,6 +185,50 @@ object QuoteRepository {
             lastAttemptAtMs = System.currentTimeMillis()
             refreshWithEntitlementRecovery(context, lang)
         }
+    }
+
+    /** 서버 하루 경계(ymd)가 KST 고정이라, 위젯 표시 보정도 같은 시간대로 계산한다. */
+    private val KST: ZoneId = ZoneId.of("Asia/Seoul")
+
+    /** KST 기준 오늘 YYYY-MM-DD — 서버 todayKst() 와 동일한 하루 경계. */
+    fun todayKstYmd(): String = LocalDate.now(KST).toString()
+
+    /**
+     * 캐시 응답을 "오늘" 기준 표시용으로 보정한다.
+     * - 캐시 ymd 가 오늘(또는 시계 오차로 미래)이면 그대로.
+     * - 캐시 ymd 가 지났고 upcoming 미리보기가 있으면: 오늘 자(없으면 오늘에 가장 가까운 과거)
+     *   미리보기 명언으로 교체하고, 하루 단위 상태(진척도·이번 달 달성·비전 티저)를 새 날
+     *   기준으로 리셋한다 — 어제 값을 그대로 두면 "오늘 이미 다 한 것처럼" 보이는 거짓 상태가 된다.
+     * - 미리보기가 없으면(옛 캐시/옛 서버): 기존처럼 이전 카드 유지(빈 화면보다 낫다).
+     *
+     * 이후 네트워크 refresh 가 성공하면 그날의 정식 카드가 이 보정을 자연 대체한다.
+     */
+    fun effectiveResponseForDisplay(
+        response: WidgetTodayResponse?,
+        todayYmd: String = todayKstYmd(),
+    ): WidgetTodayResponse? {
+        if (response == null || response.ymd >= todayYmd) return response
+        // YYYY-MM-DD 형식이라 문자열 비교가 곧 날짜 비교다.
+        val preview = response.upcoming
+            .filter { it.ymd <= todayYmd }
+            .maxByOrNull { it.ymd }
+            ?: return response
+        val baseSlot = response.slots.firstOrNull() ?: return response
+        return response.copy(
+            ymd = todayYmd,
+            slots = listOf(
+                baseSlot.copy(
+                    text = preview.text,
+                    author = preview.author,
+                    // 원문 병기는 어제 명언의 것 — 새 명언과 무관하니 지운다.
+                    originalText = null,
+                    originalLang = null,
+                ),
+            ),
+            todayProgress = WidgetTodayProgress(),
+            futureVision = null,
+            goalsAchievedCount = 0,
+        )
     }
 
     /** 캐시에서 "지금 보여야 할" 슬롯 1건 추출. 슬롯이 비면 null. */

@@ -11,7 +11,8 @@
  *
  * 동작
  *  - QuoteRepository.refresh(applicationContext) — 인증 + /api/widget/today 호출 + 캐시 저장.
- *  - 미인증 / 네트워크 실패는 조용히 skip (어제 캐시 유지가 빈 화면보다 낫다).
+ *  - 미인증 / 네트워크 실패 시 fetch 는 skip 하되 위젯 재렌더는 항상 수행 — 캐시의
+ *    upcoming 미리보기가 있으면 그날의 새 명언으로 교체돼 어제 카드 고착을 막는다.
  *  - 어떤 결과든 다음날 00:01 KST 로 자기 자신 재예약 — 끊기면 영영 안 옴.
  *
  * 정확성 vs 절전
@@ -42,12 +43,14 @@ class MidnightQuoteRefreshWorker(
                 try {
                     QuoteRepository.refresh(ctx)
                 } catch (_: Exception) {
-                    // 네트워크/인증 만료 등 — 다음 Periodic 또는 사용자 탭에서 자가 복구.
+                    // 오프라인/인증 만료 등 — 아래 updateAll 이 upcoming 미리보기로 보정
+                    // 렌더하고, 다음 Periodic 또는 사용자 탭이 정식 카드로 봉합.
                 }
-                // 인용 데이터가 그대로라도 위젯은 한 번 재렌더 — date 메타 / time-of-day CTA /
-                // todayProgress 리셋(자정에 갈린 새 ymd) 가 곧장 화면에 반영되도록.
-                QuoteWidget().updateAll(ctx)
             }
+            // 네트워크 성공 여부와 무관하게 항상 재렌더 — 새 ymd 의 date 메타/진척도 리셋과
+            // upcoming 미리보기 명언 교체(QuoteRepository.effectiveResponseForDisplay)가
+            // 곧장 화면에 반영되도록. (미로그인이면 EmptyState 재렌더라 무해.)
+            QuoteWidget().updateAll(ctx)
             return Result.success()
         } finally {
             // 끊기면 영영 안 오므로 어떤 경로로 종료되든 항상 다음 자정으로 재예약.

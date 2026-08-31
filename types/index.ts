@@ -564,6 +564,22 @@ export interface WidgetNotificationContent {
   pendingTask: WidgetNotificationCopy | null;
 }
 
+/**
+ * 앞으로 며칠간의 위젯 명언 미리보기 1건.
+ *
+ * 왜 필요한가: 위젯(iOS WidgetKit·Android Glance)은 자정에 네트워크를 못 칠 수 있다
+ * (iOS 는 익스텐션이 인증 호출 자체를 못 하고, Android 는 오프라인/도즈로 갱신이 밀린다).
+ * 서버가 미리 며칠치 명언을 결정론적으로 뽑아 내려주면, 클라이언트는 날짜가 바뀌는 순간
+ * 네트워크 없이도 그날의 새 명언으로 교체할 수 있다. 이후 앱/워커가 refresh 에 성공하면
+ * 그날의 정식 카드(개인화 생성본)로 자연 대체된다.
+ */
+export interface WidgetUpcomingQuote {
+  /** 이 미리보기가 유효한 KST 날짜 (YYYY-MM-DD). */
+  ymd: string;
+  text: string;
+  author: string;
+}
+
 export interface WidgetTodayResponse {
   generatedAt: string;
   ymd: string;
@@ -617,4 +633,10 @@ export interface WidgetTodayResponse {
    * 응답 호환성: 조립 실패 시 생략 — 플랫폼은 각자의 정적 문구로 폴백한다.
    */
   notificationContent?: WidgetNotificationContent;
+  /**
+   * 내일부터 며칠간의 명언 미리보기(결정론적 큐레이션 선택 — LLM 비용 0).
+   * 위젯이 자정에 네트워크 없이 그날의 새 명언으로 교체하는 데 쓴다.
+   * 응답 호환성: 누락 시 위젯은 기존처럼 다음 성공 refresh 까지 이전 카드를 유지.
+   */
+  upcoming?: WidgetUpcomingQuote[];
 }
