@@ -54,6 +54,7 @@ export function computeGoalSlots({
   affirmation,
   goal,
   currentGoalCount = 0,
+  unlockAll = false,
 }: {
   /** 다짐 전사 스트릭 (users.affirmationStreak). */
   affirmation?: StreakCounter | null;
@@ -61,6 +62,12 @@ export function computeGoalSlots({
   goal?: StreakCounter | null;
   /** 지금 가진 목표 수 — 기존 사용자 보존용. */
   currentGoalCount?: number;
+  /**
+   * 결제 프로(lib/entitlement isPaidPro) — 첫날부터 전 칸 개방.
+   * earned(꾸준함으로 번 칸)는 그대로 둔다 — 해금 배너/축하는 여전히 스트릭의 몫이고,
+   * 구독 만료 시에도 벌어둔 칸과 기존 목표 보존 규칙이 그대로 이어받는다.
+   */
+  unlockAll?: boolean;
 } = {}): GoalSlotState {
   const affirmationBest = bestStreakCount(affirmation);
   const goalBest = bestStreakCount(goal);
@@ -76,6 +83,16 @@ export function computeGoalSlots({
   earned = Math.min(earned, GOAL_SLOT_MAX);
 
   const existing = toCount(currentGoalCount);
+
+  if (unlockAll) {
+    return {
+      unlocked: Math.max(GOAL_SLOT_MAX, existing),
+      earned,
+      nextThreshold: null,
+      progress,
+      source,
+    };
+  }
 
   return {
     unlocked: Math.max(earned, existing),

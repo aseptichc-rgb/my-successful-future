@@ -36,6 +36,7 @@ export function computeWinsUnlock({
   affirmation,
   goal,
   alreadyRecorded = false,
+  unlockAll = false,
 }: {
   /** 다짐 전사 스트릭 (users.affirmationStreak). */
   affirmation?: StreakCounter | null;
@@ -43,8 +44,10 @@ export function computeWinsUnlock({
   goal?: StreakCounter | null;
   /** 이미 잘한 일을 쓰던 계정인가 — 기존 사용자 보존(호출부가 판단해 넘긴다). */
   alreadyRecorded?: boolean;
+  /** 결제 프로(lib/entitlement isPaidPro) — 스트릭 없이도 첫날부터 open. */
+  unlockAll?: boolean;
 } = {}): WinsUnlockState {
-  if (alreadyRecorded) return { kind: "open" };
+  if (unlockAll || alreadyRecorded) return { kind: "open" };
 
   const progress = Math.max(bestStreakCount(affirmation), bestStreakCount(goal));
   if (progress >= WINS_UNLOCK_STREAK) return { kind: "open" };

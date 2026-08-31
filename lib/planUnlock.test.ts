@@ -62,4 +62,14 @@ describe("computePlanUnlock", () => {
   it("레거시 문서(bestCount 없음, count 7)도 open", () => {
     expect(computePlanUnlock({ goalCount: 1, affirmation: { count: 7 } }).kind).toBe("open");
   });
+
+  it("결제 프로(unlockAll)는 스트릭 0이어도 첫날부터 open", () => {
+    expect(computePlanUnlock({ goalCount: 1, unlockAll: true }).kind).toBe("open");
+  });
+
+  it("결제 프로여도 목표·플랜이 없으면 hidden — 잠금이 아니라 그릴 내용이 없다", () => {
+    expect(computePlanUnlock({ goalCount: 0, planCount: 0, unlockAll: true })).toEqual({
+      kind: "hidden",
+    });
+  });
 });

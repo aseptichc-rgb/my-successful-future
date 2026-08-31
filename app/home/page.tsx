@@ -32,6 +32,7 @@ import {
   type WeeklyReview,
 } from "@/lib/weeklyReview";
 import { authedFetch } from "@/lib/authedFetch";
+import { isPaidPro } from "@/lib/entitlement";
 import { isPaymentRequired } from "@/lib/paymentRequired";
 import { notifyAndroidWidgetRefresh } from "@/lib/widgetBridge";
 import { refreshIosWidget } from "@/lib/iosWidget";
@@ -176,7 +177,7 @@ const IconGear = ({ size = 24 }: { size?: number }) => (
 
 export default function HomeDashboardPage() {
   const router = useRouter();
-  const { user, firebaseUser, loading, refreshUser } = useAuth();
+  const { user, firebaseUser, loading, refreshUser, entitlement } = useAuth();
   const { t, locale } = useLanguage();
 
   // 미래의 나·목표는 홈에서 읽기 전용 — 수정은 /settings 에서. 항상 user 의 최신 값을 반영하도록
@@ -734,11 +735,15 @@ export default function HomeDashboardPage() {
 
   // 오늘 확인할 목표는 첫 칸 하나. 나머지(해금분)는 "더 보기" 안에서 다룬다.
   const primaryGoal = (goals[0] ?? "").trim();
+  // 결제 프로(평생/구독)는 모든 해금 게이트를 첫날부터 통과한다 — 트라이얼은 제외
+  // (트라이얼은 전원 자동 시작이라 포함하면 해금 여정 자체가 사라진다).
+  const proUnlockAll = isPaidPro(entitlement);
   // 해금 게이지는 다짐 전사·목표 달성 두 축 중 큰 값으로 찬다.
   const slots = computeGoalSlots({
     affirmation: user?.affirmationStreak,
     goal: user?.goalStreak,
     currentGoalCount: goals.length,
+    unlockAll: proUnlockAll,
   });
 
   // 실행 설계 해금 — 플랜 첫 스냅샷 전(null)에는 카드를 그리지 않는다(깜빡임 방지).
@@ -748,6 +753,7 @@ export default function HomeDashboardPage() {
         goal: user?.goalStreak,
         goalCount: goals.filter((g) => g.trim().length > 0).length,
         planCount: plans.length,
+        unlockAll: proUnlockAll,
       })
     : null;
 
@@ -758,6 +764,7 @@ export default function HomeDashboardPage() {
           affirmation: user?.affirmationStreak,
           goal: user?.goalStreak,
           alreadyRecorded: Boolean(user?.winsUnlockedAt) || winsRecordedRecently,
+          unlockAll: proUnlockAll,
         })
       : null;
 
@@ -854,14 +861,17 @@ export default function HomeDashboardPage() {
           onEdit={() => router.push("/settings?sheet=affirmations")}
         />
 
-        {/* ── 목표 칸이 열린 그 순간에만 뜨는 1회성 배너 ── */}
-        <SlotUnlockBanner
-          earned={slots.earned}
-          progress={slots.progress}
-          source={slots.source}
-          onAddGoal={() => router.push("/settings?sheet=goals")}
-          onRefineGoal={() => router.push("/settings?sheet=goals&refine=1")}
-        />
+        {/* ── 목표 칸이 열린 그 순간에만 뜨는 1회성 배너 ──
+            결제 프로는 전 칸이 첫날부터 열려 있어 "새 칸이 열렸어요" 축하가 거짓이 된다 — 숨긴다. */}
+        {!proUnlockAll && (
+          <SlotUnlockBanner
+            earned={slots.earned}
+            progress={slots.progress}
+            source={slots.source}
+            onAddGoal={() => router.push("/settings?sheet=goals")}
+            onRefineGoal={() => router.push("/settings?sheet=goals&refine=1")}
+          />
+        )}
 
         {/* ── 목표 달성이 이어졌을 때 한 번만 뜨는 스텝업 제안 ── */}
         <StepUpCard

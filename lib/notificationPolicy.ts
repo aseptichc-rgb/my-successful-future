@@ -185,8 +185,9 @@ export interface NotificationTexts {
   evening: NotificationCopy;
   weekly: NotificationCopy;
   /**
-   * 날짜(yyyy-MM-dd)별 아침 문구 덮어쓰기 — 실제 오늘의 명언을 싣는 자리.
-   * iOS 는 14일치를 미리 예약하므로 D+0·D+1 만 채워지고 나머지는 위 폴백을 쓴다.
+   * 날짜(yyyy-MM-dd)별 아침 문구 덮어쓰기 — 그날의 실제 명언을 싣는 자리.
+   * iOS 는 14일치를 미리 예약하고 D+0(오늘 문구)·D+1~D+7(서버 upcoming 미리보기,
+   * 저녁 이후엔 D+1 이 정식 카드로 대체)이 채워지며 나머지는 위 폴백을 쓴다.
    * (Android 는 발송 직전에 서버를 직접 부르므로 이 필드를 쓰지 않는다.)
    */
   morningOverrides?: Record<string, NotificationCopy>;

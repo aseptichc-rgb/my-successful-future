@@ -106,6 +106,12 @@ data class WidgetNotificationContent(
     val evening: WidgetNotificationCopy? = null,
     val weekly: WidgetNotificationCopy? = null,
     val pendingTask: WidgetNotificationCopy? = null,
+    /**
+     * KST ymd → 그날 아침 문구(upcoming 미리보기). 아침 발송 시점에 캐시가 어제 것이면
+     * (오프라인) 오늘 자 문구로 폴백해 "어제 명언이 아침 알림에 나가는" 것을 막는다.
+     * 옛 캐시/옛 서버 응답엔 없어 빈 맵 기본값.
+     */
+    val morningUpcoming: Map<String, WidgetNotificationCopy> = emptyMap(),
 )
 
 /**

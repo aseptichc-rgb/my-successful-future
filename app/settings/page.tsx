@@ -50,7 +50,7 @@ import {
   purchaseAndroidPro,
   restoreAndroidPro,
 } from "@/lib/androidPurchase";
-import { readEntitlement } from "@/lib/entitlement";
+import { isPaidPro, readEntitlement } from "@/lib/entitlement";
 import { computePlanUnlock } from "@/lib/planUnlock";
 import { detectPurchaseEnv } from "@/lib/purchaseEnv";
 import { isAndroidApp, notifyAndroidPurchase, notifyAndroidRestore } from "@/lib/widgetBridge";
@@ -435,7 +435,10 @@ function readSheetDeepLink(): { sheet: DeepLinkSheet | null; refine: boolean } {
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user, firebaseUser, loading: authLoading, signOut, refreshUser } = useAuth();
+  const { user, firebaseUser, loading: authLoading, signOut, refreshUser, entitlement } =
+    useAuth();
+  // 결제 프로(평생/구독)는 모든 해금 게이트를 첫날부터 통과한다 — 홈과 동일 판정.
+  const proUnlockAll = isPaidPro(entitlement);
   const { t, locale, setLocale } = useLanguage();
   const [languageSaving, setLanguageSaving] = useState(false);
 
@@ -639,16 +642,19 @@ export default function SettingsPage() {
       goal: user?.goalStreak,
       goalCount,
       planCount: plans.length,
+      unlockAll: proUnlockAll,
     }).kind === "open";
-  // 목표 칸 수는 꾸준함으로 열린다(전사·달성 두 축). 기존 사용자는 지금 가진 목표 수만큼 자동 인정된다.
+  // 목표 칸 수는 꾸준함으로 열린다(전사·달성 두 축). 기존 사용자는 지금 가진 목표 수만큼
+  // 자동 인정되고, 결제 프로는 전 칸이 첫날부터 열린다.
   const goalSlots = useMemo(
     () =>
       computeGoalSlots({
         affirmation: user?.affirmationStreak,
         goal: user?.goalStreak,
         currentGoalCount: user?.goals?.length ?? 0,
+        unlockAll: proUnlockAll,
       }),
-    [user?.affirmationStreak, user?.goalStreak, user?.goals?.length],
+    [user?.affirmationStreak, user?.goalStreak, user?.goals?.length, proUnlockAll],
   );
 
   if (authLoading || !firebaseUser) {
@@ -1406,7 +1412,9 @@ export default function SettingsPage() {
           </div>
 
           <p className="px-1 mt-2 text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label-2)]">
-            {goalSlots.earned >= GOAL_SLOT_MAX && goals.length >= goalSlots.unlocked
+            {/* nextThreshold === null == 더 벌어서 열 칸이 없다(전부 해금 또는 결제 프로) —
+                그때 "쌓이면 열려요" 안내는 거짓이 되므로 최대치 안내로 바꾼다. */}
+            {goalSlots.nextThreshold === null
               ? t("goalSlot.maxed", { max: GOAL_SLOT_MAX })
               : t("goalSlot.hint")}
           </p>

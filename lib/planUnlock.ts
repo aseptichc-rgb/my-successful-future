@@ -22,6 +22,7 @@ export function computePlanUnlock({
   goal,
   goalCount = 0,
   planCount = 0,
+  unlockAll = false,
 }: {
   /** 다짐 전사 스트릭 (users.affirmationStreak). */
   affirmation?: StreakCounter | null;
@@ -31,9 +32,13 @@ export function computePlanUnlock({
   goalCount?: number;
   /** 저장된 실행 설계 수. */
   planCount?: number;
+  /** 결제 프로(lib/entitlement isPaidPro) — 스트릭 없이도 첫날부터 open. */
+  unlockAll?: boolean;
 } = {}): PlanUnlockState {
   // 설계할 목표가 없으면 잠금 예고조차 그리지 않는다 (ExecutionPlansSection 과 같은 규칙).
+  // 프로여도 동일 — 이건 잠금이 아니라 "그릴 내용이 없음"이다.
   if (goalCount <= 0 && planCount <= 0) return { kind: "hidden" };
+  if (unlockAll) return { kind: "open" };
   if (planCount > 0) return { kind: "open" };
 
   const progress = Math.max(bestStreakCount(affirmation), bestStreakCount(goal));

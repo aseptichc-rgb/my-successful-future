@@ -12,11 +12,12 @@
  *     goalsSnapshot 이 24시간 낡은 채로 굳는다 — 저녁이면 그날의 목표 편집이 대체로 끝나 있다.
  *   - 실패하면 그냥 건너뛴다. 정적 폴백 문구로 알림은 계속 나간다.
  *
- * D+2 이후는 명언이 아직 존재하지 않아 정적 폴백이다. 매일 앱을 여는 사용자는 예약 창이
- * 계속 앞으로 밀리므로 사실상 항상 실제 명언을 받는다.
+ * D+2 이후는 서버가 미리 조립해 둔 upcoming 미리보기 문구(notificationContent.morningUpcoming,
+ * 다음 7일)로 채운다 — 며칠 앱을 안 열어도 아침 알림에 그날의 명언이 실린다. 그 범위를
+ * 넘어서면 정적 폴백. 앱을 열 때마다 창이 앞으로 밀려 사실상 항상 실제 명언을 받는다.
  */
 import { authedFetch } from "@/lib/authedFetch";
-import { addKstDays, todayKstYmd } from "@/lib/kstDate";
+import { addKstDays, diffKstDays, todayKstYmd } from "@/lib/kstDate";
 // 문구 한 건의 모양은 정책 모듈이 소유한다 — 여기서 같은 모양을 다시 선언하면 필드가 늘 때
 // 구조적 타이핑 때문에 컴파일은 통과한 채 이 경로에서만 값이 조용히 누락된다.
 import type { NotificationCopy } from "@/lib/notificationPolicy";
@@ -71,10 +72,22 @@ export async function fetchNotificationContent(): Promise<NotificationServerCont
   const todayMorning = toCopy(today.notificationContent?.morning);
   if (todayMorning) morningOverrides[localYmd(0)] = todayMorning;
 
+  // 서버의 하루 경계는 KST — 응답의 ymd 를 기준으로 오프셋을 계산해 기기 시계 오차를 타지 않는다.
+  const serverToday = today.ymd || todayKstYmd();
+
+  // D+1~ : 서버가 미리 조립해 둔 upcoming 미리보기 문구(KST ymd 키)를 로컬 달력 날짜로
+  // 옮겨 싣는다 — 며칠 앱을 안 열어도 아침 알림에 "그날의 명언" 이 실린다.
+  // (그날이 오면 정식 카드가 미리보기와 다를 수 있지만, 매일 같은 정적 문구보다 낫다.)
+  for (const [kstYmd, raw] of Object.entries(today.notificationContent?.morningUpcoming ?? {})) {
+    const offset = diffKstDays(serverToday, kstYmd);
+    if (!Number.isFinite(offset) || offset < 1) continue;
+    const copy = toCopy(raw);
+    if (copy) morningOverrides[localYmd(offset)] = copy;
+  }
+
   // 내일 카드는 저녁 이후에만 미리 확정한다(위 주석의 goalsSnapshot 신선도 이유).
+  // 확정된 "정식" 내일 카드 문구는 위 미리보기(D+1)를 덮어쓴다 — 정식이 항상 우선.
   if (new Date().getHours() >= PREFETCH_MIN_HOUR) {
-    // 서버의 하루 경계는 KST — 응답의 ymd 를 기준으로 다음 날을 계산해 기기 시계 오차를 타지 않는다.
-    const serverToday = today.ymd || todayKstYmd();
     const tomorrow = await fetchWidgetToday(addKstDays(serverToday, 1));
     const tomorrowMorning = toCopy(tomorrow?.notificationContent?.morning);
     if (tomorrowMorning) morningOverrides[localYmd(1)] = tomorrowMorning;

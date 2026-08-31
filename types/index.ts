@@ -562,6 +562,12 @@ export interface WidgetNotificationContent {
    * null 이면 보낼 것이 없거나 오늘이 넛지 허용일이 아니다 — 현행대로 침묵한다.
    */
   pendingTask: WidgetNotificationCopy | null;
+  /**
+   * 내일부터 며칠간(upcoming 미리보기)의 아침 문구 — KST ymd → 그날의 명언 알림 카피.
+   * iOS 가 사전 예약 창(D+1~)에 싣고, Android 는 아침에 캐시가 어제 것일 때(오프라인)
+   * 오늘 자 문구로 폴백하는 데 쓴다. 미리보기가 없으면 필드 생략 — 옛 클라이언트 안전.
+   */
+  morningUpcoming?: Record<string, WidgetNotificationCopy>;
 }
 
 /**

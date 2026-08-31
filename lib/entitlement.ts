@@ -108,6 +108,18 @@ export function hasProAccess(ent: Entitlement): boolean {
 }
 
 /**
+ * "결제를 마친" 프로인가 — 평생/구독만 true, 트라이얼은 false.
+ *
+ * hasProAccess 와 구분하는 이유: 트라이얼은 모든 신규 사용자에게 자동으로 켜지므로,
+ * 트라이얼까지 포함하면 "꾸준함으로 벌어서 여는" 해금 설계(goalSlots/planUnlock/winsUnlock)가
+ * 전원에게 무력화된다. 결제자에게만 모든 기능을 첫날부터 연다 — 해금 게이트의
+ * `unlockAll` 인자는 반드시 이 함수의 결과로만 채운다.
+ */
+export function isPaidPro(ent: Entitlement): boolean {
+  return ent.kind === "lifetime" || ent.kind === "subscription";
+}
+
+/**
  * 트라이얼을 새로 시작해야 하는 사용자인가 — start-trial 호출 멱등 판정용.
  *
  * 켜지 않는 경우:

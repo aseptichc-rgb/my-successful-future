@@ -15,7 +15,11 @@ import { isPendingNudgeDay } from "@/lib/notificationPolicy";
 import { truncateText } from "@/lib/truncateText";
 import { pickPendingTask, type PendingTaskInput } from "@/lib/pendingTasks";
 import type { Locale } from "@/lib/i18n/types";
-import type { WidgetNotificationContent, WidgetNotificationCopy } from "@/types";
+import type {
+  WidgetNotificationContent,
+  WidgetNotificationCopy,
+  WidgetUpcomingQuote,
+} from "@/types";
 
 /**
  * 알림 제목의 최대 길이. 잠금화면은 제목을 한 줄로 자르므로, 명언을 제목에 실을 때
@@ -39,6 +43,12 @@ export interface BuildNotificationContentInput {
   pending?: PendingTaskInput;
   /** 사용자가 과업 넛지를 켜 두었는가. */
   pendingTaskEnabled: boolean;
+  /**
+   * 다음 날들의 명언 미리보기(lib/dailyMotivation.buildUpcomingPreviews).
+   * 있으면 날짜별 아침 문구(morningUpcoming)로 조립돼, 앱을 안 열어도 아침 알림에
+   * "그날의 명언" 이 실린다. 생략 시 기존 동작(오늘 문구만) 그대로.
+   */
+  upcoming?: ReadonlyArray<WidgetUpcomingQuote>;
 }
 
 /**
@@ -54,27 +64,25 @@ export function buildNotificationContent(
   const t = getServerT(input.locale);
 
   // ── 아침: 오늘의 명언 실문구. 알림만 봐도 오늘 한 마디를 읽게 한다.
-  const quote = input.quote.trim();
-  const author = input.author.trim();
-  const quoteTitle = truncateText(quote, NOTIFY_TITLE_MAX);
   const morning: WidgetNotificationCopy =
-    quote.length > 0
-      ? {
-          title: quoteTitle,
-          body: author
-            ? t("notify.morning.quoteBody", { author })
-            : t("notify.morning.body"),
-          // 제목이 실제로 잘렸을 때만 전문을 따로 싣는다(Android BigTextStyle 확장용).
-          // 길이 비교가 아니라 결과 비교여야 한다 — 이모지가 섞이면 UTF-16 길이와
-          // 코드 포인트 수가 달라 "안 잘렸는데 전문을 싣는" 경우가 생긴다.
-          ...(quoteTitle !== quote ? { fullText: quote } : {}),
-          target: "affirmations",
-        }
-      : {
-          title: t("notify.morning.title"),
-          body: t("notify.morning.body"),
-          target: "affirmations",
-        };
+    buildMorningQuoteCopy(input.quote, input.author, t) ?? {
+      title: t("notify.morning.title"),
+      body: t("notify.morning.body"),
+      target: "affirmations",
+    };
+
+  // ── 아침(미래분): upcoming 미리보기를 날짜별 아침 문구로 미리 조립한다.
+  //    iOS 는 사전 예약 창(D+1~)에 그대로 싣고, Android 는 아침에 캐시가 어제 것일 때
+  //    (오프라인) 오늘 자 문구로 폴백한다 — 어느 쪽이든 "그날의 명언" 이 보장된다.
+  let morningUpcoming: Record<string, WidgetNotificationCopy> | undefined;
+  if (input.upcoming && input.upcoming.length > 0) {
+    const entries: Record<string, WidgetNotificationCopy> = {};
+    for (const preview of input.upcoming) {
+      const copy = buildMorningQuoteCopy(preview.text, preview.author, t);
+      if (copy) entries[preview.ymd] = copy;
+    }
+    if (Object.keys(entries).length > 0) morningUpcoming = entries;
+  }
 
   // ── 저녁: 오늘의 목표를 본문에 실어 "무엇을 하면 되는지"를 알림만 봐도 알게 한다.
   const goalText = input.goalText?.trim();
@@ -105,5 +113,30 @@ export function buildNotificationContent(
     }
   }
 
-  return { morning, evening, weekly, pendingTask };
+  return { morning, evening, weekly, pendingTask, ...(morningUpcoming ? { morningUpcoming } : {}) };
+}
+
+/**
+ * 명언 한 건을 아침 알림 카피로 조립한다. 오늘 문구와 upcoming 미래 문구가 같은 규칙을
+ * 공유해야 "오늘은 잘리는데 내일은 안 잘리는" 식의 어긋남이 없다(DRY).
+ * 명언이 비어 있으면 null — 호출부가 정적 폴백으로 대체한다.
+ */
+function buildMorningQuoteCopy(
+  rawQuote: string,
+  rawAuthor: string,
+  t: ReturnType<typeof getServerT>,
+): WidgetNotificationCopy | null {
+  const quote = rawQuote.trim();
+  if (quote.length === 0) return null;
+  const author = rawAuthor.trim();
+  const title = truncateText(quote, NOTIFY_TITLE_MAX);
+  return {
+    title,
+    body: author ? t("notify.morning.quoteBody", { author }) : t("notify.morning.body"),
+    // 제목이 실제로 잘렸을 때만 전문을 따로 싣는다(Android BigTextStyle 확장용).
+    // 길이 비교가 아니라 결과 비교여야 한다 — 이모지가 섞이면 UTF-16 길이와
+    // 코드 포인트 수가 달라 "안 잘렸는데 전문을 싣는" 경우가 생긴다.
+    ...(title !== quote ? { fullText: quote } : {}),
+    target: "affirmations",
+  };
 }

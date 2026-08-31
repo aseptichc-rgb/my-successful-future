@@ -99,4 +99,8 @@ describe("computeWinsUnlock", () => {
       computeWinsUnlock({ affirmation: { count: 3 }, alreadyRecorded: false }).kind,
     ).toBe("locked");
   });
+
+  it("결제 프로(unlockAll)는 스트릭 0·보존 신호 없음이어도 첫날부터 open", () => {
+    expect(computeWinsUnlock({ unlockAll: true }).kind).toBe("open");
+  });
 });

@@ -339,6 +339,9 @@ export async function GET(request: NextRequest) {
           ? { ...pendingSeed, executionPlanCount: executionPlanResult.count }
           : undefined,
         pendingTaskEnabled: notificationPrefs.pendingTaskEnabled,
+        // 다음 날들 미리보기 → 날짜별 아침 알림 문구(morningUpcoming). 앱을 안 열어도
+        // 아침 푸시에 "그날의 명언" 이 실리는 재료다.
+        upcoming,
       });
     } catch (err) {
       console.error("[widget/today] 알림 문구 조립 실패(생략):", err);

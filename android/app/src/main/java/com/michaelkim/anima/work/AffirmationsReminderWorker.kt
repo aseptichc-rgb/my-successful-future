@@ -18,6 +18,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.michaelkim.anima.MainActivity
 import com.michaelkim.anima.R
+import com.michaelkim.anima.data.QuoteRepository
 import com.michaelkim.anima.data.local.NotificationPrefsStore
 import com.michaelkim.anima.util.CrashReporter
 
@@ -52,9 +53,24 @@ class AffirmationsReminderWorker(
         }
     }
 
-    /** 서버 조립 문구(오늘의 명언)를 우선 쓰고, 없으면 정적 폴백. */
+    /**
+     * 서버 조립 문구(오늘의 명언)를 우선 쓰고, 없으면 정적 폴백.
+     *
+     * 오프라인 아침이면 fetchTodayBestEffort 가 어제 캐시를 돌려줄 수 있다 — 그 morning 엔
+     * 어제 명언이 들어 있으므로, 서버가 미리 조립해 둔 오늘 자 미리보기 문구
+     * (morningUpcoming[오늘 KST ymd])를 우선해 "그날의 명언" 을 보장한다.
+     */
     private suspend fun postAffirmationsReminder(ctx: Context) {
-        val copy = ReminderSupport.fetchTodayBestEffort(ctx)?.notificationContent?.morning
+        val response = ReminderSupport.fetchTodayBestEffort(ctx)
+        val content = response?.notificationContent
+        val todayYmd = QuoteRepository.todayKstYmd()
+        val copy = if (response?.ymd == todayYmd) {
+            content?.morning
+        } else {
+            // 캐시가 어제 것 — 오늘 자 미리보기 문구가 있으면 그걸, 없으면(옛 서버 응답 /
+            // 7일 초과 방치) 종전처럼 마지막 문구로 폴백(정적 문구보다 낫다).
+            content?.morningUpcoming?.get(todayYmd) ?: content?.morning
+        }
         ReminderSupport.postNotification(
             ctx = ctx,
             channelId = CHANNEL_ID,
