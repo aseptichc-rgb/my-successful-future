@@ -431,7 +431,12 @@ export default function HomeDashboardPage() {
         setMotivationSnap({ key: currentKey, m: data.motivation });
       }
       // motivation 의 quote/author/goalsSnapshot 이 바뀌었으므로 위젯도 새 카드를 받아가야 한다.
-      // 안 호출하면 다음 정주기 Worker(3시간) 까지 위젯과 홈의 명언이 어긋난다.
+      // iOS 는 여기서 즉시 재fetch → App Group 캐시에 push 된다.
+      // ⚠️ 안드로이드는 notifyAndroidWidgetRefresh() 가 의도적 no-op 이다(웹→네이티브 intent 가
+      //    Chrome "계속" 확인창을 띄우는 회귀로 제거됨 — lib/widgetBridge.ts 헤더 참고).
+      //    게다가 TWA 는 Chrome 프로세스라 ForegroundWidgetRefresher 의 ON_START 도 안 뜬다.
+      //    그래서 안드로이드 위젯은 정주기 Worker 가 따라잡는다 — 그 주기를 3시간에서 15분으로
+      //    당겨(WorkScheduler.PERIODIC_MINUTES) 어긋나는 창을 줄였다. 호출은 시그니처 대칭용.
       notifyAndroidWidgetRefresh();
       void refreshIosWidget();
     } catch (err) {

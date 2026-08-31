@@ -1,7 +1,7 @@
 /**
  * WorkManager 등록 헬퍼.
  *
- * - schedulePeriodicRefresh: 3시간 주기, KEEP 정책 (이미 있으면 그대로).
+ * - schedulePeriodicRefresh: 15분 주기, UPDATE 정책 (주기를 바꿔도 기존 설치에 반영된다).
  * - scheduleOneTimeRefresh: 즉시 1회 — 위젯 첫 추가 / 사용자가 "지금 갱신" 누를 때.
  * - scheduleDailyWinsReminder: 매일 저녁(기본 21:00, 기기 타임존) 로컬 알림.
  *   OneTime + 자기 재예약 패턴. 시각·on/off 는 NotificationPrefsStore(서버 설정 캐시)를 따른다.
@@ -11,7 +11,16 @@
  * 붙어야 한다. 반면 자정 위젯 갱신은 KST 고정 — 서버의 ymd(하루 경계)가 KST 라서
  * 데이터가 갈리는 시각과 정렬해야 한다. (정책 단일 소스: 웹 lib/notificationPolicy.ts)
  *
- * 안드로이드 PeriodicWorkRequest 의 최소 주기는 15분. 3시간은 충분히 안전.
+ * 안드로이드 PeriodicWorkRequest 의 최소 주기는 15분 — 정주기 갱신은 그 하한을 쓴다.
+ *
+ * 왜 3시간이 아니라 15분인가 (위젯↔홈 명언 불일치 회귀):
+ *   TWA 안에서 사용자가 ↻(다시 받기) 를 누르면 홈의 명언은 즉시 바뀌지만, 웹 → 네이티브
+ *   위젯 갱신 인텐트는 Chrome "계속" 확인창 회귀 때문에 제거돼(lib/widgetBridge.ts) 남은
+ *   경로가 없다. 게다가 TWA 는 Chrome 프로세스라 우리 프로세스는 그동안 백그라운드여서
+ *   [ForegroundWidgetRefresher] 의 ON_START 도 뜨지 않는다. 결과적으로 위젯이 최대 3시간
+ *   옛 명언을 들고 있었다. 정주기를 하한(15분)까지 당겨 그 창을 3시간 → 15분으로 줄인다.
+ *   비용은 15분마다 GET 1회 — [QuoteRepository.refreshIfStale] 이 90초 창으로 연타를 접고,
+ *   서버의 widgetRefresh 쿼터는 "카드 생성" 에만 걸리므로 단순 조회는 합산되지 않는다.
  */
 package com.michaelkim.anima.work
 
@@ -35,10 +44,21 @@ object WorkScheduler {
     private const val WINS_REMINDER_NAME = "anima_wins_reminder_daily"
     private const val AFFIRMATIONS_REMINDER_NAME = "anima_affirmations_reminder_daily"
     private const val MIDNIGHT_REFRESH_NAME = "anima_quote_midnight_daily"
-    private const val PERIODIC_HOURS = 3L
+    // WorkManager PeriodicWorkRequest 하한. 이보다 작게 주면 시스템이 조용히 15분으로 올린다.
+    private const val PERIODIC_MINUTES = 15L
 
-    /** 서버 데이터의 하루 경계(ymd) 전용 — 리마인더에는 쓰지 않는다. */
-    private val KST: ZoneId = ZoneId.of("Asia/Seoul")
+    /**
+     * 정주기 갱신 간격(ms) — [com.michaelkim.anima.data.QuoteRepository.isStale] 이
+     * "캐시가 묵었나" 임계치로 그대로 쓴다. 두 곳이 각자 15분을 들고 있으면 한쪽만 바꿨을 때
+     * 위젯이 "안 묵었다" 고 판정하며 갱신을 건너뛰는 조용한 회귀가 난다 — 여기 하나로 묶는다.
+     */
+    val PERIODIC_REFRESH_MS: Long = TimeUnit.MINUTES.toMillis(PERIODIC_MINUTES)
+
+    /**
+     * 서버 데이터의 하루 경계(ymd) 기준 타임존 — 리마인더(기기 로컬)에는 쓰지 않는다.
+     * 자정 갱신 예약과 위젯 캐시의 "어제 카드" 판정([QuoteRepository.isStale])이 공유한다.
+     */
+    val SERVER_DAY_ZONE: ZoneId = ZoneId.of("Asia/Seoul")
     // 자정 정각이 아니라 +1 분 — 서버의 ymd 가 자정 0분에 갈리는 race 를 피한다.
     private val MIDNIGHT_REFRESH_AT: LocalTime = LocalTime.of(0, 1)
 
@@ -48,13 +68,16 @@ object WorkScheduler {
 
     fun schedulePeriodicRefresh(context: Context) {
         val request = PeriodicWorkRequestBuilder<QuoteRefreshWorker>(
-            PERIODIC_HOURS, TimeUnit.HOURS,
+            PERIODIC_MINUTES, TimeUnit.MINUTES,
         )
             .setConstraints(networkConstraint())
             .build()
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             PERIODIC_NAME,
-            ExistingPeriodicWorkPolicy.KEEP,
+            // ⚠️ KEEP 이면 안 된다 — 이미 3시간 주기로 등록된 기존 설치는 앱을 업데이트해도
+            //    옛 스케줄을 그대로 유지해 이 상수 변경이 아무 효과가 없다. UPDATE 는 같은
+            //    unique-name 의 주기/제약만 갈아끼우므로 중복 실행 없이 새 주기가 적용된다.
+            ExistingPeriodicWorkPolicy.UPDATE,
             request,
         )
     }
@@ -147,7 +170,7 @@ object WorkScheduler {
         )
     }
 
-    private fun computeMillisUntilNext(at: LocalTime, zone: ZoneId = KST): Long {
+    private fun computeMillisUntilNext(at: LocalTime, zone: ZoneId = SERVER_DAY_ZONE): Long {
         val now: ZonedDateTime = ZonedDateTime.now(zone)
         var next: ZonedDateTime = now.with(at).withSecond(0).withNano(0)
         if (!next.isAfter(now)) {

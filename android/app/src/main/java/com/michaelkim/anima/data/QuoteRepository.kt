@@ -21,7 +21,6 @@ import com.michaelkim.anima.work.WorkScheduler
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.LocalDate
-import java.time.ZoneId
 
 object QuoteRepository {
 
@@ -38,6 +37,13 @@ object QuoteRepository {
     // [refreshIfStale] 의 throttle 더블체크를 직렬화해, 거의 동시에 들어온 호출들이
     // 캐시 갱신 전에 모두 네트워크로 빠져나가는 레이스를 막는다 (모든 트리거가 같은 프로세스).
     private val refreshGate = Mutex()
+
+    /**
+     * 캐시를 "묵었다" 고 볼 나이 — 정주기 갱신 주기 그 자체([WorkScheduler.PERIODIC_REFRESH_MS]).
+     * 그보다 오래됐다는 건 정주기가 최소 한 번 건너뛰어졌다는 뜻이다. 상수를 복제하지 않고
+     * 그대로 참조해, 주기를 바꿨을 때 두 값이 어긋나는 조용한 회귀를 원천 차단한다.
+     */
+    private val STALE_AFTER_MS: Long = WorkScheduler.PERIODIC_REFRESH_MS
 
     // 마지막으로 실제 네트워크 refresh 를 "시도"한 시각(성공·실패 무관, 프로세스 메모리).
     // 성공-캐시 기반 throttle 은 200 으로 캐시가 갱신돼야 동작하므로, 429/네트워크 오류로
@@ -187,11 +193,12 @@ object QuoteRepository {
         }
     }
 
-    /** 서버 하루 경계(ymd)가 KST 고정이라, 위젯 표시 보정도 같은 시간대로 계산한다. */
-    private val KST: ZoneId = ZoneId.of("Asia/Seoul")
-
-    /** KST 기준 오늘 YYYY-MM-DD — 서버 todayKst() 와 동일한 하루 경계. */
-    fun todayKstYmd(): String = LocalDate.now(KST).toString()
+    /**
+     * KST 기준 오늘 YYYY-MM-DD — 서버 todayKst() 와 동일한 하루 경계.
+     * 시간대는 자정 갱신 예약과 같은 [WorkScheduler.SERVER_DAY_ZONE] 하나만 쓴다 —
+     * 각자 "Asia/Seoul" 을 들고 있으면 한쪽만 바뀌었을 때 조용히 어긋난다.
+     */
+    fun todayKstYmd(): String = LocalDate.now(WorkScheduler.SERVER_DAY_ZONE).toString()
 
     /**
      * 캐시 응답을 "오늘" 기준 표시용으로 보정한다.
@@ -229,6 +236,27 @@ object QuoteRepository {
             futureVision = null,
             goalsAchievedCount = 0,
         )
+    }
+
+    /**
+     * 캐시가 묵었는가 — 위젯이 그려질 때 백그라운드 갱신을 걸어야 할지 판정한다.
+     *
+     * 두 가지를 본다:
+     *  1) 나이가 [maxAgeMs] 를 넘었나 (정주기 Worker 가 Doze/오프라인으로 건너뛰어진 경우).
+     *  2) 캐시의 ymd 가 KST 오늘보다 이전인가 — 자정 Worker 가 못 돌면 캐시가 어제에 멈춘다.
+     *     [effectiveResponseForDisplay] 가 upcoming 미리보기로 표시를 보정하지만 그건
+     *     어디까지나 미리보기다. 그날의 정식 카드(홈 /home 이 보는 그것)로 따라잡으려면
+     *     네트워크 갱신이 필요하므로 여기서도 날짜를 본다.
+     *
+     * 캐시가 없으면 false — 그 경우는 호출부의 자가 복구(동기 fetch)가 따로 담당한다.
+     * ymd 는 YYYY-MM-DD 고정이라 문자열 비교가 곧 날짜 비교
+     * ([effectiveResponseForDisplay] 와 같은 관용구).
+     */
+    fun isStale(state: CachedWidgetState?, maxAgeMs: Long = STALE_AFTER_MS): Boolean {
+        val response = state?.response ?: return false
+        val ageMs = System.currentTimeMillis() - state.cachedAtEpochMs
+        if (ageMs >= maxAgeMs) return true
+        return response.ymd < todayKstYmd()
     }
 
     /** 캐시에서 "지금 보여야 할" 슬롯 1건 추출. 슬롯이 비면 null. */

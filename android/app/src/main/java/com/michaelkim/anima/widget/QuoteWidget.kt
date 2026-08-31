@@ -67,6 +67,23 @@ class QuoteWidget : GlanceAppWidget() {
                     // enqueue 실패는 다음 정주기 워커가 봉합.
                 }
             }
+        } else if (AuthRepository.isSignedIn && QuoteRepository.isStale(cached)) {
+            // ── 묵은 캐시 따라잡기 ──────────────────────────────────────────
+            // 그릴 것은 있지만 낡았다(정주기 Worker 를 Doze/오프라인으로 건너뛰었거나,
+            // 자정 Worker 가 못 돌아 ymd 가 어제에 멈춰 있다). 홈(/home)은 Firestore 실시간
+            // 구독이라 늘 최신이니, 이 상태가 곧 "위젯 명언 ≠ 앱 명언" 이다. 아래
+            // effectiveResponseForDisplay 가 upcoming 미리보기로 표시는 메워 주지만
+            // 그날의 정식 카드로 맞추려면 결국 네트워크 갱신이 필요하다.
+            //
+            // 위 자가 복구와 달리 **동기로 기다리지 않는다** — 보여줄 캐시가 이미 있으니
+            // redraw 를 최대 4초 붙잡을 이유가 없다. Worker 에 맡기고 이번 프레임은 캐시를
+            // 그대로 그린 뒤, 갱신이 끝나면 Worker 의 updateAll 이 다음 프레임을 새로 그린다.
+            try {
+                WorkScheduler.scheduleOneTimeRefresh(context)
+            } catch (e: Exception) {
+                // enqueue 실패해도 화면은 캐시로 정상 렌더 — 다음 정주기 Worker 가 봉합.
+                CrashReporter.record(TAG, "묵은 캐시 따라잡기 enqueue 실패", e)
+            }
         }
 
         // 날짜가 지난 캐시는 upcoming 미리보기로 "오늘 명언" 을 보정한다 — 자정에 오프라인이거나

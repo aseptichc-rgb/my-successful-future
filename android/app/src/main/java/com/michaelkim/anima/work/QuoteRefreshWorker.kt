@@ -1,7 +1,7 @@
 /**
  * 위젯 콘텐츠 백그라운드 갱신 Worker.
  *
- * - 3시간 주기 (slot 단위) Periodic 또는 OneTime 으로 트리거.
+ * - 15분 주기 Periodic 또는 OneTime 으로 트리거 (주기 근거는 [WorkScheduler] 헤더 참고).
  * - 인증되어 있지 않으면 한 차례 재시도 (Result.retry) — 웹 → 네이티브 브릿지가 약간 늦게
  *   완료되는 짧은 윈도우 동안 위젯이 영구 EmptyState 로 굳는 회귀를 막는다. WorkManager 의
  *   재시도 정책은 백오프이므로 폭주 없음. runAttemptCount 가 [MAX_AUTH_RETRY] 이상이면
