@@ -1,10 +1,16 @@
 # 재심사 — Guideline 4 대응 build 1.0(9) 올리기
 
-> ## ✅ 현재 상태(2026-08-21): **1.0.4 (13) 심사 제출 완료** — safe-area·결제 안내 수정분
+> ## ✅ 현재 상태(2026-08-31): **1.0.4 (13) 승인·출시됨** — 다음 제출은 1.0.5 (14), Mac 대기
+>
+> 1.0.4 (13) 는 승인·출시됨(`READY_FOR_DISTRIBUTION`, ASC 실측 2026-08-31). 다음 제출분
+> 1.0.5 는 **위젯 익스텐션 Swift 변경이 있다** — [§ 1.0.5 (14) 빌드 절차](#105-14-빌드-절차-2026-08-31-준비-완료--mac-대기) 필독.
+> 릴리스 노트 4로케일은 1.0.5 편집 버전에 스테이징 완료(Windows, ASC API). **다음 빌드는 14.**
+>
+> <details><summary>이전 상태(2026-08-21): 1.0.4 (13) 심사 제출 완료 — safe-area·결제 안내 수정분</summary>
 >
 > 1.0.3 (12) 은 승인·출시됨(`READY_FOR_DISTRIBUTION`). 그 위에 1.0.4 (13) 를 올렸다 —
 > 네이티브 변경 0 인 정석 케이스(버전 값만 상향). [§ 1.0.4 제출 기록](#104-13-제출-기록-2026-08-21-mac) 참고.
-> **다음 빌드는 14 부터.**
+> </details>
 >
 > <details><summary>이전 상태(2026-08-16): 1.0.3 (12) 심사 제출 완료 — 알림 개선 네이티브 반영</summary>
 >
@@ -34,6 +40,49 @@
 > Mac 빌드 시 참고용. App Store 거절(Guideline 4 — Design) 대응 후 **정식 재제출**을 위한 절차다.
 > 전체 iOS 셋업은 [README-IOS.md](README-IOS.md) 참고. 이 문서는 "이미 build 8까지 올린 상태에서
 > Guideline 4 수정본을 재심사에 넣는" 최소 절차만 담는다.
+
+---
+
+## 1.0.5 (14) 빌드 절차 (2026-08-31 준비 완료 — Mac 대기)
+
+위젯 자정 자동 교체(`upcoming` 7일 미리보기, 커밋 `a47f470`) + 아침 명언 알림
+(`morningUpcoming`, 커밋 `72278bb`) 반영분. **이번엔 위젯 익스텐션 Swift 가 바뀌었다** —
+1.0.3 때 플러그인 복사와 같은 요령이되 대상 파일이 다르다.
+
+- 웹/서버 변경은 Vercel 프로덕션에 이미 라이브(2026-08-31, 커밋 72278bb). **아침 알림의
+  "그날의 명언 7일 창"은 기존 1.0.4 바이너리에서도 이미 동작한다** (1.0.3 부터 플러그인이
+  날짜별 morningOverrides 를 지원). 새 빌드가 필요한 건 **위젯 자정 자동 교체뿐**이다.
+- 릴리스 노트: 1.0.5 편집 버전 생성 + 4로케일 whatsNew 스테이징 완료(Windows, ASC API,
+  `ios-update-metadata.mjs --apply --version 1.0.5 --no-live-promo`). Mac 에서 문구 작업 불필요.
+
+Mac 에서:
+
+1. `git pull && npm install`
+2. **위젯 Swift 신버전 복사** (Xcode 타깃에는 이미 등록돼 있음 — 파일 내용만 교체):
+   ```bash
+   cp ios-templates/AnimaWidget/AnimaWidgetModel.swift ios/App/AnimaWidget/
+   cp ios-templates/AnimaWidget/AnimaWidgetProvider.swift ios/App/AnimaWidget/
+   # NotificationBridgePlugin.swift 는 이번에 주석만 바뀜 — 복사해도 무해, 안 해도 됨.
+   ```
+   capacitor.config 변동 없음 → `cap copy`/`cap sync` 불필요(괜히 돌리면 위젯 서명 리셋).
+3. 버전 1.0.5 / 빌드 14 — agvtool 은 pbxproj 의 MARKETING_VERSION 을 안 고친다(1.0.2 함정):
+   ```bash
+   cd ios/App && xcrun agvtool new-marketing-version 1.0.5 && xcrun agvtool new-version -all 14 && cd ../..
+   sed -i '' 's/MARKETING_VERSION = 1.0.4;/MARKETING_VERSION = 1.0.5;/g' ios/App/App.xcodeproj/project.pbxproj
+   ```
+4. 아카이브→익스포트→업로드 — §4 와 동일(키체인 잠금해제 → 수동 서명 archive →
+   ExportOptions-widget export → altool). 산출물은 `build/Anima-1.0.5.xcarchive` /
+   `build/export-1.0.5` 로 버전별 분리. 업로드 전 실측 확인 두 가지:
+   ```bash
+   plutil -extract CFBundleVersion raw build/Anima-1.0.5.xcarchive/Products/Applications/App.app/Info.plist   # 14
+   strings "build/Anima-1.0.5.xcarchive/Products/Applications/App.app/PlugIns/AnimaWidget.appex/AnimaWidget" | grep -c upcoming   # > 0 이면 위젯 신코드 포함
+   ```
+5. TestFlight `1.0.5 (14) VALID` 확인(5~15분) 후, Windows/Mac 어디서든:
+   ```powershell
+   $env:ASC_API_KEY_PATH = "C:\Users\kjykj\OneDrive\IDEA\anima\AuthKey_8ZJ3Y6N6J7.p8"
+   npm run ios:submit                                # 드라이런 — 1.0.5 에 build 14 연결 계획 확인
+   node scripts/ios-appstore-submit.mjs --submit     # 릴리스 노트는 이미 스테이징돼 있어 --whats-new 불필요
+   ```
 
 ---
 

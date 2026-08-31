@@ -75,7 +75,7 @@ const COPY = {
     keywords:
       "motivation,affirmations,daily quote,goals,habits,widget,self care,dream,mindset",
     whatsNew:
-      "Fixed a layout issue where the iPhone status bar could overlap the sign-in button and page headers. Clearer guidance when a purchase is linked to another account. Plus small improvements.",
+      "Your widget now switches to a fresh daily quote at midnight — even when you don't open the app. Morning notifications now carry each day's quote. Plus small improvements.",
     description: `What if there was an app that made your dreams come true?
 
 Not by magic. By the oldest rule there is: you become what you believe.
@@ -117,7 +117,7 @@ Take it with Anima.`,
     keywords:
       "동기부여,확언,다짐,명언,목표,습관,위젯,자기계발,꿈,성공,멘토,루틴,마인드셋,긍정,자존감",
     whatsNew:
-      "iPhone 상태바가 로그인 버튼과 화면 상단을 가리던 문제를 고쳤습니다. 다른 계정에 연결된 구매에 대한 안내도 명확해졌어요. 소소한 개선도 함께 했습니다.",
+      "이제 위젯이 자정마다 그날의 새 명언으로 자동 교체됩니다 — 앱을 열지 않아도요. 아침 알림에도 매일 그날의 명언이 실립니다. 소소한 개선도 함께 했습니다.",
     description: `꿈을 이루어주는 앱이 있다면 어떨까요?
 
 마법이 아닙니다. 가장 오래된 진리 하나 때문입니다 — 사람은 자신이 믿는 대로 됩니다.
@@ -159,7 +159,7 @@ Anima와 함께 떼어보세요.`,
     keywords:
       "motivación,afirmaciones,frase diaria,metas,hábitos,widget,sueño,mentalidad",
     whatsNew:
-      "Corregido un problema por el que la barra de estado del iPhone podía tapar el botón de inicio de sesión y los encabezados. Guía más clara cuando una compra está vinculada a otra cuenta. Además, pequeñas mejoras.",
+      "El widget ahora cambia a una nueva frase cada día a medianoche, incluso sin abrir la app. Las notificaciones de la mañana ahora incluyen la frase de cada día. Además, pequeñas mejoras.",
     description: `¿Y si hubiera una app que hiciera realidad tus sueños?
 
 No por arte de magia. Por la regla más antigua que existe: te conviertes en lo que crees.
@@ -201,7 +201,7 @@ Dalo con Anima.`,
     keywords:
       "励志,正能量,每日金句,目标,习惯,小组件,自我提升,梦想,名言,成功,坚持,语录,心态,自律,打卡",
     whatsNew:
-      "修复了 iPhone 状态栏可能遮挡登录按钮和页面顶部的问题。当购买已关联其他账号时，提示更加清晰。另有若干小改进。",
+      "小组件现在会在每天午夜自动换上当天的新名言——即使不打开应用。晨间通知也会带上每天的名言。另有若干小改进。",
     description: `如果有一款 App 能让你的梦想成真，会怎样？
 
 不是靠魔法，而是靠最古老的一条法则：你相信什么，就会成为什么。
