@@ -31,6 +31,7 @@ object QuoteRepository {
      * 앱 콜드스타트의 동기 prefetch + onResume + 포그라운드 옵저버 + OneTime/Periodic Worker 가
      * 실행마다 /api/widget/today 를 6~10회 연타해 서버의 일일 widgetRefresh 쿼터(48회)를
      * 빠르게 소진하던 문제를 막는다. 이 창 안에 이미 갱신된 캐시가 있으면 네트워크를 생략한다.
+     * collapse 의 근거는 "성공한 갱신" 뿐이다 — 실패·취소된 시도는 세지 않는다([refreshIfStale] 참고).
      */
     private const val DEFAULT_MIN_REFRESH_INTERVAL_MS = 90_000L
 
@@ -44,12 +45,6 @@ object QuoteRepository {
      * 그대로 참조해, 주기를 바꿨을 때 두 값이 어긋나는 조용한 회귀를 원천 차단한다.
      */
     private val STALE_AFTER_MS: Long = WorkScheduler.PERIODIC_REFRESH_MS
-
-    // 마지막으로 실제 네트워크 refresh 를 "시도"한 시각(성공·실패 무관, 프로세스 메모리).
-    // 성공-캐시 기반 throttle 은 200 으로 캐시가 갱신돼야 동작하므로, 429/네트워크 오류로
-    // 캐시가 안 써지는 동안에도 연타가 나는 구멍이 있다. 이 시각으로 실패 시에도 collapse 한다.
-    @Volatile
-    private var lastAttemptAtMs = 0L
 
     suspend fun getCached(context: Context): CachedWidgetState? = QuoteCache.read(context)
 
@@ -147,17 +142,38 @@ object QuoteRepository {
             return null
         }
         val response = cached?.response ?: return null
-        val ageMs = System.currentTimeMillis() - cached.cachedAtEpochMs
-        return if (ageMs in 0 until minIntervalMs) response else null
+        return if (isFreshWithin(cached.cachedAtEpochMs, System.currentTimeMillis(), minIntervalMs)) {
+            response
+        } else {
+            null
+        }
+    }
+
+    /**
+     * throttle 의 유일한 판정 근거 — "캐시가 [minIntervalMs] 안에 실제로 갱신됐는가".
+     * 시계 되감김으로 나이가 음수면 신선하지 않은 것으로 본다(네트워크로 위임).
+     * 순수 함수라 단위 테스트(QuoteRepositoryTest)가 이 계약을 고정한다.
+     */
+    internal fun isFreshWithin(cachedAtEpochMs: Long, nowMs: Long, minIntervalMs: Long): Boolean {
+        val ageMs = nowMs - cachedAtEpochMs
+        return ageMs in 0 until minIntervalMs
     }
 
     /**
      * 캐시가 충분히 최신이면 네트워크를 생략하고 캐시를, 아니면 [refreshWithEntitlementRecovery] 를 친다.
      *
      * 앱 실행 시 동시다발로 일어나는 위젯 갱신(동기 prefetch · onResume · 포그라운드 진입 · Worker)이
-     * /api/widget/today 를 연타해 일일 쿼터(widgetRefresh 48회)를 소진하던 문제를 collapse 한다.
-     * 사용자가 막 저장한 직후처럼 반드시 최신이 필요한 경로(위젯 브릿지·자정 갱신·로그인 직후)는
-     * 이 함수 대신 [refresh]/[refreshWithEntitlementRecovery] 를 직접 호출해 throttle 을 우회한다.
+     * /api/widget/today 를 연타하던 문제를 collapse 한다. 사용자가 막 저장한 직후처럼 반드시 최신이
+     * 필요한 경로(자정 갱신·로그인 직후)는 이 함수 대신 [refresh]/[refreshWithEntitlementRecovery] 를
+     * 직접 호출해 throttle 을 우회한다.
+     *
+     * collapse 의 근거는 **성공한 갱신** 하나뿐이다 — "직전에 시도가 있었는가" 는 보지 않는다.
+     * 2026-09-02 사고: 예전엔 실패·취소된 시도까지 90초간 collapse 했다. MainActivity 의 동기 갱신이
+     * 2.5초 타임아웃으로 취소되면(/api/widget/today 는 콜드 스타트만 4~5초, 그날 첫 호출은 카드·비전
+     * 생성으로 그 이상) 그 실패 때문에 큐잉된 폴백 Worker 와 WorkManager 재시도가 전부 "방금 시도
+     * 있음" 으로 네트워크를 건너뛰어, 위젯이 8/22 카드에 11일간 고착됐다. 실패한 시도는 다음 호출이
+     * 곧장 다시 치는 것이 맞다 — 동시 호출은 [refreshGate] 가 직렬화하고, 앞선 호출이 성공했으면
+     * 락 안 재확인(캐시 신선)이 네트워크를 생략하므로 연타는 여전히 1회로 접힌다.
      *
      * @return 네트워크를 실제로 쳤으면 그 응답, throttle 로 생략했으면 캐시의 응답.
      */
@@ -170,25 +186,13 @@ object QuoteRepository {
             Log.i(TAG, "위젯 refresh throttled — 캐시가 ${minIntervalMs}ms 내 갱신됨, 네트워크 생략")
             return fresh
         }
-        // 락 안에서 더블체크 — 대기 중 다른 호출이 막 갱신/시도했으면 그 결과를 그대로 쓴다.
+        // 락 안에서 더블체크 — 대기 중 다른 호출이 막 성공시켰으면 그 결과를 그대로 쓴다.
+        // 실패했으면(캐시 그대로) 여기서 다시 친다 — 그것이 폴백 Worker 가 존재하는 이유다.
         return refreshGate.withLock {
-            // (a) 그 사이 누군가 성공시켜 캐시가 최신이 됐으면 네트워크 생략.
             cachedResponseIfFreshWithin(context, minIntervalMs)?.let { rechecked ->
                 Log.i(TAG, "위젯 refresh throttled(락 내 재확인) — 네트워크 생략")
                 return@withLock rechecked
             }
-            // (b) 직전 [minIntervalMs] 안에 이미 시도가 있었으면(성공/실패 무관) 중복 시도를 접고
-            //     가진 캐시를 쓴다 — 429/오류 연타까지 collapse. 단 캐시가 아예 없으면(첫 진입) 시도한다.
-            val sinceAttemptMs = System.currentTimeMillis() - lastAttemptAtMs
-            if (sinceAttemptMs in 0 until minIntervalMs) {
-                val anyCached = getCached(context)?.response
-                if (anyCached != null) {
-                    Log.i(TAG, "위젯 refresh throttled — ${sinceAttemptMs}ms 전 시도 있음, 네트워크 생략")
-                    return@withLock anyCached
-                }
-            }
-            // (c) 실제 네트워크 시도. 시각을 먼저 찍어, 이 호출이 던지더라도 후속 연타가 collapse 되게 한다.
-            lastAttemptAtMs = System.currentTimeMillis()
             refreshWithEntitlementRecovery(context, lang)
         }
     }

@@ -193,6 +193,10 @@ dependencies {
     // Trusted Web Activity — 웹앱을 주소창 없이 전체화면으로 띄우기 위함
     implementation(libs.androidbrowserhelper)
 
+    // JVM 단위 테스트 — 위젯 캐시 throttle / 표시 보정처럼 Android 런타임이 필요 없는 순수 판정 로직.
+    //  실행: .\gradlew.bat :app:testDebugUnitTest
+    testImplementation(libs.junit)
+
     // NOTE: androidbrowserhelper:billing(웹 Digital Goods/Payment Request 위임)은 제거됨.
     //  Play Billing 8.0.0+ 요구사항과 충돌(위임 라이브러리 최신 1.1.0 이 7.1.1 번들, 8.x 호환판 없음)하며,
     //  결제는 이미 PurchaseBridgeActivity(네이티브)로 우회 중이라 위임 없이도 결제 전 구간이 동작한다.

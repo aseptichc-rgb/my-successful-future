@@ -25,6 +25,17 @@ object ApiClient {
         explicitNulls = false
     }
 
+    private const val CONNECT_TIMEOUT_S = 15L
+
+    /**
+     * 서버 함수 실행 상한 — app/api/widget/today 의 `maxDuration = 30`(Vercel). 클라이언트 readTimeout 은
+     * 반드시 이보다 길어야 한다: 그날 첫 /api/widget/today 는 카드·비전 생성(Gemini, 시도당 6초)까지
+     * 포함해 20초를 넘길 수 있는데, 클라가 먼저 끊으면 서버는 생성·쿼터 카운트를 그대로 마치고 응답만
+     * 버려진다(2026-09-02 위젯 고착 사고 — 캐시는 8/22, usage.widgetRefresh 는 매일 1).
+     */
+    private const val SERVER_MAX_DURATION_S = 30L
+    private const val READ_TIMEOUT_MARGIN_S = 5L
+
     val widgetApi: WidgetApi by lazy { buildRetrofit().create(WidgetApi::class.java) }
     val entitlementApi: EntitlementApi by lazy { buildRetrofit().create(EntitlementApi::class.java) }
     val trialApi: TrialApi by lazy { buildRetrofit().create(TrialApi::class.java) }
@@ -44,8 +55,8 @@ object ApiClient {
             redactHeader("Authorization")
         }
         val client = OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(20, TimeUnit.SECONDS)
+            .connectTimeout(CONNECT_TIMEOUT_S, TimeUnit.SECONDS)
+            .readTimeout(SERVER_MAX_DURATION_S + READ_TIMEOUT_MARGIN_S, TimeUnit.SECONDS)
             .addInterceptor(AuthInterceptor)
             .addInterceptor(logging)
             .build()

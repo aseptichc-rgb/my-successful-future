@@ -36,6 +36,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.browser.trusted.TrustedWebActivityIntentBuilder
 import androidx.core.content.ContextCompat
 import androidx.glance.appwidget.updateAll
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.google.androidbrowserhelper.trusted.TwaLauncher
 import com.michaelkim.anima.data.QuoteRepository
@@ -127,6 +128,7 @@ class MainActivity : ComponentActivity() {
      *   native-bridge 신뢰성 문제를 피하기 위함 (자세한 사유는 함수 안 주석 참고).
      * - 네트워크가 느리거나 실패해도 최대 [REFRESH_BEFORE_HOME_TIMEOUT_MS] 만 기다리고 진행 —
      *   잠시 stale 한 위젯을 한번 더 봐도, TWA 탭이 무한 대기하는 것보다 사용자 경험이 나음.
+     *   단, 기다리기를 멈출 뿐 갱신 자체는 취소하지 않는다 — 뒤에서 끝까지 완주해 캐시를 채운다.
      * - 타임아웃/예외 시에는 비동기 Worker 를 폴백으로 큐잉해 다음 fetch 에서 봉합.
      */
     private fun refreshWidgetCacheThenOpen(path: String) {
@@ -167,23 +169,37 @@ class MainActivity : ComponentActivity() {
                     null
                 }
             }
-            val completed = try {
-                withTimeoutOrNull(REFRESH_BEFORE_HOME_TIMEOUT_MS) {
+            // 위젯 캐시 갱신은 프로세스 수명 스코프에서 시작하고, 여기서는 그 결과를
+            // [REFRESH_BEFORE_HOME_TIMEOUT_MS] 까지만 기다린 뒤 먼저 떠난다.
+            //
+            // ⚠️ withTimeoutOrNull { refreshIfStale() } 처럼 호출 자체를 취소하면 안 된다 — 2026-09-02 사고.
+            //   /api/widget/today 는 콜드 스타트만 4~5초, 그날 첫 호출은 카드·비전 생성(Gemini)까지 더해
+            //   2.5초 안에 끝나는 쪽이 오히려 드물다. 취소하면 서버는 카드를 만들고 쿼터를 세지만 응답은
+            //   버려져 캐시가 그대로였고(usage.widgetRefresh 는 매일 1, 캐시는 8/22), 폴백 Worker 는
+            //   throttle 에 걸려 네트워크를 건너뛰어 위젯이 11일간 옛 카드에 고착됐다.
+            //   "기다리다 먼저 떠난다" 로 바꾸면 TWA 진입 지연 상한은 그대로이면서, 갱신은 뒤에서
+            //   끝까지 완주해 캐시를 채우고 위젯을 다시 그린다(applicationContext 만 캡처 — 누수 없음).
+            val appContext = applicationContext
+            val refreshJob = ProcessLifecycleOwner.get().lifecycleScope.async {
+                try {
                     // 구제 버전 — 신규 가입자 trialEndsAt claim 미반영(402)/만료 임박 토큰(401)을
                     // 1회 구제 후 재시도해, 앱 진입 시점에 위젯 캐시가 비어버리는 회귀를 막는다.
-                    // refreshIfStale: 직전 90초 내 갱신됐으면 네트워크를 생략하고 캐시를 쓴다 —
-                    // 매 진입마다 onResume·포그라운드·Worker 와 겹쳐 /api/widget/today 를 연타,
-                    // 일일 쿼터를 소진하던 문제 차단. (저장 직후 최신화는 위젯 브릿지가 별도 담당.)
-                    QuoteRepository.refreshIfStale(this@MainActivity)
-                    QuoteWidget().updateAll(this@MainActivity)
+                    // refreshIfStale: 직전 90초 내 성공한 갱신이 있으면 네트워크를 생략하고 캐시를 쓴다 —
+                    // 매 진입마다 onResume·포그라운드·Worker 와 겹쳐 /api/widget/today 를 연타하지 않도록.
+                    QuoteRepository.refreshIfStale(appContext)
+                    QuoteWidget().updateAll(appContext)
                     true
+                } catch (e: Exception) {
+                    Log.w(TAG, "TWA 진입 전 위젯 캐시 갱신 실패 — Worker 폴백", e)
+                    false
                 }
-            } catch (e: Exception) {
-                Log.w(TAG, "TWA 진입 전 위젯 캐시 갱신 실패 — Worker 폴백", e)
-                null
             }
+            // await 만 타임아웃한다 — Deferred 자체는 취소되지 않고 계속 실행된다.
+            val completed = withTimeoutOrNull(REFRESH_BEFORE_HOME_TIMEOUT_MS) { refreshJob.await() }
             if (completed != true) {
-                WorkScheduler.scheduleOneTimeRefresh(this@MainActivity)
+                // 실패(false) 또는 아직 진행 중(null): 폴백 Worker 를 큐잉한다. 진행 중이던 갱신이
+                // 먼저 성공하면 Worker 는 락 안 재확인에서 캐시 신선으로 네트워크를 생략한다.
+                WorkScheduler.scheduleOneTimeRefresh(appContext)
             }
             // 권위 키 결정:
             //  - 갱신 성공: 방금 받은 서버-기준 캐시의 ymd (위젯도 updateAll 로 같은 값으로 재렌더됨).
@@ -431,8 +447,9 @@ class MainActivity : ComponentActivity() {
         private const val PREFS_APP_FLAGS = "anima_app_flags"
         private const val KEY_HAS_LAUNCHED = "has_launched_v1"
         private const val ONBOARDING_PATH = "/onboarding"
-        // 위젯/알림 탭에서 /home TWA 를 띄우기 전, 위젯 캐시 동기 갱신에 허용할 최대 대기.
-        // 정상 캐시 히트(Firestore 1회 read) 는 200-500ms 라 보통 그 안에 끝난다.
+        // 위젯/알림 탭에서 /home TWA 를 띄우기 전, 위젯 캐시 갱신을 "기다려 줄" 최대 시간.
+        // 이 값은 진입 지연의 상한이지 갱신을 포기하는 기준이 아니다 — 갱신은 뒤에서 완주한다.
+        // (실측 2026-09-02: 카드가 이미 있는 날도 1.3~5.4초 — 콜드 스타트가 흔히 이 값을 넘긴다.)
         private const val REFRESH_BEFORE_HOME_TIMEOUT_MS = 2500L
         // 병렬 customToken 교환의 최대 대기 — 이 시간을 넘기면 토큰 없이 진입한다.
         // 웹은 자체 Firebase 세션(IndexedDB)/서버 쿠키 복원으로 폴백하므로 로그인 화면으로

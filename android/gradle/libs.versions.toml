@@ -22,6 +22,7 @@ lifecycle = "2.8.7"
 billing = "9.1.0"
 playIntegrity = "1.4.0"
 browserHelper = "2.7.2"
+junit = "4.13.2"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -77,6 +78,9 @@ androidbrowserhelper = { module = "com.google.androidbrowserhelper:androidbrowse
 #  최신(1.1.0)이 Play Billing 7.1.1 을 번들해 8.0.0+ 요구사항과 충돌하고, 8.x 호환 버전이
 #  아직 없다. 결제·복원·승인은 이미 네이티브 BillingClient(PurchaseBridgeActivity)가 전담하므로
 #  위임 경로(가격 미리표시)만 제거해도 안전하다 — Android 13+ 에선 이미 clientAppUnavailable 폴백.
+
+# JVM 단위 테스트 (app/src/test) — 위젯 캐시 throttle·표시 보정 같은 순수 판정 로직 전용.
+junit = { module = "junit:junit", version.ref = "junit" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

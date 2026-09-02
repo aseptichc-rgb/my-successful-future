@@ -8,7 +8,8 @@
  *   조용히 success 로 빠져나와 다음 정주기까지 대기.
  * - 네트워크 오류는 Retry, 그 외는 success (캐시 보존).
  *
- * 작업 끝나면 Glance updateAll 로 위젯 RemoteViews 재렌더 트리거.
+ * 캐시가 실제로 바뀌었을 때만 Glance updateAll 로 위젯 RemoteViews 재렌더 트리거
+ * (그대로인데 재렌더하면 QuoteWidget 의 묵은 캐시 따라잡기 enqueue 와 맞물려 스스로를 무한히 깨운다).
  */
 package com.michaelkim.anima.work
 
@@ -38,13 +39,19 @@ class QuoteRefreshWorker(
             return if (runAttemptCount < MAX_AUTH_RETRY) Result.retry() else Result.success()
         }
         return try {
-            // refreshIfStale: 직전 90초 내 갱신됐으면 네트워크 생략. onResume·포그라운드 진입·
-            // OneTime/Periodic 트리거가 같은 윈도우에 겹쳐 /api/widget/today 를 연타하던 것을 막아
-            // 일일 widgetRefresh 쿼터(48회) 소진을 방지한다.
+            // refreshIfStale: 직전 90초 내 "성공한" 갱신이 있으면 네트워크 생략. onResume·포그라운드 진입·
+            // OneTime/Periodic 트리거가 같은 윈도우에 겹쳐 /api/widget/today 를 연타하던 것을 막는다.
             // 내부의 refreshWithEntitlementRecovery 가 신규 가입 402 / 만료 토큰 401 을 1회 구제하므로
             // "로그인했는데도 위젯이 영영 비던" 회귀 차단은 그대로 유지된다.
+            val before = cachedAtOrNull()
             QuoteRepository.refreshIfStale(applicationContext)
-            QuoteWidget().updateAll(applicationContext)
+            // 캐시가 실제로 바뀌었을 때만 재렌더한다. provideGlance 는 묵은 캐시를 보면 OneTime Worker 를
+            // 큐잉하므로(QuoteWidget), 갱신이 throttle 되거나 캐시가 그대로인데도 updateAll 을 부르면
+            // "Worker → updateAll → provideGlance → enqueue → Worker …" 가 스스로를 무한히 깨운다.
+            // 정주기 갱신은 성공할 때마다 cachedAtEpochMs 가 새로 찍히므로 15분 재렌더 리듬은 그대로다.
+            if (cachedAtOrNull() != before) {
+                QuoteWidget().updateAll(applicationContext)
+            }
             Result.success()
         } catch (e: IOException) {
             // 네트워크 일시 장애 — 재시도
@@ -55,6 +62,13 @@ class QuoteRefreshWorker(
             CrashReporter.record(TAG, "위젯 refresh 구제 후에도 실패", e)
             Result.success()
         }
+    }
+
+    /** 캐시 기록 시각 — 재렌더 필요 여부 판정용. 읽기 실패는 "모름"(null) 으로 두어 흐름을 막지 않는다. */
+    private suspend fun cachedAtOrNull(): Long? = try {
+        QuoteRepository.getCached(applicationContext)?.cachedAtEpochMs
+    } catch (_: Exception) {
+        null
     }
 
     private companion object {
