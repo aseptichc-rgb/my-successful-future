@@ -1,15 +1,12 @@
 /**
- * 웹(TWA) → 네이티브 브릿지 (인증 · 로그아웃 · 결제 intent 발화 전용).
+ * 웹(TWA) → 네이티브 브릿지 (인증 · 로그아웃 · 결제 · 위젯 갱신 intent).
  *
- * 위젯 갱신은 왜 여기서 발화하지 않나 (중요 — "계속" 확인창 회귀의 근본 해소):
- *   - 과거엔 저장 직후 anima://widget-refresh 인텐트를 발화해 위젯을 즉시 깨웠다. 그러나 그
- *     발화는 홈 저장 핸들러의 saveDaily...() await 뒤에 일어나, 탭 시점의 Chrome user-activation
- *     이 이미 소진된 상태였다. 아래 user-activation 게이트는 "탭 후 5초/4.5초 창" 기준이라
- *     await 를 넘겨도 여전히 통과 → intent 발화 → Chrome 이 조용히 실행하지 못하고
- *     "이 사이트에서 Anima 앱을 열려고 합니다 [계속]" 확인창 + 검은 화면을 매 체크마다 띄웠다.
- *   - 해소: 웹은 안드로이드 위젯 갱신 intent 를 더 이상 발화하지 않는다. 위젯 최신화는 네이티브가
- *     단독 소유한다 — 앱 포그라운드 복귀([ForegroundWidgetRefresher]), 3시간 정주기,
- *     자정 갱신 Worker 가 봉합한다. [notifyAndroidWidgetRefresh] 는 무해한 no-op 으로 남긴다.
+ * 위젯 갱신의 user-activation 규칙 (중요 — "계속" 확인창 회귀 방지):
+ *   - 과거엔 저장 await 뒤에 anima://widget-refresh 를 발화했다. 이미 소진된 탭 권한으로
+ *     Chrome 이 "이 사이트에서 Anima 앱을 열려고 합니다 [계속]" 확인창을 띄웠다.
+ *   - 이제 저장을 시작시킨 **같은 사용자 제스처 콜스택**에서만 신호를 쏜다. 네이티브는
+ *     웹 저장이 완료될 짧은 유예 뒤 서버를 읽고, 느린 저장은 지연 Worker 가 한 번 더 봉합한다.
+ *   - navigator.userActivation 을 지원하는 Chrome 에서는 isActive=false 를 그대로 신뢰한다.
  *
  * 남아 있는 intent 발화(인증/로그아웃/결제)는 모두 버튼 클릭 안에서 "동기로"(await 없이) 쏘므로
  * 진짜 user-activation 이 살아 있어 확인창이 뜨지 않는다. 아래 게이트는 이들을 위한 안전망이다.
@@ -38,6 +35,8 @@
 const FROM_APP_FLAG_KEY = "anima.fromApp";
 const SIGNOUT_INTENT_URL =
   "intent://signout#Intent;scheme=anima;package=com.michaelkim.anima;end";
+const WIDGET_REFRESH_INTENT_URL =
+  "intent://widget-refresh#Intent;scheme=anima;package=com.michaelkim.anima;end";
 // 네이티브 Play Billing 결제 브릿지. TWA 웹 Digital Goods 위임이 Android 13+ 에서
 // clientAppUnavailable 로 깨지므로, 결제만 PurchaseBridgeActivity(네이티브 BillingClient)로 위임한다.
 const PURCHASE_INTENT_URL =
@@ -124,7 +123,9 @@ function hasUserActivation(): boolean {
     const activation = (navigator as Navigator & {
       userActivation?: { isActive?: boolean };
     }).userActivation;
-    if (activation?.isActive === true) return true;
+    // 지원 브라우저의 false 는 "이미 소진됨"이다. 이걸 4.5초 추정치로
+    // 덮어쓰면 await 뒤에도 intent 를 쏴 확인창을 재발시킨다.
+    if (typeof activation?.isActive === "boolean") return activation.isActive;
   } catch {
     // navigator 접근 불가 환경 — 자체 추적기로 폴백.
   }
@@ -242,22 +243,12 @@ export function fireAndroidAuthBridge(customToken: string): boolean {
 }
 
 /**
- * 안드로이드 위젯 갱신 훅 — 의도적으로 no-op 이다. (모듈 상단 "위젯 갱신은 왜 여기서 발화하지
- * 않나" 참고.) 과거엔 여기서 intent://widget-refresh 를 발화했으나, 저장 await 뒤 발화가 매
- * 체크마다 Chrome "계속" 확인창 + 검은 화면을 유발해 제거했다.
- *
- * 안드로이드 위젯 최신화는 네이티브 폴백이 단독 소유한다:
- *   - 앱 포그라운드 복귀 시 [ForegroundWidgetRefresher] → OneTime QuoteRefreshWorker
- *   - 3시간 정주기 Worker · 자정+1분 Worker
- * 따라서 저장 후 사용자가 홈으로 돌아가 앱을 다시 열면 위젯이 최신 진척도로 갱신된다.
- *
- * 호출부(홈 저장 경로)와의 시그니처는 유지해, iOS 쪽 refreshIosWidget() 과 대칭을 이루는
- * 무해한 stub 으로 둔다 — 안드로이드는 네이티브가, iOS 는 Capacitor 플러그인이 각각 담당.
+ * Android 위젯 갱신 신호. 반드시 사용자가 저장/토글 버튼을 누른 핸들러에서
+ * 첫 await 보다 먼저 호출해야 한다. 현재 user activation 이 없으면 조용히 no-op 으로 떨어져
+ * Chrome "계속" 확인창을 절대 띄우지 않는다.
  */
 export function notifyAndroidWidgetRefresh(): void {
-  // 의도적 no-op. 안드로이드 위젯 갱신은 네이티브 폴백(ForegroundWidgetRefresher · 정주기
-  // Worker)이 소유한다. 웹에서 intent 를 발화하면 저장 await 뒤 user-activation 소진으로
-  // "계속" 확인창이 뜨는 회귀가 재발하므로 여기서는 어떤 intent 도 쏘지 않는다.
+  fireIntent(WIDGET_REFRESH_INTENT_URL, "widget-refresh");
 }
 
 /**

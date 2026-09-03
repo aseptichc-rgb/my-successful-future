@@ -32,6 +32,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import androidx.work.workDataOf
 import com.michaelkim.anima.data.local.NotificationPrefsStore
 import java.time.LocalTime
 import java.time.ZoneId
@@ -41,6 +42,7 @@ import java.util.concurrent.TimeUnit
 object WorkScheduler {
     private const val PERIODIC_NAME = "anima_quote_periodic"
     private const val ONE_TIME_NAME = "anima_quote_once"
+    private const val MUTATION_REFRESH_NAME = "anima_quote_mutation_once"
     private const val WINS_REMINDER_NAME = "anima_wins_reminder_daily"
     private const val AFFIRMATIONS_REMINDER_NAME = "anima_affirmations_reminder_daily"
     private const val MIDNIGHT_REFRESH_NAME = "anima_quote_midnight_daily"
@@ -88,6 +90,26 @@ object WorkScheduler {
             .build()
         WorkManager.getInstance(context).enqueueUniqueWork(
             ONE_TIME_NAME,
+            ExistingWorkPolicy.REPLACE,
+            request,
+        )
+    }
+
+    /**
+     * TWA 안에서 저장/토글을 시작한 뒤 느린 서버 반영을 따라잡는 지연 폴백.
+     * 일반 앱 진입 Worker 와 unique name 을 분리해 onResume/ON_START REPLACE 가 이 작업을
+     * 취소하지 못하게 한다. force 플래그는 90초 캐시 throttle 을 우회한다 — 방금
+     * 저장한 값은 캐시 나이와 무관하게 다시 읽어야 한다.
+     */
+    fun scheduleMutationRefresh(context: Context, initialDelayMs: Long = MUTATION_FALLBACK_DELAY_MS) {
+        val request = OneTimeWorkRequestBuilder<QuoteRefreshWorker>()
+            .setConstraints(networkConstraint())
+            .setInitialDelay(initialDelayMs.coerceAtLeast(0L), TimeUnit.MILLISECONDS)
+            .setInputData(workDataOf(INPUT_FORCE_REFRESH to true))
+            .build()
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            MUTATION_REFRESH_NAME,
+            // 연속 입력은 마지막 저장 시점으로 지연을 다시 잡아 한 번만 최신화.
             ExistingWorkPolicy.REPLACE,
             request,
         )
@@ -179,4 +201,7 @@ object WorkScheduler {
         val millis = next.toInstant().toEpochMilli() - now.toInstant().toEpochMilli()
         return if (millis < 0L) 0L else millis
     }
+
+    const val INPUT_FORCE_REFRESH = "force_refresh"
+    private const val MUTATION_FALLBACK_DELAY_MS = 10_000L
 }

@@ -160,7 +160,6 @@ export default function MoreSection({
     try {
       await saveDailyWins(uid, ymd, snapshot);
       setWinsJustSaved(true);
-      notifyAndroidWidgetRefresh();
       void refreshIosWidget();
       if (winsSavedToastTimerRef.current) clearTimeout(winsSavedToastTimerRef.current);
       winsSavedToastTimerRef.current = setTimeout(
@@ -410,11 +409,14 @@ export default function MoreSection({
                     {num}
                   </span>
                 </div>
+                {/* 자동 저장은 디바운스 뒤라 user-activation 이 없다. 탭으로 포커스를
+                    빼는 순간에 먼저 신호하고, 네이티브는 유예 후 저장본을 읽는다. */}
                 <textarea
                   value={wins[idx] || ""}
                   rows={1}
                   maxLength={WIN_MAX}
                   onChange={(e) => handleChangeWin(idx, e.target.value)}
+                  onBlur={() => notifyAndroidWidgetRefresh()}
                   placeholder={placeholder}
                   className="flex-1 min-h-[24px] resize-none bg-transparent text-[17px] leading-[24px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none py-2"
                 />

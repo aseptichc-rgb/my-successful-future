@@ -5,10 +5,11 @@
  *  - TWA(Chrome) 안에서 사용자가 다짐 따라쓰기 · 행동 체크 · 잘한 일 3가지를 저장해도,
  *    위젯이 보는 캐시는 [QuoteRefreshWorker] 의 3시간 주기까지 stale 한 채로 남아 있어
  *    "앱에서 완수했는데 위젯엔 미완료" 인 어긋남이 발생했다.
- *  - 웹이 intent://widget-refresh#Intent;scheme=anima;package=...;end 을 발화 →
- *    Chrome 이 OS intent 로 해석 → 이 액티비티가 받아 동기로 [QuoteRepository.refresh] 한 차례 +
- *    [WorkScheduler.scheduleOneTimeRefresh] 폴백을 큐잉한다. 동기 시도가 성공하면 위젯이
- *    다음 자체 redraw 에서 새 데이터로 보이고, 실패해도 Worker 가 봉합한다.
+ *  - 웹이 저장 await **전** user-activation 콜스택에서
+ *    intent://widget-refresh#Intent;scheme=anima;package=...;end 을 발화한다.
+ *  - 이 액티비티는 짧은 저장 유예 후 [QuoteRepository.refreshWithEntitlementRecovery]를 끝까지
+ *    수행하고, 느린 저장/네트워크는 [WorkScheduler.scheduleMutationRefresh] 강제 폴백이
+ *    한 번 더 봉합한다. 일반 앱 진입 Worker 와는 작업 이름이 달라 서로 취소하지 않는다.
  *
  *  - NoDisplay 테마 + noHistory + 즉시 finish() — TWA 위에 어떤 UI 도 그리지 않아 사용자
  *    시각적 인터럽트 0. [AuthBridgeActivity] 와 동일한 패턴.
@@ -20,7 +21,7 @@
  *  - 픽스: 작업은 프로세스 수명 스코프(ProcessLifecycleOwner)로 던지고 onCreate 에서 즉시 finish().
  *
  * 보안:
- *  - 이 액티비티는 위젯 갱신 외에 어떤 데이터도 읽거나 쓰지 않는다.
+ *  - 이 액티비티는 위젯 갱신 외에 어떤 데이터도 변경하지 않는다.
  *  - 외부 앱이 임의로 발화해도 [QuoteRefreshWorker] / 동기 refresh 모두 미로그인 상태면 silent
  *    skip 하므로 권한 상승/정보 노출 경로 없음. 캐시는 항상 본인 ID 토큰으로 보호된
  *    /api/widget/today 응답.
@@ -40,7 +41,8 @@ import com.michaelkim.anima.util.CrashReporter
 import com.michaelkim.anima.widget.QuoteWidget
 import com.michaelkim.anima.work.WorkScheduler
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.delay
+import java.util.concurrent.atomic.AtomicLong
 
 class WidgetRefreshBridgeActivity : ComponentActivity() {
 
@@ -61,12 +63,20 @@ class WidgetRefreshBridgeActivity : ComponentActivity() {
             finish()
             return
         }
-        // 폴백 Worker 큐잉은 무조건 — 동기 시도가 실패해도 봉합되도록.
-        // WorkManager 가 REPLACE 정책이라 동시 호출이 와도 단 1회만 실제 실행됨.
+        // fireIntentMultiPath 의 여러 전달 방식이 모두 도달해도 동일 탭을 한 번만 처리.
+        val now = android.os.SystemClock.elapsedRealtime()
+        val previous = lastHandledAtMs.getAndSet(now)
+        if (now - previous in 0 until SIGNAL_DEDUP_MS) {
+            finish()
+            return
+        }
+
+        // 느린 Firestore/API 저장까지 따라잡는 지연 폴백. 일반 onResume Worker 와
+        // 이름이 달라 앱 수명 이벤트가 REPLACE 해도 취소되지 않는다.
         try {
-            WorkScheduler.scheduleOneTimeRefresh(applicationContext)
+            WorkScheduler.scheduleMutationRefresh(applicationContext)
         } catch (e: Exception) {
-            CrashReporter.record(TAG, "OneTime Worker enqueue 실패 — 동기 시도만 진행", e)
+            CrashReporter.record(TAG, "저장 후 지연 Worker enqueue 실패 — 즉시 시도만 진행", e)
         }
 
         // 동기 refresh — 사용자가 막 저장 → 다음 viewport 에서 위젯을 보면 새 진척도가 즉시
@@ -80,15 +90,18 @@ class WidgetRefreshBridgeActivity : ComponentActivity() {
         // 액티비티 종료 후에도 계속 실행된다. applicationContext 만 캡처하므로 누수 없음.
         val appContext = applicationContext
         ProcessLifecycleOwner.get().lifecycleScope.launch {
-            withTimeoutOrNull(REFRESH_TIMEOUT_MS) {
-                try {
-                    QuoteRepository.refresh(appContext)
-                    QuoteWidget().updateAll(appContext)
-                    Log.i(TAG, "위젯 동기 refresh 성공")
-                } catch (e: Exception) {
-                    // 네트워크/401 등 — Worker 폴백이 이미 큐잉돼 있어 다음 사이클에 재시도.
-                    Log.w(TAG, "위젯 동기 refresh 실패 — Worker 폴백으로 위임", e)
-                }
+            // intent 는 저장 await 전에 발화한다. 웹 쓰기가 서버에 도착할 여유를 준 뒤
+            // throttle 을 우회한 실시간 조회를 한다.
+            delay(SAVE_SETTLE_DELAY_MS)
+            try {
+                // NoDisplay 액티비티는 이미 종료됐으므로 네트워크 호출을 짧은 UI 타임아웃으로
+                // 취소하지 않는다. 응답을 받아 캐시에 쓰는 것이 이 작업의 유일한 성공 조건.
+                QuoteRepository.refreshWithEntitlementRecovery(appContext)
+                QuoteWidget().updateAll(appContext)
+                Log.i(TAG, "저장 후 위젯 refresh 성공")
+            } catch (e: Exception) {
+                // 네트워크/401 등 — 지연 force Worker 가 이미 큐잉돼 있다.
+                Log.w(TAG, "저장 후 위젯 refresh 실패 — 지연 Worker 폴백", e)
             }
         }
         // NoDisplay 규칙: onResume 완료 전 반드시 finish() — 위 코루틴과 독립적으로 즉시 종료.
@@ -99,10 +112,8 @@ class WidgetRefreshBridgeActivity : ComponentActivity() {
         private const val TAG = "WidgetRefreshBridge"
         private const val SCHEME = "anima"
         private const val HOST = "widget-refresh"
-        // 사용자 입력 직후 호출되므로 너무 길면 다른 액션을 막을 수 있다.
-        // 정상 캐시 히트(Firestore 1회 read) 는 200-500ms 평균이지만 슬로 네트워크
-        // (모바일 데이터, 약한 Wi-Fi) 에서 2초로는 부족해 timeout 으로 빠지는 케이스가
-        // 적지 않아 4초로 확장. NoDisplay 액티비티라 사용자 UX 에 직접 영향 없음.
-        private const val REFRESH_TIMEOUT_MS = 4_000L
+        private const val SAVE_SETTLE_DELAY_MS = 1_200L
+        private const val SIGNAL_DEDUP_MS = 1_000L
+        private val lastHandledAtMs = AtomicLong(Long.MIN_VALUE)
     }
 }

@@ -44,7 +44,11 @@ class QuoteRefreshWorker(
             // 내부의 refreshWithEntitlementRecovery 가 신규 가입 402 / 만료 토큰 401 을 1회 구제하므로
             // "로그인했는데도 위젯이 영영 비던" 회귀 차단은 그대로 유지된다.
             val before = cachedAtOrNull()
-            QuoteRepository.refreshIfStale(applicationContext)
+            if (inputData.getBoolean(WorkScheduler.INPUT_FORCE_REFRESH, false)) {
+                QuoteRepository.refreshWithEntitlementRecovery(applicationContext)
+            } else {
+                QuoteRepository.refreshIfStale(applicationContext)
+            }
             // 캐시가 실제로 바뀌었을 때만 재렌더한다. provideGlance 는 묵은 캐시를 보면 OneTime Worker 를
             // 큐잉하므로(QuoteWidget), 갱신이 throttle 되거나 캐시가 그대로인데도 updateAll 을 부르면
             // "Worker → updateAll → provideGlance → enqueue → Worker …" 가 스스로를 무한히 깨운다.

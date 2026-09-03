@@ -20,6 +20,10 @@ const WidgetBridge = registerPlugin<WidgetBridgePlugin>("WidgetBridge");
 /** registerPlugin 으로 만든 JS 프록시 이름 — isPluginAvailable 진단 로그에서 참조. */
 const PLUGIN_NAME = "WidgetBridge";
 
+// 갱신이 여러 경로(홈 마운트 · 저장 · 재생성)에서 겹칠 때, 느린 예전 요청이
+// 나중에 도착해 새 캐시를 덮어쓰지 못하게 하는 단조 요청 세대.
+let latestRefreshGeneration = 0;
+
 /**
  * iOS 네이티브에서 위젯 브릿지를 시도할지 여부. SSR/웹/안드로이드에선 false.
  *
@@ -76,6 +80,7 @@ export async function pushWidgetData(data: unknown): Promise<void> {
  */
 export async function refreshIosWidget(): Promise<void> {
   if (!isIosWidgetAvailable()) return;
+  const generation = ++latestRefreshGeneration;
   try {
     const res = await authedFetch(`/api/widget/today?_t=${Date.now()}`, {
       cache: "no-store",
@@ -87,6 +92,8 @@ export async function refreshIosWidget(): Promise<void> {
       return;
     }
     const data = await res.json();
+    // 이 요청이 진행되는 사이 더 최신 갱신/로그아웃이 시작됐다면 폐기.
+    if (generation !== latestRefreshGeneration) return;
     await pushWidgetData(data);
   } catch (err) {
     console.warn("[iosWidget] 위젯 새로고침 실패:", err);
@@ -96,6 +103,9 @@ export async function refreshIosWidget(): Promise<void> {
 /** 로그아웃 시 위젯 캐시를 비운다. 실패해도 무시. */
 export async function clearIosWidget(): Promise<void> {
   if (!isIosWidgetAvailable()) return;
+  // 이미 네트워크에 나간 이전 계정 refresh 가 clear 뒤에 돌아와 캐시를
+  // 다시 채우는 경쟁을 차단한다.
+  latestRefreshGeneration++;
   try {
     await WidgetBridge.clearWidgetData();
   } catch (err) {

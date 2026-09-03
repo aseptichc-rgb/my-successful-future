@@ -53,7 +53,13 @@ import {
 import { isPaidPro, readEntitlement } from "@/lib/entitlement";
 import { computePlanUnlock } from "@/lib/planUnlock";
 import { detectPurchaseEnv } from "@/lib/purchaseEnv";
-import { isAndroidApp, notifyAndroidPurchase, notifyAndroidRestore } from "@/lib/widgetBridge";
+import {
+  isAndroidApp,
+  notifyAndroidPurchase,
+  notifyAndroidRestore,
+  notifyAndroidWidgetRefresh,
+} from "@/lib/widgetBridge";
+import { refreshIosWidget } from "@/lib/iosWidget";
 import { getAllKnownAuthorsGrouped } from "@/lib/famousQuoteCatalog";
 import AffirmationsEditor from "@/components/affirmations/AffirmationsEditor";
 import NoticeDialog from "@/components/ui/NoticeDialog";
@@ -677,12 +683,14 @@ export default function SettingsPage() {
   const userEmail = user?.email || "";
 
   const handleSaveFuture = async () => {
+    notifyAndroidWidgetRefresh();
     setFutureSaving(true);
     try {
       // 전부 공란이면 아무것도 쓰지 않는다 — 레거시 futurePersona 원문을 실수로 지우는 것 방지.
       if (hasAnyFutureSelfAnswer(futureSelfDraft)) {
         await updateFutureSelf(uid, futureSelfDraft);
         await refreshUser().catch(() => {});
+        void refreshIosWidget();
       }
       setFutureOpen(false);
     } catch (err) {
@@ -733,11 +741,13 @@ export default function SettingsPage() {
 
   const handleChangeLanguage = async (next: Locale) => {
     if (next === locale) return;
+    notifyAndroidWidgetRefresh();
     setLocale(next);
     setLanguageSaving(true);
     try {
       await updateUserLanguage(uid, next);
       await refreshUser().catch(() => {});
+      void refreshIosWidget();
     } catch (err) {
       console.error("[settings] 언어 저장 실패:", err);
       window.alert(t("common.saveFailed"));
@@ -750,10 +760,12 @@ export default function SettingsPage() {
      둘은 성격이 다른 문장(선언 = 이미 이룬 상태 / 목표 = 오늘의 행동)이므로
      한쪽을 고쳤다고 다른 쪽을 따라 바꾸자는 제안 자체가 성립하지 않는다. */
   const handleSaveGoals = async () => {
+    notifyAndroidWidgetRefresh();
     try {
       const cleaned = goals.map((g) => g.trim()).filter((g) => g.length > 0);
       await updateUserGoals(uid, cleaned);
       await refreshUser().catch(() => {});
+      void refreshIosWidget();
       setGoalsOpen(false);
       setRefineIdx(null);
     } catch (err) {
@@ -763,10 +775,12 @@ export default function SettingsPage() {
   };
 
   const handleSaveAffirmations = async () => {
+    notifyAndroidWidgetRefresh();
     setAffirmationsSaving(true);
     try {
       await updateSuccessAffirmations(uid, affirmations);
       await refreshUser().catch(() => {});
+      void refreshIosWidget();
       setAffirmationsOpen(false);
     } catch (err) {
       console.error("[settings] 다짐 저장 실패:", err);
@@ -777,12 +791,14 @@ export default function SettingsPage() {
   };
 
   const handleSaveQuotePreference = async () => {
+    notifyAndroidWidgetRefresh();
     try {
       await updateQuotePreference(uid, {
         pinnedAuthor: pinnedAuthor.trim() || undefined,
         pinnedDaysPerWeek: pinnedDays || undefined,
       });
       await refreshUser().catch(() => {});
+      void refreshIosWidget();
       setAuthorOpen(false);
     } catch (err) {
       console.error("[settings] 인물 저장 실패:", err);
@@ -791,10 +807,12 @@ export default function SettingsPage() {
   };
 
   const handleSaveNotificationPrefs = async () => {
+    notifyAndroidWidgetRefresh();
     setNotifSaving(true);
     try {
       await updateNotificationPrefs(uid, notifPrefs);
       await refreshUser().catch(() => {});
+      void refreshIosWidget();
       // iOS: 네이티브 예약 동기화. 첫 활성화면 이 시점(저장이라는 가치 맥락)에 권한 요청이 뜬다.
       // Android 는 다음 위젯 refresh(포그라운드 복귀·정주기·알림 발화 시점)에 서버 응답으로 동기화.
       // todayGoalDone=false: 설정 화면은 오늘 진척도를 모른다 — 홈 방문 시 재동기화로 보정된다.

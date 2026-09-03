@@ -414,6 +414,9 @@ export default function HomeDashboardPage() {
   }, [firebaseUser, ymd]);
 
   const handleRegenerateMotivation = useCallback(async () => {
+    // Android intent 는 현재 탭 user-activation 이 살아 있는 첫 await 전에만 신호.
+    // 네이티브가 짧게 유예한 후 실제 저장본을 다시 읽는다.
+    notifyAndroidWidgetRefresh();
     setMotivationError(null);
     try {
       const res = await authedFetch("/api/daily-motivation", {
@@ -430,14 +433,7 @@ export default function HomeDashboardPage() {
       if (data.motivation) {
         setMotivationSnap({ key: currentKey, m: data.motivation });
       }
-      // motivation 의 quote/author/goalsSnapshot 이 바뀌었으므로 위젯도 새 카드를 받아가야 한다.
-      // iOS 는 여기서 즉시 재fetch → App Group 캐시에 push 된다.
-      // ⚠️ 안드로이드는 notifyAndroidWidgetRefresh() 가 의도적 no-op 이다(웹→네이티브 intent 가
-      //    Chrome "계속" 확인창을 띄우는 회귀로 제거됨 — lib/widgetBridge.ts 헤더 참고).
-      //    게다가 TWA 는 Chrome 프로세스라 ForegroundWidgetRefresher 의 ON_START 도 안 뜬다.
-      //    그래서 안드로이드 위젯은 정주기 Worker 가 따라잡는다 — 그 주기를 3시간에서 15분으로
-      //    당겨(WorkScheduler.PERIODIC_MINUTES) 어긋나는 창을 줄였다. 호출은 시그니처 대칭용.
-      notifyAndroidWidgetRefresh();
+      // motivation 의 quote/author/goalsSnapshot 이 바뀌었으므로 iOS 위젯도 즉시 갱신.
       void refreshIosWidget();
     } catch (err) {
       setMotivationError(err instanceof Error ? err.message : String(err));
@@ -477,8 +473,8 @@ export default function HomeDashboardPage() {
                 const data = await res.json().catch(() => ({}));
                 throw new Error((data as { error?: string }).error || "꿈이 이뤄진 하루를 만들지 못했어요.");
               }
-              // 첫 생성으로 오늘 비전 문서가 생겼으니 위젯도 같은 하루를 받도록 깨운다.
-              notifyAndroidWidgetRefresh();
+              // 첫 생성으로 오늘 비전 문서가 생겼으니 iOS 위젯도 같은 하루를 받도록 한다.
+              // Android 는 자동 생성(useEffect)에 user-activation 이 없어 정주기 폴백이 담당.
               void refreshIosWidget();
             })
             .catch((err) => {
@@ -502,6 +498,7 @@ export default function HomeDashboardPage() {
   }, [firebaseUser, ymd, user?.futurePersona, t]);
 
   const handleRegenerateFutureVision = useCallback(async () => {
+    notifyAndroidWidgetRefresh();
     setVisionError(null);
     try {
       const res = await authedFetch("/api/future-vision", {
@@ -520,7 +517,6 @@ export default function HomeDashboardPage() {
       }
       // 재생성으로 오늘 비전 문서가 바뀌었으니 위젯도 깨워 같은 하루를 보게 한다
       //  (동기부여 카드 재생성과 동일 — 안 하면 위젯이 옛 비전을 들고 있어 앱과 불일치).
-      notifyAndroidWidgetRefresh();
       void refreshIosWidget();
     } catch (err) {
       setVisionError(err instanceof Error ? err.message : String(err));
@@ -534,6 +530,7 @@ export default function HomeDashboardPage() {
 
   const handleSubmitMissionResponse = useCallback(
     async (text: string) => {
+      notifyAndroidWidgetRefresh();
       const res = await authedFetch("/api/mission-response", {
         method: "POST",
         body: JSON.stringify({ ymd, text }),
@@ -546,7 +543,6 @@ export default function HomeDashboardPage() {
       };
       if (!res.ok || !data.ok) throw new Error(data.error || "응답을 저장하지 못했어요.");
       // mission response 가 영구화되면 affirmation 진척도가 함께 갱신될 수 있어 위젯도 깨운다.
-      notifyAndroidWidgetRefresh();
       void refreshIosWidget();
       return { isFirst: Boolean(data.isFirst), identityTag: data.identityTag || "" };
     },
@@ -650,6 +646,7 @@ export default function HomeDashboardPage() {
 
   const handleAffirmationCheckin = useCallback(
     async (entries: Array<{ index: number; text: string }>): Promise<CheckinSubmitResult> => {
+      notifyAndroidWidgetRefresh();
       const res = await authedFetch("/api/affirmation-checkin", {
         method: "POST",
         body: JSON.stringify({ ymd, entries }),
@@ -671,7 +668,6 @@ export default function HomeDashboardPage() {
       if (!res.ok || !data.ok) throw new Error(data.error || "체크인을 저장하지 못했어요.");
       if (data.matched) {
         await refreshUser().catch(() => {});
-        notifyAndroidWidgetRefresh();
         void refreshIosWidget();
       }
       return {
@@ -697,6 +693,7 @@ export default function HomeDashboardPage() {
     async (goalText: string) => {
       const trimmed = goalText.trim();
       if (!trimmed || !uid) return;
+      notifyAndroidWidgetRefresh();
       const prev = achievedGoals;
       const next = prev.includes(trimmed)
         ? prev.filter((g) => g !== trimmed)
@@ -705,7 +702,6 @@ export default function HomeDashboardPage() {
       setGoalSaving(true);
       try {
         await saveDailyAchievedGoals(uid, ymd, next);
-        notifyAndroidWidgetRefresh();
         void refreshIosWidget();
       } catch (err) {
         console.error("[home] 목표 달성 저장 실패:", err);

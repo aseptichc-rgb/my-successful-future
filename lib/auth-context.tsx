@@ -24,6 +24,7 @@ import {
   installUserGestureTracker,
   notifyAndroidSignOut,
 } from "@/lib/widgetBridge";
+import { clearIosWidget } from "@/lib/iosWidget";
 import type { User } from "@/types";
 
 interface AuthContextValue {
@@ -407,6 +408,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // 클릭 직후(user-activation 이 살아 있을 때) 먼저 발화한다 — 아래 await 들이 느리면
     // 게이트 윈도우(약 5초)를 넘겨 발화가 조용히 스킵되던 회귀를 막는다. 네이티브 signout 은 멱등.
     notifyAndroidSignOut();
+    // iOS 위젯은 App Group 캐시를 스스로 계정별로 구분하지 못한다. 서버/웹 세션을
+    // 끄기 전에 clear 를 시작해 이전 계정 내용이 남지 않게 한다.
+    const clearIosWidgetPromise = clearIosWidget();
     // 네이티브 브릿지 마커를 비워 다음 로그인 때 새 uid 로 브릿지가 다시 쏘이도록 한다.
     try {
       window.sessionStorage.removeItem(NATIVE_BRIDGE_LAST_UID_KEY);
@@ -421,6 +425,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // 무시
     }
+    await clearIosWidgetPromise;
     await clearServerSession();
     await firebaseSignOut();
   };

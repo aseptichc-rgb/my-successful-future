@@ -153,6 +153,7 @@ export default function ExecutionPlanSheet({
 
   const handleSave = async () => {
     if (saving || !canSave) return;
+    notifyAndroidWidgetRefresh();
     setSaving(true);
     setError(null);
     try {
@@ -166,7 +167,6 @@ export default function ExecutionPlanSheet({
         active: existingPlan?.active ?? true,
       });
       // 위젯도 새 if-then 을 받아가야 한다 (오늘의 플랜 회전 대상 변경).
-      notifyAndroidWidgetRefresh();
       void refreshIosWidget();
       onSaved?.();
       onClose();
@@ -180,11 +180,11 @@ export default function ExecutionPlanSheet({
 
   const handleDelete = async () => {
     if (!existingPlan || saving) return;
+    notifyAndroidWidgetRefresh();
     setSaving(true);
     setError(null);
     try {
       await deleteExecutionPlan(uid, existingPlan.id);
-      notifyAndroidWidgetRefresh();
       void refreshIosWidget();
       onSaved?.();
       onClose();
