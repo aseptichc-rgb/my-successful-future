@@ -100,16 +100,18 @@ class QuoteWidget : GlanceAppWidget() {
         val affirmations = response?.affirmations ?: emptyList()
         // "그 꿈을 사는 하루" 비전 티저 — 옛 캐시/미생성이면 null 로 폴백돼 섹션이 자연 생략된다.
         val futureVision = response?.futureVision
-        // "이번 달 목표" 한 줄 카운트용 — 옛 캐시엔 없어 0 폴백(total 0 이면 섹션 생략).
+        // "오늘의 행동"(user.goals) 한 줄 카운트용 — 옛 캐시엔 없어 0 폴백(total 0 이면 섹션 생략).
         val goalsAchieved = response?.goalsAchievedCount ?: 0
         val goalsTotal = response?.goalsTotalCount ?: 0
+        // 목표 본문 — 옛 캐시엔 없어 빈 리스트로 폴백되고, 그때 위젯은 카운트 한 줄만 그린다.
+        val goals = response?.goals ?: emptyList()
         // EmptyState 가 "로그인 안내" 와 "불러오는 중" 을 구분하도록 인증 상태를 함께 넘긴다.
         // (로그인했는데도 "로그인 후 표시됩니다" 라고 거짓 안내하던 UX 버그 제거.)
         val signedIn = AuthRepository.isSignedIn
         provideContent {
             WidgetContent(
                 slot, progress, ymd, streak, affirmations,
-                futureVision, goalsAchieved, goalsTotal, signedIn,
+                futureVision, goalsAchieved, goalsTotal, goals, signedIn,
             )
         }
     }

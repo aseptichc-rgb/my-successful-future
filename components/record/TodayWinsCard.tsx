@@ -9,6 +9,7 @@ import {
   WINS_SAVED_TOAST_MS,
 } from "@/lib/constants/record";
 import { docKey } from "@/lib/docKey";
+import { shouldSaveWins, winsSnapshotKey } from "@/lib/winsDraft";
 import { notifyAndroidWidgetRefresh } from "@/lib/widgetBridge";
 import { refreshIosWidget } from "@/lib/iosWidget";
 import { useT } from "@/lib/i18n";
@@ -18,22 +19,19 @@ import type { DailyEntry } from "@/types";
  * TodayWinsCard — "오늘 잘한 일" 입력 (전부 선택 입력, 600ms 디바운스 자동 저장).
  *
  * 해금 판정(lib/winsUnlock)은 호출부가 한다 — 이 컴포넌트는 열린 상태만 그린다.
- * 인셋 카드 래퍼도 호출부 몫(기록 탭은 자체 카드, 더 보기 안에서는 섹션 카드).
+ * 인셋 카드 래퍼도 호출부 몫(기록 탭이 자체 카드로 감싼다).
  *
- * 탭 구조에서는 입력 후 600ms 안에 다른 탭으로 옮기는 경로가 흔하다 — 언마운트 시
- * 대기 중인 초안을 그 자리에서 저장한다(flush). 안 하면 방금 적은 한 줄이 사라진다.
+ * 저장 트리거는 넷이고 "저장을 걸어야 하는가" 판정은 전부 lib/winsDraft 한 곳에서 온다:
+ *  · 타이핑 디바운스(WINS_AUTOSAVE_MS)
+ *  · 포커스 아웃 flush — 위젯 갱신 신호를 같은 제스처 콜스택에서 먼저 쏘고 곧바로 저장
+ *  · 앱 이탈 flush(visibilitychange/pagehide) — 마지막 글자를 치고 곧바로 홈 버튼을 누르면
+ *    모바일 Chrome 이 페이지를 얼려 타이머가 영영 돌지 않던 유실 구멍. 여기서는 위젯 인텐트를
+ *    쏘지 않는다(user activation 없는 발화는 Chrome 확인창 회귀 — lib/widgetBridge.ts).
+ *  · 언마운트 flush — 탭 구조에서는 입력 후 600ms 안에 다른 탭으로 옮기는 경로가 흔하다.
  * ───────────────────────────────────────────────────────────────── */
 
 // 슬롯 배지는 모두 동일 indigo — 차분한 인상.
 const SLOT_COLOR = "#1E1B4B";
-
-function isDirty(next: string[], saved: string[]): boolean {
-  return next.some((w, i) => (w || "") !== (saved[i] || ""));
-}
-
-function hasContent(list: string[]): boolean {
-  return list.some((w) => (w || "").trim().length > 0);
-}
 
 export default function TodayWinsCard({
   uid,
@@ -67,9 +65,13 @@ export default function TodayWinsCard({
 
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** 저장을 이미 건 값의 키 — blur → 앱 이탈 → 언마운트로 flush 가 겹쳐도 같은 값을 두 번 쓰지 않는다. */
+  const savingValueRef = useRef<string | null>(null);
   /** 언마운트 flush 용 최신값 — 클린업은 클로저가 아니라 이 ref 를 읽는다. */
   const latestRef = useRef({ uid, ymd, wins, savedWins });
-  latestRef.current = { uid, ymd, wins, savedWins };
+  useEffect(() => {
+    latestRef.current = { uid, ymd, wins, savedWins };
+  });
 
   useEffect(() => {
     return () => {
@@ -79,7 +81,9 @@ export default function TodayWinsCard({
       clearTimeout(autosaveTimerRef.current);
       autosaveTimerRef.current = null;
       const latest = latestRef.current;
-      if (!isDirty(latest.wins, latest.savedWins) || !hasContent(latest.wins)) return;
+      if (!shouldSaveWins(latest.wins, latest.savedWins)) return;
+      if (winsSnapshotKey(latest.wins) === savingValueRef.current) return;
+      savingValueRef.current = winsSnapshotKey(latest.wins);
       saveDailyWins(latest.uid, latest.ymd, latest.wins)
         .then(() => void refreshIosWidget())
         .catch((err) => console.error("[record] 잘한 일 언마운트 저장 실패:", err));
@@ -99,6 +103,7 @@ export default function TodayWinsCard({
   }
 
   const doAutoSave = async (snapshot: string[]) => {
+    savingValueRef.current = winsSnapshotKey(snapshot);
     setAutoSaving(true);
     setError(null);
     try {
@@ -109,6 +114,7 @@ export default function TodayWinsCard({
       toastTimerRef.current = setTimeout(() => setJustSaved(false), WINS_SAVED_TOAST_MS);
     } catch (err) {
       console.error("[record] 잘한 일 자동 저장 실패:", err);
+      savingValueRef.current = null; // 실패한 값은 다시 저장 대상으로 되돌린다.
       setError(t("home.wins.saveFailed"));
     } finally {
       setAutoSaving(false);
@@ -123,12 +129,43 @@ export default function TodayWinsCard({
 
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     autosaveTimerRef.current = null;
-    if (!isDirty(next, savedWins) || !hasContent(next)) return;
+    if (!shouldSaveWins(next, savedWins)) return;
     autosaveTimerRef.current = setTimeout(() => {
       autosaveTimerRef.current = null;
       void doAutoSave(next);
     }, WINS_AUTOSAVE_MS);
   };
+
+  /** 대기 중인 디바운스를 취소하고 지금 저장 — 포커스 아웃 · 앱 이탈에서 쓴다. */
+  const flush = () => {
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+    if (!shouldSaveWins(wins, savedWins)) return;
+    if (winsSnapshotKey(wins) === savingValueRef.current) return;
+    void doAutoSave(wins);
+  };
+
+  /* 앱 이탈(홈 버튼 · 앱 전환) 직전 flush. blur 는 홈 버튼으로 나갈 때 발생이 보장되지 않는다.
+   * 최신 클로저를 봐야 하므로 ref 로 갈아끼운다(핸들러를 매 타이핑마다 재등록하지 않기 위함).
+   * pagehide 는 visibilityState 가 아직 "visible" 일 수 있어 조건을 걸지 않는다. */
+  const flushRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    flushRef.current = flush;
+  });
+  useEffect(() => {
+    const onLeave = () => flushRef.current();
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flushRef.current();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", onLeave);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onLeave);
+    };
+  }, []);
 
   // 이미 적어둔 잘한 일은 접지 않는다 — 별도 state 동기화 없이 렌더 시점에 파생한다.
   const filled = wins.filter((w) => (w || "").trim().length > 0).length;
@@ -177,13 +214,17 @@ export default function TodayWinsCard({
               </span>
             </div>
             {/* 자동 저장은 디바운스 뒤라 user-activation 이 없다. 탭으로 포커스를
-                빼는 순간에 먼저 신호하고, 네이티브는 유예 후 저장본을 읽는다. */}
+                빼는 순간에 먼저 신호하고(같은 제스처 콜스택 — 확인창 회귀 방지),
+                곧바로 대기 중인 저장을 flush 해 네이티브가 유예 후 읽을 값을 만들어 둔다. */}
             <textarea
               value={wins[idx] || ""}
               rows={1}
               maxLength={WIN_MAX}
               onChange={(e) => handleChange(idx, e.target.value)}
-              onBlur={() => notifyAndroidWidgetRefresh()}
+              onBlur={() => {
+                notifyAndroidWidgetRefresh();
+                flush();
+              }}
               placeholder={placeholder}
               className="flex-1 min-h-[24px] resize-none bg-transparent text-[17px] leading-[24px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none py-2"
             />

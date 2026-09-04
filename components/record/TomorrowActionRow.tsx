@@ -15,7 +15,8 @@ import type { DailyEntry } from "@/types";
  * 오늘 문서에 저장하고, 다음 날 아침 카드가 어제 문서에서 읽어간다.
  *
  * 저장 버튼이 없다: 디바운스 자동 저장 + Enter/포커스 아웃 즉시 저장(flush).
- * 언마운트(탭 전환) 때도 flush 한다 — 방금 적은 한 줄이 사라지지 않게.
+ * 앱 이탈(visibilitychange/pagehide)과 언마운트(탭 전환) 때도 flush 한다 — blur 는 홈 버튼으로
+ * 나갈 때 발생이 보장되지 않아, 방금 적은 한 줄이 사라지던 구멍을 막는다.
  * ───────────────────────────────────────────────────────────────── */
 
 export default function TomorrowActionRow({
@@ -44,7 +45,9 @@ export default function TomorrowActionRow({
   const savingValueRef = useRef<string | null>(null);
   /** 언마운트 flush 용 최신값 — 클린업은 클로저가 아니라 이 ref 를 읽는다. */
   const latestRef = useRef({ uid, ymd, value, saved });
-  latestRef.current = { uid, ymd, value, saved };
+  useEffect(() => {
+    latestRef.current = { uid, ymd, value, saved };
+  });
 
   // 하이드레이션 — TodayWinsCard 와 같은 규칙(계정·날짜 키가 바뀔 때만 다시 채운다).
   const hydrationKey = docKey(uid, ymd);
@@ -115,6 +118,25 @@ export default function TomorrowActionRow({
     if (next === saved || next === savingValueRef.current) return;
     void doAutoSave(next);
   };
+
+  /* 앱 이탈(홈 버튼 · 앱 전환) 직전 flush — 최신 클로저를 ref 로 갈아끼운다.
+   * 여기서는 위젯 갱신 인텐트를 쏘지 않는다(user activation 없는 발화는 Chrome 확인창 회귀). */
+  const flushRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    flushRef.current = flush;
+  });
+  useEffect(() => {
+    const onLeave = () => flushRef.current();
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flushRef.current();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", onLeave);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onLeave);
+    };
+  }, []);
 
   return (
     <div className="relative flex items-start gap-3 px-4 py-3">
