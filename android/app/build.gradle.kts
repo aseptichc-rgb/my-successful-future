@@ -62,8 +62,8 @@ android {
         // 타겟이 필요하다. 앱은 back 오버라이드·화면방향 고정·edge-to-edge 옵트아웃을 쓰지 않아
         // Android 16 의 targetSdk 게이트 동작 변경(predictive back 기본 on 등)에 영향받지 않는다.
         targetSdk = 36
-        versionCode = 48
-        versionName = "0.3.26"
+        versionCode = 49
+        versionName = "0.3.27"
 
         buildConfigField("String", "ANIMA_API_BASE_URL", "\"$animaApiBaseUrl\"")
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")

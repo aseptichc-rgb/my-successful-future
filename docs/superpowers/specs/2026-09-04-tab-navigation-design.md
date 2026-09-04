@@ -44,11 +44,11 @@ recommit → slotUnlock → stepUp → declarationNudge → trialExpired → tri
 스스로 해소되는 1회성이 영구 상태 배너보다 위 — `trialExpired` 를 위에 두면 만료 후
 미구매 사용자가 슬롯 해금·스텝업을 영영 못 본다. 같은 이유로 dismiss 가 피커 입력이다.
 
-## 네이티브 후속 (별도 PR)
+## 네이티브 (Android v0.3.27 / versionCode 49 에 반영)
 
 `android/.../MainActivity.kt` `resolveOpenPath`: `wins → /record`,
 `settings-future-self → /dream?sheet=futureSelf`, `settings-affirmations → /dream?sheet=affirmations`,
-`settings-goals → /dream?sheet=goals`. 그 전까지는 웹 리다이렉트가 옛 경로를 살린다.
+`settings-goals → /dream?sheet=goals`. 옛 빌드가 깔린 기기는 웹 리다이렉트가 옛 경로를 살린다.
 iOS `NotificationBridgePlugin.swift` 는 탭 목적지 라우팅이 없어 할 일 없음.
 
 ## 알려진 결점

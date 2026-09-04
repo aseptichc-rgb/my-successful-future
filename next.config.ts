@@ -9,7 +9,8 @@ const nextConfig: NextConfig = {
    * 하단 탭 전환(2026-09) 전의 경로를 살린다 — Android 알림/위젯이 이미 깔린 기기에서 옛 경로로
    * 들어오고(MainActivity.resolveOpenPath), 그 매핑은 네이티브 빌드를 새로 올려야 바뀐다.
    * Next 는 들어온 쿼리를 destination 에 그대로 합쳐 주므로 refine·fromApp·nativeToken 이 살아남는다.
-   * 307(permanent: false) — 네이티브가 갱신되면 이 항목은 지운다.
+   * 307(permanent: false) — 네이티브(v0.3.27, versionCode 49)는 새 경로를 쓰지만, 옛 빌드가 깔린 기기가
+   * 남아 있는 동안 이 항목을 유지한다.
    */
   async redirects() {
     return [

@@ -8,9 +8,10 @@
  * 네이티브 화면은 "오늘의 한 마디" 미리보기 + 갱신 버튼 + Anima 열기 버튼 정도로만 유지.
  *
  * 추가 동작:
- *  - 잘한 일 저녁 알림 탭으로 진입한 경우(EXTRA_OPEN_TARGET=wins) → 곧장 /home 으로 TWA 진입.
- *  - 다짐 아침 알림 탭으로 진입한 경우(EXTRA_OPEN_TARGET=affirmations) → 곧장 /home 으로 TWA 진입.
+ *  - 잘한 일 저녁 알림 탭으로 진입한 경우(EXTRA_OPEN_TARGET=wins) → 곧장 /record(기록 탭) 으로 TWA 진입.
+ *  - 다짐 아침 알림 탭으로 진입한 경우(EXTRA_OPEN_TARGET=affirmations) → 곧장 /home(오늘 탭) 으로 TWA 진입.
  *  - 잠금화면 위젯 탭으로 진입한 경우(EXTRA_OPEN_TARGET=home) → 곧장 /home 으로 TWA 진입.
+ *  - 미완 과업 넛지 알림(EXTRA_OPEN_TARGET=settings-*) → /dream?sheet=… (내 꿈 탭의 편집 시트) 로 TWA 진입.
  *  - 앱 최초 실행 시 → 곧장 /onboarding 으로 TWA 진입 (이미 온보딩 완료된 사용자는 웹쪽이 /home 으로 즉시 리다이렉트).
  *  - HomeScreen 내부에서 Google 로그인 성공 직후에도 /onboarding 으로 진입 (신규 로그인 케이스).
  *  - Android 13+ 에서 POST_NOTIFICATIONS 런타임 권한 요청 (1회).
@@ -234,18 +235,22 @@ class MainActivity : ComponentActivity() {
     /**
      * 외부 진입점(위젯/알림)이 지시한 화면 → 웹 경로.
      *
-     * 알림 본문이 "무엇을 하라"를 말하게 되면서 도착지도 갈라졌다 — 명언/기록 알림은 /home 이지만,
-     * 미완 과업 넛지는 그 과업을 편집하는 설정 시트로 곧장 보내야 "탭 → 바로 작성"이 된다.
-     * `?sheet=` 값은 웹 app/settings/page.tsx 의 readSheetDeepLink 와 1:1 로 맞춰져 있다.
+     * 알림 본문이 "무엇을 하라"를 말하게 되면서 도착지도 갈라졌다 — 명언 알림은 오늘 탭(/home),
+     * 기록 알림은 기록 탭(/record), 미완 과업 넛지는 그 과업을 편집하는 내 꿈 탭의 시트
+     * (/dream?sheet=…)로 곧장 보내야 "탭 → 바로 작성"이 된다.
+     * `?sheet=` 값은 웹 lib/sheetDeepLink.ts 의 readSheetDeepLink 와 1:1 로 맞춰져 있다.
+     * (하단 탭 전환 이전 경로 /settings?sheet=·/wins-history 는 웹 next.config redirects 가 살린다 —
+     * 이 빌드 이전 설치본도 계속 동작한다.)
      *
      * @return 알 수 없는/없는 타깃이면 null — 호출부는 기본 진입 흐름을 탄다.
      */
     private fun resolveOpenPath(intent: Intent?): String? {
         return when (intent?.getStringExtra(EXTRA_OPEN_TARGET)) {
-            OPEN_TARGET_WINS, OPEN_TARGET_HOME, OPEN_TARGET_AFFIRMATIONS -> PATH_HOME
-            OPEN_TARGET_SETTINGS_FUTURE_SELF -> "/settings?sheet=futureSelf"
-            OPEN_TARGET_SETTINGS_AFFIRMATIONS -> "/settings?sheet=affirmations"
-            OPEN_TARGET_SETTINGS_GOALS -> "/settings?sheet=goals"
+            OPEN_TARGET_HOME, OPEN_TARGET_AFFIRMATIONS -> PATH_HOME
+            OPEN_TARGET_WINS -> PATH_RECORD
+            OPEN_TARGET_SETTINGS_FUTURE_SELF -> "$PATH_DREAM?sheet=futureSelf"
+            OPEN_TARGET_SETTINGS_AFFIRMATIONS -> "$PATH_DREAM?sheet=affirmations"
+            OPEN_TARGET_SETTINGS_GOALS -> "$PATH_DREAM?sheet=goals"
             else -> null
         }
     }
@@ -420,6 +425,10 @@ class MainActivity : ComponentActivity() {
         const val OPEN_TARGET_SETTINGS_GOALS = "settings-goals"
         /** TWA 기본 진입 경로. */
         const val PATH_HOME = "/home"
+        /** 기록 탭 — 잘한 일 저녁 알림의 도착지. qDate 는 싣지 않는다(오늘 카드 고정 키는 /home 만의 것). */
+        const val PATH_RECORD = "/record"
+        /** 내 꿈 탭 — 미완 과업 넛지가 여는 편집 시트(?sheet=)의 베이스 경로. */
+        const val PATH_DREAM = "/dream"
         // 위젯이 탭 순간 "그리고 있던" 카드의 날짜(YYYY-MM-DD). /home 이 기기 시계로
         // ymd 를 다시 계산하지 않고 위젯과 같은 dailyMotivations 문서를 읽게 하는 권위 키.
         const val EXTRA_QUOTE_YMD = "quote_ymd"
