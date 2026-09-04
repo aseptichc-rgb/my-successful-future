@@ -643,6 +643,7 @@ const dict: Record<DictKey, string> = {
   "nav.progress": "成长",
   "nav.dream": "我的梦想",
   "nav.aria": "主导航",
+  "nav.back": "返回",
   "record.title": "今天的记录",
   "record.subtitle": "全部选填 · 写多少留多少",
   "dream.title": "我的梦想",

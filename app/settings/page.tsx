@@ -4,16 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, fetchNativeBridgeToken } from "@/lib/auth-context";
 import {
-  updateFutureSelf,
-  updateUserGoals,
   updateNotificationPrefs,
   updateQuotePreference,
-  updateSuccessAffirmations,
   updateUserLanguage,
-  MAX_SUCCESS_AFFIRMATIONS,
 } from "@/lib/firebase";
-import { useExecutionPlans } from "@/lib/useExecutionPlans";
 import { useClientValue } from "@/lib/useClientValue";
+import { backOrReplace } from "@/lib/navigation";
 import {
   DEFAULT_NOTIFICATION_PREFS,
   MORNING_HOUR_CHOICES,
@@ -24,19 +20,8 @@ import {
 } from "@/lib/notificationPolicy";
 import { isIosNotificationAvailable, syncIosNotifications } from "@/lib/notificationBridge";
 import { fetchNotificationContent } from "@/lib/notificationSync";
-import {
-  FUTURE_SELF_DIMENSIONS,
-  FUTURE_SELF_FIELD_MAX,
-  hasAnyFutureSelfAnswer,
-  type FutureSelfDimension,
-} from "@/lib/futureSelf";
-import { computeGoalSlots } from "@/lib/goalSlots";
-import { missingGoalSignals, needsMoreSpecificGoal, type GoalSignal } from "@/lib/goalQuality";
-import { GOAL_SLOT_MAX, GOAL_TEXT_MAX } from "@/lib/constants/goal";
-import type { FutureSelfAnswers, NotificationPrefs } from "@/types";
-import type { DictKey } from "@/lib/i18n";
+import type { NotificationPrefs } from "@/types";
 import { authedFetch } from "@/lib/authedFetch";
-import { isPaymentRequired } from "@/lib/paymentRequired";
 import {
   isIosPurchaseAvailable,
   getIosProPrice,
@@ -50,8 +35,7 @@ import {
   purchaseAndroidPro,
   restoreAndroidPro,
 } from "@/lib/androidPurchase";
-import { isPaidPro, readEntitlement } from "@/lib/entitlement";
-import { computePlanUnlock } from "@/lib/planUnlock";
+import { readEntitlement } from "@/lib/entitlement";
 import { detectPurchaseEnv } from "@/lib/purchaseEnv";
 import {
   isAndroidApp,
@@ -61,57 +45,23 @@ import {
 } from "@/lib/widgetBridge";
 import { refreshIosWidget } from "@/lib/iosWidget";
 import { getAllKnownAuthorsGrouped } from "@/lib/famousQuoteCatalog";
-import AffirmationsEditor from "@/components/affirmations/AffirmationsEditor";
 import NoticeDialog from "@/components/ui/NoticeDialog";
 import GroupedSection from "@/components/ui/GroupedSection";
 import Sheet from "@/components/ui/Sheet";
-import ExecutionPlansSection from "@/components/woop/ExecutionPlansSection";
+import BackButton from "@/components/nav/BackButton";
 import { useLanguage, LOCALE_META, SUPPORTED_LOCALES, type Locale } from "@/lib/i18n";
 
 /* ─────────────────────────────────────────────────────────────────
  * Settings — Apple iOS native redesign
- *  · Large Title nav with back button
+ *  · Large Title nav with back button (탭 그룹 밖 — 헤더 톱니바퀴로 push 해 들어온다)
  *  · Profile card with gradient avatar + orange streak chip
  *  · Grouped Inset Lists with COLORED icon squares (Settings.app pattern)
  *  · Destructive actions in System Red
+ *
+ * 내 꿈·다짐·목표·실행 설계 편집은 내 꿈 탭(app/(tabs)/dream)으로 옮겨 갔다 — 여기엔
+ * 카드(좋아하는 인물·언어)·알림·Pro·계정·약관만 남는다. 옛 `/settings?sheet=` 딥링크는
+ * next.config redirects 가 `/dream?sheet=` 로 보낸다.
  * ───────────────────────────────────────────────────────────────── */
-
-/** 미래 서술의 기본 질문 — 온보딩에서 유일하게 묻는 차원. 나머지는 "더 자세히" 뒤로. */
-const PRIMARY_FUTURE_DIMENSION: FutureSelfDimension = "dream";
-
-/** 구체성 신호 → i18n 라벨/예시 키. 빠진 신호만 칩으로 보여준다. */
-const GOAL_SIGNAL_LABEL_KEY: Record<GoalSignal, DictKey> = {
-  count: "goal.specific.count",
-  cadence: "goal.specific.cadence",
-  unit: "goal.specific.unit",
-};
-const GOAL_SIGNAL_EXAMPLE_KEY: Record<GoalSignal, DictKey> = {
-  count: "goal.specific.countExample",
-  cadence: "goal.specific.cadenceExample",
-  unit: "goal.specific.unitExample",
-};
-
-/** 차원 → i18n 질문/placeholder 키 (온보딩과 동일 키 재사용). */
-const FUTURE_Q_KEY: Record<FutureSelfDimension, DictKey> = {
-  dream: "onboarding.futureSelf.dream.q",
-  daily: "onboarding.futureSelf.daily.q",
-  work: "onboarding.futureSelf.work.q",
-  wealth: "onboarding.futureSelf.wealth.q",
-  family: "onboarding.futureSelf.family.q",
-  achievements: "onboarding.futureSelf.achievements.q",
-  respect: "onboarding.futureSelf.respect.q",
-  growth: "onboarding.futureSelf.growth.q",
-};
-const FUTURE_PH_KEY: Record<FutureSelfDimension, DictKey> = {
-  dream: "onboarding.futureSelf.dream.placeholder",
-  daily: "onboarding.futureSelf.daily.placeholder",
-  work: "onboarding.futureSelf.work.placeholder",
-  wealth: "onboarding.futureSelf.wealth.placeholder",
-  family: "onboarding.futureSelf.family.placeholder",
-  achievements: "onboarding.futureSelf.achievements.placeholder",
-  respect: "onboarding.futureSelf.respect.placeholder",
-  growth: "onboarding.futureSelf.growth.placeholder",
-};
 
 /** 결제 대기 폴링 시작 간격(ms). 이후 백오프로 늘어난다. */
 const ENTITLEMENT_POLL_INTERVAL_MS = 2_000;
@@ -276,14 +226,6 @@ function IconChevron() {
   );
 }
 
-function IconBack() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
-      <path d="M14 4l-7 7 7 7" stroke="#D85A30" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 /* ───── Reusable inset card primitives ───── */
 
 function SettingsRow({
@@ -417,62 +359,11 @@ function NotifHourRow({
   );
 }
 
-/**
- * 시트 딥링크로 열 수 있는 값. 미완 과업 넛지 알림이 "탭 → 바로 그 화면"이 되려면
- * 여기에 있어야 한다 — 값은 types/index.ts 의 NotificationTapTarget(`settings-*`) 과 1:1 대응.
- */
-const DEEP_LINK_SHEETS = ["goals", "affirmations", "futureSelf"] as const;
-type DeepLinkSheet = (typeof DEEP_LINK_SHEETS)[number];
-
-/** 홈/알림에서 넘어온 딥링크(?sheet=goals[&refine=1] | affirmations | futureSelf) — 초기 state 용. */
-function readSheetDeepLink(): { sheet: DeepLinkSheet | null; refine: boolean } {
-  if (typeof window === "undefined") return { sheet: null, refine: false };
-  try {
-    const url = new URL(window.location.href);
-    const sheet = url.searchParams.get("sheet");
-    return {
-      sheet: DEEP_LINK_SHEETS.find((s) => s === sheet) ?? null,
-      refine: url.searchParams.get("refine") === "1",
-    };
-  } catch {
-    return { sheet: null, refine: false };
-  }
-}
-
 export default function SettingsPage() {
   const router = useRouter();
-  const { user, firebaseUser, loading: authLoading, signOut, refreshUser, entitlement } =
-    useAuth();
-  // 결제 프로(평생/구독)는 모든 해금 게이트를 첫날부터 통과한다 — 홈과 동일 판정.
-  const proUnlockAll = isPaidPro(entitlement);
+  const { user, firebaseUser, loading: authLoading, signOut, refreshUser } = useAuth();
   const { t, locale, setLocale } = useLanguage();
   const [languageSaving, setLanguageSaving] = useState(false);
-
-  const [futureSelfDraft, setFutureSelfDraft] = useState<FutureSelfAnswers>({});
-  const [futureSaving, setFutureSaving] = useState(false);
-  // 시트 초기 열림은 딥링크에서 한 번만 읽는다(효과 없이) — 쿼리 제거는 아래 mount 효과가 담당.
-  const [deepLink] = useState(readSheetDeepLink);
-  const [futureOpen, setFutureOpen] = useState(deepLink.sheet === "futureSelf");
-  const [portraitRegenLoading, setPortraitRegenLoading] = useState(false);
-
-  const [goals, setGoals] = useState<string[]>([]);
-  const [goalsOpen, setGoalsOpen] = useState(deepLink.sheet === "goals");
-  /** 홈의 해금 배너에서 "더 구체적으로"로 들어온 경우 — 해당 줄의 구체성 힌트를 항상 펼친다. */
-  const [refineIdx, setRefineIdx] = useState<number | null>(
-    deepLink.sheet === "goals" && deepLink.refine ? 0 : null,
-  );
-  /**
-   * 미래 서술 나머지 문항 펼침 — 기본은 접힘(온보딩에서 묻지 않는 항목들).
-   * 단, 미완 과업 넛지 알림을 타고 들어왔다면 처음부터 펼친다 — 그 알림이 요청한 게
-   * 정확히 이 칸들을 채우는 일인데 한 번 더 접혀 있으면 넛지가 목적지에 닿지 못한다.
-   */
-  const [futureDetailOpen, setFutureDetailOpen] = useState(deepLink.sheet === "futureSelf");
-  // WOOP 실행설계 목록 — 홈과 동일한 섹션/시트를 설정에서도 노출(같은 훅·같은 게이트 정책).
-  const { plans, plansLoaded } = useExecutionPlans(firebaseUser);
-
-  const [affirmations, setAffirmations] = useState<string[]>([]);
-  const [affirmationsOpen, setAffirmationsOpen] = useState(deepLink.sheet === "affirmations");
-  const [affirmationsSaving, setAffirmationsSaving] = useState(false);
 
   const [pinnedAuthor, setPinnedAuthor] = useState<string>("");
   const [pinnedDays, setPinnedDays] = useState<number>(0);
@@ -561,37 +452,14 @@ export default function SettingsPage() {
     };
   }, [showPro, firebaseUser]);
 
-  /* 프로필(user) → 편집 초안 하이드레이션 — 렌더 중 상태 조정 패턴.
-   * 레거시 사용자(구조화 답변 없이 futurePersona 만 있는 경우)는 필드를 공란으로 두고
-   * 기존 원문은 시트 하단에 읽기전용으로 보여준다 — 저장 전까지 원문을 건드리지 않는다. */
+  /* 프로필(user) → 편집 초안 하이드레이션 — 렌더 중 상태 조정 패턴. */
   const [hydratedUser, setHydratedUser] = useState<typeof user>(null);
   if (user && hydratedUser !== user) {
     setHydratedUser(user);
-    setFutureSelfDraft(user.futureSelfAnswers ? { ...user.futureSelfAnswers } : {});
-    setGoals(user.goals && user.goals.length > 0 ? [...user.goals] : []);
     setPinnedAuthor(user.quotePreference?.pinnedAuthor || "");
     setPinnedDays(user.quotePreference?.pinnedDaysPerWeek ?? 0);
     setNotifPrefs(normalizeNotificationPrefs(user.notificationPrefs));
-    setAffirmations(
-      user.successAffirmations && user.successAffirmations.length > 0
-        ? [...user.successAffirmations]
-        : [],
-    );
   }
-
-  /* 딥링크 쿼리 제거 — 시트 열림은 초기 state 가 이미 읽었고, 여기서는 뒤로가기/새로고침에
-     시트가 다시 열리지 않도록 쿼리만 지운다(useSearchParams 대신 window.location — Suspense 불필요). */
-  useEffect(() => {
-    try {
-      const url = new URL(window.location.href);
-      if (!url.searchParams.has("sheet") && !url.searchParams.has("refine")) return;
-      url.searchParams.delete("sheet");
-      url.searchParams.delete("refine");
-      window.history.replaceState({}, "", url.toString());
-    } catch {
-      /* URL 파싱 불가 환경 — 쿼리만 남을 뿐 나머지는 정상 동작 */
-    }
-  }, []);
 
   /* 홈 트라이얼 배너의 "업그레이드"(?pro=1) 딥링크 — ANIMA PRO 섹션으로 스크롤한 뒤 쿼리를
      지운다. Pro 섹션은 결제 가능 환경(showPro)에서만 렌더되므로 showPro 가 참이 된 뒤에
@@ -623,45 +491,7 @@ export default function SettingsPage() {
     }
   }, [showPro]);
 
-  /* 이미 나머지 차원까지 채워둔 사용자(기존 7문항 온보딩 이용자)에게는 접혀 있으면
-     자기가 쓴 글이 사라진 것처럼 보인다 — 시트가 "열리는 전이" 순간에만 판정해 자동으로
-     펼친다(타이핑마다 재판정하면 키 입력마다 렌더가 한 번씩 버려진다). 사용자가 손으로
-     접은 상태는 존중한다. */
-  const [prevFutureOpen, setPrevFutureOpen] = useState(futureOpen);
-  if (prevFutureOpen !== futureOpen) {
-    setPrevFutureOpen(futureOpen);
-    const hasDetail =
-      futureOpen &&
-      FUTURE_SELF_DIMENSIONS.some(
-        (dim) => dim !== PRIMARY_FUTURE_DIMENSION && (futureSelfDraft[dim] ?? "").trim().length > 0,
-      );
-    if (hasDetail) setFutureDetailOpen(true);
-  }
-
-  const goalCount = useMemo(() => goals.filter((g) => g.trim().length > 0).length, [goals]);
   const authorGroups = useMemo(() => getAllKnownAuthorsGrouped(locale), [locale]);
-  // 실행 설계 섹션은 해금된 사용자에게만 — 잠금 예고는 홈 한 곳으로 충분하다(홈과 동일 판정).
-  const planUnlockOpen =
-    plansLoaded &&
-    computePlanUnlock({
-      affirmation: user?.affirmationStreak,
-      goal: user?.goalStreak,
-      goalCount,
-      planCount: plans.length,
-      unlockAll: proUnlockAll,
-    }).kind === "open";
-  // 목표 칸 수는 꾸준함으로 열린다(전사·달성 두 축). 기존 사용자는 지금 가진 목표 수만큼
-  // 자동 인정되고, 결제 프로는 전 칸이 첫날부터 열린다.
-  const goalSlots = useMemo(
-    () =>
-      computeGoalSlots({
-        affirmation: user?.affirmationStreak,
-        goal: user?.goalStreak,
-        currentGoalCount: user?.goals?.length ?? 0,
-        unlockAll: proUnlockAll,
-      }),
-    [user?.affirmationStreak, user?.goalStreak, user?.goals?.length, proUnlockAll],
-  );
 
   if (authLoading || !firebaseUser) {
     return (
@@ -682,63 +512,6 @@ export default function SettingsPage() {
   const userName = user?.displayName || user?.email?.split("@")[0] || "—";
   const userEmail = user?.email || "";
 
-  const handleSaveFuture = async () => {
-    notifyAndroidWidgetRefresh();
-    setFutureSaving(true);
-    try {
-      // 전부 공란이면 아무것도 쓰지 않는다 — 레거시 futurePersona 원문을 실수로 지우는 것 방지.
-      if (hasAnyFutureSelfAnswer(futureSelfDraft)) {
-        await updateFutureSelf(uid, futureSelfDraft);
-        await refreshUser().catch(() => {});
-        void refreshIosWidget();
-      }
-      setFutureOpen(false);
-    } catch (err) {
-      console.error("[settings] 미래의 나 저장 실패:", err);
-      window.alert(t("common.saveFailed"));
-    } finally {
-      setFutureSaving(false);
-    }
-  };
-
-  /** "초상 다시 그리기" — force=true 는 일별 한도(5회)에 카운트된다. */
-  const handleRegeneratePortrait = async () => {
-    setPortraitRegenLoading(true);
-    try {
-      const res = await authedFetch("/api/future-self/portrait", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ force: true }),
-      });
-      // Pro 전용 — 다른 화면과 달리 여기서는 직접 안내한다. ProUpsellSheet 는 /settings 를
-      // 침묵 경로로 두기 때문이다(결제 버튼이 이 화면에 있어서 시트로 덮으면 결제 직전
-      // 사용자를 가로막는다). 조용히 return 하면 버튼이 먹통으로 보이므로, 시트와 같은
-      // i18n 문구를 이 페이지의 안내 다이얼로그로 띄워 4개 언어를 그대로 따라간다.
-      if (isPaymentRequired(res)) {
-        setProNotice({
-          title: t("billing.paywall.title"),
-          description: t("billing.paywall.desc"),
-          tone: "error",
-        });
-        return;
-      }
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) {
-        throw new Error(data.error || `${t("common.error")} (${res.status})`);
-      }
-      await refreshUser().catch(() => {});
-    } catch (err) {
-      console.error("[settings] 초상 재생성 실패:", err);
-      window.alert(
-        err instanceof Error && err.message
-          ? err.message
-          : t("futureSelf.portrait.error"),
-      );
-    } finally {
-      setPortraitRegenLoading(false);
-    }
-  };
-
   const handleChangeLanguage = async (next: Locale) => {
     if (next === locale) return;
     notifyAndroidWidgetRefresh();
@@ -753,40 +526,6 @@ export default function SettingsPage() {
       window.alert(t("common.saveFailed"));
     } finally {
       setLanguageSaving(false);
-    }
-  };
-
-  /* 목표는 성공 선언과 독립이다 — 저장 후 "다짐도 바꿀까요?" 를 묻지 않는다.
-     둘은 성격이 다른 문장(선언 = 이미 이룬 상태 / 목표 = 오늘의 행동)이므로
-     한쪽을 고쳤다고 다른 쪽을 따라 바꾸자는 제안 자체가 성립하지 않는다. */
-  const handleSaveGoals = async () => {
-    notifyAndroidWidgetRefresh();
-    try {
-      const cleaned = goals.map((g) => g.trim()).filter((g) => g.length > 0);
-      await updateUserGoals(uid, cleaned);
-      await refreshUser().catch(() => {});
-      void refreshIosWidget();
-      setGoalsOpen(false);
-      setRefineIdx(null);
-    } catch (err) {
-      console.error("[settings] 목표 저장 실패:", err);
-      window.alert(t("common.saveFailed"));
-    }
-  };
-
-  const handleSaveAffirmations = async () => {
-    notifyAndroidWidgetRefresh();
-    setAffirmationsSaving(true);
-    try {
-      await updateSuccessAffirmations(uid, affirmations);
-      await refreshUser().catch(() => {});
-      void refreshIosWidget();
-      setAffirmationsOpen(false);
-    } catch (err) {
-      console.error("[settings] 다짐 저장 실패:", err);
-      window.alert(t("common.saveFailed"));
-    } finally {
-      setAffirmationsSaving(false);
     }
   };
 
@@ -1001,15 +740,8 @@ export default function SettingsPage() {
       {/* Large Title nav */}
       <header className="pb-2 pt-[calc(env(safe-area-inset-top)+12px)] bg-[var(--bg-grouped)]">
         <div className="mx-auto max-w-3xl px-2 min-h-[44px] flex items-center">
-          <button
-            type="button"
-            onClick={() => router.push("/home")}
-            aria-label={t("home.title")}
-            className="inline-flex items-center gap-1 text-[var(--soul)] text-[17px] tracking-[-0.43px] px-1 py-2"
-          >
-            <IconBack />
-            <span>{t("home.title")}</span>
-          </button>
+          {/* 왔던 탭으로 — 딥링크(?pro=1)로 곧장 열렸으면 오늘 탭으로. */}
+          <BackButton label={t("nav.back")} onClick={() => backOrReplace(router, "/home")} />
         </div>
         <div className="mx-auto max-w-3xl px-5">
           <h1 className="text-large-title font-display">{t("settings.title") || "설정"}</h1>
@@ -1052,48 +784,6 @@ export default function SettingsPage() {
       </div>
 
       <main className="mx-auto w-full max-w-3xl">
-        {/* 프로필 */}
-        <GroupedSection header={t("settings.profile.header") || "프로필"}>
-          <SettingsRow
-            color="#1E1B4B"
-            glyph={G.user}
-            title={t("home.future.title")}
-            detail={user?.futurePersona ? t("common.set") || "작성됨" : t("common.empty") || "비어있음"}
-            onClick={() => setFutureOpen(true)}
-          />
-          <SettingsRow
-            color="#D85A30"
-            glyph={G.target}
-            title={t("home.goals.title")}
-            detail={`${goalCount}`}
-            onClick={() => setGoalsOpen(true)}
-          />
-          <SettingsRow
-            color="#D85A30"
-            glyph={G.spark}
-            title={t("settings.affirmations.header") || "꿈을 이룬 나 다짐"}
-            detail={`${affirmations.length}`}
-            onClick={() => setAffirmationsOpen(true)}
-          />
-          <SettingsRow
-            color="#FF9500"
-            glyph={G.bolt}
-            title={t("progress.title")}
-            onClick={() => router.push("/progress")}
-            isLast
-          />
-        </GroupedSection>
-
-        {/* 실행 설계 (if-then) — 홈과 동일 컴포넌트/시트 재사용. 해금 전엔 섹션 숨김. */}
-        {firebaseUser && planUnlockOpen && (
-          <ExecutionPlansSection
-            uid={firebaseUser.uid}
-            goals={goals}
-            identityLabels={user?.identities?.labels ?? []}
-            plans={plans}
-          />
-        )}
-
         {/* 카드 환경설정 */}
         <GroupedSection header={t("settings.quote.header") || "카드"}>
           <SettingsRow
@@ -1242,238 +932,6 @@ export default function SettingsPage() {
           Anima · v{process.env.NEXT_PUBLIC_APP_VERSION ?? "0.3.13"}
         </div>
       </main>
-
-      {/* ── Future self sheet — 구조화 7문항 편집 + 초상 미리보기/재생성 ── */}
-      {futureOpen && (
-        <Sheet onClose={() => setFutureOpen(false)} title={t("home.future.title")}>
-          <p className="mt-1 text-[13px] leading-[1.5] tracking-[-0.08px] text-[var(--label-2)]">
-            {t("settings.future.subtitle")}
-          </p>
-
-          {/* 온보딩에서 묻는 것은 이 한 문항뿐 — 나머지 6개는 원하는 사람만 펼쳐서 채운다. */}
-          <div className="mt-3 space-y-4">
-            {(futureDetailOpen
-              ? FUTURE_SELF_DIMENSIONS
-              : [PRIMARY_FUTURE_DIMENSION]
-            ).map((dim) => (
-              <div key={dim}>
-                <p className="text-[13px] font-semibold tracking-[-0.08px] text-[var(--label)]">
-                  {t(FUTURE_Q_KEY[dim])}
-                </p>
-                <textarea
-                  value={futureSelfDraft[dim] ?? ""}
-                  onChange={(e) =>
-                    setFutureSelfDraft((prev) => ({
-                      ...prev,
-                      [dim]: e.target.value.slice(0, FUTURE_SELF_FIELD_MAX),
-                    }))
-                  }
-                  rows={3}
-                  maxLength={FUTURE_SELF_FIELD_MAX}
-                  placeholder={t(FUTURE_PH_KEY[dim])}
-                  className="mt-1.5 w-full resize-none rounded-[12px] border border-[var(--sep)] bg-[var(--bg-grouped-2)] px-4 py-3 text-[15px] leading-[22px] tracking-[-0.24px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none focus:border-[var(--soul)]"
-                />
-              </div>
-            ))}
-          </div>
-
-          {!futureDetailOpen && (
-            <button
-              type="button"
-              onClick={() => setFutureDetailOpen(true)}
-              className="mt-3 text-[15px] font-medium text-[var(--soul)]"
-            >
-              ⌄ {t("settings.futureSelf.moreDetail")}
-            </button>
-          )}
-
-          {/* 레거시 사용자: 구조화 답변 없이 futurePersona 원문만 있으면 읽기전용으로 노출 */}
-          {!hasAnyFutureSelfAnswer(user?.futureSelfAnswers ?? {}) && user?.futurePersona && (
-            <div className="mt-4 rounded-[12px] bg-[var(--bg-grouped-2)] px-4 py-3">
-              <p className="text-[11px] font-medium tracking-[0.06em] text-[var(--label-3)]">
-                {t("settings.futureSelf.legacyNote")}
-              </p>
-              <p className="mt-1.5 whitespace-pre-wrap text-[13px] leading-[1.55] tracking-[-0.08px] text-[var(--label-2)]">
-                {user.futurePersona}
-              </p>
-            </div>
-          )}
-
-          {/* 저장된 초상 미리보기 + 다시 그리기 */}
-          {user?.futureSelfPortrait && (
-            <div className="mt-4 rounded-[12px] bg-[#1E1B4B] px-4 py-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/50">
-                {t("futureSelf.portrait.headerLabel")}
-              </p>
-              <p className="mt-2 text-[15px] font-bold leading-[1.4] tracking-[-0.24px] text-white">
-                {user.futureSelfPortrait.title}
-              </p>
-              <p className="mt-2 whitespace-pre-wrap text-[13px] leading-[1.6] tracking-[-0.08px] text-white/85">
-                {user.futureSelfPortrait.portrait}
-              </p>
-              <button
-                type="button"
-                onClick={handleRegeneratePortrait}
-                disabled={portraitRegenLoading || futureSaving}
-                className="mt-3 rounded-full bg-white/12 px-4 py-1.5 text-[12px] font-semibold tracking-[-0.05px] text-white/90 transition-colors hover:bg-white/20 disabled:opacity-40"
-              >
-                {portraitRegenLoading
-                  ? t("futureSelf.portrait.regenerating")
-                  : t("futureSelf.portrait.regenerate")}
-              </button>
-            </div>
-          )}
-
-          <div className="flex justify-end mt-4">
-            <button
-              type="button"
-              onClick={handleSaveFuture}
-              disabled={futureSaving}
-              className="text-[17px] font-semibold text-[var(--soul)] disabled:opacity-40"
-            >
-              {futureSaving ? t("common.saving") : t("common.save")}
-            </button>
-          </div>
-        </Sheet>
-      )}
-
-      {/* ── Goals sheet ── */}
-      {goalsOpen && (
-        <Sheet onClose={() => setGoalsOpen(false)} title={t("home.goals.title")}>
-          <div className="bg-[var(--bg-grouped-2)] rounded-[12px] overflow-hidden mt-2">
-            {goals.map((g, i) => {
-              const isLast = i === goals.length - 1;
-              // 구체성 힌트는 조용히 — 점수가 낮을 때, 또는 홈 배너로 들어온 그 줄에만.
-              const missing = missingGoalSignals(g);
-              const showHint =
-                missing.length > 0 && (refineIdx === i || needsMoreSpecificGoal(g));
-              return (
-                <div key={i} className="relative px-4 py-1">
-                  <div className="flex items-center gap-3 min-h-[52px]">
-                    <span className="text-[15px] font-bold w-7 text-center text-[#1E1B4B]">
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
-                    <input
-                      value={g}
-                      maxLength={GOAL_TEXT_MAX}
-                      autoFocus={refineIdx === i}
-                      onChange={(e) =>
-                        setGoals(goals.map((x, j) => (j === i ? e.target.value : x)))
-                      }
-                      className="flex-1 bg-transparent text-[17px] tracking-[-0.43px] text-[var(--label)] focus:outline-none py-2"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setGoals(goals.filter((_, j) => j !== i))}
-                      className="text-[#FF3B30] text-[15px]"
-                    >
-                      ×
-                    </button>
-                  </div>
-
-                  {showHint && (
-                    <div className="pb-2.5 pl-10">
-                      <p className="text-[12px] leading-[16px] tracking-[-0.05px] text-[var(--label-3)]">
-                        {t("goal.specific.hint")}
-                      </p>
-                      <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        {missing.map((signal) => (
-                          <span
-                            key={signal}
-                            className="inline-flex items-center gap-1 rounded-full bg-[#1E1B4B]/[0.06] px-2.5 py-1 text-[12px] tracking-[-0.05px] text-[#1E1B4B]/80"
-                          >
-                            {t(GOAL_SIGNAL_LABEL_KEY[signal])}
-                            <span className="text-[var(--label-3)]">
-                              {t(GOAL_SIGNAL_EXAMPLE_KEY[signal])}
-                            </span>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {!isLast && (
-                    <div className="absolute bottom-0 left-[50px] right-0 h-[0.5px] bg-[var(--sep)]" />
-                  )}
-                </div>
-              );
-            })}
-
-            {/* 잠긴 칸 — 왜 못 늘리는지, 언제 열리는지를 그 자리에서 보여준다. */}
-            {goals.length >= goalSlots.unlocked &&
-              goalSlots.unlocked < GOAL_SLOT_MAX &&
-              goalSlots.nextThreshold !== null && (
-                <div className="flex items-center gap-3 px-4 py-3 border-t border-[var(--sep)]">
-                  <span className="w-7 text-center text-[15px]" aria-hidden>
-                    🔒
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[15px] leading-[20px] tracking-[-0.24px] text-[var(--label-2)]">
-                      {t("goalSlot.locked", { days: goalSlots.nextThreshold })}
-                    </p>
-                    <p className="mt-0.5 text-[13px] tracking-[-0.08px] text-[var(--label-3)]">
-                      {t("goalSlot.lockedProgress", { progress: goalSlots.progress })}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-            {goals.length < goalSlots.unlocked && (
-              <button
-                type="button"
-                onClick={() => setGoals([...goals, ""])}
-                className="block w-full text-left px-4 py-3 text-[17px] text-[#D85A30]"
-              >
-                ＋ {t("common.add")}
-              </button>
-            )}
-          </div>
-
-          <p className="px-1 mt-2 text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label-2)]">
-            {/* nextThreshold === null == 더 벌어서 열 칸이 없다(전부 해금 또는 결제 프로) —
-                그때 "쌓이면 열려요" 안내는 거짓이 되므로 최대치 안내로 바꾼다. */}
-            {goalSlots.nextThreshold === null
-              ? t("goalSlot.maxed", { max: GOAL_SLOT_MAX })
-              : t("goalSlot.hint")}
-          </p>
-
-          <div className="flex justify-end mt-3">
-            <button
-              type="button"
-              onClick={handleSaveGoals}
-              className="text-[17px] font-semibold text-[var(--soul)]"
-            >
-              {t("common.save")}
-            </button>
-          </div>
-        </Sheet>
-      )}
-
-      {/* ── Affirmations sheet — reuse AffirmationsEditor ── */}
-      {affirmationsOpen && (
-        <Sheet
-          onClose={() => setAffirmationsOpen(false)}
-          title={t("settings.affirmations.header") || "꿈을 이룬 나 다짐"}
-        >
-          <div className="mt-2">
-            <AffirmationsEditor
-              value={affirmations}
-              onChange={setAffirmations}
-              max={MAX_SUCCESS_AFFIRMATIONS}
-            />
-          </div>
-          <div className="flex justify-end mt-3">
-            <button
-              type="button"
-              onClick={handleSaveAffirmations}
-              disabled={affirmationsSaving}
-              className="text-[17px] font-semibold text-[var(--soul)] disabled:opacity-40"
-            >
-              {affirmationsSaving ? t("common.saving") : t("common.save")}
-            </button>
-          </div>
-        </Sheet>
-      )}
 
       {/* ── Author sheet ── */}
       {authorOpen && (

@@ -673,6 +673,7 @@ const dict: Record<DictKey, string> = {
   "nav.progress": "Crecimiento",
   "nav.dream": "Mi sueño",
   "nav.aria": "Navegación principal",
+  "nav.back": "Atrás",
   "record.title": "Diario de hoy",
   "record.subtitle": "Todo opcional · solo queda lo que escribas",
   "dream.title": "Mi sueño",

@@ -665,6 +665,7 @@ const dict: Record<DictKey, string> = {
   "nav.progress": "Growth",
   "nav.dream": "My Dream",
   "nav.aria": "Main navigation",
+  "nav.back": "Back",
   "record.title": "Today's Journal",
   "record.subtitle": "All optional · only what you write stays",
   "dream.title": "My Dream",

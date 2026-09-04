@@ -663,6 +663,7 @@ const dict = {
   "nav.progress": "성장",
   "nav.dream": "내 꿈",
   "nav.aria": "주요 화면",
+  "nav.back": "뒤로",
   "record.title": "오늘의 기록",
   "record.subtitle": "전부 선택 입력 · 적은 만큼만 남아요",
   "dream.title": "내 꿈",

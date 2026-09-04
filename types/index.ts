@@ -518,7 +518,8 @@ export interface WidgetExecutionPlan {
 /**
  * 알림을 탭했을 때 열 화면. 위젯/알림 등 외부 진입점이 공유하는 키로,
  * Android 는 MainActivity.EXTRA_OPEN_TARGET 으로, 웹/iOS 는 경로로 해석한다.
- * `settings-*` 는 설정의 `?sheet=` 딥링크(app/settings/page.tsx readSheetDeepLink)와 1:1 대응.
+ * `settings-*` 는 내 꿈 탭의 `?sheet=` 딥링크(lib/sheetDeepLink.ts readSheetDeepLink, `/dream?sheet=`)와
+ * 1:1 대응. 옛 `/settings?sheet=` 경로는 next.config redirects 가 `/dream` 으로 보낸다.
  */
 export type NotificationTapTarget =
   | "home"

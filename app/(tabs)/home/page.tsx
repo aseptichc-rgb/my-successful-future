@@ -569,7 +569,7 @@ export default function HomeDashboardPage() {
         <DeclarationNudgeCard
           declaration={affirmations[0] ?? ""}
           goal={primaryGoal}
-          onEdit={() => router.push("/settings?sheet=affirmations")}
+          onEdit={() => router.push("/dream?sheet=affirmations")}
         />
 
         {/* ── 목표 칸이 열린 그 순간에만 뜨는 1회성 배너 ──
@@ -579,15 +579,15 @@ export default function HomeDashboardPage() {
             earned={slots.earned}
             progress={slots.progress}
             source={slots.source}
-            onAddGoal={() => router.push("/settings?sheet=goals")}
-            onRefineGoal={() => router.push("/settings?sheet=goals&refine=1")}
+            onAddGoal={() => router.push("/dream?sheet=goals")}
+            onRefineGoal={() => router.push("/dream?sheet=goals&refine=1")}
           />
         )}
 
         {/* ── 목표 달성이 이어졌을 때 한 번만 뜨는 스텝업 제안 ── */}
         <StepUpCard
           draft={stepUpDraft}
-          onApply={() => router.push("/settings?sheet=goals&refine=1")}
+          onApply={() => router.push("/dream?sheet=goals&refine=1")}
         />
 
         {/* ─── ① 오늘의 한마디 (명언 hero) ─── */}
@@ -619,7 +619,7 @@ export default function HomeDashboardPage() {
             goalAchieved={achievedGoals.includes(primaryGoal)}
             goalSaving={goalSaving}
             onToggleGoal={() => void handleToggleGoalAchieved(primaryGoal)}
-            onSetGoal={() => router.push("/settings?sheet=goals")}
+            onSetGoal={() => router.push("/dream?sheet=goals")}
             visionSlot={
               <FutureVisionCard
                 vision={vision}
@@ -627,7 +627,7 @@ export default function HomeDashboardPage() {
                 errorMessage={visionError}
                 onRegenerate={handleRegenerateFutureVision}
                 hasFuturePersona={futureText.trim().length > 0}
-                onWriteFuturePersona={openSettings}
+                onWriteFuturePersona={() => router.push("/dream?sheet=futureSelf")}
               />
             }
           />
