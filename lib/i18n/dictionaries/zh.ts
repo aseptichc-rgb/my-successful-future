@@ -311,7 +311,6 @@ const dict: Record<DictKey, string> = {
   "wins.history.title": "你的好事,按天",
   "wins.history.subtitle": "每天写下的一行,汇成你靠近梦想的证据。",
   "wins.history.empty": "还没有记录。",
-  "wins.history.back": "← 返回主页",
   "wins.history.loadFailed": "记录加载失败。",
 
   // Affirmations editor
@@ -559,18 +558,10 @@ const dict: Record<DictKey, string> = {
   "woop.section.footerOne": "一次一个 — 做到一个，胜过写下三个。",
 
   // ── 首页折叠区块 ──────────────────────────────────
-  "home.section.today": "今天的行动",
-  "home.section.record": "今天的记录",
   "home.section.expandAria": "展开",
   "home.section.collapseAria": "收起",
   "home.wins.addRow": "再写一行",
-  "home.record.footer": "写下的内容会自动保存。",
-  "home.plans.manage": "管理执行设计",
-  "home.plans.manageLocked": "管理目标",
   // 首页只留名言、今天的卡片和 7 天节奏环,其余全部折叠到这里。
-  "home.section.more": "查看更多",
-  "home.more.summary": "我的梦想 · 记录 · 执行设计",
-  "home.more.summaryLocked": "我的梦想 · 目标 · 还没解锁的东西",
 
   // ── 今天的目标打卡(与誓言抄写同一张卡片)──
   "home.todayGoal.title": "今天的目标",

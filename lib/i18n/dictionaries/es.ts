@@ -326,7 +326,6 @@ const dict: Record<DictKey, string> = {
   "wins.history.subtitle":
     "Cada pequeña línea, reunida: la prueba de que te acercaste al sueño.",
   "wins.history.empty": "Aún no hay nada escrito.",
-  "wins.history.back": "← Volver a inicio",
   "wins.history.loadFailed": "No se pudieron cargar tus registros.",
 
   // Affirmations editor
@@ -587,18 +586,10 @@ const dict: Record<DictKey, string> = {
     "De una en una — practicar una vale más que anotar tres.",
 
   // ── Secciones plegables del inicio ────────────────
-  "home.section.today": "La acción de hoy",
-  "home.section.record": "El registro de hoy",
   "home.section.expandAria": "Desplegar",
   "home.section.collapseAria": "Plegar",
   "home.wins.addRow": "Añadir otra línea",
-  "home.record.footer": "Lo que escribas se guarda solo.",
-  "home.plans.manage": "Gestionar diseños de ejecución",
-  "home.plans.manageLocked": "Gestionar objetivos",
   // En Inicio solo quedan la frase, la tarjeta de hoy y el anillo de 7 días.
-  "home.section.more": "Ver más",
-  "home.more.summary": "Mi sueño · Notas · Planes",
-  "home.more.summaryLocked": "Mi sueño · Objetivos · algo aún bloqueado",
 
   // ── Marcar la meta de hoy (misma tarjeta que la transcripción) ──
   "home.todayGoal.title": "Meta de hoy",

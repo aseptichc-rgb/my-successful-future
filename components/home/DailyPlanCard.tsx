@@ -14,8 +14,8 @@ import WhyIfThen from "@/components/woop/WhyIfThen";
  *  · compact: 중립/저녁 모드 — 한 줄 축약(카드 존재감만 유지).
  *  · 플랜이 없으면 CTA 행 — 탭하면 홈 위로 설계 시트가 바로 열린다.
  *  · locked / hidden : 첫 행동 회수 행만(그마저 없으면 null — 래퍼가 통째로 생략).
- *    잠긴 동안 이 카드는 자기 이름조차 내지 않는다 — 예고는 더 보기 맨 아래의
- *    익명 잠금 행(MoreSection 의 LockedTeaserRow) 한 곳이 전담한다.
+ *    잠긴 동안 이 카드는 자기 이름조차 내지 않는다 — 예고는 내 꿈 탭의
+ *    익명 잠금 행(components/home/LockedTeaserRow) 한 곳이 전담한다.
  *
  * 설명은 "무엇 → 왜"의 2단이다: 카드에 상시로 있는 건 한 줄(plan.today.desc)뿐이고,
  * 근거·연구는 접힌 WhyIfThen 안에 둔다. 아침 카드의 본래 일은 오늘 할 행동을

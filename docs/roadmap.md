@@ -27,7 +27,7 @@
 
 | 비전 축 | 상태 | 근거 |
 |---|---|---|
-| ① 간단한 목표 + 작은 행동 + 성취감 | **거의 완성 (~90%)** | 온보딩 4단계(`app/onboarding/`), 1탭 체크(`components/home/TodayCard.tsx`), 즉시 보상(`CheckinReward.tsx`), 스트릭+회복탄력성(`lib/goalStreak.ts`), 성장 6단계(`lib/growthStage.ts`), 슬롯 해금(`lib/goalSlots.ts`), 스텝업(`lib/goalStepUp.ts`), `/progress`, wins-history |
+| ① 간단한 목표 + 작은 행동 + 성취감 | **거의 완성 (~90%)** | 온보딩 4단계(`app/onboarding/`), 1탭 체크(`components/home/TodayCard.tsx`), 즉시 보상(`CheckinReward.tsx`), 스트릭+회복탄력성(`lib/goalStreak.ts`), 성장 6단계(`lib/growthStage.ts`), 슬롯 해금(`lib/goalSlots.ts`), 스텝업(`lib/goalStepUp.ts`), `/progress`, `/record/history` |
 | ② 스스로에게 동기부여 | **콘텐츠는 풍부, 전달은 반응형뿐 (~60%)** | 데일리 카드(`lib/dailyMotivation.ts`)·미래 자아(`lib/futureSelfPortrait.ts`, `lib/futureVision.ts`)·정체성 장부(`lib/identityEvidence.ts`)·RecommitCard 등 자산은 많으나 **전부 앱을 연 사용자에게만 작동**. 동기가 꺼진(앱을 안 여는) 사용자를 되살리는 경로가 없음 |
 | ③ 코칭 | **초기 단계 (~20%)** | 단발 AI 리라이트(`lib/affirmationCoach.ts`)와 룰베이스 주간 회고(`lib/weeklyReview.ts`)뿐. 개인 데이터를 읽고 해석하는 코치·대화·능동 개입 없음 |
 

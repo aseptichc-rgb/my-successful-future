@@ -108,7 +108,7 @@ export default function TodayCard({
 
         {goal ? (
           /* 목표 줄 자체가 체크 버튼 — 별도 "했어요" 버튼을 누르는 두 번째 결심을 없앤다.
-             체크 배지·취소선은 더 보기의 나머지 목표 행(MoreSection)과 같은 규칙을 쓴다. */
+             체크 배지·취소선은 바로 아래 추가 목표 행(ExtraGoalRows)과 같은 규칙을 쓴다. */
           <button
             type="button"
             onClick={onToggleGoal}

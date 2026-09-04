@@ -30,8 +30,9 @@ export const GOAL_TEXT_MAX = SUCCESS_AFFIRMATION_MAX_LEN - LEGACY_AFFIRMATION_PR
 /**
  * 꾸준함으로 열 수 있는 목표 슬롯 상한.
  * 과거 3으로 잠근 이유는 "넘어가면 홈이 다시 할 일 목록이 된다"였는데, 지금은 구조가
- * 그 우려를 해소한다 — 2번 이후 목표는 전부 MoreSection(기본 접힘) 안에서만 그려지고
- * 홈 첫 화면은 언제나 목표 1개다. 상한을 올려도 첫 화면 복잡도는 변하지 않는다.
+ * 그 우려를 해소한다 — 첫 목표만 오늘 카드의 필수 행동이고, 2번 이후 목표는 그 아래
+ * 원탭 체크 행(components/home/ExtraGoalRows)으로만 그려진다(입력칸 없음). 편집은 내 꿈 탭.
+ * 상한을 올려도 오늘 탭의 필수 행동은 여전히 하나다.
  */
 export const GOAL_SLOT_MAX = 5;
 

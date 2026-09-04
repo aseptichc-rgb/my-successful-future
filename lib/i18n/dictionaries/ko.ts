@@ -316,7 +316,6 @@ const dict = {
   "wins.history.title": "잘한 일 기록",
   "wins.history.subtitle": "매일 적은 한 줄이 모여 꿈에 다가간 증거가 돼요.",
   "wins.history.empty": "아직 적은 기록이 없어요.",
-  "wins.history.back": "← 홈으로",
   "wins.history.loadFailed": "기록을 불러오지 못했어요.",
 
   // ── 다짐 에디터 ──────────────────────────────────
@@ -575,19 +574,11 @@ const dict = {
   "woop.section.footerOne": "한 번에 하나씩 — 하나를 실천하는 게 셋을 적어두는 것보다 강해요.",
 
   // ── 홈 접이식 섹션 ────────────────────────────────
-  "home.section.today": "오늘의 실행",
-  "home.section.record": "오늘의 기록",
   "home.section.expandAria": "펼치기",
   "home.section.collapseAria": "접기",
   "home.wins.addRow": "한 줄 더 적기",
-  "home.record.footer": "적은 내용은 자동으로 저장돼요.",
-  "home.plans.manage": "실행 설계 관리",
-  "home.plans.manageLocked": "목표 관리",
   // 홈에 남는 건 명언·오늘 카드·7일 링뿐 — 나머지는 전부 이 한 섹션 뒤로 접힌다.
-  "home.section.more": "더 보기",
-  "home.more.summary": "내 꿈 · 기록 · 실행 설계",
   // 접힌 요약도 아직 못 여는 기능의 이름을 흘리지 않는다 — 잠긴 게 있으면 이쪽을 쓴다.
-  "home.more.summaryLocked": "내 꿈 · 목표 · 아직 잠긴 것",
 
   // ── 오늘의 목표 실행 체크 (전사 체크인과 같은 카드) ──
   "home.todayGoal.title": "오늘의 목표",

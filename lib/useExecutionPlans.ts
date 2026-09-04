@@ -5,7 +5,8 @@ import type { User as FirebaseUser } from "firebase/auth";
 import { onExecutionPlansSnapshot, type ExecutionPlanWithId } from "@/lib/firebase";
 
 /**
- * WOOP 실행설계 목록 구독 — 홈·설정이 같은 게이트 정책을 공유한다.
+ * WOOP 실행설계 목록 구독 — 탭 레이아웃(lib/today-context)이 한 번 구독해 오늘 탭·내 꿈 탭이
+ * 같은 게이트 정책을 공유한다.
  *
  * plansLoaded 는 "지금 계정의 첫 스냅샷이 도착했는가" — 도착 전 planCount 0 으로
  * 해금(computePlanUnlock)을 오판하지 않기 위한 게이트다. 결과를 uid 와 함께 저장하므로

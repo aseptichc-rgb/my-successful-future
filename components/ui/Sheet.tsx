@@ -1,12 +1,15 @@
 "use client";
 
 import { useLanguage } from "@/lib/i18n";
+import { useSheetHistory } from "@/lib/useSheetHistory";
 
 /* ─────────────────────────────────────────────────────────────
  * Sheet — bottom sheet modal (iOS pattern)
  *   Backdrop dim · rounded top corners · handle · safe area bottom
  *
  * settings 의 로컬 정의를 승격 — WOOP 실행설계 등 다른 화면도 공유(DRY).
+ * 히스토리 엔트리 하나를 차지한다(lib/useSheetHistory) — Android 뒤로가기가 앱을 닫는 대신
+ * 시트를 먼저 닫는다. 취소·배경 탭도 같은 경로로 닫는다.
  * ───────────────────────────────────────────────────────────── */
 export default function Sheet({
   onClose,
@@ -18,11 +21,12 @@ export default function Sheet({
   children: React.ReactNode;
 }) {
   const { t } = useLanguage();
+  const requestClose = useSheetHistory(onClose);
   return (
     <div className="fixed inset-0 z-50 flex flex-col">
       <button
         type="button"
-        onClick={onClose}
+        onClick={requestClose}
         aria-label="close"
         className="flex-1 bg-black/40"
       />
@@ -33,7 +37,7 @@ export default function Sheet({
         <div className="flex items-center justify-between px-4 pb-3">
           <button
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             className="text-[17px] tracking-[-0.43px] text-[var(--soul)]"
           >
             {t("common.cancel")}

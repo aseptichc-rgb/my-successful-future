@@ -320,7 +320,6 @@ const dict: Record<DictKey, string> = {
   "wins.history.subtitle":
     "Every small line, gathered — proof you moved toward the dream.",
   "wins.history.empty": "Nothing written yet.",
-  "wins.history.back": "← Back to home",
   "wins.history.loadFailed": "Failed to load your entries.",
 
   // Affirmations editor
@@ -579,18 +578,10 @@ const dict: Record<DictKey, string> = {
     "One at a time — practicing one beats writing down three.",
 
   // ── Home collapsible sections ─────────────────────
-  "home.section.today": "Today's execution",
-  "home.section.record": "Today's record",
   "home.section.expandAria": "Expand",
   "home.section.collapseAria": "Collapse",
   "home.wins.addRow": "Add another line",
-  "home.record.footer": "Anything you write saves itself.",
-  "home.plans.manage": "Manage execution plans",
-  "home.plans.manageLocked": "Manage goals",
   // Home keeps only the quote, today's card and the 7-day ring — the rest folds in here.
-  "home.section.more": "More",
-  "home.more.summary": "My dream · Notes · Plans",
-  "home.more.summaryLocked": "My dream · Goals · something still locked",
 
   // ── Today's goal check (same card as the transcription check-in) ──
   "home.todayGoal.title": "Today's goal",
