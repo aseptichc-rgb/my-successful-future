@@ -35,6 +35,7 @@ export default function ExtraGoalRows({
         const trimmed = goal.trim();
         const achieved = trimmed.length > 0 && achievedGoals.includes(trimmed);
         const num = String(idx + FIRST_EXTRA_NUMBER).padStart(2, "0");
+        const isLast = idx === extraGoals.length - 1;
         return (
           <div key={`${idx}-${goal}`} className="relative flex items-center gap-3 px-4 min-h-[60px]">
             <button
@@ -76,10 +77,12 @@ export default function ExtraGoalRows({
                 )}
               </div>
             </div>
-            <div
-              className="absolute bottom-0 right-0 h-[0.5px]"
-              style={{ left: 60, background: "var(--sep)" }}
-            />
+            {!isLast && (
+              <div
+                className="absolute bottom-0 right-0 h-[0.5px]"
+                style={{ left: 60, background: "var(--sep)" }}
+              />
+            )}
           </div>
         );
       })}

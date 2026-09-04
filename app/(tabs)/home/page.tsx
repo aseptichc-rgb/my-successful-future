@@ -31,13 +31,11 @@ import { fetchNotificationContent, type NotificationServerContent } from "@/lib/
 import MotivationCard from "@/components/home/MotivationCard";
 import TodayCard from "@/components/home/TodayCard";
 import FutureVisionCard from "@/components/home/FutureVisionCard";
-import MoreSection from "@/components/home/MoreSection";
-import TrialBanner from "@/components/home/TrialBanner";
-import SlotUnlockBanner from "@/components/home/SlotUnlockBanner";
-import StepUpCard from "@/components/home/StepUpCard";
-import RecommitCard from "@/components/home/RecommitCard";
-import DeclarationNudgeCard from "@/components/home/DeclarationNudgeCard";
+import NoticeSlot from "@/components/home/NoticeSlot";
+import ExtraGoalRows from "@/components/home/ExtraGoalRows";
+import DailyPlanCard from "@/components/home/DailyPlanCard";
 import WeekRhythmRing from "@/components/home/WeekRhythmRing";
+import ExecutionPlanSheet from "@/components/woop/ExecutionPlanSheet";
 import type { CheckinSubmitResult } from "@/components/affirmations/AffirmationCheckin";
 import TabHeader from "@/components/nav/TabHeader";
 import SettingsButton from "@/components/nav/SettingsButton";
@@ -45,18 +43,19 @@ import { useLanguage } from "@/lib/i18n";
 import type { DailyMotivation, FutureVision } from "@/types";
 
 /* ─────────────────────────────────────────────────────────────────
- * Anima Home — "오늘 하나 + 더 보기"
+ * Anima 오늘 탭 — "오늘 하나"
  * ─────────────────────────────────────────────────────────────────
- *  홈에 상시 노출되는 블록은 셋뿐이다:
- *    ① 오늘의 한마디(명언) → ② 오늘 카드(다짐 1줄 전사 + 목표 실행 체크) → ③ 7일 리듬 링
- *  나머지(내 꿈 · 꿈이 이뤄진 하루 · 실행 설계 · 기록 · 주간 회고)는 전부
- *  ▸더 보기 한 섹션 뒤로 접었다 — "입력이 많고 복잡하다"는 피드백에 대한 답.
+ *  순서는 고정이다:
+ *    알림 슬롯(최대 1장) → ① 오늘의 한마디(명언) → ② 오늘 카드(다짐 1줄 전사 + 목표 실행 체크)
+ *    → 추가 목표 행 → 오늘의 if-then → ③ 7일 리듬 링
+ *  선택 입력(잘한 일 · 내일 첫 행동 · 주간 회고)은 기록 탭으로, 내 꿈·다짐·목표·실행 설계
+ *  편집은 내 꿈 탭으로 갔다 — 이 화면에 자유 입력칸은 없다(원탭 우선, 타이핑은 항상 선택).
  *
  *  ⚠️ 섹션 순서는 절대 고정이다 — 시간대에 따라 카드를 재배치하면 같은 버튼이
  *  매일 다른 자리에 오고, 습관이 학습하는 위치 단서(context cue)가 깨진다.
  *  homeMode 는 "무엇을 보여줄지"만 정하고 "어디에 둘지"는 절대 정하지 않는다.
  *
- *  · Large Title nav · Grouped Inset Lists · 오렌지 스트릭 칩(→ /progress)
+ *  · Large Title nav · Grouped Inset Lists · 오렌지 스트릭 칩(→ 성장 탭)
  * ────────────────────────────────────────────────────────────────── */
 
 /** Long date for the Large Title subtitle ("2026년 5월 24일 화요일"). */
@@ -128,6 +127,8 @@ export default function HomeDashboardPage() {
   const [weekCheckedYmds, setWeekCheckedYmds] = useState<Set<string> | null>(null);
   // 체크인 직후 보상 — 이번 세션에서 방금 체크인했을 때만 채워진다.
   const [reward, setReward] = useState<CheckinSubmitResult | null>(null);
+  // 오늘의 if-then 카드 CTA 가 여는 실행 설계 시트 — 기본은 빠른 설계(quick, 키보드 0회).
+  const [planSheetOpen, setPlanSheetOpen] = useState(false);
 
   // 오늘의 동기부여/미래 일상 — 키 불일치(= 아직 이 계정·날짜의 스냅샷 없음)가 곧 로딩 상태다.
   const [motivationSnap, setMotivationSnap] = useState<{
@@ -494,8 +495,6 @@ export default function HomeDashboardPage() {
     [ymd, refreshUser],
   );
 
-  const openSettings = useCallback(() => router.push("/settings"), [router]);
-
   const futureText = user?.futurePersona || "";
   const streakCount = user?.affirmationStreak?.count ?? 0;
   const longDate = formatLongDate(ymd, locale);
@@ -508,7 +507,7 @@ export default function HomeDashboardPage() {
   // 오늘 새길 다짐 — 서버 체크인 트랜잭션과 같은 순수 함수를 공유하므로 판정이 어긋나지 않는다.
   const todayFocusIndex = pickTodayAffirmationIndex(uid, ymd, affirmations.length);
 
-  // 오늘 확인할 목표는 첫 칸 하나. 나머지(해금분)는 "더 보기" 안에서 다룬다.
+  // 오늘 확인할 목표는 첫 칸 하나(오늘 카드). 나머지(해금분)는 바로 아래 추가 목표 행에서 다룬다.
   const primaryGoal = (goals[0] ?? "").trim();
 
   // 스텝업 초안 — 첫 목표에 숫자가 있고 목표 달성 스트릭이 이어졌을 때만 나온다.
@@ -554,40 +553,20 @@ export default function HomeDashboardPage() {
       />
 
       <main className="mx-auto w-full max-w-3xl">
-        {/* ── 무료 체험 D-day / 만료 안내 — 결제 가능 환경에서만 업그레이드 CTA 노출 ── */}
-        <TrialBanner />
-
-        {/* ── 스트릭 공백 감지 — 프리즈 안내 칩 / 자기연민 재약속 카드 ── */}
-        <RecommitCard
+        {/* ── 알림 슬롯 — 재약속·슬롯 해금·스텝업·선언 안내·체험 배너 중 우선순위 1장만(lib/homeNotice) ── */}
+        <NoticeSlot
+          ymd={ymd}
           streak={user?.affirmationStreak}
-          todayYmd={ymd}
           alreadyCheckedInToday={alreadyCheckedInToday}
           onCheckinCta={handleCheckinCta}
-        />
-
-        {/* ── 선언이 목표의 파생본인 레거시 계정에만 뜨는 1회성 안내 ── */}
-        <DeclarationNudgeCard
           declaration={affirmations[0] ?? ""}
           goal={primaryGoal}
-          onEdit={() => router.push("/dream?sheet=affirmations")}
-        />
-
-        {/* ── 목표 칸이 열린 그 순간에만 뜨는 1회성 배너 ──
-            결제 프로는 전 칸이 첫날부터 열려 있어 "새 칸이 열렸어요" 축하가 거짓이 된다 — 숨긴다. */}
-        {!proUnlockAll && (
-          <SlotUnlockBanner
-            earned={slots.earned}
-            progress={slots.progress}
-            source={slots.source}
-            onAddGoal={() => router.push("/dream?sheet=goals")}
-            onRefineGoal={() => router.push("/dream?sheet=goals&refine=1")}
-          />
-        )}
-
-        {/* ── 목표 달성이 이어졌을 때 한 번만 뜨는 스텝업 제안 ── */}
-        <StepUpCard
-          draft={stepUpDraft}
-          onApply={() => router.push("/dream?sheet=goals&refine=1")}
+          slots={slots}
+          proUnlockAll={proUnlockAll}
+          stepUpDraft={stepUpDraft}
+          onEditAffirmations={() => router.push("/dream?sheet=affirmations")}
+          onAddGoal={() => router.push("/dream?sheet=goals")}
+          onRefineGoal={() => router.push("/dream?sheet=goals&refine=1")}
         />
 
         {/* ─── ① 오늘의 한마디 (명언 hero) ─── */}
@@ -633,6 +612,37 @@ export default function HomeDashboardPage() {
           />
         </div>
 
+        {/* ─── 추가로 해금한 목표 — 오늘 할 체크는 전부 이 화면에. 배지를 탭해 달성 토글(편집은 내 꿈 탭). ─── */}
+        {goals.length > 1 && (
+          <div className="mx-4 mt-3 overflow-hidden rounded-[12px] bg-[var(--bg-grouped-2)]">
+            <ExtraGoalRows
+              goals={goals}
+              achievedGoals={achievedGoals}
+              onToggle={(g) => void handleToggleGoalAchieved(g)}
+            />
+          </div>
+        )}
+
+        {/* ─── 오늘의 if-then — 아침엔 전체, 그 외엔 한 줄 축약. 잠김/로딩 전엔 통째로 생략.
+            잠긴 동안 남는 건 "어젯밤의 첫 행동" 뿐이다(잠금 예고는 내 꿈 탭의 익명 잠금 행 몫). ─── */}
+        {(() => {
+          if (!planUnlock) return null;
+          const firstAction = homeMode === "morning" ? yesterdayFirstAction : null;
+          if (planUnlock.kind !== "open" && !firstAction) return null;
+          return (
+            <div className="px-4 pt-4">
+              <DailyPlanCard
+                plan={todayPlan}
+                activePlanCount={activePlanCount}
+                yesterdayFirstAction={firstAction}
+                compact={homeMode !== "morning"}
+                unlock={planUnlock}
+                onCreateCta={() => setPlanSheetOpen(true)}
+              />
+            </div>
+          );
+        })()}
+
         {/* ─── ③ 7일 리듬 링 — 무한 카운터 대신 손에 닿는 분모 ───
             다짐이 없으면 체크인할 행동 자체가 없다 — 0/7 링은 의미 없는 잔소리가 되므로 숨긴다. */}
         {affirmations.length > 0 && weekCheckedYmds && (
@@ -644,23 +654,17 @@ export default function HomeDashboardPage() {
             />
           </div>
         )}
+      </main>
 
-        {/* ─── ▸ 더 보기 (기본 접힘) — 나머지 전부 ─── */}
-        <MoreSection
+      {/* 실행 설계 시트 — if-then 카드 CTA 로 이 자리에서 바로 연다(탭 이동 없음). */}
+      {planSheetOpen && (
+        <ExecutionPlanSheet
           uid={uid}
-          homeMode={homeMode}
-          futureText={futureText}
-          todayPlan={todayPlan}
-          activePlanCount={activePlanCount}
-          yesterdayFirstAction={yesterdayFirstAction}
           goals={goals}
           identityLabels={user?.identities?.labels ?? []}
-          unlock={planUnlock}
-          achievedGoals={achievedGoals}
-          onToggleGoalAchieved={(g) => void handleToggleGoalAchieved(g)}
-          onOpenSettings={openSettings}
+          onClose={() => setPlanSheetOpen(false)}
         />
-      </main>
+      )}
     </div>
   );
 }

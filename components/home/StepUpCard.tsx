@@ -17,11 +17,17 @@ import { useT } from "@/lib/i18n";
  * 서버 렌더에서는 항상 숨겨졌다가 하이드레이션 후에만 실제 판정된다.
  * ───────────────────────────────────────────────────────────────── */
 
-const ackStore = createAckStore<string | null>("anima.stepUp.ack", {
+/** "확인한 초안 문자열" — 알림 슬롯(components/home/NoticeSlot)이 자격 판정에 같은 값을 읽는다. */
+export const stepUpAckStore = createAckStore<string | null>("anima.stepUp.ack", {
   parse: (raw) => raw ?? "",
   serialize: (value) => value ?? "",
   serverSnapshot: null,
 });
+
+/** 초안이 있고, SSR 센티널(null)이 아니며, 아직 확인하지 않은 초안일 때만. */
+export function shouldShowStepUp(draft: string | null, ack: string | null): boolean {
+  return Boolean(draft) && ack !== null && ack !== draft;
+}
 
 export default function StepUpCard({
   draft,
@@ -34,14 +40,14 @@ export default function StepUpCard({
 }) {
   const t = useT();
   const ack = useSyncExternalStore(
-    ackStore.subscribe,
-    ackStore.getSnapshot,
-    ackStore.getServerSnapshot,
+    stepUpAckStore.subscribe,
+    stepUpAckStore.getSnapshot,
+    stepUpAckStore.getServerSnapshot,
   );
 
-  if (!draft || ack === null || ack === draft) return null;
+  if (!draft || !shouldShowStepUp(draft, ack)) return null;
 
-  const dismiss = () => ackStore.acknowledge(draft);
+  const dismiss = () => stepUpAckStore.acknowledge(draft);
 
   return (
     <div className="mx-4 mt-4 rounded-[12px] bg-[var(--bg-grouped-2)] px-5 py-4">

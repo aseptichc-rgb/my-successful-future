@@ -1,38 +1,33 @@
 "use client";
 
-import { useState } from "react";
-import { diffKstDays, kstMonth } from "@/lib/kstDate";
-import { FREEZES_PER_MONTH } from "@/lib/constants/streak";
+import { useSyncExternalStore } from "react";
+import { createAckStore } from "@/lib/ackStore";
+import { computeRecommitVariant } from "@/lib/recommit";
 import { useT } from "@/lib/i18n";
 import type { AffirmationStreak } from "@/types";
 
 /* ─────────────────────────────────────────────────────────────────
- * RecommitCard — 스트릭 공백 감지 시 홈 최상단에 뜨는 복귀 카드.
+ * RecommitCard — 스트릭 공백 감지 시 오늘 탭 알림 슬롯에 뜨는 복귀 카드.
  *
- * 두 가지 변형 (클라이언트 gap 판정 — 실제 스트릭 갱신은 서버 트랜잭션에서만):
- *  · freezeSave: 놓친 날 수 <= 남은 프리즈 → "체크인하면 얼음이 이어줘요" 안내 칩.
- *  · recommit : 프리즈로도 못 막는 공백 → 자기연민 재약속 카드
+ * 두 가지 변형 (판정은 lib/recommit 순수 함수 — 알림 슬롯과 같은 결과를 본다):
+ *  · freezeChip: 놓친 날 수 <= 남은 프리즈 → "체크인하면 얼음이 이어줘요" 안내 칩.
+ *  · recommit  : 프리즈로도 못 막는 공백 → 자기연민 재약속 카드
  *    (Breines & Chen 2012 — 자기연민이 자존감 부양보다 개선 동기를 높인다).
- *    X 로 닫으면 localStorage 에 오늘 날짜로 기록해 당일 재노출을 막는다.
+ *    X 로 닫으면 오늘 날짜를 기록해 당일 재노출을 막는다(자정이 지나면 다시 뜬다).
  * ───────────────────────────────────────────────────────────────── */
 
-const DISMISS_KEY_PREFIX = "anima.recommit.";
+/** SSR 스냅샷 — 어떤 날짜와도 같지 않은 "닫힘" 센티널. 서버 렌더에서는 항상 숨긴다. */
+const DISMISSED_SENTINEL = "*";
 
-function readDismissed(ymd: string): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    return window.localStorage.getItem(DISMISS_KEY_PREFIX + ymd) === "1";
-  } catch {
-    return false;
-  }
-}
+/** 재약속 카드를 닫은 날짜(KST YYYY-MM-DD). 하루 1키씩 쌓이던 옛 `anima.recommit.<ymd>` 를 대체한다. */
+export const recommitDismissStore = createAckStore<string>("anima.recommit.dismissedYmd", {
+  parse: (raw) => raw ?? "",
+  serialize: (value) => value,
+  serverSnapshot: DISMISSED_SENTINEL,
+});
 
-function writeDismissed(ymd: string): void {
-  try {
-    window.localStorage.setItem(DISMISS_KEY_PREFIX + ymd, "1");
-  } catch {
-    /* localStorage 불가 환경(사파리 시크릿 등) — 이번 세션만 닫힌 상태 유지 */
-  }
+export function isRecommitDismissed(ack: string, todayYmd: string): boolean {
+  return ack === DISMISSED_SENTINEL || ack === todayYmd;
 }
 
 export default function RecommitCard({
@@ -45,41 +40,27 @@ export default function RecommitCard({
   todayYmd: string;
   /** 오늘 이미 체크인했다면 카드를 띄울 이유가 없다. */
   alreadyCheckedInToday: boolean;
-  /** "지금 체크인하기" CTA — 홈이 체크인 카드로 스크롤/탭 전환을 담당. */
+  /** "지금 체크인하기" CTA — 오늘 탭이 체크인 카드로 스크롤/포커스를 담당. */
   onCheckinCta: () => void;
 }) {
   const t = useT();
-  // 날짜를 함께 저장한다 — 자정 롤오버(ymd 변경) 시 렌더 중 조정으로 새 날짜 기준 재평가.
-  const [dismissal, setDismissal] = useState(() => ({
-    ymd: todayYmd,
-    dismissed: readDismissed(todayYmd),
-  }));
-  if (dismissal.ymd !== todayYmd) {
-    setDismissal({ ymd: todayYmd, dismissed: readDismissed(todayYmd) });
-  }
-  const dismissed = dismissal.dismissed;
+  const ack = useSyncExternalStore(
+    recommitDismissStore.subscribe,
+    recommitDismissStore.getSnapshot,
+    recommitDismissStore.getServerSnapshot,
+  );
 
-  const count = streak?.count ?? 0;
-  const lastYmd = streak?.lastYmd ?? "";
-  if (count <= 0 || !lastYmd || alreadyCheckedInToday) return null;
-
-  const gap = diffKstDays(lastYmd, todayYmd);
-  if (!Number.isFinite(gap) || gap < 2) return null; // 어제 체크인(gap=1)까지는 정상 흐름
-
-  const missed = gap - 1;
-  const freezesLeft =
-    streak?.freezeMonth === kstMonth(todayYmd)
-      ? Math.max(0, streak?.freezesLeft ?? FREEZES_PER_MONTH)
-      : FREEZES_PER_MONTH;
+  const variant = computeRecommitVariant({ streak, todayYmd, alreadyCheckedInToday });
+  if (variant.kind === "none") return null;
 
   // ── 변형 1: 프리즈로 이어지는 공백 — 가벼운 안내 칩 ──
-  if (missed <= freezesLeft) {
+  if (variant.kind === "freezeChip") {
     return (
       <div className="mx-4 mt-4 flex items-center gap-2.5 rounded-[12px] px-4 py-3"
         style={{ background: "rgba(0,122,255,0.08)" }}>
         <span aria-hidden className="text-[15px]">🧊</span>
         <p className="flex-1 text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label)]">
-          {t("recommit.freezeChip", { count: missed })}
+          {t("recommit.freezeChip", { count: variant.missed })}
         </p>
         <button
           type="button"
@@ -93,8 +74,7 @@ export default function RecommitCard({
   }
 
   // ── 변형 2: 끊긴 공백 — 자기연민 재약속 카드 (당일 dismiss 가능) ──
-  if (dismissed) return null;
-  const best = Math.max(streak?.bestCount ?? count, count);
+  if (isRecommitDismissed(ack, todayYmd)) return null;
 
   return (
     <div
@@ -108,10 +88,7 @@ export default function RecommitCard({
         <button
           type="button"
           aria-label={t("recommit.dismissAria")}
-          onClick={() => {
-            writeDismissed(todayYmd);
-            setDismissal({ ymd: todayYmd, dismissed: true });
-          }}
+          onClick={() => recommitDismissStore.acknowledge(todayYmd)}
           className="w-7 h-7 -mr-1 flex items-center justify-center text-[var(--label-3)] hover:opacity-70 transition-opacity"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
@@ -120,7 +97,7 @@ export default function RecommitCard({
         </button>
       </div>
       <p className="mt-1 text-[15px] leading-[21px] tracking-[-0.24px] text-[var(--label-2)]">
-        {t("recommit.body", { prev: count, best })}
+        {t("recommit.body", { prev: variant.prev, best: variant.best })}
       </p>
       <button
         type="button"

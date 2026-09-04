@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useSyncExternalStore } from "react";
+import { createAckStore } from "@/lib/ackStore";
 import { isDerivedDeclaration } from "@/lib/declarationNudge";
 import { useT } from "@/lib/i18n";
 
@@ -11,23 +12,20 @@ import { useT } from "@/lib/i18n";
  * 사실상 같은 문장을 두 번 보게 되므로("나는 매일 30분 책을 읽는다" / "매일 30분 책을
  * 읽는다") 버그처럼 읽힌다. 한 번 안내하고, 닫으면 다시 뜨지 않는다.
  *
- * RecommitCard 의 localStorage dismiss 패턴을 따르되 **날짜별이 아니라 영구 키**를 쓴다
- * — 매일 같은 안내를 다시 띄우면 그게 곧 잔소리다.
- *
+ * 닫힘은 **날짜별이 아니라 영구 키**다 — 매일 같은 안내를 다시 띄우면 그게 곧 잔소리다.
+ * 저장소는 lib/ackStore(다른 1회성 카드와 같은 규칙) — 알림 슬롯이 자격 판정에 같은 값을 읽는다.
  * 판정은 lib/declarationNudge 순수 함수가 담당한다. 이 컴포넌트는 표시와 닫기만 한다.
  * ───────────────────────────────────────────────────────────────── */
 
-const DISMISS_KEY = "anima.declarationNudge.dismissed";
-
-function readDismissed(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    return window.localStorage.getItem(DISMISS_KEY) === "1";
-  } catch {
-    /* localStorage 불가 환경(사파리 시크릿 등) — 이번 세션만 열린 상태로 둔다 */
-    return false;
-  }
-}
+/** 영구 닫힘 — 키·값 형식은 예전 구현("1")과 같아 이미 닫은 계정은 그대로 닫혀 있다. */
+export const declarationNudgeDismissStore = createAckStore<boolean>(
+  "anima.declarationNudge.dismissed",
+  {
+    parse: (raw) => raw === "1",
+    serialize: (value) => (value ? "1" : "0"),
+    serverSnapshot: true,
+  },
+);
 
 export default function DeclarationNudgeCard({
   declaration,
@@ -38,22 +36,15 @@ export default function DeclarationNudgeCard({
   declaration: string;
   /** 오늘의 목표 1줄 (goals[0]). */
   goal: string;
-  /** "설정에서 바꾸기" — 홈이 다짐 시트 딥링크로 보낸다. */
+  /** "선언 바꾸기" — 오늘 탭이 내 꿈 탭의 다짐 시트 딥링크로 보낸다. */
   onEdit: () => void;
 }) {
   const t = useT();
-  /* 초기값을 지연 평가로 읽는다 — RecommitCard 와 같은 패턴.
-     홈은 인증 전에 스피너만 렌더하므로 이 카드가 SSR 에 실릴 일이 없어 하이드레이션도 안전하다. */
-  const [dismissed, setDismissed] = useState<boolean>(() => readDismissed());
-
-  const handleDismiss = () => {
-    setDismissed(true);
-    try {
-      window.localStorage.setItem(DISMISS_KEY, "1");
-    } catch {
-      /* 저장 실패 — 이번 세션에서는 닫힌 상태가 유지된다 */
-    }
-  };
+  const dismissed = useSyncExternalStore(
+    declarationNudgeDismissStore.subscribe,
+    declarationNudgeDismissStore.getSnapshot,
+    declarationNudgeDismissStore.getServerSnapshot,
+  );
 
   if (dismissed) return null;
   if (!isDerivedDeclaration(declaration, goal)) return null;
@@ -77,7 +68,7 @@ export default function DeclarationNudgeCard({
         </button>
         <button
           type="button"
-          onClick={handleDismiss}
+          onClick={() => declarationNudgeDismissStore.acknowledge(true)}
           className="text-[15px] font-medium text-[var(--label-2)] hover:opacity-70 transition-opacity"
         >
           {t("declarationNudge.dismiss")}

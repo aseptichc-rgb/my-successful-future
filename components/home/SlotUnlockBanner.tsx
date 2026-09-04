@@ -23,7 +23,8 @@ import { useT } from "@/lib/i18n";
  * 숨겨졌다가, 하이드레이션 후에만 실제 값으로 판정된다(깜빡임/경고 회피).
  * ───────────────────────────────────────────────────────────────── */
 
-const ackStore = createAckStore<number>("anima.goalSlot.ack", {
+/** "확인한 최고 earned 값" — 알림 슬롯(components/home/NoticeSlot)이 자격 판정에 같은 값을 읽는다. */
+export const slotUnlockAckStore = createAckStore<number>("anima.goalSlot.ack", {
   parse: (raw) => {
     const n = raw === null ? 0 : Number(raw);
     return Number.isFinite(n) && n > 0 ? n : 0;
@@ -31,6 +32,11 @@ const ackStore = createAckStore<number>("anima.goalSlot.ack", {
   serialize: String,
   serverSnapshot: GOAL_SLOT_MAX,
 });
+
+/** 첫 칸(earned=1)은 해금이 아니라 기본값이므로 축하할 것이 없다 — 이미 확인한 값 이하도 마찬가지. */
+export function shouldShowSlotUnlock(earned: number, ack: number): boolean {
+  return earned > 1 && earned > ack;
+}
 
 export default function SlotUnlockBanner({
   earned,
@@ -50,15 +56,14 @@ export default function SlotUnlockBanner({
 }) {
   const t = useT();
   const ack = useSyncExternalStore(
-    ackStore.subscribe,
-    ackStore.getSnapshot,
-    ackStore.getServerSnapshot,
+    slotUnlockAckStore.subscribe,
+    slotUnlockAckStore.getSnapshot,
+    slotUnlockAckStore.getServerSnapshot,
   );
 
-  // 첫 칸(earned=1)은 해금이 아니라 기본값이므로 축하할 것이 없다.
-  if (earned <= 1 || earned <= ack) return null;
+  if (!shouldShowSlotUnlock(earned, ack)) return null;
 
-  const dismiss = () => ackStore.acknowledge(earned);
+  const dismiss = () => slotUnlockAckStore.acknowledge(earned);
 
   return (
     <div className="mx-4 mt-4 rounded-[12px] bg-[var(--bg-grouped-2)] px-5 py-4">
