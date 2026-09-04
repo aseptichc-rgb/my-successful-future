@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
   getAffirmationLogYmds,
@@ -15,6 +14,8 @@ import { FREEZES_PER_MONTH } from "@/lib/constants/streak";
 import { growthStageOf } from "@/lib/growthStage";
 import GroupedSection from "@/components/ui/GroupedSection";
 import ProgressBar from "@/components/ui/ProgressBar";
+import TabHeader from "@/components/nav/TabHeader";
+import SettingsButton from "@/components/nav/SettingsButton";
 import { useLanguage, type DictKey } from "@/lib/i18n";
 import type { IdentityProgress } from "@/types";
 
@@ -69,18 +70,13 @@ const IconBolt = ({ size = 14, color = SOUL }: { size?: number; color?: string }
 );
 
 export default function ProgressPage() {
-  const router = useRouter();
-  const { user, firebaseUser, loading: authLoading } = useAuth();
+  // 인증 게이트는 (tabs)/layout 이 담당 — 여기 도달했으면 로그인·온보딩이 끝난 상태다.
+  const { user, firebaseUser } = useAuth();
   const { t, locale } = useLanguage();
 
   const [identityRows, setIdentityRows] = useState<IdentityProgress[]>([]);
 
   const today = getKstYmd();
-
-  useEffect(() => {
-    if (authLoading) return;
-    if (!firebaseUser) router.replace("/login");
-  }, [authLoading, firebaseUser, router]);
 
   // 히트맵 + 증거 피드 — 두 조회를 한 번에. today 가 바뀌면(자정 롤오버) 다시 조회한다.
   const loadProgress = useCallback(
@@ -122,14 +118,6 @@ export default function ProgressPage() {
     );
   }, [today]);
 
-  if (authLoading || !firebaseUser) {
-    return (
-      <div className="flex h-full items-center justify-center bg-[var(--bg-grouped)]">
-        <div className="h-6 w-6 animate-spin rounded-full border-[1.5px] border-black/10 border-t-[#D85A30]" />
-      </div>
-    );
-  }
-
   const streak = user?.affirmationStreak;
   const count = streak?.count ?? 0;
   // 레거시 문서(bestCount 없음)는 현재 count 를 최고기록으로 간주 — 서버 백필과 동일 폴백.
@@ -161,25 +149,8 @@ export default function ProgressPage() {
   const sourceLabel = (source: SourceKey): string => t(SOURCE_LABEL_KEY[source]);
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto bg-[var(--bg-grouped)] pb-12">
-      <header className="pb-2 pt-[calc(env(safe-area-inset-top)+12px)] bg-[var(--bg-grouped)]">
-        <div className="mx-auto max-w-3xl px-2 min-h-[44px] flex items-center">
-          <button
-            type="button"
-            onClick={() => router.push("/home")}
-            aria-label={t("home.title")}
-            className="inline-flex items-center gap-1 text-[var(--soul)] text-[17px] tracking-[-0.43px] px-1 py-2"
-          >
-            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-              <path d="M14 4l-7 7 7 7" stroke="#D85A30" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span>{t("home.title")}</span>
-          </button>
-        </div>
-        <div className="mx-auto max-w-3xl px-5">
-          <h1 className="text-large-title font-display">{t("progress.title")}</h1>
-        </div>
-      </header>
+    <div className="flex h-full flex-col overflow-y-auto bg-[var(--bg-grouped)] pb-tabbar">
+      <TabHeader title={t("progress.title")} trailing={<SettingsButton />} />
 
       <main className="mx-auto w-full max-w-3xl">
         {error && (

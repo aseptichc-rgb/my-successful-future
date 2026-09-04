@@ -666,6 +666,19 @@ const dict: Record<DictKey, string> = {
     "Antes creábamos tu línea diaria desde tu meta. Reescribirla como “ya lo soy” cambia cómo te llega cada mañana.",
   "declarationNudge.cta": "Reescribir mi línea",
   "declarationNudge.dismiss": "No, gracias",
+
+  // Pestañas inferiores · pestaña Diario · pestaña Mi sueño
+  "nav.today": "Hoy",
+  "nav.record": "Diario",
+  "nav.progress": "Crecimiento",
+  "nav.dream": "Mi sueño",
+  "nav.aria": "Navegación principal",
+  "record.title": "Diario de hoy",
+  "record.subtitle": "Todo opcional · solo queda lo que escribas",
+  "dream.title": "Mi sueño",
+  "dream.subtitle": "Frases para releer cada día · edítalas solo cuando quieras",
+  "dream.affirmations.empty": "Aún no has escrito ninguna frase.",
+  "dream.affirmations.addCta": "Escribir una frase",
 };
 
 export default dict;

@@ -658,6 +658,19 @@ const dict: Record<DictKey, string> = {
     "We used to build your daily line from your goal. Rewriting it as “I already am” changes how it lands each morning.",
   "declarationNudge.cta": "Rewrite my line",
   "declarationNudge.dismiss": "No thanks",
+
+  // Bottom tabs · Journal tab · My Dream tab
+  "nav.today": "Today",
+  "nav.record": "Journal",
+  "nav.progress": "Growth",
+  "nav.dream": "My Dream",
+  "nav.aria": "Main navigation",
+  "record.title": "Today's Journal",
+  "record.subtitle": "All optional · only what you write stays",
+  "dream.title": "My Dream",
+  "dream.subtitle": "Lines to reread every day · edit only when you want to",
+  "dream.affirmations.empty": "No lines written yet.",
+  "dream.affirmations.addCta": "Write a line",
 };
 
 export default dict;

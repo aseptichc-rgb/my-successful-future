@@ -402,6 +402,16 @@ h4, h5, h6 {
   .safe-pt { padding-top: env(safe-area-inset-top); }
 }
 
+/* 하단 탭 바 높이(safe-area 제외) — components/nav/TabBar 와 pb-tabbar 가 같은 값을 쓴다. */
+:root {
+  --tab-bar-h: 56px;
+}
+
+/* 탭이 있는 화면의 스크롤 하단 여백 — 마지막 카드가 고정 탭 바 위로 완전히 올라오게. */
+@utility pb-tabbar {
+  padding-bottom: calc(var(--tab-bar-h) + 24px + env(safe-area-inset-bottom, 0px));
+}
+
 @utility hide-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;

@@ -656,6 +656,19 @@ const dict = {
     "예전에는 목표에서 선언을 자동으로 만들었어요. 선언은 “이미 그렇게 된 나”로 바꾸면 매일 새기는 맛이 달라져요.",
   "declarationNudge.cta": "선언 바꾸기",
   "declarationNudge.dismiss": "괜찮아요",
+
+  // ── 하단 탭 · 기록 탭 · 내 꿈 탭 ─────────────────────
+  "nav.today": "오늘",
+  "nav.record": "기록",
+  "nav.progress": "성장",
+  "nav.dream": "내 꿈",
+  "nav.aria": "주요 화면",
+  "record.title": "오늘의 기록",
+  "record.subtitle": "전부 선택 입력 · 적은 만큼만 남아요",
+  "dream.title": "내 꿈",
+  "dream.subtitle": "매일 다시 읽을 문장들 · 고치고 싶을 때만 고쳐요",
+  "dream.affirmations.empty": "아직 적어둔 다짐이 없어요.",
+  "dream.affirmations.addCta": "다짐 적기",
 } as const;
 
 export type DictKey = keyof typeof dict;

@@ -636,6 +636,19 @@ const dict: Record<DictKey, string> = {
     "以前我们会用目标自动生成每天要写的那一句。把它改写成「我已经是」,每天早上的感觉会不一样。",
   "declarationNudge.cta": "改写这一句",
   "declarationNudge.dismiss": "不用了",
+
+  // 底部标签 · 记录页 · 我的梦想页
+  "nav.today": "今天",
+  "nav.record": "记录",
+  "nav.progress": "成长",
+  "nav.dream": "我的梦想",
+  "nav.aria": "主导航",
+  "record.title": "今天的记录",
+  "record.subtitle": "全部选填 · 写多少留多少",
+  "dream.title": "我的梦想",
+  "dream.subtitle": "每天重读的句子 · 想改时再改",
+  "dream.affirmations.empty": "还没有写下誓言。",
+  "dream.affirmations.addCta": "写下誓言",
 };
 
 export default dict;

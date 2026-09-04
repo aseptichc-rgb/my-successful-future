@@ -19,5 +19,13 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/login", "/signup", "/home/:path*"],
+  // 탭 4개(app/(tabs)) 전부 — 실제 보호는 클라이언트 (tabs)/layout 이 하고, 여기서는 표면만 문서화.
+  matcher: [
+    "/login",
+    "/signup",
+    "/home/:path*",
+    "/record/:path*",
+    "/progress/:path*",
+    "/dream/:path*",
+  ],
 };

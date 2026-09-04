@@ -13,11 +13,10 @@ import {
   getKstYmd,
 } from "@/lib/firebase";
 import { docKey } from "@/lib/docKey";
-import { TodayDataProvider, useTodayData } from "@/lib/today-context";
+import { useTodayData } from "@/lib/today-context";
 import { addKstDays, kstWeekday } from "@/lib/kstDate";
 import { currentHomeMode, WEEKLY_REVIEW_WEEKDAY } from "@/lib/homeMode";
 import { pickTodayPlan, pickTodayAffirmationIndex } from "@/lib/planRotation";
-import { growthStageOf } from "@/lib/growthStage";
 import { suggestStepUp } from "@/lib/goalStepUp";
 import {
   buildWeeklyReview,
@@ -47,8 +46,8 @@ import RecommitCard from "@/components/home/RecommitCard";
 import DeclarationNudgeCard from "@/components/home/DeclarationNudgeCard";
 import WeekRhythmRing from "@/components/home/WeekRhythmRing";
 import type { CheckinSubmitResult } from "@/components/affirmations/AffirmationCheckin";
-import Logo from "@/components/ui/Logo";
-import BootSplash from "@/components/ui/BootSplash";
+import TabHeader from "@/components/nav/TabHeader";
+import SettingsButton from "@/components/nav/SettingsButton";
 import { useLanguage } from "@/lib/i18n";
 import type { DailyMotivation, FutureVision } from "@/types";
 
@@ -82,9 +81,7 @@ function formatLongDate(ymd: string, locale: string): string {
   }
 }
 
-/* ─────────────── icons ─────────────── */
-
-/** 헤더 우상단 칩 — 성장 단계·스트릭이 같은 탭 타깃/여백/hover 규칙을 공유한다. */
+/** 헤더 우상단 스트릭 칩 — 탭하면 성장 탭. */
 function HeaderChip({
   bg,
   ariaLabel,
@@ -109,16 +106,9 @@ function HeaderChip({
   );
 }
 
-const IconGear = ({ size = 24 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <circle cx="12" cy="12" r="3" />
-    <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06A2 2 0 1 1 4.13 16.92l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.65 8.83a1.7 1.7 0 0 0-.34-1.87l-.06-.06A2 2 0 1 1 7.08 4.07l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1.04-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06A2 2 0 1 1 19.93 7.08l-.06.06a1.7 1.7 0 0 0-.34 1.87V9c.27.66.93 1.1 1.65 1.1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z" />
-  </svg>
-);
-
-function HomeDashboardPage() {
+export default function HomeDashboardPage() {
   const router = useRouter();
-  const { user, firebaseUser, loading, refreshUser } = useAuth();
+  const { user, firebaseUser, refreshUser } = useAuth();
   const { t, locale } = useLanguage();
 
   // 미래의 나·목표는 홈에서 읽기 전용 — 수정은 /settings 에서. 항상 user 의 최신 값을 반영하도록
@@ -168,15 +158,6 @@ function HomeDashboardPage() {
   // 시간대 모드는 "무엇을 보여줄지"만 정한다 — 섹션 순서는 절대 바뀌지 않는다.
   // (렌더마다 재계산해 화면을 열어둔 채 시간 경계를 넘겨도 다음 렌더에 반영된다.)
   const homeMode = currentHomeMode();
-
-  useEffect(() => {
-    if (loading) return;
-    if (!firebaseUser) {
-      router.push("/login");
-      return;
-    }
-    if (user && !user.onboardedAt) router.replace("/onboarding");
-  }, [firebaseUser, loading, router, user]);
 
   // 알림에 실을 실제 콘텐츠(오늘의 명언 · 미완 과업 넛지)를 서버에서 한 번만 받아 둔다.
   // iOS 는 예약 시점에 문구가 확정돼 있어야 해서 필요하고, Android 는 Worker 가 발송 직전에
@@ -558,12 +539,6 @@ function HomeDashboardPage() {
 
   const openSettings = useCallback(() => router.push("/settings"), [router]);
 
-  // 앱(TWA) 콜드 스타트가 가장 오래 머무는 화면 — 스피너만 돌리지 않고
-  // 제품의 한 문장을 크게 보여준다 (components/ui/BootSplash).
-  if (loading || !firebaseUser) {
-    return <BootSplash />;
-  }
-
   const futureText = user?.futurePersona || "";
   const streakCount = user?.affirmationStreak?.count ?? 0;
   const longDate = formatLongDate(ymd, locale);
@@ -578,9 +553,6 @@ function HomeDashboardPage() {
 
   // 오늘 확인할 목표는 첫 칸 하나. 나머지(해금분)는 "더 보기" 안에서 다룬다.
   const primaryGoal = (goals[0] ?? "").trim();
-
-  // 성장 단계 칩 — 증거 표가 1표라도 쌓인 뒤에만 그린다(레거시/빈 계정은 조용히 생략).
-  const growthStage = growthStageOf(user?.growth?.votes);
 
   // 스텝업 초안 — 첫 목표에 숫자가 있고 목표 달성 스트릭이 이어졌을 때만 나온다.
   const stepUpDraft = suggestStepUp(primaryGoal, user?.goalStreak?.count ?? 0);
@@ -599,36 +571,18 @@ function HomeDashboardPage() {
   /* ───── render ───── */
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto bg-[var(--bg-grouped)] pb-12">
-      {/* ── Large Title bar — Apple iOS native pattern ── */}
-      <header className="bg-[var(--bg-grouped)] pb-2 pt-[calc(env(safe-area-inset-top)+12px)]">
-        {/* 상단 브랜드 로고 — 앱 진입 직후 가장 먼저 보이는 brand identity. */}
-        <div className="mx-auto flex max-w-3xl items-center justify-center px-5 pt-1 pb-2">
-          <Logo variant="lockup" tone="light" size={22} alt="Anima" priority />
-        </div>
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-2 min-h-[44px]">
-          <div className="w-[44px]" />
-          <div className="flex items-center gap-2">
-            {/* 성장 단계 칩 — 누적 증거 표의 현재 단계. 탭하면 /progress (입력 요구 0). */}
-            {growthStage && (
-              <HeaderChip
-                bg="rgba(30,27,75,0.08)"
-                ariaLabel={t("growth.title")}
-                onClick={() => router.push("/progress")}
-              >
-                <span className="text-[12px] leading-none" aria-hidden>
-                  {growthStage.emoji}
-                </span>
-                <span className="text-[12px] font-semibold tracking-[0.4px] text-[#1E1B4B] tabular-nums">
-                  {t(growthStage.labelKey)} · {growthStage.votes}
-                </span>
-              </HeaderChip>
-            )}
-            {/* 스트릭 칩 — 탭하면 /progress (히트맵·최고기록·정체성 장부) 로 이동 */}
+    <div className="flex h-full flex-col overflow-y-auto bg-[var(--bg-grouped)] pb-tabbar">
+      <TabHeader
+        showLogo
+        title={t("home.title")}
+        subtitle={longDate}
+        trailing={
+          <>
+            {/* 스트릭 칩 — 탭하면 성장 탭(히트맵·최고기록·정체성 장부). 탭 전환이라 replace. */}
             <HeaderChip
               bg="rgba(255,149,0,0.16)"
               ariaLabel={t("progress.chipAria")}
-              onClick={() => router.push("/progress")}
+              onClick={() => router.replace("/progress")}
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="#D85A30" aria-hidden>
                 <path d="M13 2L4.5 13.5h6L9 22l8.5-11.5h-6L13 2z" />
@@ -637,21 +591,10 @@ function HomeDashboardPage() {
                 {streakCount}
               </span>
             </HeaderChip>
-            <button
-              type="button"
-              onClick={openSettings}
-              aria-label={t("home.settingsAria")}
-              className="w-11 h-11 flex items-center justify-center text-[var(--soul)] hover:opacity-70 transition-opacity"
-            >
-              <IconGear />
-            </button>
-          </div>
-        </div>
-        <div className="mx-auto max-w-3xl px-5">
-          <h1 className="text-large-title font-display">{t("home.title")}</h1>
-          <p className="text-subhead mt-0.5 text-[var(--label-2)]">{longDate}</p>
-        </div>
-      </header>
+            <SettingsButton />
+          </>
+        }
+      />
 
       <main className="mx-auto w-full max-w-3xl">
         {/* ── 무료 체험 D-day / 만료 안내 — 결제 가능 환경에서만 업그레이드 CTA 노출 ── */}
@@ -768,13 +711,5 @@ function HomeDashboardPage() {
         />
       </main>
     </div>
-  );
-}
-
-export default function HomePage() {
-  return (
-    <TodayDataProvider>
-      <HomeDashboardPage />
-    </TodayDataProvider>
   );
 }
