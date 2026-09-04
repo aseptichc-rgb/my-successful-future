@@ -419,7 +419,7 @@ const dict: Record<DictKey, string> = {
   "woop.step.obstacle": "内心的障碍",
   "woop.step.plan": "if-then 计划",
   "woop.wish.hint": "这个计划是为哪个目标？",
-  "woop.wish.empty": "请先在设置中添加本月目标。",
+  "woop.wish.empty": "请先在设置中添加今日行动。",
   "woop.outcome.hint": "实现这个目标时，最美好的瞬间是什么样子？",
   "woop.outcome.placeholder": "例：想象做到的自己，心跳加速",
   "woop.obstacle.hint": "挡住你的'内心'障碍是什么？从心里找，而不是外部环境。",

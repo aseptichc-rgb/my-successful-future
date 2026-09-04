@@ -101,7 +101,7 @@ struct WidgetToday: Codable {
 
     var streak: Int { max(0, streakCount ?? 0) }
 
-    /// "이번 달 목표" 한 줄 카운트용 — 옛 응답엔 없어 0 폴백(total 0 이면 섹션 생략).
+    /// "오늘의 행동"(user.goals) 한 줄 카운트용 — 옛 응답엔 없어 0 폴백(total 0 이면 섹션 생략).
     var goalsTotal: Int { max(0, goalsTotalCount ?? 0) }
     var goalsAchieved: Int { min(max(0, goalsAchievedCount ?? 0), goalsTotal) }
 }

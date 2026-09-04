@@ -435,7 +435,7 @@ const dict: Record<DictKey, string> = {
   "woop.step.obstacle": "Inner obstacle",
   "woop.step.plan": "If-then plan",
   "woop.wish.hint": "Which goal is this plan for?",
-  "woop.wish.empty": "Add a monthly goal in Settings first.",
+  "woop.wish.empty": "Add today’s action in Settings first.",
   "woop.outcome.hint": "What does the best moment look like when you achieve this goal?",
   "woop.outcome.placeholder": "e.g. Picturing myself having done it makes my heart race",
   "woop.obstacle.hint": "What INNER obstacle blocks the way? Look inside your mind, not at circumstances.",

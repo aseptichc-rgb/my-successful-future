@@ -53,7 +53,7 @@ const MAX_WIDGET_AFFIRMATIONS = 10;
 // "그 꿈을 사는 하루" 위젯 티저로 실을 첫 장면 발췌 길이. 위젯 폭에서 2줄 안에 들어오도록.
 const WIDGET_VISION_TEASER_MAX = 100;
 
-/** 위젯 "오늘의 행동 / 이번 달 목표" 줄에 실을 진척 카운트 + 목표 본문 묶음. */
+/** 위젯 "다짐·행동·기록 3가지 / 오늘의 행동" 줄에 실을 진척 카운트 + 목표 본문 묶음. */
 interface TodayProgressResult {
   progress: WidgetTodayProgress;
   goalsAchievedCount: number;

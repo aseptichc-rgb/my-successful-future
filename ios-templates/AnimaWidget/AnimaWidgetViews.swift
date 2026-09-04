@@ -126,7 +126,7 @@ private struct ProgressRow: View {
 }
 
 /// "label  n / N" 한 줄 카운트 칩. 전부 완료면 카운트를 강조색으로.
-/// "오늘의 행동 / 이번 달 목표"를 목록 대신 카운트로 줄여 보여줄 때 쓴다(공간 절약).
+/// "다짐·행동·기록 3가지 / 오늘의 행동"을 목록 대신 카운트로 줄여 보여줄 때 쓴다(공간 절약).
 private struct CountChip: View {
     let label: String
     let done: Int
@@ -337,12 +337,15 @@ private struct LargeHomeView: View {
 
                     Spacer(minLength: 0)
                     Divider().background(WidgetTheme.ink.opacity(0.08))
-                    // 오늘의 행동 / 이번 달 목표 — 목록 대신 "n / N" 카운트 한 줄로 축약(공간 절약).
+                    // 3가지 이행 / 오늘의 행동 — 목록 대신 "n / N" 카운트 한 줄로 축약(공간 절약).
+                    // ⚠️ 라벨 주의: user.goals 가 앱이 말하는 "오늘의 행동"(ko.ts home.goals.title)이다.
+                    //    과거엔 이 이름이 3가지 이행 요약에 붙어 있어, 앱에서 행동을 체크해도
+                    //    "오늘의 행동 n/3" 이 1/3 까지만 올라가 "완료했는데 왜" 로 읽혔다.
                     HStack {
-                        CountChip(label: "오늘의 행동", done: p.doneCount, total: WidgetProgress.total)
+                        CountChip(label: "다짐·행동·기록", done: p.doneCount, total: WidgetProgress.total)
                         Spacer()
                         if goalsTotal > 0 {
-                            CountChip(label: "이번 달 목표", done: goalsAchieved, total: goalsTotal)
+                            CountChip(label: "오늘의 행동", done: goalsAchieved, total: goalsTotal)
                         }
                     }
                 }

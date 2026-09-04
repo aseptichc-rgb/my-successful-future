@@ -159,7 +159,7 @@ data class WidgetTodayResponse(
      */
     val futureVision: WidgetFutureVision? = null,
     /**
-     * "이번 달 목표" 진척을 위젯 한 줄 카운트("n / N")로 줄여 보여주기 위한 값.
+     * "오늘의 행동"(user.goals) 진척을 위젯 한 줄 카운트("n / N")로 줄여 보여주기 위한 값.
      * 옛 캐시/옛 서버 응답엔 없을 수 있어 0 기본값(섹션 측에서 total 0 이면 생략).
      */
     val goalsAchievedCount: Int = 0,

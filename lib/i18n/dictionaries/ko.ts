@@ -430,7 +430,7 @@ const dict = {
   "woop.step.obstacle": "내 안의 장애물",
   "woop.step.plan": "if-then 계획",
   "woop.wish.hint": "어떤 목표를 위한 설계인가요?",
-  "woop.wish.empty": "먼저 설정에서 이번 달 목표를 추가해주세요.",
+  "woop.wish.empty": "먼저 설정에서 오늘의 행동을 추가해주세요.",
   "woop.outcome.hint": "이 목표를 이뤘을 때 가장 좋은 순간은 어떤 모습인가요?",
   "woop.outcome.placeholder": "예: 해낸 나를 떠올리면 가슴이 뛴다",
   "woop.obstacle.hint": "그 길을 막는 '내 안의' 장애물은 무엇인가요? 환경이 아니라 내 마음속에서 찾아보세요.",

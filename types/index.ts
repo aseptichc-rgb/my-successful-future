@@ -627,7 +627,7 @@ export interface WidgetTodayResponse {
    */
   futureVision?: WidgetFutureVision;
   /**
-   * "이번 달 목표" 진척을 위젯에서 한 줄 카운트로 줄여 보여주기 위한 값.
+   * "오늘의 행동"(user.goals — 앱 ko.ts home.goals.title) 진척을 한 줄 카운트로 줄인 값.
    * goalsAchievedCount: 오늘 `achievedGoals` 에 포함돼 달성 처리된 목표 수.
    * goalsTotalCount: 사용자가 설정한 전체 목표 수.
    * 응답 호환성: 누락 시 위젯이 goalsSnapshot 길이로 폴백하거나 섹션을 생략.

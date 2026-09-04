@@ -100,7 +100,7 @@ class QuoteWidget : GlanceAppWidget() {
         val affirmations = response?.affirmations ?: emptyList()
         // "그 꿈을 사는 하루" 비전 티저 — 옛 캐시/미생성이면 null 로 폴백돼 섹션이 자연 생략된다.
         val futureVision = response?.futureVision
-        // "이번 달 목표" 한 줄 카운트용 — 옛 캐시엔 없어 0 폴백(total 0 이면 섹션 생략).
+        // "오늘의 행동"(user.goals) 한 줄 카운트용 — 옛 캐시엔 없어 0 폴백(total 0 이면 섹션 생략).
         val goalsAchieved = response?.goalsAchievedCount ?: 0
         val goalsTotal = response?.goalsTotalCount ?: 0
         // 목표 본문 — 옛 캐시엔 없어 빈 리스트로 폴백되고, 그때 위젯은 카운트 한 줄만 그린다.

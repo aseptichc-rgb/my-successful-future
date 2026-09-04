@@ -10,6 +10,7 @@ import {
 import { notifyAndroidWidgetRefresh } from "@/lib/widgetBridge";
 import { refreshIosWidget } from "@/lib/iosWidget";
 import { useT } from "@/lib/i18n";
+import { shouldSaveWins, winsSnapshotKey } from "@/lib/winsDraft";
 import type { HomeMode } from "@/lib/homeMode";
 import type { PlanUnlockState } from "@/lib/planUnlock";
 import type { WinsUnlockState } from "@/lib/winsUnlock";
@@ -131,6 +132,8 @@ export default function MoreSection({
   const tomorrowToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** 저장을 이미 건 값 — Enter → blur 로 flush 가 두 번 불려도 같은 값을 두 번 쓰지 않는다. */
   const tomorrowSavingValueRef = useRef<string | null>(null);
+  /** 잘한 일도 동일 — blur → visibilitychange 로 flush 가 겹쳐도 같은 값을 두 번 쓰지 않는다. */
+  const winsSavingValueRef = useRef<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -155,6 +158,7 @@ export default function MoreSection({
   }
 
   const doAutoSaveWins = async (snapshot: string[]) => {
+    winsSavingValueRef.current = winsSnapshotKey(snapshot);
     setWinsAutoSaving(true);
     setWinsError(null);
     try {
@@ -168,10 +172,29 @@ export default function MoreSection({
       );
     } catch (err) {
       console.error("[home] 잘한 일 자동 저장 실패:", err);
+      winsSavingValueRef.current = null; // 실패한 값은 다시 저장 대상으로 되돌린다.
       setWinsError(t("home.wins.saveFailed"));
     } finally {
       setWinsAutoSaving(false);
     }
+  };
+
+  /* 대기 중인 디바운스를 취소하고 지금 저장 — 포커스 아웃 · 앱 이탈에서 쓴다.
+   *
+   * 왜 필요한가 (잘한 일만 flush 가 없었다):
+   *  - "내일 첫 행동"에는 [flushTomorrowAction] 이 있는데 잘한 일은 자동 저장 타이머뿐이었다.
+   *    마지막 글자를 치고 곧바로 홈 버튼을 누르면 모바일 Chrome 이 페이지를 얼리거나 폐기해
+   *    [WINS_AUTOSAVE_MS] 타이머가 영영 돌지 않고 기록이 통째로 유실될 수 있었다.
+   *  - 위젯 진척도가 늦게 따라오던 것도 같은 뿌리다 — 저장이 늦으니 네이티브가 읽을 게 없었다.
+   *    (blur 에서 쏘는 갱신 신호는 저장 시작보다 먼저 나가므로, 저장을 앞당겨야 짝이 맞는다.) */
+  const flushWins = () => {
+    if (winsAutosaveTimerRef.current) {
+      clearTimeout(winsAutosaveTimerRef.current);
+      winsAutosaveTimerRef.current = null;
+    }
+    if (!shouldSaveWins(wins, savedWins)) return;
+    if (winsSnapshotKey(wins) === winsSavingValueRef.current) return;
+    void doAutoSaveWins(wins);
   };
 
   const handleChangeWin = (idx: number, value: string) => {
@@ -180,10 +203,9 @@ export default function MoreSection({
     if (winsJustSaved) setWinsJustSaved(false);
     if (winsError) setWinsError(null);
 
-    const dirty = next.some((w, i) => (w || "") !== (savedWins[i] || ""));
-    const hasContent = next.some((w) => (w || "").trim().length > 0);
     if (winsAutosaveTimerRef.current) clearTimeout(winsAutosaveTimerRef.current);
-    if (!dirty || !hasContent) return;
+    // 저장 여부 판정은 flush 경로와 같은 곳(lib/winsDraft)에서 온다 — 두 경로가 갈리면 안 된다.
+    if (!shouldSaveWins(next, savedWins)) return;
     winsAutosaveTimerRef.current = setTimeout(() => {
       void doAutoSaveWins(next);
     }, WINS_AUTOSAVE_MS);
@@ -237,6 +259,39 @@ export default function MoreSection({
     if (next === savedTomorrowAction || next === tomorrowSavingValueRef.current) return;
     void doAutoSaveTomorrowAction(next);
   };
+
+  /* 앱 이탈(홈 버튼 · 앱 전환) 직전에 대기 중인 자동 저장을 flush.
+   *
+   * blur 는 홈 버튼으로 나갈 때 발생이 보장되지 않는다 — 그 경로에서 저장이 통째로 유실되던
+   * 구멍을 visibilitychange/pagehide 로 막는다. 최신 클로저를 봐야 하므로 ref 로 갈아끼운다
+   * (핸들러를 매 타이핑마다 재등록하지 않기 위함).
+   *
+   * ⚠️ 여기서는 위젯 갱신 인텐트를 쏘지 않는다 — user activation 없는 발화는 Chrome
+   *    "이 사이트에서 앱을 열려고 합니다 [계속]" 확인창 회귀의 원인이었다(lib/widgetBridge.ts).
+   *    저장만 앞당기고, 위젯은 네이티브 폴백(정주기 Worker)이 따라잡는다. */
+  const flushDraftsRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    // "내일 첫 행동" 도 같은 구멍이다 — flush 가 blur/Enter 에만 걸려 있어 앱 이탈은 못 막았다.
+    flushDraftsRef.current = () => {
+      flushWins();
+      flushTomorrowAction();
+    };
+  });
+  useEffect(() => {
+    const onLeave = () => {
+      // pagehide 는 visibilityState 가 아직 "visible" 일 수 있어 조건을 걸지 않는다.
+      flushDraftsRef.current();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flushDraftsRef.current();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", onLeave);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onLeave);
+    };
+  }, []);
 
   // 이미 적어둔 잘한 일은 접지 않는다 — 별도 state 동기화 없이 렌더 시점에 파생한다.
   const winsFilled = wins.filter((w) => (w || "").trim().length > 0).length;
@@ -410,13 +465,17 @@ export default function MoreSection({
                   </span>
                 </div>
                 {/* 자동 저장은 디바운스 뒤라 user-activation 이 없다. 탭으로 포커스를
-                    빼는 순간에 먼저 신호하고, 네이티브는 유예 후 저장본을 읽는다. */}
+                    빼는 순간에 먼저 신호하고(같은 제스처 콜스택 — 확인창 회귀 방지),
+                    곧바로 대기 중인 저장을 flush 해 네이티브가 유예 후 읽을 값을 만들어 둔다. */}
                 <textarea
                   value={wins[idx] || ""}
                   rows={1}
                   maxLength={WIN_MAX}
                   onChange={(e) => handleChangeWin(idx, e.target.value)}
-                  onBlur={() => notifyAndroidWidgetRefresh()}
+                  onBlur={() => {
+                    notifyAndroidWidgetRefresh();
+                    flushWins();
+                  }}
                   placeholder={placeholder}
                   className="flex-1 min-h-[24px] resize-none bg-transparent text-[17px] leading-[24px] tracking-[-0.43px] text-[var(--label)] placeholder:text-[var(--label-3)] focus:outline-none py-2"
                 />
