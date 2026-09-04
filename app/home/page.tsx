@@ -4,25 +4,19 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
-  onDailyEntrySnapshot,
   onDailyMotivationSnapshot,
   onFutureVisionSnapshot,
   onAffirmationCheckinSnapshot,
-  saveDailyAchievedGoals,
-  getDailyEntryOnce,
   getAffirmationLogYmds,
   getIdentityEvidenceRange,
   getDailyWinsHistory,
-  markWinsUnlocked,
   getKstYmd,
 } from "@/lib/firebase";
-import { useExecutionPlans } from "@/lib/useExecutionPlans";
-import { addKstDays, clampYmdToRecent, kstWeekday, yesterdayKstYmd } from "@/lib/kstDate";
+import { docKey } from "@/lib/docKey";
+import { TodayDataProvider, useTodayData } from "@/lib/today-context";
+import { addKstDays, kstWeekday } from "@/lib/kstDate";
 import { currentHomeMode, WEEKLY_REVIEW_WEEKDAY } from "@/lib/homeMode";
 import { pickTodayPlan, pickTodayAffirmationIndex } from "@/lib/planRotation";
-import { computeGoalSlots } from "@/lib/goalSlots";
-import { computePlanUnlock } from "@/lib/planUnlock";
-import { computeWinsUnlock, hasAnyWin } from "@/lib/winsUnlock";
 import { growthStageOf } from "@/lib/growthStage";
 import { suggestStepUp } from "@/lib/goalStepUp";
 import {
@@ -32,7 +26,6 @@ import {
   type WeeklyReview,
 } from "@/lib/weeklyReview";
 import { authedFetch } from "@/lib/authedFetch";
-import { isPaidPro } from "@/lib/entitlement";
 import { isPaymentRequired } from "@/lib/paymentRequired";
 import { notifyAndroidWidgetRefresh } from "@/lib/widgetBridge";
 import { refreshIosWidget } from "@/lib/iosWidget";
@@ -57,7 +50,7 @@ import type { CheckinSubmitResult } from "@/components/affirmations/AffirmationC
 import Logo from "@/components/ui/Logo";
 import BootSplash from "@/components/ui/BootSplash";
 import { useLanguage } from "@/lib/i18n";
-import type { DailyEntry, DailyMotivation, FutureVision } from "@/types";
+import type { DailyMotivation, FutureVision } from "@/types";
 
 /* ─────────────────────────────────────────────────────────────────
  * Anima Home — "오늘 하나 + 더 보기"
@@ -73,58 +66,6 @@ import type { DailyEntry, DailyMotivation, FutureVision } from "@/types";
  *
  *  · Large Title nav · Grouped Inset Lists · 오렌지 스트릭 칩(→ /progress)
  * ────────────────────────────────────────────────────────────────── */
-
-const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-/**
- * 스냅샷/조회 결과가 "지금 화면의 계정·날짜" 것인지 판정하는 키.
- * 결과를 이 키와 함께 저장해 두면 계정·날짜가 바뀌는 순간 파생값이 저절로
- * "로딩 전" 상태가 되므로, 효과 본문에서 초기화 setState 를 부를 필요가 없다.
- */
-function docKey(uid: string | undefined, ymd: string): string {
-  return `${uid ?? ""}:${ymd}`;
-}
-
-function readQDateFromUrl(): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const v = new URL(window.location.href).searchParams.get("qDate");
-    return v && YMD_RE.test(v) ? v : null;
-  } catch {
-    return null;
-  }
-}
-
-function useResolvedYmd(): string {
-  // qDate 는 [어제, 오늘] 만 신뢰한다(서버 resolveRequestYmd 와 같은 정책). 그보다 오래된 값 —
-  // 네이티브 동기 갱신 타임아웃 시 stale 위젯의 clickedYmd 폴백, Chrome 이 원래 인텐트 URL 로
-  // 재복원한 TWA 탭 — 을 그대로 쓰면 날짜·체크인·목표·리듬 링이 통째로 며칠 전에 고정되고,
-  // 그 상태에서 ↻ 를 누르면 서버는 오늘 카드를 재생성하는데 라벨은 옛날 날짜로 남는다.
-  const [ymd, setYmd] = useState<string>(() => clampYmdToRecent(readQDateFromUrl(), getKstYmd()));
-  useEffect(() => {
-    try {
-      const url = new URL(window.location.href);
-      if (url.searchParams.has("qDate")) {
-        url.searchParams.delete("qDate");
-        window.history.replaceState({}, "", url.toString());
-      }
-    } catch {
-      /* noop */
-    }
-    const syncForward = () => {
-      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
-      const live = getKstYmd();
-      setYmd((cur) => (live > cur ? live : cur));
-    };
-    document.addEventListener("visibilitychange", syncForward);
-    window.addEventListener("focus", syncForward);
-    return () => {
-      document.removeEventListener("visibilitychange", syncForward);
-      window.removeEventListener("focus", syncForward);
-    };
-  }, []);
-  return ymd;
-}
 
 /** Long date for the Large Title subtitle ("2026년 5월 24일 화요일"). */
 function formatLongDate(ymd: string, locale: string): string {
@@ -175,39 +116,32 @@ const IconGear = ({ size = 24 }: { size?: number }) => (
   </svg>
 );
 
-export default function HomeDashboardPage() {
+function HomeDashboardPage() {
   const router = useRouter();
-  const { user, firebaseUser, loading, refreshUser, entitlement } = useAuth();
+  const { user, firebaseUser, loading, refreshUser } = useAuth();
   const { t, locale } = useLanguage();
 
   // 미래의 나·목표는 홈에서 읽기 전용 — 수정은 /settings 에서. 항상 user 의 최신 값을 반영하도록
   // 별도 state 없이 user 에서 직접 파생한다(설정 화면에서 수정 후 돌아왔을 때 즉시 동기화).
   const goals = user?.goals ?? [];
 
-  const ymd = useResolvedYmd();
-  /** 지금 화면의 계정·날짜 키 — 아래 모든 키 태그 스냅샷이 이 값과 비교한다. */
-  const currentKey = docKey(firebaseUser?.uid, ymd);
-
-  // 오늘 문서 — 목표 달성 토글(홈)과 기록 입력(더 보기)이 같은 구독을 공유한다.
-  // 키가 어긋나면(계정·날짜 전환 직후) 파생 entry/entryLoaded 가 저절로 "로딩 전"이 된다.
-  const [entrySnap, setEntrySnap] = useState<{ key: string; entry: DailyEntry | null } | null>(
-    null,
-  );
-  const [achievedGoals, setAchievedGoals] = useState<string[]>([]);
-  const [goalSaving, setGoalSaving] = useState(false);
-
-  // WOOP 실행설계 목록 — "오늘의 if-then" 회전 + 해금 판정. 홈·설정이 같은 훅을 공유한다.
-  const { plans, plansLoaded } = useExecutionPlans(firebaseUser);
-  const [yesterdayFirstAction, setYesterdayFirstAction] = useState<string | null>(null);
-  /**
-   * 어제 문서에 잘한 일 기록이 있었는가 — 잘한 일 해금의 "기존 사용자 보존" 신호.
-   * 어제 문서는 첫 행동 때문에 이미 읽으므로 추가 조회 비용은 0이다.
-   * 조회한 키(uid:ymd)를 값과 함께 담아 둔다 — 계정·날짜가 바뀌면 파생값이 저절로
-   * null(판정 보류)이 되므로, 효과 본문에서 초기화 setState 를 부르지 않아도 된다.
-   */
-  const [yesterdayWins, setYesterdayWins] = useState<{ key: string; hadWins: boolean } | null>(
-    null,
-  );
+  // 오늘 문서·날짜·해금 판정 — 탭들이 공유하는 컨텍스트(lib/today-context)에서 읽는다.
+  const {
+    uid,
+    ymd,
+    currentKey,
+    entry,
+    entryLoaded,
+    achievedGoals,
+    goalSaving,
+    toggleGoalAchieved: handleToggleGoalAchieved,
+    plans,
+    planUnlock,
+    winsUnlock,
+    goalSlots: slots,
+    proUnlockAll,
+    yesterdayFirstAction,
+  } = useTodayData();
 
   // 7일 리듬 링 — 최근 7일 체크인 날짜. null = 아직 로딩(또는 실패 → 링 생략).
   const [weekCheckedYmds, setWeekCheckedYmds] = useState<Set<string> | null>(null);
@@ -243,22 +177,6 @@ export default function HomeDashboardPage() {
     }
     if (user && !user.onboardedAt) router.replace("/onboarding");
   }, [firebaseUser, loading, router, user]);
-
-  useEffect(() => {
-    if (!firebaseUser) return;
-    // 키를 함께 저장한다 — 계정·날짜가 바뀌면 파생값이 새 문서를 기다린다(전날 값이 남지 않도록).
-    const key = docKey(firebaseUser.uid, ymd);
-    const unsub = onDailyEntrySnapshot(firebaseUser.uid, ymd, (next: DailyEntry | null) => {
-      setEntrySnap({ key, entry: next });
-      setAchievedGoals(Array.isArray(next?.achievedGoals) ? next.achievedGoals : []);
-    });
-    return unsub;
-  }, [firebaseUser, ymd]);
-
-  /** 지금 계정·날짜의 스냅샷 — 도착 전(키 불일치)에는 null = 로딩 전. */
-  const curEntry = entrySnap?.key === currentKey ? entrySnap : null;
-  const entryLoaded = curEntry !== null;
-  const entry = curEntry?.entry ?? null;
 
   // 알림에 실을 실제 콘텐츠(오늘의 명언 · 미완 과업 넛지)를 서버에서 한 번만 받아 둔다.
   // iOS 는 예약 시점에 문구가 확정돼 있어야 해서 필요하고, Android 는 Worker 가 발송 직전에
@@ -319,54 +237,6 @@ export default function HomeDashboardPage() {
       }),
     });
   }, [user, entryLoaded, allGoalsDoneToday, t, notifContent, currentKey]);
-
-  // 어제 저녁에 적은 "내일 첫 행동" — 아침 카드 보조 행. 실패해도 카드만 생략.
-  // 같은 문서에서 "어제 잘한 일을 적었는가"도 함께 읽는다(잘한 일 해금의 보존 신호).
-  useEffect(() => {
-    if (!firebaseUser) return;
-    let cancelled = false;
-    const key = docKey(firebaseUser.uid, ymd);
-    getDailyEntryOnce(firebaseUser.uid, yesterdayKstYmd(ymd))
-      .then((prev) => {
-        if (cancelled) return;
-        const txt = (prev?.tomorrowFirstAction ?? "").trim();
-        setYesterdayFirstAction(txt.length > 0 ? txt : null);
-        setYesterdayWins({ key, hadWins: hasAnyWin(prev?.wins) });
-      })
-      .catch((err) => {
-        console.error("[home] 어제 첫 행동 조회 실패(생략):", err);
-        if (cancelled) return;
-        setYesterdayFirstAction(null);
-        // 조회 실패는 보존 신호만 포기하고 판정은 진행 — 잠금 화면에 갇히지 않게.
-        setYesterdayWins({ key, hadWins: false });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [firebaseUser, ymd]);
-
-  /** 어제 조회 결과 — 지금 보고 있는 계정·날짜의 것일 때만 유효(아니면 null = 판정 보류). */
-  const yesterdayHadWins =
-    yesterdayWins && yesterdayWins.key === currentKey ? yesterdayWins.hadWins : null;
-
-  /** 어제·오늘 문서에 기록이 있는가 — 잘한 일 해금의 "이미 쓰던 계정" 신호(추가 조회 없음). */
-  const winsRecordedRecently = hasAnyWin(entry?.wins) || yesterdayHadWins === true;
-
-  /* 잘한 일 보존 표식 — 해금 게이트 도입 전부터 기록을 쓰던 계정에 딱 한 번 찍는다.
-   * 표식이 없고 최근 기록이 확인될 때만 쓰므로 계정당 최대 1회 쓰기이고, 그 뒤로는
-   * 어제·오늘 문서와 무관하게 영구히 열린다(기록을 하루 걸렀다고 다시 잠그지 않는다).
-   * 실패해도 화면은 이미 열려 있으므로 조용히 넘기고 다음 홈 방문에서 다시 시도한다. */
-  const winsUnlockMarkedRef = useRef(false);
-  useEffect(() => {
-    if (!firebaseUser || !user || user.winsUnlockedAt) return;
-    if (!entryLoaded || !winsRecordedRecently) return;
-    if (winsUnlockMarkedRef.current) return;
-    winsUnlockMarkedRef.current = true;
-    markWinsUnlocked(firebaseUser.uid).catch((err) => {
-      console.error("[home] 잘한 일 보존 표식 저장 실패(다음 방문에 재시도):", err);
-      winsUnlockMarkedRef.current = false;
-    });
-  }, [firebaseUser, user, entryLoaded, winsRecordedRecently]);
 
   useEffect(() => {
     if (!firebaseUser) return;
@@ -686,34 +556,6 @@ export default function HomeDashboardPage() {
     [ymd, refreshUser],
   );
 
-  const uid = firebaseUser?.uid ?? "";
-
-  /** 목표 달성 토글 — 오늘 카드(첫 목표)와 더 보기(추가 목표)가 공유한다. */
-  const handleToggleGoalAchieved = useCallback(
-    async (goalText: string) => {
-      const trimmed = goalText.trim();
-      if (!trimmed || !uid) return;
-      notifyAndroidWidgetRefresh();
-      const prev = achievedGoals;
-      const next = prev.includes(trimmed)
-        ? prev.filter((g) => g !== trimmed)
-        : [...prev, trimmed];
-      setAchievedGoals(next);
-      setGoalSaving(true);
-      try {
-        await saveDailyAchievedGoals(uid, ymd, next);
-        void refreshIosWidget();
-      } catch (err) {
-        console.error("[home] 목표 달성 저장 실패:", err);
-        setAchievedGoals(prev);
-        window.alert(t("common.saveFailed"));
-      } finally {
-        setGoalSaving(false);
-      }
-    },
-    [achievedGoals, t, uid, ymd],
-  );
-
   const openSettings = useCallback(() => router.push("/settings"), [router]);
 
   // 앱(TWA) 콜드 스타트가 가장 오래 머무는 화면 — 스피너만 돌리지 않고
@@ -736,38 +578,6 @@ export default function HomeDashboardPage() {
 
   // 오늘 확인할 목표는 첫 칸 하나. 나머지(해금분)는 "더 보기" 안에서 다룬다.
   const primaryGoal = (goals[0] ?? "").trim();
-  // 결제 프로(평생/구독)는 모든 해금 게이트를 첫날부터 통과한다 — 트라이얼은 제외
-  // (트라이얼은 전원 자동 시작이라 포함하면 해금 여정 자체가 사라진다).
-  const proUnlockAll = isPaidPro(entitlement);
-  // 해금 게이지는 다짐 전사·목표 달성 두 축 중 큰 값으로 찬다.
-  const slots = computeGoalSlots({
-    affirmation: user?.affirmationStreak,
-    goal: user?.goalStreak,
-    currentGoalCount: goals.length,
-    unlockAll: proUnlockAll,
-  });
-
-  // 실행 설계 해금 — 플랜 첫 스냅샷 전(null)에는 카드를 그리지 않는다(깜빡임 방지).
-  const planUnlock = plansLoaded
-    ? computePlanUnlock({
-        affirmation: user?.affirmationStreak,
-        goal: user?.goalStreak,
-        goalCount: goals.filter((g) => g.trim().length > 0).length,
-        planCount: plans.length,
-        unlockAll: proUnlockAll,
-      })
-    : null;
-
-  // 잘한 일 기록 해금 — 오늘/어제 문서가 도착하기 전에는 판정을 미룬다(잠금 깜빡임 방지).
-  const winsUnlock =
-    entryLoaded && yesterdayHadWins !== null
-      ? computeWinsUnlock({
-          affirmation: user?.affirmationStreak,
-          goal: user?.goalStreak,
-          alreadyRecorded: Boolean(user?.winsUnlockedAt) || winsRecordedRecently,
-          unlockAll: proUnlockAll,
-        })
-      : null;
 
   // 성장 단계 칩 — 증거 표가 1표라도 쌓인 뒤에만 그린다(레거시/빈 계정은 조용히 생략).
   const growthStage = growthStageOf(user?.growth?.votes);
@@ -958,5 +768,13 @@ export default function HomeDashboardPage() {
         />
       </main>
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <TodayDataProvider>
+      <HomeDashboardPage />
+    </TodayDataProvider>
   );
 }
