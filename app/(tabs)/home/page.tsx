@@ -8,22 +8,15 @@ import {
   onFutureVisionSnapshot,
   onAffirmationCheckinSnapshot,
   getAffirmationLogYmds,
-  getIdentityEvidenceRange,
-  getDailyWinsHistory,
   getKstYmd,
 } from "@/lib/firebase";
 import { docKey } from "@/lib/docKey";
 import { useTodayData } from "@/lib/today-context";
-import { addKstDays, kstWeekday } from "@/lib/kstDate";
-import { currentHomeMode, WEEKLY_REVIEW_WEEKDAY } from "@/lib/homeMode";
+import { addKstDays } from "@/lib/kstDate";
+import { currentHomeMode } from "@/lib/homeMode";
 import { pickTodayPlan, pickTodayAffirmationIndex } from "@/lib/planRotation";
 import { suggestStepUp } from "@/lib/goalStepUp";
-import {
-  buildWeeklyReview,
-  weeklyReviewFrom,
-  WEEKLY_REVIEW_DAYS,
-  type WeeklyReview,
-} from "@/lib/weeklyReview";
+import { WEEKLY_REVIEW_DAYS } from "@/lib/weeklyReview";
 import { authedFetch } from "@/lib/authedFetch";
 import { isPaymentRequired } from "@/lib/paymentRequired";
 import { notifyAndroidWidgetRefresh } from "@/lib/widgetBridge";
@@ -120,14 +113,12 @@ export default function HomeDashboardPage() {
     uid,
     ymd,
     currentKey,
-    entry,
     entryLoaded,
     achievedGoals,
     goalSaving,
     toggleGoalAchieved: handleToggleGoalAchieved,
     plans,
     planUnlock,
-    winsUnlock,
     goalSlots: slots,
     proUnlockAll,
     yesterdayFirstAction,
@@ -137,8 +128,6 @@ export default function HomeDashboardPage() {
   const [weekCheckedYmds, setWeekCheckedYmds] = useState<Set<string> | null>(null);
   // 체크인 직후 보상 — 이번 세션에서 방금 체크인했을 때만 채워진다.
   const [reward, setReward] = useState<CheckinSubmitResult | null>(null);
-  // 주간 회고 (일요일 저녁) — 실패하면 null 로 두고 카드만 생략한다.
-  const [weeklyReview, setWeeklyReview] = useState<WeeklyReview | null>(null);
 
   // 오늘의 동기부여/미래 일상 — 키 불일치(= 아직 이 계정·날짜의 스냅샷 없음)가 곧 로딩 상태다.
   const [motivationSnap, setMotivationSnap] = useState<{
@@ -456,38 +445,6 @@ export default function HomeDashboardPage() {
     };
   }, [firebaseUser, ymd, alreadyCheckedInToday]);
 
-  /* ── 주간 회고 (일요일 저녁만) ──
-   * 세 조회 모두 기존 함수 재사용. 집계는 lib/weeklyReview 순수 함수가 담당한다.
-   * 조건을 만족하지 않으면 호출 자체를 하지 않아 평일엔 비용이 0이다. */
-  const showWeeklyReview =
-    homeMode === "evening" && kstWeekday(ymd) === WEEKLY_REVIEW_WEEKDAY;
-
-  useEffect(() => {
-    // 조건을 만족하지 않으면 조회하지 않는다(평일 비용 0).
-    if (!firebaseUser || !showWeeklyReview) return;
-    let cancelled = false;
-    const from = weeklyReviewFrom(ymd);
-    void (async () => {
-      try {
-        const [checkinYmds, evidenceDays, winsHistory] = await Promise.all([
-          getAffirmationLogYmds(firebaseUser.uid, from, ymd),
-          getIdentityEvidenceRange(firebaseUser.uid, from, ymd),
-          getDailyWinsHistory(firebaseUser.uid, WEEKLY_REVIEW_DAYS),
-        ]);
-        if (cancelled) return;
-        setWeeklyReview(
-          buildWeeklyReview({ checkinYmds, evidenceDays, winsHistory, toYmd: ymd }),
-        );
-      } catch (err) {
-        console.error("[home] 주간 회고 조회 실패(카드 생략):", err);
-        if (!cancelled) setWeeklyReview(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [firebaseUser, ymd, showWeeklyReview, alreadyCheckedInToday]);
-
   // iOS 홈/잠금화면 위젯: 홈 진입 시 오늘 카드를 한 번 받아 위젯 공유 캐시에 공급한다.
   // 위젯 익스텐션은 스스로 인증 호출을 못 하므로 앱이 데이터를 밀어 넣는다. 웹/안드로이드는 no-op.
   useEffect(() => {
@@ -691,9 +648,6 @@ export default function HomeDashboardPage() {
         {/* ─── ▸ 더 보기 (기본 접힘) — 나머지 전부 ─── */}
         <MoreSection
           uid={uid}
-          ymd={ymd}
-          entry={entry}
-          entryLoaded={entryLoaded}
           homeMode={homeMode}
           futureText={futureText}
           todayPlan={todayPlan}
@@ -702,12 +656,9 @@ export default function HomeDashboardPage() {
           goals={goals}
           identityLabels={user?.identities?.labels ?? []}
           unlock={planUnlock}
-          winsUnlock={winsUnlock}
           achievedGoals={achievedGoals}
           onToggleGoalAchieved={(g) => void handleToggleGoalAchieved(g)}
-          weeklyReview={showWeeklyReview ? weeklyReview : null}
           onOpenSettings={openSettings}
-          onOpenWinsHistory={() => router.push("/wins-history")}
         />
       </main>
     </div>

@@ -4,29 +4,19 @@ import { useState } from "react";
 import { useT } from "@/lib/i18n";
 import type { HomeMode } from "@/lib/homeMode";
 import type { PlanUnlockState } from "@/lib/planUnlock";
-import type { WinsUnlockState } from "@/lib/winsUnlock";
-import type { WeeklyReview } from "@/lib/weeklyReview";
-import type { DailyEntry, ExecutionPlan } from "@/types";
+import type { ExecutionPlan } from "@/types";
 import DisclosureSection from "@/components/ui/DisclosureSection";
 import FutureSelfLine from "@/components/home/FutureSelfLine";
 import DailyPlanCard from "@/components/home/DailyPlanCard";
 import ExtraGoalRows from "@/components/home/ExtraGoalRows";
 import LockedTeaserRow from "@/components/home/LockedTeaserRow";
-import TodayWinsCard from "@/components/record/TodayWinsCard";
-import TomorrowActionRow from "@/components/record/TomorrowActionRow";
 import ExecutionPlanSheet from "@/components/woop/ExecutionPlanSheet";
-import WeeklyReviewCard from "@/components/home/WeeklyReviewCard";
 
 /* ─────────────────────────────────────────────────────────────────
  * MoreSection — 홈의 "더 보기" (기본 접힘).
  *
- * 홈에 상시 노출되는 것은 명언 · 오늘 카드 · 7일 링 셋뿐이고, 나머지는 전부 여기로
- * 내려왔다. 선택 입력이 첫 화면에 깔려 있으면 필수 행동조차 밀린다(choice overload).
- *
- * 안에 든 것: 미래의 나 · 오늘의 if-then / 추가 목표 ·
- *             오늘의 기록(잘한 일 · 내일 첫 행동) · 주간 회고.
- * 각 조각은 독립 컴포넌트(ExtraGoalRows · TodayWinsCard · TomorrowActionRow …)라
- * 이 섹션은 조합과 게이팅만 맡는다.
+ * 안에 든 것: 미래의 나 · 오늘의 if-then / 추가 목표 · 목표 관리 · 잠금 예고.
+ * 오늘의 기록(잘한 일 · 내일 첫 행동 · 주간 회고)은 기록 탭(app/(tabs)/record)으로 갔다.
  * ───────────────────────────────────────────────────────────────── */
 
 const IconChevron = ({ color = "rgba(60,60,67,0.3)" }: { color?: string }) => (
@@ -37,9 +27,6 @@ const IconChevron = ({ color = "rgba(60,60,67,0.3)" }: { color?: string }) => (
 
 export default function MoreSection({
   uid,
-  ymd,
-  entry,
-  entryLoaded,
   homeMode,
   futureText,
   todayPlan,
@@ -48,19 +35,11 @@ export default function MoreSection({
   goals,
   identityLabels,
   unlock,
-  winsUnlock,
   achievedGoals,
   onToggleGoalAchieved,
-  weeklyReview,
   onOpenSettings,
-  onOpenWinsHistory,
 }: {
   uid: string;
-  ymd: string;
-  /** 오늘 문서 — 홈의 onDailyEntrySnapshot 구독 결과를 그대로 받는다(중복 구독 없음). */
-  entry: DailyEntry | null;
-  /** 스냅샷이 한 번이라도 도착했는가. false 동안은 초안을 덮어쓰지 않는다. */
-  entryLoaded: boolean;
   homeMode: HomeMode;
   futureText: string;
   todayPlan: Pick<ExecutionPlan, "goal" | "ifText" | "thenText"> | null;
@@ -73,30 +52,16 @@ export default function MoreSection({
   identityLabels: string[];
   /** 실행 설계 해금 상태. null = 플랜 첫 스냅샷 전 — 영역을 그리지 않는다(깜빡임 방지). */
   unlock: PlanUnlockState | null;
-  /** 잘한 일 기록 해금 상태. null = 오늘 문서 첫 스냅샷 전 — 잠금 행조차 그리지 않는다. */
-  winsUnlock: WinsUnlockState | null;
   achievedGoals: string[];
   onToggleGoalAchieved: (goal: string) => void;
-  /** 일요일 저녁이 아니면 null — 카드 자체가 생략된다. */
-  weeklyReview: WeeklyReview | null;
   onOpenSettings: () => void;
-  onOpenWinsHistory: () => void;
 }) {
   const t = useT();
   const [planSheetOpen, setPlanSheetOpen] = useState(false);
 
-  /* ── 잠긴 기능 예고: 이름 없이 하나만 ──
-   * 아직 못 여는 기능들을 이름·설명과 함께 줄줄이 세워두면 "앞으로 열릴 것"이 아니라
-   * "지금 못 쓰는 것"의 목록이 된다. 그래서 잠긴 것이 몇 개든 가장 가까운 하나만,
-   * 정체를 감춘 채 조건과 진행도만 보여준다 — 궁금함이 남아야 다시 온다.
-   * 두 스냅샷이 다 도착하기 전(null)에는 그리지 않는다: 나중에 도착한 쪽이 더 가까우면
-   * 남은 일수가 눈앞에서 줄어드는 것처럼 보인다. */
-  const nearestLock =
-    unlock && winsUnlock
-      ? ([unlock, winsUnlock]
-          .filter((state) => state.kind === "locked")
-          .sort((a, b) => a.threshold - b.threshold)[0] ?? null)
-      : null;
+  /* ── 잠긴 기능 예고: 이름 없이 ──
+   * 실행 설계가 잠겨 있으면 정체를 감춘 채 조건과 진행도만 보여준다 — 궁금함이 남아야 다시 온다. */
+  const nearestLock = unlock?.kind === "locked" ? unlock : null;
 
   return (
     <>
@@ -150,36 +115,8 @@ export default function MoreSection({
         <IconChevron />
       </button>
 
-      {/* ── 오늘의 기록 — 전부 선택 입력 ──
-          잘한 일 3칸도 꾸준함으로 벌어서 연다(lib/winsUnlock). 필수 루틴이 붙기 전의 빈 칸
-          여러 개는 격려가 아니라 숙제로 읽힌다. 첫 스냅샷 전(null)에는 잠금 행조차 그리지
-          않는다 — 열려 있던 기록이 한 프레임 잠겼다 풀리는 편이 더 나쁘다. */}
       {nearestLock && (
         <LockedTeaserRow progress={nearestLock.progress} threshold={nearestLock.threshold} />
-      )}
-
-      {winsUnlock?.kind === "open" && (
-        <TodayWinsCard
-          uid={uid}
-          ymd={ymd}
-          entry={entry}
-          entryLoaded={entryLoaded}
-          onOpenHistory={onOpenWinsHistory}
-        />
-      )}
-
-      {/* 내일 첫 행동 1개 — 저녁에만 나타난다(위치는 항상 기록 끝) */}
-      {homeMode === "evening" && (
-        <div className="border-t border-[var(--sep)]">
-          <TomorrowActionRow uid={uid} ymd={ymd} entry={entry} entryLoaded={entryLoaded} />
-        </div>
-      )}
-
-      {/* 주간 회고 — 일요일 저녁만, 입력 요구 0 */}
-      {weeklyReview && (
-        <div className="border-t border-[var(--sep)]">
-          <WeeklyReviewCard review={weeklyReview} />
-        </div>
       )}
     </DisclosureSection>
 

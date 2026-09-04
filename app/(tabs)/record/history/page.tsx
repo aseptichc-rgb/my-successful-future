@@ -1,17 +1,20 @@
 "use client";
 
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { getDailyWinsHistory, WINS_HISTORY_DEFAULT_LIMIT } from "@/lib/firebase";
 import { useRetryableLoad } from "@/lib/useRetryableLoad";
+import { backOrReplace } from "@/lib/navigation";
 import { useLanguage } from "@/lib/i18n";
+import TabHeader from "@/components/nav/TabHeader";
+import BackButton from "@/components/nav/BackButton";
 
 /* ─────────────────────────────────────────────────────────────────
- * Wins History — Apple iOS native redesign
- *  · Large Title nav with back button
+ * Wins History — 기록 탭의 하위 페이지 (/record/history)
+ *  · Large Title nav with back button (← 오늘의 기록) — 탭 바는 그대로, 기록 탭이 켜진 채
  *  · Per-day grouped inset card with rotating system colors
  *  · Empty / error / loading states match iOS conventions
+ *  인증 게이트는 (tabs)/layout 이 담당한다.
  * ───────────────────────────────────────────────────────────────── */
 
 // Day-of-week color rotation (iOS palette).
@@ -56,50 +59,28 @@ function todayOffsetLabel(ymd: string): string | null {
 
 export default function WinsHistoryPage() {
   const router = useRouter();
-  const { firebaseUser, loading: authLoading } = useAuth();
+  const { firebaseUser } = useAuth();
   const { t, locale } = useLanguage();
-
-  useEffect(() => {
-    if (authLoading) return;
-    if (!firebaseUser) router.replace("/login");
-  }, [authLoading, firebaseUser, router]);
 
   const { data, loading, failed, retry } = useRetryableLoad(firebaseUser, loadWinsHistory);
   const entries = data ?? [];
   const error = failed ? t("wins.history.loadFailed") : null;
 
-  if (authLoading || !firebaseUser) {
-    return (
-      <div className="flex h-full items-center justify-center bg-[var(--bg-grouped)]">
-        <div className="h-6 w-6 animate-spin rounded-full border-[1.5px] border-black/10 border-t-[#D85A30]" />
-      </div>
-    );
-  }
-
   // Filter entries that have at least one non-empty win
   const filledEntries = entries.filter((e) => e.wins.some((w) => (w || "").trim().length > 0));
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto bg-[var(--bg-grouped)] pb-12">
-      <header className="pb-2 pt-[calc(env(safe-area-inset-top)+12px)] bg-[var(--bg-grouped)]">
-        <div className="mx-auto max-w-3xl px-2 min-h-[44px] flex items-center">
-          <button
-            type="button"
-            onClick={() => router.push("/home")}
-            aria-label={t("home.title")}
-            className="inline-flex items-center gap-1 text-[var(--soul)] text-[17px] tracking-[-0.43px] px-1 py-2"
-          >
-            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-              <path d="M14 4l-7 7 7 7" stroke="#D85A30" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span>{t("home.title")}</span>
-          </button>
-        </div>
-        <div className="mx-auto max-w-3xl px-5">
-          <h1 className="text-large-title font-display">{t("wins.history.title")}</h1>
-          <p className="text-subhead mt-0.5 text-[var(--label-2)]">{t("wins.history.subtitle")}</p>
-        </div>
-      </header>
+    <div className="flex h-full flex-col overflow-y-auto bg-[var(--bg-grouped)] pb-tabbar">
+      <TabHeader
+        title={t("wins.history.title")}
+        subtitle={t("wins.history.subtitle")}
+        leading={
+          <BackButton
+            label={t("record.title")}
+            onClick={() => backOrReplace(router, "/record")}
+          />
+        }
+      />
 
       <main className="mx-auto w-full max-w-3xl">
         {loading && (
