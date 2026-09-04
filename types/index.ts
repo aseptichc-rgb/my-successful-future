@@ -487,6 +487,17 @@ export interface WidgetTodayProgress {
 }
 
 /**
+ * 위젯 목표 줄에 그릴 목표 한 건 — 본문과 오늘 달성 여부.
+ * 조립은 [lib/widgetGoals] 의 buildWidgetGoals 하나로 통일한다(카운트와 같은 입력).
+ */
+export interface WidgetGoalProgress {
+  /** 사용자가 설정한 목표 본문 그대로. */
+  text: string;
+  /** 오늘 `dailyEntries/{ymd}.achievedGoals` 에 포함돼 달성 처리됐는가. */
+  achieved: boolean;
+}
+
+/**
  * 위젯에 띄우는 "그 꿈을 사는 하루"(미래 일상 비전) 티저.
  * 위젯은 공간 제약이 커 전체 비전(여러 장면 + closing)을 다 담지 못하므로,
  * "더 보고 싶게" 만드는 최소 발췌만 싣는다 — 제목 + 첫 장면 한 토막.
@@ -623,6 +634,13 @@ export interface WidgetTodayResponse {
    */
   goalsAchievedCount?: number;
   goalsTotalCount?: number;
+  /**
+   * 목표 **본문** + 오늘 달성 여부. 카운트만으로는 "무슨 목표인지" 를 알 수 없어
+   * 위젯이 목록을 함께 그린다. 위 카운트와 같은 입력(lib/widgetGoals)에서 만들어지므로
+   * 둘이 어긋날 수 없다 — 카드에 얼어붙은 `goalsSnapshot` 을 쓰면 안 되는 이유다.
+   * 응답 호환성: 목표 미설정/옛 응답이면 생략 — 위젯은 카운트 한 줄로 폴백한다.
+   */
+  goals?: WidgetGoalProgress[];
   /**
    * "오늘의 if-then" 실행설계. 누락 시 위젯은 해당 섹션을 자연 생략 — 옛 클라이언트도 안전.
    */

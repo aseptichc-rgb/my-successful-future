@@ -239,6 +239,9 @@ object QuoteRepository {
             todayProgress = WidgetTodayProgress(),
             futureVision = null,
             goalsAchievedCount = 0,
+            // 목표 본문은 하루가 지나도 그대로지만 달성 표시는 어제 것이다 — 카운트를 0 으로
+            // 되돌리면서 체크마크만 남기면 "0 / 1 완료" 옆에 체크가 켜진 모순이 된다.
+            goals = response.goals.map { it.copy(achieved = false) },
         )
     }
 

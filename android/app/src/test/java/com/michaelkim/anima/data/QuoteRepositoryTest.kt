@@ -46,7 +46,11 @@ class QuoteRepositoryTest {
     // 8/22 캐시엔 upcoming 미리보기가 없어 자정 보정이 불가능했다. 이 경우 위젯은 캐시를 그대로
     // 그리므로, 네트워크 갱신만이 유일한 탈출구다 — 그래서 throttle 이 폴백을 막으면 안 된다.
 
-    private fun response(ymd: String, upcoming: List<WidgetUpcomingQuote> = emptyList()) = WidgetTodayResponse(
+    private fun response(
+        ymd: String,
+        upcoming: List<WidgetUpcomingQuote> = emptyList(),
+        goals: List<WidgetGoal> = emptyList(),
+    ) = WidgetTodayResponse(
         generatedAt = "${ymd}T00:00:00.000Z",
         ymd = ymd,
         slots = listOf(
@@ -59,6 +63,9 @@ class QuoteRepositoryTest {
         nextRefreshAt = "${ymd}T15:00:00.000Z",
         todayProgress = WidgetTodayProgress(affirmation = true),
         upcoming = upcoming,
+        goalsAchievedCount = goals.count { it.achieved },
+        goalsTotalCount = goals.size,
+        goals = goals,
     )
 
     @Test
@@ -79,6 +86,39 @@ class QuoteRepositoryTest {
         assertEquals("preview", shown.slots.single().text)
         assertFalse(shown.todayProgress.affirmation)
         assertNull(shown.futureVision)
+    }
+
+    // ── 목표 본문 — 하루가 지나면 본문은 남기되 달성 표시만 되돌린다 ────────────────
+    // 카운트를 0 으로 리셋하면서 체크마크를 어제 것으로 남기면 "0 / 1 완료" 옆에 체크가
+    // 켜진 모순이 화면에 뜬다. 본문 자체는 날짜와 무관하므로 지우지 않는다.
+
+    @Test
+    fun `stale cache keeps goal text but clears yesterday's achieved marks`() {
+        val cached = response(
+            "2026-09-01",
+            upcoming = listOf(WidgetUpcomingQuote(ymd = "2026-09-02", text = "preview", author = "p")),
+            goals = listOf(
+                WidgetGoal(text = "매일 15분 피드백", achieved = true),
+                WidgetGoal(text = "책 10쪽 읽기", achieved = false),
+            ),
+        )
+        val shown = QuoteRepository.effectiveResponseForDisplay(cached, todayYmd = "2026-09-02")!!
+        assertEquals(listOf("매일 15분 피드백", "책 10쪽 읽기"), shown.goals.map { it.text })
+        assertTrue(shown.goals.none { it.achieved })
+        assertEquals(0, shown.goalsAchievedCount)
+        // 분모는 그대로 — 목표 개수는 날짜가 바뀌어도 변하지 않는다.
+        assertEquals(2, shown.goalsTotalCount)
+    }
+
+    @Test
+    fun `fresh cache keeps achieved marks untouched`() {
+        val cached = response(
+            "2026-09-02",
+            goals = listOf(WidgetGoal(text = "매일 15분 피드백", achieved = true)),
+        )
+        val shown = QuoteRepository.effectiveResponseForDisplay(cached, todayYmd = "2026-09-02")!!
+        assertTrue(shown.goals.single().achieved)
+        assertEquals(1, shown.goalsAchievedCount)
     }
 
     @Test

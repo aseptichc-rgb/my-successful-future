@@ -29,11 +29,13 @@ import { normalizeNotificationPrefs } from "@/lib/notificationPolicy";
 import { buildNotificationContent } from "@/lib/notificationContent";
 import { normalizeLocale } from "@/lib/i18n/types";
 import { truncateText } from "@/lib/truncateText";
+import { MAX_WIDGET_GOALS, buildWidgetGoals, normalizeGoalTexts } from "@/lib/widgetGoals";
 import type { PendingTaskInput } from "@/lib/pendingTasks";
 import type {
   FutureVision,
   NotificationPrefs,
   WidgetExecutionPlan,
+  WidgetGoalProgress,
   WidgetFutureVision,
   WidgetNotificationContent,
   WidgetSlot,
@@ -51,11 +53,13 @@ const MAX_WIDGET_AFFIRMATIONS = 10;
 // "그 꿈을 사는 하루" 위젯 티저로 실을 첫 장면 발췌 길이. 위젯 폭에서 2줄 안에 들어오도록.
 const WIDGET_VISION_TEASER_MAX = 100;
 
-/** 위젯 1줄 카운트("n / N")로 줄여 보여줄 "오늘의 행동 / 이번 달 목표" 진척 카운트 묶음. */
+/** 위젯 "오늘의 행동 / 이번 달 목표" 줄에 실을 진척 카운트 + 목표 본문 묶음. */
 interface TodayProgressResult {
   progress: WidgetTodayProgress;
   goalsAchievedCount: number;
   goalsTotalCount: number;
+  /** 카운트와 같은 입력에서 만든 목표 본문 목록 — 위젯이 "무슨 목표인지" 를 그릴 재료. */
+  goals: WidgetGoalProgress[];
 }
 
 /**
@@ -104,12 +108,10 @@ async function fetchTodayProgress(
       if (!snap.exists) return { wins: [], achievedGoals: [] };
       const data = snap.data() ?? {};
       const wins = Array.isArray(data.wins) ? (data.wins as unknown[]) : [];
-      const achievedGoals = Array.isArray(data.achievedGoals) ? (data.achievedGoals as unknown[]) : [];
       return {
         wins: wins.map((w) => (typeof w === "string" ? w.trim() : "")),
-        achievedGoals: achievedGoals
-          .map((g) => (typeof g === "string" ? g.trim() : ""))
-          .filter((g) => g.length > 0),
+        // 목표와 **같은 정규화**를 써야 문자열 대조가 어긋나지 않는다 (lib/widgetGoals).
+        achievedGoals: normalizeGoalTexts(data.achievedGoals),
       };
     } catch (err) {
       console.error("[widget/today] dailyEntry 진척도 조회 실패:", err);
@@ -119,13 +121,10 @@ async function fetchTodayProgress(
 
   const [affirmation, entry] = await Promise.all([affirmationSafe(), dailyEntrySafe()]);
 
-  const goals = Array.isArray(userGoals)
-    ? userGoals.map((g) => (typeof g === "string" ? g.trim() : "")).filter((g) => g.length > 0)
-    : [];
-  const achievedSet = new Set(entry.achievedGoals);
-  // 목표별 달성 카운트("이번 달 목표 n / N") — 위젯이 목록 대신 한 줄 카운트로 줄여 쓴다.
-  const goalsAchievedCount = goals.filter((g) => achievedSet.has(g)).length;
-  const goalsTotalCount = goals.length;
+  // 카운트와 본문을 **한 소스에서** 만든다 — 따로 계산하면 "1/1 인데 본문은 옛 목표" 로 갈린다.
+  const widgetGoals = buildWidgetGoals(normalizeGoalTexts(userGoals), entry.achievedGoals);
+  const goalsAchievedCount = widgetGoals.filter((g) => g.achieved).length;
+  const goalsTotalCount = widgetGoals.length;
   const actions = goalsTotalCount > 0 && goalsAchievedCount === goalsTotalCount;
 
   const winsFilled = entry.wins.filter((w) => w.length > 0).length;
@@ -135,6 +134,8 @@ async function fetchTodayProgress(
     progress: { affirmation, actions, wins },
     goalsAchievedCount,
     goalsTotalCount,
+    // 표시용 컷 — 카운트는 위에서 전체 기준으로 이미 확정됐다.
+    goals: widgetGoals.slice(0, MAX_WIDGET_GOALS),
   };
 }
 
@@ -361,6 +362,8 @@ export async function GET(request: NextRequest) {
       ...(futureVision ? { futureVision } : {}),
       goalsAchievedCount: progressResult.goalsAchievedCount,
       goalsTotalCount: progressResult.goalsTotalCount,
+      // 목표 본문 — 위젯이 "무슨 목표인지" 를 그릴 재료. 목표 미설정이면 필드 생략(섹션 자연 생략).
+      ...(progressResult.goals.length > 0 ? { goals: progressResult.goals } : {}),
       // 응답 호환성: 플랜 미설정/조회 실패 시 필드 생략 — 옛 클라이언트는 무시, 신 클라이언트는 섹션 생략.
       ...(executionPlan ? { executionPlan } : {}),
       // 자정 오프라인에도 클라이언트가 그날 명언으로 스스로 교체할 재료 — 비면 필드 생략.

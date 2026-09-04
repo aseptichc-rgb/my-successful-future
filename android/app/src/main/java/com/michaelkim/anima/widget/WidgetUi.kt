@@ -52,6 +52,7 @@ import androidx.glance.unit.ColorProvider
 import com.michaelkim.anima.MainActivity
 import com.michaelkim.anima.R
 import com.michaelkim.anima.data.WidgetFutureVision
+import com.michaelkim.anima.data.WidgetGoal
 import com.michaelkim.anima.data.WidgetSlot
 import com.michaelkim.anima.data.WidgetTodayProgress
 import java.time.LocalDate
@@ -94,6 +95,9 @@ private const val TOTAL_DAILY_ACTIONS = 3
 private const val MAX_AFFIRMATIONS_ON_WIDGET = 4   // extra-tall (>=280dp)
 private const val MAX_AFFIRMATIONS_TALL = 3        // tall (>=200dp)
 private const val MAX_AFFIRMATIONS_COMPACT = 2     // 그 외(컴팩트)
+// 목표 본문 노출 개수 — 목표 섹션은 카드 맨 아래(푸터 CTA 위)라 남은 높이가 가장 적다.
+// 다짐과 같은 규칙으로 넘치는 항목은 "+N 더" 로 알리고 무음 절단하지 않는다.
+private const val MAX_GOALS_ON_WIDGET = 3
 
 // 요일 한글 라벨 — DayOfWeek.value 는 ISO(월=1 … 일=7).
 private val DOW_KO = listOf("월", "화", "수", "목", "금", "토", "일")
@@ -157,6 +161,9 @@ fun WidgetContent(
     // "이번 달 목표" 한 줄 카운트("n / N") — total 0 이면 섹션 생략.
     goalsAchieved: Int = 0,
     goalsTotal: Int = 0,
+    // 목표 본문 — 카운트만으로는 "무슨 목표인지" 를 알 수 없어 함께 그린다.
+    // 옛 캐시/옛 서버 응답이면 비어 있고, 그때는 기존처럼 카운트 한 줄만 나간다.
+    goals: List<WidgetGoal> = emptyList(),
     // 네이티브 로그인 여부 — EmptyState 가 "로그인 안내" 와 "불러오는 중" 을 구분하는 데 쓴다.
     // 기본 false 로 두어 옛 호출부(테스트/프리뷰) 호환.
     isSignedIn: Boolean = false,
@@ -196,7 +203,7 @@ fun WidgetContent(
         }
         LoadedContent(
             slot, progress, ymd, streakCount, affirmations,
-            futureVision, goalsAchieved, goalsTotal,
+            futureVision, goalsAchieved, goalsTotal, goals,
             isWide, isTall, isExtraTall, isLight, ink,
         )
     }
@@ -281,6 +288,7 @@ private fun LoadedContent(
     futureVision: WidgetFutureVision?,
     goalsAchieved: Int,
     goalsTotal: Int,
+    goals: List<WidgetGoal>,
     isWide: Boolean,
     isTall: Boolean,
     isExtraTall: Boolean,
@@ -353,12 +361,15 @@ private fun LoadedContent(
             }
         }
 
-        // ── 6. 이번 달 목표 — 목록 대신 "달성 n / 전체 N 완료" 카운트 한 줄로 축약 ──
+        // ── 6. 이번 달 목표 — "달성 n / 전체 N 완료" 카운트 + 목표 본문 ──
+        // 카운트만 그리던 시절엔 사용자가 "무슨 목표인지" 를 위젯에서 알 수 없었다.
+        // 본문 목록(goals)이 실려 오면 함께 그리고, 옛 캐시라 비어 있으면 카운트 한 줄로 폴백.
         // goalsTotal 0(옛 캐시/목표 미설정)이면 섹션을 자연 생략.
         if (isExtraTall && isWide && goalsTotal > 0) {
             Column(modifier = GlanceModifier.fillMaxWidth()) {
                 HairlineDivider(ink)
                 SectionHeader(SECTION_GOALS, "$goalsAchieved / $goalsTotal 완료", accent, ink)
+                GoalRows(goals, isLight, ink)
             }
         }
 
@@ -632,6 +643,65 @@ private fun ProgressIconsCompact(
             Spacer(GlanceModifier.width(18.dp))
             CheckIcon(progress.wins, isLight, ink)
         }
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// 목표 본문 행 — "이번 달 목표" 섹션의 "n / N 완료" 카운트 아래에 무슨 목표인지 그린다.
+// (카운트만 있던 시절엔 위젯만 보고는 목표가 무엇인지 알 수 없었다.)
+// — Glance 회귀 방지: 호출자에서 1개 자식으로 보이도록 전체를 단일 Column 으로 감싼다.
+// ────────────────────────────────────────────────────────────────────────────
+@Composable
+private fun GoalRows(goals: List<WidgetGoal>, isLight: Boolean, ink: Color) {
+    // 옛 캐시(본문 없음)면 아무것도 그리지 않는다 — 위 카운트 한 줄이 그대로 남는다.
+    Column(modifier = GlanceModifier.fillMaxWidth()) {
+        val shown = goals.take(MAX_GOALS_ON_WIDGET)
+        shown.forEach { GoalRow(it, isLight, ink) }
+        val remaining = goals.size - shown.size
+        if (remaining > 0) {
+            Column(modifier = GlanceModifier.fillMaxWidth()) {
+                Spacer(GlanceModifier.height(2.dp))
+                Text(
+                    text = "+$remaining 더",
+                    style = TextStyle(
+                        color = ColorProvider(ink.copy(alpha = ALPHA_META)),
+                        fontSize = META_SIZE,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Medium,
+                    ),
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun GoalRow(goal: WidgetGoal, isLight: Boolean, ink: Color) {
+    Row(
+        modifier = GlanceModifier
+            .fillMaxWidth()
+            .padding(vertical = ROW_V_PADDING),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // 마커 — 진척도와 같은 체크 아이콘. "달성했나" 를 카운트와 같은 언어로 말한다.
+        Box(
+            modifier = GlanceModifier.width(GOAL_NUM_WIDTH),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            CheckIcon(goal.achieved, isLight, ink)
+        }
+        // 목표 본문 — 다짐(serif italic)과 달리 sans 로 둬 "선언" 이 아닌 "할 일" 로 읽히게.
+        // 달성한 목표는 톤을 낮춰 남은 목표가 눈에 먼저 들어오도록 한다.
+        Text(
+            text = goal.text,
+            style = TextStyle(
+                color = ColorProvider(if (goal.achieved) ink.copy(alpha = ALPHA_DIM) else ink),
+                fontSize = ROW_LABEL_SIZE,
+                fontWeight = FontWeight.Normal,
+            ),
+            maxLines = 1,
+        )
     }
 }
 

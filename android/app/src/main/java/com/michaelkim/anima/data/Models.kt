@@ -42,6 +42,17 @@ data class WidgetTodayProgress(
 )
 
 /**
+ * 위젯 목표 줄에 그릴 목표 한 건 — 본문과 오늘 달성 여부.
+ * 카운트(goalsAchievedCount/goalsTotalCount)와 같은 소스(lib/widgetGoals)에서 만들어져
+ * 내려오므로 둘이 어긋나지 않는다. `achieved` 는 옛 응답 방어로 false 기본값.
+ */
+@Serializable
+data class WidgetGoal(
+    val text: String,
+    val achieved: Boolean = false,
+)
+
+/**
  * "그 꿈을 사는 하루"(미래 일상 비전) 위젯 티저.
  * 위젯은 전체 비전을 다 담지 못해 제목 + 한 토막만 받아 "더 보고 싶게" 만든다.
  * 백엔드가 비전을 못 만들었으면 응답에서 통째로 생략되므로 nullable 로 둔다.
@@ -153,6 +164,11 @@ data class WidgetTodayResponse(
      */
     val goalsAchievedCount: Int = 0,
     val goalsTotalCount: Int = 0,
+    /**
+     * 목표 **본문** 목록. 카운트만으로는 "무슨 목표인지" 를 알 수 없어 위젯이 함께 그린다.
+     * 옛 캐시/옛 서버 응답엔 없어 빈 리스트 기본값 → 위젯은 카운트 한 줄로 폴백한다.
+     */
+    val goals: List<WidgetGoal> = emptyList(),
     /**
      * 내일부터 며칠간의 명언 미리보기. 옛 캐시/옛 서버 응답엔 없어 빈 리스트 기본값.
      * QuoteRepository.effectiveResponseForDisplay 가 날짜 지난 캐시를 이걸로 보정한다.
