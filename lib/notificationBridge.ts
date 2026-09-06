@@ -11,8 +11,10 @@
  *     ("한 일에는 침묵", lib/notificationPolicy.shouldSendEveningReminder), 그 자리에만
  *     미완 과업 넛지(texts.eveningPendingTask)를 대신 넣는다 — 총 발송량은 늘지 않는다.
  *
- * 권한: 네이티브가 첫 sync(켜진 항목 존재) 시점에 requestAuthorization 을 띄운다.
- * 호출부는 온보딩이 아니라 가치 체감 시점(설정 저장·홈 방문)에만 sync 를 부른다.
+ * 권한: allowPrompt=true 인 sync 시점에 네이티브가 requestAuthorization 을 띄운다.
+ * 홈은 "이 기기에서 아직 한 번도 프롬프트를 안 띄웠으면" 1회 허용한다 — 과거처럼
+ * 설정 저장·목표 완주에만 묶으면 대부분 사용자가 권한 요청을 영영 못 받아
+ * 아침 다짐 알림이 0건이 되는 버그가 있었다. 이후 재요청은 여전히 가치 체감 시점만.
  *
  * 원격 푸시(APNs) 불사용 — 서버 인프라·심사 리스크 없이 로컬 예약만으로 동작한다.
  * 웹/안드로이드/SSR 에서는 전부 안전한 no-op (lib/iosWidget.ts 와 동일 가드 정책).
@@ -52,6 +54,34 @@ export function isIosNotificationAvailable(): boolean {
   }
 }
 
+/** 이 기기에서 알림 권한 프롬프트를 이미 띄웠는지 기록하는 localStorage 키. */
+const IOS_PROMPT_SHOWN_KEY = "anima.notify.promptShown";
+
+/**
+ * 이 기기에서 iOS 알림 권한 프롬프트를 이미 띄운 적이 있는가.
+ * 아직이면 홈 방문 sync 가 allowPrompt=true 로 딱 한 번 프롬프트를 허용한다 —
+ * 이 1회 보장이 없으면 "설정 저장 / 목표 100% 완주" 를 한 번도 안 거친 사용자는
+ * 권한이 .notDetermined 로 남아 아침·저녁 알림이 영영 예약되지 않는다.
+ */
+export function hasShownIosNotificationPrompt(): boolean {
+  try {
+    return globalThis.localStorage?.getItem(IOS_PROMPT_SHOWN_KEY) === "1";
+  } catch {
+    // localStorage 접근 불가 — "안 띄웠다" 로 간주해 프롬프트를 허용한다. 권한이 이미
+    // 결정된 상태면 iOS 가 시스템 프롬프트를 다시 띄우지 않으므로 중복 노출 위험은 없다.
+    return false;
+  }
+}
+
+/** 프롬프트를 띄웠다고 기록. 실패해도 무해(위와 같은 이유로 시스템이 중복 노출을 막는다). */
+function markIosNotificationPromptShown(): void {
+  try {
+    globalThis.localStorage?.setItem(IOS_PROMPT_SHOWN_KEY, "1");
+  } catch {
+    // 기록 실패 무시 — 다음 sync 가 다시 allowPrompt=true 를 넘겨도 부작용 없음.
+  }
+}
+
 /**
  * 알림 설정·문구를 네이티브 예약에 동기화한다. 알림은 부가 기능이므로 어떤 실패도
  * throw 하지 않는다(호출부 저장 흐름에 영향 0).
@@ -81,6 +111,8 @@ export async function syncIosNotifications(input: {
       morningOverrides: input.texts.morningOverrides ?? {},
       eveningPendingTask: input.texts.eveningPendingTask ?? null,
     });
+    // 네이티브 호출이 성공한 뒤에만 "프롬프트 띄움" 기록 — 호출 실패 시엔 다음 기회에 재시도.
+    if (input.allowPrompt) markIosNotificationPromptShown();
   } catch (err) {
     console.warn("[notificationBridge] iOS 알림 동기화 실패:", err);
   }
