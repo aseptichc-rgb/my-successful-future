@@ -589,6 +589,12 @@ const dict: Record<DictKey, string> = {
   "goalSlot.maxed": "最多 {max} 个目标。带得越少,越容易做到。",
   "goalSlot.hint": "守住一个,下一个格子就会打开。",
 
+  // ── 商店评价请求(7 天解锁后仅一次) ──
+  "storeReview.title": "我们一起走过了一周",
+  "storeReview.body": "你的坚持已经打开了新的目标格。如果 Anima 帮到了你,一个评分就是莫大的支持。",
+  "storeReview.cta": "留下评价",
+  "storeReview.later": "不用了",
+
   // ── 成长阶段(累计证据票) ──
   "growth.title": "成长阶段",
   "growth.subtitle": "打卡、全文刻写、达成目标和做得好的事都会变成票,推动阶段成长。",

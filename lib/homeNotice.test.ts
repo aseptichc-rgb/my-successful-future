@@ -6,6 +6,7 @@ const ALL: Record<HomeNoticeKind, boolean> = {
   slotUnlock: true,
   stepUp: true,
   declarationNudge: true,
+  storeReview: true,
   trialExpired: true,
   trial: true,
 };
@@ -35,6 +36,14 @@ describe("pickHomeNotice", () => {
     expect(pickHomeNotice({ trialExpired: true, declarationNudge: true })).toBe(
       "declarationNudge",
     );
+  });
+
+  it("스토어 리뷰 카드는 1회성 카드들 뒤, 영구 체험 배너들 앞", () => {
+    expect(pickHomeNotice({ storeReview: true, declarationNudge: true })).toBe(
+      "declarationNudge",
+    );
+    expect(pickHomeNotice({ storeReview: true, trialExpired: true })).toBe("storeReview");
+    expect(pickHomeNotice({ storeReview: true, trial: true })).toBe("storeReview");
   });
 
   it("체험 D-day 배너는 최하위 — 만료 배너보다도 뒤", () => {

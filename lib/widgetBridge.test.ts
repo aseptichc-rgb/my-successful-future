@@ -55,4 +55,27 @@ describe("Android widget bridge user activation", () => {
     expect(browser.createElement).toHaveBeenCalledWith("form");
     expect(browser.appendChild).toHaveBeenCalledTimes(3);
   });
+
+  it("fires the Play in-app review intent through all three paths in the active gesture", async () => {
+    const browser = installBrowser(true);
+    const { notifyAndroidStoreReview } = await import("@/lib/widgetBridge");
+
+    notifyAndroidStoreReview();
+
+    const targets = browser.createElement.mock.results
+      .map((r) => r.value as { src?: string; href?: string; action?: string })
+      .map((el) => el.src ?? el.href ?? el.action);
+    expect(targets).toEqual(
+      Array(3).fill("intent://review#Intent;scheme=anima;package=com.michaelkim.anima;end"),
+    );
+  });
+
+  it("does not fire the review intent without user activation", async () => {
+    const browser = installBrowser(false);
+    const { notifyAndroidStoreReview } = await import("@/lib/widgetBridge");
+
+    notifyAndroidStoreReview();
+
+    expect(browser.appendChild).not.toHaveBeenCalled();
+  });
 });

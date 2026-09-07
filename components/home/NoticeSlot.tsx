@@ -22,6 +22,9 @@ import SlotUnlockBanner, {
   slotUnlockAckStore,
 } from "@/components/home/SlotUnlockBanner";
 import StepUpCard, { shouldShowStepUp, stepUpAckStore } from "@/components/home/StepUpCard";
+import StoreReviewCard from "@/components/home/StoreReviewCard";
+import { shouldShowStoreReview, storeReviewAckStore } from "@/lib/storeReview";
+import { isStoreReviewAvailable } from "@/lib/storeReviewBridge";
 
 /* ─────────────────────────────────────────────────────────────────
  * NoticeSlot — 오늘 탭 상단의 알림 자리. 자격 있는 배너 중 **한 장만** 그린다.
@@ -72,6 +75,7 @@ export default function NoticeSlot({
   const slotAck = useAck(slotUnlockAckStore);
   const stepUpAck = useAck(stepUpAckStore);
   const nudgeDismissed = useAck(declarationNudgeDismissStore);
+  const reviewAcked = useAck(storeReviewAckStore);
 
   const recommit = computeRecommitVariant({ streak, todayYmd: ymd, alreadyCheckedInToday });
   const trial = computeTrialStatus(entitlement, trialEndsAt);
@@ -83,6 +87,11 @@ export default function NoticeSlot({
     slotUnlock: !proUnlockAll && shouldShowSlotUnlock(slots.earned, slotAck),
     stepUp: shouldShowStepUp(stepUpDraft, stepUpAck),
     declarationNudge: !nudgeDismissed && isDerivedDeclaration(declaration, goal),
+    storeReview: shouldShowStoreReview({
+      earned: slots.earned,
+      acked: reviewAcked,
+      inApp: isStoreReviewAvailable(),
+    }),
     trialExpired: trial.kind === "expired",
     trial: trial.kind === "trial",
   };
@@ -113,6 +122,8 @@ export default function NoticeSlot({
       return (
         <DeclarationNudgeCard declaration={declaration} goal={goal} onEdit={onEditAffirmations} />
       );
+    case "storeReview":
+      return <StoreReviewCard earned={slots.earned} />;
     case "trialExpired":
     case "trial":
       return <TrialBanner />;

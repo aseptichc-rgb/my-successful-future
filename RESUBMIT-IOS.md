@@ -65,6 +65,17 @@ Mac 에서:
    # NotificationBridgePlugin.swift 는 이번에 주석만 바뀜 — 복사해도 무해, 안 해도 됨.
    ```
    capacitor.config 변동 없음 → `cap copy`/`cap sync` 불필요(괜히 돌리면 위젯 서명 리셋).
+   2-b. **스토어 리뷰 브릿지 플러그인 — 신규 파일**(2026-09-07 추가). 기존 플러그인과 달리
+   **Xcode App 타깃에 아직 등록돼 있지 않다.** 복사만으로는 바이너리에 안 들어간다:
+   ```bash
+   cp ios-templates/plugin/StoreReviewBridgePlugin.swift ios/App/App/
+   ```
+   그 다음 Xcode 에서 `ios/App/App/StoreReviewBridgePlugin.swift` 를 App 타깃에 추가
+   (File > Add Files to "App"… → Target Membership: App 체크). CAPBridgedPlugin 자동 등록이라
+   별도 등록 코드는 없다. 업로드 전 `strings App.app/App | grep -c StoreReviewBridge` 가 0 보다
+   커야 한다. 빠뜨려도 앱은 깨지지 않는다 — 웹이 reject 를 받아 App Store 리뷰 작성 페이지로
+   폴백한다([lib/storeReviewBridge.ts](lib/storeReviewBridge.ts)). 다만 그러면 "앱 안 별점 시트"
+   대신 App Store 앱으로 이탈한다.
 3. 버전 1.0.5 / 빌드 14 — agvtool 은 pbxproj 의 MARKETING_VERSION 을 안 고친다(1.0.2 함정):
    ```bash
    cd ios/App && xcrun agvtool new-marketing-version 1.0.5 && xcrun agvtool new-version -all 14 && cd ../..

@@ -10,8 +10,11 @@
  *   2. slotUnlock       — "칸이 열린 순간" 1회성, 확인하면 사라짐
  *   3. stepUp           — 같은 축의 1회성 제안(해금과 겹치면 다음 날)
  *   4. declarationNudge — 레거시 1회성, 영구 닫기, 시급하지 않음
- *   5. trialExpired     — 구매 전까지 영구(닫기 없음)
- *   6. trial            — 체험 내내 상시(D-day)
+ *   5. storeReview      — 7일 해금(새 목표 칸) 뒤 스토어 리뷰 요청 1회성, 영구 닫기.
+ *                          해금 배너·스텝업 아래라 "새 기능이 열린 그 순간" 을 가로채지 않고
+ *                          그 다음 자리에서 한 번만 묻는다(lib/storeReview).
+ *   6. trialExpired     — 구매 전까지 영구(닫기 없음)
+ *   7. trial            — 체험 내내 상시(D-day)
  *
  * trialExpired 를 위에 두면 만료 후 미구매 사용자가 슬롯 해금·스텝업을 영영 못 본다.
  * 같은 이유로 "닫았지만 자격 있는" 카드가 아래 카드를 막지 않도록, 닫힘(dismiss) 상태는
@@ -23,6 +26,7 @@ export type HomeNoticeKind =
   | "slotUnlock"
   | "stepUp"
   | "declarationNudge"
+  | "storeReview"
   | "trialExpired"
   | "trial";
 
@@ -31,6 +35,7 @@ export const HOME_NOTICE_PRIORITY: ReadonlyArray<HomeNoticeKind> = [
   "slotUnlock",
   "stepUp",
   "declarationNudge",
+  "storeReview",
   "trialExpired",
   "trial",
 ];

@@ -553,7 +553,7 @@ export default function HomeDashboardPage() {
       />
 
       <main className="mx-auto w-full max-w-3xl">
-        {/* ── 알림 슬롯 — 재약속·슬롯 해금·스텝업·선언 안내·체험 배너 중 우선순위 1장만(lib/homeNotice) ── */}
+        {/* ── 알림 슬롯 — 재약속·슬롯 해금·스텝업·선언 안내·스토어 리뷰·체험 배너 중 우선순위 1장만(lib/homeNotice) ── */}
         <NoticeSlot
           ymd={ymd}
           streak={user?.affirmationStreak}

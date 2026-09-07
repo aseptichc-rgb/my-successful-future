@@ -21,6 +21,8 @@ lifecycle = "2.8.7"
 # QueryProductDetailsResult 로 바뀐 8.0.0 파괴적 변경을 BillingRepository 에 반영해 사용.
 billing = "9.1.0"
 playIntegrity = "1.4.0"
+# Play In-App Review — 웹 리뷰 카드가 anima://review 로 부르는 ReviewBridgeActivity 가 사용.
+playReview = "2.0.2"
 browserHelper = "2.7.2"
 junit = "4.13.2"
 
@@ -71,6 +73,9 @@ billing-ktx = { module = "com.android.billingclient:billing-ktx", version.ref = 
 
 # Play Integrity (호출자 정품 검증)
 play-integrity = { module = "com.google.android.play:integrity", version.ref = "playIntegrity" }
+
+# Play In-App Review (앱 안에서 별점·리뷰 시트) — Task API 를 kotlinx-coroutines await 로 감싸 쓴다.
+play-review = { module = "com.google.android.play:review", version.ref = "playReview" }
 
 # Trusted Web Activity (전체화면 웹 진입 — 주소창 숨김)
 androidbrowserhelper = { module = "com.google.androidbrowserhelper:androidbrowserhelper", version.ref = "browserHelper" }

@@ -1,5 +1,5 @@
 /**
- * 웹(TWA) → 네이티브 브릿지 (인증 · 로그아웃 · 결제 · 위젯 갱신 intent).
+ * 웹(TWA) → 네이티브 브릿지 (인증 · 로그아웃 · 결제 · 위젯 갱신 · 인앱 리뷰 intent).
  *
  * 위젯 갱신의 user-activation 규칙 (중요 — "계속" 확인창 회귀 방지):
  *   - 과거엔 저장 await 뒤에 anima://widget-refresh 를 발화했다. 이미 소진된 탭 권한으로
@@ -43,6 +43,9 @@ const PURCHASE_INTENT_URL =
   "intent://purchase#Intent;scheme=anima;package=com.michaelkim.anima;end";
 const RESTORE_INTENT_URL =
   "intent://purchase?mode=restore#Intent;scheme=anima;package=com.michaelkim.anima;end";
+// Play In-App Review 브릿지 — ReviewBridgeActivity 가 시트를 띄우고 종료한다.
+const REVIEW_INTENT_URL =
+  "intent://review#Intent;scheme=anima;package=com.michaelkim.anima;end";
 const DEDUP_WINDOW_MS = 1500;
 const IFRAME_CLEANUP_MS = 1000;
 
@@ -302,4 +305,13 @@ export function notifyAndroidPurchase(customToken?: string): void {
  */
 export function notifyAndroidRestore(): void {
   fireIntent(RESTORE_INTENT_URL, "restore");
+}
+
+/**
+ * Play In-App Review 시트 요청(ReviewBridgeActivity). TWA 환경이 아니면 no-op.
+ * 반드시 [리뷰 남기기] 탭 핸들러에서 첫 await 전에 호출할 것 — user activation 이 없으면
+ * 다른 인텐트와 같은 게이트에 걸려 조용히 건너뛴다(lib/storeReviewBridge 가 호출부).
+ */
+export function notifyAndroidStoreReview(): void {
+  fireIntent(REVIEW_INTENT_URL, "review");
 }

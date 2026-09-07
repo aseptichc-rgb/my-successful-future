@@ -611,6 +611,13 @@ const dict: Record<DictKey, string> = {
   "goalSlot.maxed": "Up to {max} goals. The fewer you carry, the better you keep them.",
   "goalSlot.hint": "Keep one, and room for the next one opens up.",
 
+  // ── Store review ask (once, after the 7-day unlock) ──
+  "storeReview.title": "A week together",
+  "storeReview.body":
+    "You kept at it long enough to open a new goal slot. If Anima has helped, a rating would mean a lot.",
+  "storeReview.cta": "Leave a review",
+  "storeReview.later": "No thanks",
+
   // ── Growth stage (accumulated evidence votes) ──
   "growth.title": "Growth stage",
   "growth.subtitle": "Check-ins, full transcriptions, achieved goals, and wins become votes that raise your stage.",

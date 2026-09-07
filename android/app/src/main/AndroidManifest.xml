@@ -132,6 +132,27 @@
         </activity>
 
         <!--
+          anima://review
+          웹(TWA) 스토어 리뷰 카드의 [리뷰 남기기] 가 발화하는 Play In-App Review 브릿지.
+          리뷰 시트(Play UI)가 이 액티비티 위로 떠야 하므로 Translucent 테마를 쓰고, 시트가 닫혀
+          콜백이 올 때까지 살아 있어야 하므로 noHistory 를 쓰지 않는다 — PurchaseBridgeActivity 와 같은 이유.
+          BROWSABLE 카테고리가 있어야 Chrome/Custom Tabs 안에서 발화한 intent 도 라우팅된다.
+        -->
+        <activity
+            android:name=".ReviewBridgeActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="anima" android:host="review" />
+            </intent-filter>
+        </activity>
+
+        <!--
           TWA 위임 서비스 — Chrome 이 TRUSTED_WEB_ACTIVITY_SERVICE 로 바인딩(웹 알림 위임 등).
           NOTE: 과거 여기 있던 Play Billing 위임(androidbrowserhelper:billing 의 PaymentActivity/
           PaymentService/DigitalGoodsRequestHandler)은 제거됨 — 결제는 네이티브 BillingClient

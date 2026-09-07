@@ -619,6 +619,13 @@ const dict: Record<DictKey, string> = {
   "goalSlot.maxed": "Hasta {max} metas. Cuantas menos lleves, mejor las cumples.",
   "goalSlot.hint": "Mantén una y se abrirá sitio para la siguiente.",
 
+  // ── Petición de reseña (una vez, tras el desbloqueo de 7 días) ──
+  "storeReview.title": "Una semana juntos",
+  "storeReview.body":
+    "Fuiste constante hasta abrir un nuevo hueco para metas. Si Anima te ha ayudado, una valoración significaría mucho.",
+  "storeReview.cta": "Dejar una reseña",
+  "storeReview.later": "No, gracias",
+
   // ── Etapa de crecimiento (votos de evidencia acumulados) ──
   "growth.title": "Etapa de crecimiento",
   "growth.subtitle": "Los check-ins, las transcripciones completas, las metas logradas y los logros se vuelven votos que suben tu etapa.",
