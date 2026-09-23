@@ -7,6 +7,15 @@
  *   OneTime + 자기 재예약 패턴. 시각·on/off 는 NotificationPrefsStore(서버 설정 캐시)를 따른다.
  * - scheduleDailyAffirmationsReminder: 매일 아침(기본 08:00, 기기 타임존) 로컬 알림. 동일 패턴.
  *
+ * 일일 예약의 policy 파라미터 (기본 REPLACE):
+ *   - REPLACE — 발화 시각이 바뀌었을 수 있는 곳(설정 동기화)과 Worker 자기 재예약
+ *     (자기 자신이 RUNNING 이라 KEEP 이면 다음 예약이 조용히 버려져 체인이 끊긴다).
+ *   - KEEP — 앱 진입 부트스트랩. ⚠️ 부트스트랩이 REPLACE 면: 알림 Worker 가 발화 시각에
+ *     죽어 있던 프로세스를 깨울 때 Application.onCreate 가 Worker 실행보다 먼저 돌고,
+ *     그 시점(≥발화 시각)의 재계산은 "다음 발화 = 내일"이라 막 실행되려던 오늘 작업을
+ *     취소해 버린다 — 매일 아침 알림이 조용히 증발하던 실제 원인. KEEP 은 살아 있는 예약을
+ *     건드리지 않고, 끊긴 체인(강제 종료·OEM 킬·첫 설치)만 되살린다.
+ *
  * 타임존 정책: 리마인더는 **기기 로컬 타임존** — 습관은 사용자의 하루 리듬(현지 아침/저녁)에
  * 붙어야 한다. 반면 자정 위젯 갱신은 KST 고정 — 서버의 ymd(하루 경계)가 KST 라서
  * 데이터가 갈리는 시각과 정렬해야 한다. (정책 단일 소스: 웹 lib/notificationPolicy.ts)
@@ -122,10 +131,13 @@ object WorkScheduler {
      *   (Worker 가 이 이름을 자기 재예약하므로 취소가 곧 루프 종료).
      *   ⚠️ 과업 넛지도 이 Worker 가 발송하므로 조건에서 빠지면 그 토글이 조용히 죽는다.
      * - 같은 날 시각이 아직 안 지났으면 오늘, 지났으면 내일.
-     * - REPLACE 정책: 앱이 다시 열리거나 Worker 가 자기 재예약을 호출해도 항상 단 하나만 큐잉.
+     * - policy 는 파일 상단 "일일 예약의 policy 파라미터" 참고 — 부트스트랩만 KEEP.
      * - 네트워크 제약 없음 — 로컬 알림이라 오프라인에서도 떠야 함.
      */
-    fun scheduleDailyWinsReminder(context: Context) {
+    fun scheduleDailyWinsReminder(
+        context: Context,
+        policy: ExistingWorkPolicy = ExistingWorkPolicy.REPLACE,
+    ) {
         val prefs = NotificationPrefsStore.read(context)
         if (!prefs.eveningEnabled && !prefs.weeklyReviewEnabled && !prefs.pendingTaskEnabled) {
             WorkManager.getInstance(context).cancelUniqueWork(WINS_REMINDER_NAME)
@@ -140,7 +152,7 @@ object WorkScheduler {
             .build()
         WorkManager.getInstance(context).enqueueUniqueWork(
             WINS_REMINDER_NAME,
-            ExistingWorkPolicy.REPLACE,
+            policy,
             request,
         )
     }
@@ -149,10 +161,13 @@ object WorkScheduler {
      * 다음 아침 알림 시각(기기 타임존, NotificationPrefsStore 의 morningHour)까지의 지연으로
      * OneTime Worker 를 enqueue. "성공한 나에게 한 발 더" 다짐을 아침에 따라쓰도록 유도한다.
      * - 꺼져 있으면 예약을 취소한다.
-     * - REPLACE 정책 + 자기 재예약: 항상 단 하나만 큐잉.
+     * - policy 는 파일 상단 "일일 예약의 policy 파라미터" 참고 — 부트스트랩만 KEEP.
      * - 네트워크 제약 없음 — 로컬 알림이라 오프라인에서도 떠야 함.
      */
-    fun scheduleDailyAffirmationsReminder(context: Context) {
+    fun scheduleDailyAffirmationsReminder(
+        context: Context,
+        policy: ExistingWorkPolicy = ExistingWorkPolicy.REPLACE,
+    ) {
         val prefs = NotificationPrefsStore.read(context)
         if (!prefs.morningEnabled) {
             WorkManager.getInstance(context).cancelUniqueWork(AFFIRMATIONS_REMINDER_NAME)
@@ -167,7 +182,7 @@ object WorkScheduler {
             .build()
         WorkManager.getInstance(context).enqueueUniqueWork(
             AFFIRMATIONS_REMINDER_NAME,
-            ExistingWorkPolicy.REPLACE,
+            policy,
             request,
         )
     }
@@ -176,18 +191,22 @@ object WorkScheduler {
      * 다음 00:01 KST 까지의 지연으로 위젯 자동 갱신 Worker 를 enqueue.
      * - 자정 직후 새 ymd 로 todayProgress / streak / date 메타 / time-of-day CTA 가
      *   곧장 위젯에 반영되도록.
-     * - REPLACE 정책 + Worker 의 자기 재예약: 항상 단 하나만 큐잉, 매일 한 번 발사.
+     * - policy 는 파일 상단 "일일 예약의 policy 파라미터" 참고 — 발화 시각이 00:01 고정이라
+     *   재계산이 필요 없는 진입점(부트스트랩·위젯 추가)은 전부 KEEP 이 안전하다.
      * - 네트워크 제약 없음 — 자정 재렌더(캐시 upcoming 미리보기로 그날 명언 교체)는
      *   오프라인에서도 일어나야 한다. fetch 실패는 Worker 가 삼키고 다음 Periodic 이 봉합.
      */
-    fun scheduleDailyMidnightRefresh(context: Context) {
+    fun scheduleDailyMidnightRefresh(
+        context: Context,
+        policy: ExistingWorkPolicy = ExistingWorkPolicy.REPLACE,
+    ) {
         val delayMillis = computeMillisUntilNext(MIDNIGHT_REFRESH_AT)
         val request = OneTimeWorkRequestBuilder<MidnightQuoteRefreshWorker>()
             .setInitialDelay(delayMillis, TimeUnit.MILLISECONDS)
             .build()
         WorkManager.getInstance(context).enqueueUniqueWork(
             MIDNIGHT_REFRESH_NAME,
-            ExistingWorkPolicy.REPLACE,
+            policy,
             request,
         )
     }

@@ -294,6 +294,8 @@ class MainActivity : ComponentActivity() {
      *   안 하면 빈 윈도가 백스택에 남아 TWA back 이 흰 화면으로 떨어진다.
      *   HomeScreen Composable 가 떠 있는 경로에서는 false 로 두어 사용자가 돌아왔을 때
      *   로그인/온보딩 UI 가 보이도록 한다.
+     *   "실제로 뜬 직후" 가 핵심 — finish 는 [launchTwaWithUrl] 이 TwaLauncher 의 완료 콜백
+     *   (Chrome 액티비티 startActivity 직후) 에서 수행한다. 자세한 이유는 그 함수 주석 참고.
      * @param qDate 위젯이 보던 카드의 날짜(YYYY-MM-DD). null 이 아니면 `&qDate=` 로 실어
      *   /home 이 기기 시계 대신 이 날짜로 dailyMotivations 문서를 읽게 한다 (위젯-홈 명언 일치의 핵심).
      * @param prefetchedToken 호출자가 이미 병렬로 시작해 둔 customToken 교환. null 이 아니면
@@ -325,8 +327,7 @@ class MainActivity : ComponentActivity() {
             }
         // 비로그인이거나 토큰 발급에 실패하면 그대로 띄운다 — 사용자가 웹에서 로그인하면 web→native 브릿지로 보정.
         if (!AuthRepository.isSignedIn) {
-            launchTwaWithUrl(finalUrlBeforeToken)
-            if (finishAfterLaunch) finish()
+            launchTwaWithUrl(finalUrlBeforeToken, finishAfterLaunch)
             return
         }
         // 로그인 상태면 customToken 을 받아 URL 에 실어 보낸다 — 웹 AuthProvider 가 1회 소비.
@@ -350,21 +351,39 @@ class MainActivity : ComponentActivity() {
             } else {
                 finalUrlBeforeToken + "&nativeToken=" + Uri.encode(customToken)
             }
-            launchTwaWithUrl(finalUrl)
-            if (finishAfterLaunch) finish()
+            launchTwaWithUrl(finalUrl, finishAfterLaunch)
         }
     }
 
-    private fun launchTwaWithUrl(url: String) {
+    /**
+     * URL 을 TWA 로 띄우고, 요청 시 TWA 가 **실제로 떠오른 뒤에** 이 액티비티를 finish 한다.
+     *
+     * 왜 완료 콜백에서 finish 하는가 — 2026-09-05 "부팅 화면이 두 번 뜬다" 회귀의 원인:
+     *   [TwaLauncher.launch] 는 동기가 아니다. 세션이 없으면 CustomTabsService 에 bind 를 걸어 두고
+     *   즉시 반환하며, Chrome 액티비티의 startActivity 는 서비스 연결 콜백에서야 일어난다.
+     *   예전처럼 launch() 직후 곧바로 finish() 하면
+     *     1) MainActivity 가 먼저 사라져 태스크가 비고 → 런처(홈 화면) 로 떨어졌다가
+     *     2) 그제서야 Chrome 이 (finishing 액티비티에서 띄운 탓에) **새 태스크** 로 떠올랐다.
+     *   사용자 눈에는 "부팅 스플래시 → 앱이 꺼짐 → 앱이 다시 켜지며 (웹) 스플래시" 로 보인다.
+     *   더 나쁘게는 onDestroy 의 [TwaLauncher.destroy] 가 서비스 연결보다 먼저 오면 TwaLauncher 가
+     *   런치를 조용히 포기해(mDestroyed 가드) TWA 가 아예 안 뜨는 경우도 생긴다.
+     *   androidbrowserhelper 의 참조 구현 LauncherActivity 도 같은 이유로 완료 콜백 안에서 finish 한다.
+     *
+     * @param finishAfterLaunch true 면 Chrome 액티비티가 이 태스크 위에 시작된 직후 finish —
+     *   백스택에 빈 윈도가 남지 않으면서도(TWA back → 홈 화면), 그 전까지는 부팅 스플래시가 유지된다.
+     */
+    private fun launchTwaWithUrl(url: String, finishAfterLaunch: Boolean) {
         val uri = try {
             Uri.parse(url)
         } catch (_: Exception) {
             return
         }
+        // TwaLauncher 완료 콜백(TWA startActivity 직후) 과 최종 fallback 이 공유하는 후처리.
+        val onLaunched: Runnable? = if (finishAfterLaunch) Runnable { finish() } else null
         try {
             val launcher = twaLauncher ?: TwaLauncher(this).also { twaLauncher = it }
             val builder = TrustedWebActivityIntentBuilder(uri)
-            launcher.launch(builder, null, null, null)
+            launcher.launch(builder, null, null, onLaunched)
         } catch (_: Exception) {
             // TwaLauncher 실패 시 일반 브라우저 인텐트로 최종 fallback — 사용자가 어떻게든 웹앱에 도달하도록.
             try {
@@ -372,6 +391,7 @@ class MainActivity : ComponentActivity() {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
                 startActivity(intent)
+                onLaunched?.run()
             } catch (_: Exception) {
                 // 외부 브라우저 미설치 등 — 무시.
             }

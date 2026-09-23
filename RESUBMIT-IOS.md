@@ -1,10 +1,16 @@
 # 재심사 — Guideline 4 대응 build 1.0(9) 올리기
 
-> ## ✅ 현재 상태(2026-08-31): **1.0.4 (13) 승인·출시됨** — 다음 제출은 1.0.5 (14), Mac 대기
+> ## ✅ 현재 상태(2026-09-06): **1.0.5 (14) 심사 제출 완료** — `WAITING_FOR_REVIEW`, 다음 빌드는 15
+>
+> 탭 네비게이션 개편 + 위젯 자정 자동 교체 + 아침 명언 알림 반영분을 1.0.5 (14) 로 제출.
+> 위젯 Swift 3종 + 플러그인 복사 케이스 — 절차·실측은 [§ 1.0.5 제출 기록](#105-14-제출-기록-2026-09-06-mac) 참고.
+>
+> <details><summary>이전 상태(2026-08-31): 1.0.4 (13) 승인·출시됨 — 1.0.5 (14) Mac 대기</summary>
 >
 > 1.0.4 (13) 는 승인·출시됨(`READY_FOR_DISTRIBUTION`, ASC 실측 2026-08-31). 다음 제출분
 > 1.0.5 는 **위젯 익스텐션 Swift 변경이 있다** — [§ 1.0.5 (14) 빌드 절차](#105-14-빌드-절차-2026-08-31-준비-완료--mac-대기) 필독.
 > 릴리스 노트 4로케일은 1.0.5 편집 버전에 스테이징 완료(Windows, ASC API). **다음 빌드는 14.**
+> </details>
 >
 > <details><summary>이전 상태(2026-08-21): 1.0.4 (13) 심사 제출 완료 — safe-area·결제 안내 수정분</summary>
 >
@@ -40,6 +46,30 @@
 > Mac 빌드 시 참고용. App Store 거절(Guideline 4 — Design) 대응 후 **정식 재제출**을 위한 절차다.
 > 전체 iOS 셋업은 [README-IOS.md](README-IOS.md) 참고. 이 문서는 "이미 build 8까지 올린 상태에서
 > Guideline 4 수정본을 재심사에 넣는" 최소 절차만 담는다.
+
+---
+
+## 1.0.5 (14) 제출 기록 (2026-09-06, Mac)
+
+아래 § 빌드 절차를 기반으로 실행하되, 제출 직전 풀에서 **탭 네비게이션 개편**(2026-09-04 스펙,
+`app/(tabs)/` 재편 + TabBar 등 103파일)이 함께 들어와 범위가 늘었다. 실측 메모:
+
+- **위젯 Swift 는 3종 복사** — 절차서의 Model·Provider 에 더해 풀에서 `AnimaWidgetViews.swift` 도
+  바뀌어 함께 복사했다. `NotificationBridgePlugin.swift` 는 주석만 차이 — 동기화 겸 복사.
+  capacitor.config 변동 없음 → `cap copy`/`cap sync` 안 돌림(위젯 서명 보존).
+- 검증: vitest **208/208** 통과, `next build` 통과. 웹 변경(탭 개편)은 `server.url` 모드라
+  Vercel 프로덕션에 이미 라이브.
+- 버전: agvtool 1.0.5 / -all 14 + pbxproj 4곳 sed(App/위젯 × Debug/Release). 아카이브 전
+  앱·위젯 Info.plist 둘 다 1.0.5/14 실측 확인.
+- **릴리스 노트 재스테이징**: 8-31 에 스테이징한 문구는 위젯 자정 교체만 다뤄서, 4로케일
+  `whatsNew` 에 탭 개편(오늘·내 꿈·기록·성장) 문구를 추가해 `--apply --version 1.0.5
+  --no-live-promo` 로 재적용. 설명·키워드는 그대로.
+- 아카이브→익스포트→업로드 §4 경로 그대로 성공. 업로드 전 실측: 아카이브 CFBundleVersion 14,
+  위젯 바이너리 `strings | grep -c upcoming` = 1 (신코드 포함). `UPLOAD SUCCEEDED` —
+  Delivery UUID `6071e15c-042b-469b-a25b-2ca8865c0bcf`.
+- TestFlight 처리 약 3분 만에 `1.0.5 (14) VALID` → `--submit` 한 번에 통과(409 없음) →
+  ASC 실측 `WAITING_FOR_REVIEW`. 승인 시 자동 출시.
+- `ios/` 는 gitignore 라 버전 상향은 커밋에 안 잡힌다 — **다음 빌드는 15 부터.**
 
 ---
 

@@ -21,7 +21,11 @@ import { authedFetch } from "@/lib/authedFetch";
 import { isPaymentRequired } from "@/lib/paymentRequired";
 import { notifyAndroidWidgetRefresh } from "@/lib/widgetBridge";
 import { refreshIosWidget } from "@/lib/iosWidget";
-import { isIosNotificationAvailable, syncIosNotifications } from "@/lib/notificationBridge";
+import {
+  hasShownIosNotificationPrompt,
+  isIosNotificationAvailable,
+  syncIosNotifications,
+} from "@/lib/notificationBridge";
 import {
   buildNotificationTexts,
   decideEveningSlot,
@@ -173,8 +177,11 @@ export default function HomeDashboardPage() {
   // iOS 로컬 알림 재동기화 — 홈 방문/목표 체크 때마다 14일 예약 창을 앞으로 밀고,
   // 오늘 목표를 모두 체크했으면 오늘 저녁 리마인더를 침묵시킨다("한 일에는 침묵",
   // lib/notificationPolicy). 그 침묵 자리에만 미완 과업 넛지가 대신 들어간다(총 발송량 증가 0).
-  // 권한 프롬프트는 여기서 띄우지 않는다(allowPrompt=false) — 목표를 방금 다 채운 순간
-  // (가치 체감 직후)에만 허용해 맥락 없는 권한 요청을 막는다.
+  // 권한 프롬프트: 이 기기에서 아직 한 번도 안 띄웠으면 첫 홈 방문에서 1회 허용한다.
+  // 과거처럼 "설정 저장·목표 100% 완주" 에만 묶으면 그 두 경로를 안 거친 대부분 사용자가
+  // .notDetermined 로 남아 알림이 영영 예약되지 않았다(아침 다짐 알림 0건 버그).
+  // 이후에는 목표를 방금 다 채운 순간(가치 체감 직후)에만 다시 허용 — 시스템 특성상
+  // 이미 결정된 권한에는 프롬프트가 다시 뜨지 않으므로 중복 노출도 없다.
   // 웹/Android 에서는 no-op. entryLoaded 전에는 achievedGoals 가 비어 "미완료"로 오판하므로 대기.
   const allGoalsDoneToday =
     goals.length > 0 && goals.every((g) => achievedGoals.includes(g));
@@ -201,7 +208,7 @@ export default function HomeDashboardPage() {
     void syncIosNotifications({
       prefs,
       todayGoalDone: allGoalsDoneToday,
-      allowPrompt: allGoalsDoneToday,
+      allowPrompt: allGoalsDoneToday || !hasShownIosNotificationPrompt(),
       texts: buildNotificationTexts(t, {
         morningOverrides: content?.morningOverrides,
         eveningPendingTask,
