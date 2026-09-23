@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { AuthProvider } from "@/lib/auth-context";
 import LanguageBridge from "@/components/LanguageBridge";
 import ProUpsellSheet from "@/components/billing/ProUpsellSheet";
+import { APP_URL } from "@/lib/constants/storeLinks";
 import "./globals.css";
 
 // 폰트는 Pretendard 단일 — globals.css 의 --font-* 체인이 CDN Pretendard 를 우선
@@ -20,8 +21,8 @@ const SITE_TITLE = "Anima — 꿈을 이루는 하루";
 // 사람에게 이게 무엇인지 말해 주는 자리가 여기뿐이다.
 const SITE_DESCRIPTION =
   "위대함은 매일의 작은 행동의 반복입니다. 꿈을 한 줄 적으면 오늘 할 한 걸음이 정해지고, 그 걸음을 밀어줄 한 마디가 매일 도착하는 앱.";
-// 안드로이드 assetlinks·capacitor.config.ts 의 SERVER_URL 과 같은 호스트여야 한다.
-const SITE_URL = "https://my-successful-future.vercel.app";
+// 안드로이드 assetlinks·capacitor.config.ts 의 SERVER_URL 과 같은 호스트여야 한다(단일 출처: lib/constants/storeLinks).
+const SITE_URL = APP_URL;
 // OG 권장 규격(1.91:1). Meta·X·카카오·슬랙이 공통으로 받는 최대공약수다.
 const OG_IMAGE = { url: "/anima_og.png", width: 1200, height: 630, alt: SITE_TITLE };
 

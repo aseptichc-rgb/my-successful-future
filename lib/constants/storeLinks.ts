@@ -44,6 +44,15 @@ const FORWARDED_UTM_KEYS = [
   "utm_term",
 ] as const;
 
+/**
+ * 앱 안에서 결제가 실제로 일어나는 곳 — 설정의 ANIMA PRO 섹션(?pro=1 을 읽어 자동 스크롤).
+ * 업셀 시트·체험 배너·잠긴 목표 행·잠금 예고 행이 전부 같은 목적지로 보낸다.
+ */
+export const PRO_SECTION_PATH = "/settings?pro=1";
+
+/** 공개 사이트 주소 — 메타데이터(app/layout metadataBase)와 공유 카드(lib/shareCard)가 같은 값을 본다. */
+export const APP_URL = "https://my-successful-future.vercel.app";
+
 export type StorePlatform = "ios" | "android" | "unknown";
 
 /** 판정에 성공한 플랫폼 — buildStoreUrl 은 unknown 을 받지 않는다. */

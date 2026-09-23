@@ -73,8 +73,10 @@ export default function RecommitCard({
     );
   }
 
-  // ── 변형 2: 끊긴 공백 — 자기연민 재약속 카드 (당일 dismiss 가능) ──
+  // ── 변형 2·3: 끊긴 공백 — 자기연민 재약속 카드 / 일주일 이상이면 새 출발 카드 (당일 dismiss 가능) ──
   if (isRecommitDismissed(ack, todayYmd)) return null;
+
+  const fresh = variant.kind === "freshStart";
 
   return (
     <div
@@ -83,7 +85,7 @@ export default function RecommitCard({
     >
       <div className="flex items-start justify-between gap-3">
         <p className="text-[17px] font-semibold leading-[22px] tracking-[-0.43px] text-[var(--label)]">
-          {t("recommit.title")}
+          {fresh ? t("recommit.fresh.title") : t("recommit.title")}
         </p>
         <button
           type="button"
@@ -97,7 +99,9 @@ export default function RecommitCard({
         </button>
       </div>
       <p className="mt-1 text-[15px] leading-[21px] tracking-[-0.24px] text-[var(--label-2)]">
-        {t("recommit.body", { prev: variant.prev, best: variant.best })}
+        {fresh
+          ? t("recommit.fresh.body", { missed: variant.missed, best: variant.best })
+          : t("recommit.body", { prev: variant.prev, best: variant.best })}
       </p>
       <button
         type="button"
@@ -105,7 +109,7 @@ export default function RecommitCard({
         className="mt-3 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[15px] font-semibold text-white"
         style={{ background: "#D85A30" }}
       >
-        {t("recommit.cta")}
+        {fresh ? t("recommit.fresh.cta") : t("recommit.cta")}
       </button>
     </div>
   );

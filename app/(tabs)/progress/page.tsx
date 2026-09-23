@@ -16,6 +16,7 @@ import GroupedSection from "@/components/ui/GroupedSection";
 import ProgressBar from "@/components/ui/ProgressBar";
 import TabHeader from "@/components/nav/TabHeader";
 import SettingsButton from "@/components/nav/SettingsButton";
+import ShareStreakButton from "@/components/progress/ShareStreakButton";
 import { useLanguage, type DictKey } from "@/lib/i18n";
 import type { IdentityProgress } from "@/types";
 
@@ -222,6 +223,11 @@ export default function ProgressPage() {
                   {t("progress.goalDays", { count: goalDays })}
                 </p>
               )}
+              <ShareStreakButton
+                count={count}
+                best={best}
+                declaration={user?.successAffirmations?.[0] ?? ""}
+              />
             </div>
             <div className="text-right">
               <p className="text-[13px] tracking-[-0.08px] text-[var(--label-2)]">

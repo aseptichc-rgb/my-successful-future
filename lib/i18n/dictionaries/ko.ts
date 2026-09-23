@@ -489,6 +489,11 @@ const dict = {
   "progress.streak.current": "현재 연속",
   "progress.streak.days": "{count}일",
   "progress.streak.best": "최고 {count}일",
+  "share.cta": "카드로 공유",
+  "share.preparing": "만드는 중…",
+  "share.card.countLabel": "다짐을 지킨 날",
+  "share.card.brand": "Anima — 꿈을 이루는 하루",
+  "share.text": "{count}일째 매일 나의 다짐을 지키고 있어요 — Anima",
   "progress.goalDays": "목표 지킨 날 {count}일",
   "progress.freeze.label": "이번 달 남은 얼음",
   "progress.freeze.desc": "하루 놓쳐도 얼음이 자동으로 스트릭을 이어줘요 (월 {max}개)",
@@ -608,6 +613,12 @@ const dict = {
   "goalSlot.lockedProgress": "지금 {progress}일",
   "goalSlot.maxed": "목표는 최대 {max}개까지예요. 하나에 집중할수록 잘 지켜져요.",
   "goalSlot.hint": "하나를 지키는 힘이 쌓이면 칸이 하나씩 열려요.",
+  "goalSlot.proLocked": "🔒 세 번째 목표부터는 이용권이 필요해요",
+  "goalSlot.proLockedBody": "체험 때 만든 목표는 지워지지 않아요. 이용권을 받으면 그 자리에서 다시 열려요.",
+  "goalSlot.proCta": "평생 이용권 보기",
+  "goalSlot.proWeb": "이용권은 앱의 설정에서 받을 수 있어요.",
+  "home.goals.lockedAria": "이용권이 필요한 목표",
+  "unlock.teaser.proCta": "이용권으로 지금 열기",
 
   // ── 스토어 리뷰 요청 (7일 해금 뒤 1회) ─────────────────
   "storeReview.title": "일주일을 함께했어요",
@@ -615,6 +626,50 @@ const dict = {
     "새 목표 칸이 열릴 만큼 꾸준했어요. 앱이 도움이 됐다면 별점 하나가 큰 힘이 돼요.",
   "storeReview.cta": "리뷰 남기기",
   "storeReview.later": "괜찮아요",
+
+  // ── 피드백 카드 (만든 사람에게 한마디) ──────────
+  "feedback.title": "만든 사람에게 한마디",
+  "feedback.body":
+    "며칠 함께했네요. 왜 시작했는지, 어디서 막히는지, 뭐가 있으면 결제할 만한지 — 한 줄이면 충분해요. 만든 사람이 직접 읽어요.",
+  "feedback.cta": "한마디 남기기",
+  "feedback.later": "괜찮아요",
+  "feedback.sheet.title": "한마디",
+  "feedback.sheet.placeholder":
+    "예: 알림이 너무 많아요 / 위젯 때문에 깔았어요 / 이런 기능이면 결제할게요",
+  "feedback.sheet.contactOk": "답장을 받아도 괜찮아요 (가입 이메일로)",
+  "feedback.sheet.send": "보내기",
+  "feedback.sheet.sending": "보내는 중…",
+  "feedback.sheet.done": "고마워요. 직접 읽고 반영할게요.",
+  "feedback.sheet.failed": "전송에 실패했어요. 잠시 후 다시 시도해주세요.",
+
+  // ── 게스트(익명) 모드 ──────────
+  "auth.guest.start": "로그인 없이 시작하기",
+  "auth.guest.hint": "먼저 써 보고, 기록을 지키고 싶어지면 그때 계정을 연결하세요.",
+  "auth.guest.link.title": "계정 연결하기",
+  "auth.guest.link.subtitle": "지금까지의 다짐·목표·기록은 그대로 남아요. 로그인 수단만 붙입니다.",
+  "auth.guest.link.submit": "연결하고 기록 지키기",
+  "auth.guest.link.keep": "연결하면 기기를 바꾸거나 앱을 지워도 기록이 남아요.",
+  "auth.error.guestLinkInUse":
+    "이미 가입된 계정이에요. 이 기기의 게스트 기록은 남겨 두고, 로그인 화면에서 그 계정으로 들어가주세요.",
+  "guest.card.title": "기록이 이 기기에만 있어요",
+  "guest.card.body": "앱을 지우거나 기기를 바꾸면 사라져요. 계정을 연결하면 그대로 지켜집니다.",
+  "guest.card.cta": "계정 연결하기",
+  "guest.card.later": "나중에",
+  "settings.account.linkGuest": "계정 연결하기",
+  "settings.account.guestSignOutConfirm":
+    "게스트 계정은 로그아웃하면 다시 들어올 수 없어요. 지금까지의 기록이 사라집니다. 정말 로그아웃할까요?",
+
+  // ── 새 출발 카드 (일주일 이상 공백) ──────────
+  "recommit.fresh.title": "다시, 처음처럼 하나만",
+  "recommit.fresh.body":
+    "{missed}일을 쉬었어요. 괜찮아요 — 최고 {best}일 기록은 그대로예요. 오늘은 이어가는 게 아니라 새로 시작하는 날이에요. 딱 하나만.",
+  "recommit.fresh.cta": "오늘 하나 하기",
+
+  // ── 온보딩 1단계 예시 칩 ──────────
+  "onboarding.futureSelf.dream.chip1": "1년 안에 내 이름으로 된 책 한 권을 낸다",
+  "onboarding.futureSelf.dream.chip2": "3년 뒤 월 매출 1천만 원 나는 작은 가게를 운영한다",
+  "onboarding.futureSelf.dream.chip3": "매일 아침 30분 달리고, 가을 마라톤 10km 를 완주한다",
+  "onboarding.futureSelf.dream.chip4": "영어로 편하게 회의하고, 해외 팀에서 일한다",
 
   // ── 성장 단계 (누적 증거 표) ───────────────────────
   "growth.title": "성장 단계",

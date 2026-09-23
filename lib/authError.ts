@@ -27,6 +27,10 @@ const CODE_TO_MESSAGE_KEY: Readonly<Record<string, DictKey>> = {
   "auth/user-not-found": "auth.error.invalidCredentials",
   "auth/too-many-requests": "auth.error.tooManyRequests",
   "auth/network-request-failed": "auth.error.network",
+  // 게스트 계정 연결 — 그 이메일/소셜 계정이 이미 다른 uid 에 묶여 있다. 연결 대신 로그인해야
+  // 하고, 로그인하면 게스트 기록은 이 기기의 익명 계정에 남는다는 점을 문구가 알려준다.
+  "auth/credential-already-in-use": "auth.error.guestLinkInUse",
+  "auth/provider-already-linked": "auth.error.generic",
 };
 
 /**

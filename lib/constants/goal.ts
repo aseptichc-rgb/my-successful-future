@@ -44,5 +44,14 @@ export const GOAL_SLOT_MAX = 5;
  */
 export const GOAL_SLOT_THRESHOLDS: ReadonlyArray<number> = [0, 7, 21, 45, 66];
 
+/**
+ * 무료(체험 종료 후) 사용자가 꾸준함으로 열 수 있는 목표 슬롯 상한.
+ * 1~2번 칸은 스트릭 보상으로 열리고(7일), 3~5번 칸은 이용권(Pro)이 있어야 열린다.
+ * 체험 중과 결제자는 GOAL_SLOT_MAX 까지 전부 — lib/entitlement unlocksEverything.
+ * 이용권을 판매하는 핵심 근거가 "세 번째 목표" 이므로, 이 값을 바꾸면 페이월 문구
+ * (goalSlot.proLocked)와 스토어 설명도 같이 바꿔야 한다.
+ */
+export const GOAL_SLOT_FREE_MAX = 2;
+
 /** 이 점수 미만이면 "조금 더 구체적으로" 힌트를 노출한다 (lib/goalQuality). */
 export const GOAL_SPECIFIC_ENOUGH = 2;

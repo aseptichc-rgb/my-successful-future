@@ -15,10 +15,19 @@ import type { AffirmationStreak } from "@/types";
 export type RecommitVariant =
   | { kind: "none" }
   | { kind: "freezeChip"; missed: number }
-  | { kind: "recommit"; prev: number; best: number };
+  | { kind: "recommit"; prev: number; best: number }
+  /**
+   * 슬럼프 — 일주일 이상 비웠다. "이어가기" 가 아니라 "처음처럼 하나만" 으로 문구를 바꾼다
+   * (fresh-start effect: 새 출발점으로 프레이밍하면 과거 실패의 무게가 줄어든다).
+   * best 는 그대로 보여 준다 — 그 기록은 사라지지 않았다는 사실이 재시작의 근거다.
+   */
+  | { kind: "freshStart"; missed: number; best: number };
 
 /** 어제 체크인(gap=1)까지는 정상 흐름 — 이틀 이상 벌어졌을 때만 카드가 뜬다. */
 const MIN_GAP_DAYS = 2;
+
+/** 이만큼 비우면 재약속 대신 새 출발 카드. 7일 = 한 주 = 습관 리듬이 완전히 끊긴 단위. */
+export const FRESH_START_GAP_DAYS = 7;
 
 export function computeRecommitVariant({
   streak,
@@ -48,5 +57,6 @@ export function computeRecommitVariant({
 
   // 레거시 문서(bestCount 없음)는 현재 count 를 최고기록으로 간주 — 서버 백필과 동일 폴백.
   const best = Math.max(streak?.bestCount ?? count, count);
+  if (gap >= FRESH_START_GAP_DAYS) return { kind: "freshStart", missed, best };
   return { kind: "recommit", prev: count, best };
 }

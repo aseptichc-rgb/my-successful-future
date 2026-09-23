@@ -6,6 +6,8 @@ import { useAuth } from "@/lib/auth-context";
 import { TodayDataProvider } from "@/lib/today-context";
 import TabBar from "@/components/nav/TabBar";
 import BootSplash from "@/components/ui/BootSplash";
+import { trackAppOpenOnce } from "@/lib/track";
+import { todayKstYmd } from "@/lib/kstDate";
 
 /* ─────────────────────────────────────────────────────────────────
  * (tabs) 레이아웃 — 오늘 · 기록 · 성장 · 내 꿈 네 탭의 공통 껍데기.
@@ -29,6 +31,12 @@ export default function TabsLayout({ children }: { children: ReactNode }) {
     }
     if (user && !user.onboardedAt) router.replace("/onboarding");
   }, [firebaseUser, loading, router, user]);
+
+  // app_open — 온보딩을 마친 로그인 사용자가 탭 화면에 들어온 날을 KST 하루 1회 남긴다(D1/D7 원천).
+  useEffect(() => {
+    if (loading || !firebaseUser || !user?.onboardedAt) return;
+    trackAppOpenOnce(todayKstYmd());
+  }, [firebaseUser, loading, user?.onboardedAt]);
 
   if (loading || !firebaseUser) {
     return <BootSplash />;

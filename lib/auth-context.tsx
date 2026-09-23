@@ -12,6 +12,10 @@ import {
   signInWithCustomTokenClient,
   signUp as firebaseSignUp,
   signOut as firebaseSignOut,
+  signInAsGuest,
+  linkGuestWithEmail,
+  linkGuestWithGoogle,
+  linkGuestWithApple,
   getUserProfile,
   type FirebaseUser,
   type GoogleSignInResult,
@@ -51,6 +55,14 @@ interface AuthContextValue {
   ) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  /** 익명(게스트) 세션인가 — 기록이 이 기기의 익명 계정에만 있다. */
+  isGuest: boolean;
+  /** 로그인 없이 시작 — 익명 계정 생성. 온보딩으로 이어진다. */
+  signInGuest: () => Promise<void>;
+  /** 게스트 계정에 로그인 수단을 붙인다(uid 유지). 연결 뒤 토큰을 강제 갱신해 claim·프로필을 새로 읽는다. */
+  linkGuestEmail: (email: string, password: string, displayName: string) => Promise<void>;
+  linkGuestGoogle: () => Promise<void>;
+  linkGuestApple: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -397,6 +409,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await linkAppleCredentialToEmailAccount(email, password, pendingCredential);
   };
 
+  const signInGuest = async () => {
+    await signInAsGuest();
+  };
+
+  /**
+   * 연결 뒤 정리 — isAnonymous 가 false 로 바뀐 토큰을 강제 발급해 리스너(onIdTokenChanged)를
+   * 다시 돌리고, 프로필(이름/이메일)을 새로 읽는다. 익명 사용자는 이메일이 없어 트라이얼 원장을
+   * 안 남겼으므로 연결 시점에도 트라이얼은 그대로 이어진다(uid 불변 → claim 불변).
+   */
+  const afterGuestLink = async () => {
+    const current = getAuth_().currentUser;
+    if (current) {
+      try {
+        await current.getIdToken(true);
+      } catch (err) {
+        console.warn("[auth] 게스트 연결 후 토큰 갱신 실패:", err);
+      }
+      setFirebaseUser(current);
+    }
+    await refreshUser().catch(() => {});
+  };
+
+  const linkGuestEmail = async (email: string, password: string, displayName: string) => {
+    await linkGuestWithEmail(email, password, displayName);
+    await afterGuestLink();
+  };
+
+  const linkGuestGoogle = async () => {
+    await linkGuestWithGoogle();
+    await afterGuestLink();
+  };
+
+  const linkGuestApple = async () => {
+    await linkGuestWithApple();
+    await afterGuestLink();
+  };
+
   const signOut = async () => {
     // onIdTokenChanged(null) 리스너가 /api/session/refresh 로 자동 재로그인하는 걸 막아야 한다.
     // 1) 서버 쿠키를 먼저 지운다 — refresh 가 401 을 반환하도록.
@@ -459,6 +508,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         linkAppleToEmailPassword,
         signOut,
         refreshUser,
+        isGuest: firebaseUser?.isAnonymous === true,
+        signInGuest,
+        linkGuestEmail,
+        linkGuestGoogle,
+        linkGuestApple,
       }}
     >
       {children}

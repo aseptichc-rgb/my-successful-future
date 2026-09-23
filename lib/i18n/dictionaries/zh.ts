@@ -474,6 +474,11 @@ const dict: Record<DictKey, string> = {
   "progress.streak.current": "当前连续",
   "progress.streak.days": "{count}天",
   "progress.streak.best": "最高 {count}天",
+  "share.cta": "生成卡片分享",
+  "share.preparing": "生成中…",
+  "share.card.countLabel": "坚守宣言的天数",
+  "share.card.brand": "Anima — 让梦想成真的每一天",
+  "share.text": "我已连续 {count} 天坚守每日宣言 — Anima",
   "progress.goalDays": "达成目标的日子 {count} 天",
   "progress.freeze.label": "本月剩余冰冻",
   "progress.freeze.desc": "错过一天，冰冻会自动接上你的连续记录（每月{max}个）",
@@ -588,12 +593,61 @@ const dict: Record<DictKey, string> = {
   "goalSlot.lockedProgress": "目前 {progress} 天",
   "goalSlot.maxed": "最多 {max} 个目标。带得越少,越容易做到。",
   "goalSlot.hint": "守住一个,下一个格子就会打开。",
+  "goalSlot.proLocked": "🔒 第三个目标起需要终身权益",
+  "goalSlot.proLockedBody": "试用期间创建的目标不会删除。获得权益后会在原处重新打开。",
+  "goalSlot.proCta": "查看终身权益",
+  "goalSlot.proWeb": "可在应用的设置中获取权益。",
+  "home.goals.lockedAria": "需要终身权益的目标",
+  "unlock.teaser.proCta": "用终身权益立即打开",
 
   // ── 商店评价请求(7 天解锁后仅一次) ──
   "storeReview.title": "我们一起走过了一周",
   "storeReview.body": "你的坚持已经打开了新的目标格。如果 Anima 帮到了你,一个评分就是莫大的支持。",
   "storeReview.cta": "留下评价",
   "storeReview.later": "不用了",
+
+  // ── 反馈卡片 ──────────
+  "feedback.title": "给开发者的一句话",
+  "feedback.body":
+    "你已经用了几天了。为什么开始、哪里卡住、什么功能值得付费——一句话就够。开发者会亲自阅读每一条。",
+  "feedback.cta": "留一句话",
+  "feedback.later": "不用了",
+  "feedback.sheet.title": "你的留言",
+  "feedback.sheet.placeholder": "例如：提醒太多了 / 我是为了小组件安装的 / 有这个功能我就付费",
+  "feedback.sheet.contactOk": "可以回复我（通过注册邮箱）",
+  "feedback.sheet.send": "发送",
+  "feedback.sheet.sending": "发送中…",
+  "feedback.sheet.done": "谢谢。我会亲自阅读并改进。",
+  "feedback.sheet.failed": "发送失败，请稍后再试。",
+
+  // ── 访客模式 ──────────
+  "auth.guest.start": "不登录，直接开始",
+  "auth.guest.hint": "先试用。想保留记录时再关联账号。",
+  "auth.guest.link.title": "关联账号",
+  "auth.guest.link.subtitle": "你的宣言、目标和记录都原样保留，只是增加一种登录方式。",
+  "auth.guest.link.submit": "关联并保留记录",
+  "auth.guest.link.keep": "关联后，换手机或重装应用记录也不会丢失。",
+  "auth.error.guestLinkInUse":
+    "该账号已存在。本机的访客记录会保留，请在登录页面用该账号登录。",
+  "guest.card.title": "记录只保存在这台设备上",
+  "guest.card.body": "删除应用或更换手机后就会丢失。关联账号即可保留。",
+  "guest.card.cta": "关联账号",
+  "guest.card.later": "稍后",
+  "settings.account.linkGuest": "关联账号",
+  "settings.account.guestSignOutConfirm":
+    "访客账号退出后无法再登录，记录将会丢失。仍要退出吗？",
+
+  // ── 重新开始卡片（离开一周以上）──────────
+  "recommit.fresh.title": "再来一次，像第一天那样，只做一件",
+  "recommit.fresh.body":
+    "你离开了 {missed} 天。没关系——最高 {best} 天的纪录还在。今天不是接着来，而是重新开始。只做一件。",
+  "recommit.fresh.cta": "今天做一件",
+
+  // ── 引导第 1 步示例 ──────────
+  "onboarding.futureSelf.dream.chip1": "一年内出版一本署名的书",
+  "onboarding.futureSelf.dream.chip2": "三年后经营一家月营收 5 万元的小店",
+  "onboarding.futureSelf.dream.chip3": "每天早上跑 30 分钟，秋天完成 10 公里赛",
+  "onboarding.futureSelf.dream.chip4": "能用英语从容开会，在国际团队工作",
 
   // ── 成长阶段(累计证据票) ──
   "growth.title": "成长阶段",

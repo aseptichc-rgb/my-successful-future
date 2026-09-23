@@ -37,6 +37,7 @@ import {
 } from "@/lib/androidPurchase";
 import { readEntitlement } from "@/lib/entitlement";
 import { detectPurchaseEnv } from "@/lib/purchaseEnv";
+import { detectEventPlatform, track } from "@/lib/track";
 import {
   isAndroidApp,
   notifyAndroidPurchase,
@@ -361,7 +362,7 @@ function NotifHourRow({
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user, firebaseUser, loading: authLoading, signOut, refreshUser } = useAuth();
+  const { user, firebaseUser, loading: authLoading, signOut, refreshUser, isGuest } = useAuth();
   const { t, locale, setLocale } = useLanguage();
   const [languageSaving, setLanguageSaving] = useState(false);
 
@@ -587,6 +588,8 @@ export default function SettingsPage() {
 
   const handlePurchasePro = async () => {
     if (purchasing || restoring) return; // 이중 실행/상호 충돌 방지.
+    // 결제 시도 — 완료(purchase_completed)는 서버 검증 라우트가 남기므로 여기선 "눌렀다" 만.
+    track("purchase_started", { platform: detectEventPlatform() });
     pollAbortRef.current?.abort();
     const controller = new AbortController();
     pollAbortRef.current = controller;
@@ -706,6 +709,8 @@ export default function SettingsPage() {
   };
 
   const handleSignOut = async () => {
+    // 게스트는 로그아웃이 곧 데이터 상실이다(익명 계정엔 다시 들어올 수단이 없다) — 한 번 묻는다.
+    if (isGuest && !window.confirm(t("settings.account.guestSignOutConfirm"))) return;
     try {
       await signOut();
       router.replace("/login");
@@ -895,6 +900,15 @@ export default function SettingsPage() {
 
         {/* 계정 */}
         <GroupedSection header={t("settings.account.header") || "계정"}>
+          {isGuest && (
+            <SettingsRow
+              color="#1E1B4B"
+              glyph={G.user}
+              title={t("settings.account.linkGuest")}
+              detail={t("guest.card.body")}
+              onClick={() => router.push("/signup")}
+            />
+          )}
           <SettingsRow
             color="#8E8E93"
             glyph={G.out}

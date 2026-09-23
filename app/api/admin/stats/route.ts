@@ -3,6 +3,9 @@
  *
  * 어드민 페이지(/admin) 용 집계 API.
  * - 가입자 수 (총·최근 7일·최근 30일)
+ * - 제품 이벤트 이름별 7일/30일 건수·고유 사용자 (lib/constants/events)
+ * - D1/D7 리텐션 (최근 30일 가입자 × app_open, lib/retention)
+ * - 최근 피드백 20건 (/api/feedback)
  * - 토큰 사용량 / 비용 (provider·model 별)
  * - 사용자 상위 10명 (총비용 기준)
  *
@@ -14,6 +17,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { Timestamp } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { assertAdminRequest } from "@/lib/adminAuth";
+import { EVENT_NAMES } from "@/lib/constants/events";
+import { ENTITLEMENT_REQUIRED } from "@/lib/constants/quota";
+import { computeRetention, countEvents, type EventRow, type OpenRow, type RetentionUser } from "@/lib/retention";
+import { todayKstYmd } from "@/lib/kstDate";
+
+/** 리텐션 분모로 읽는 최근 가입자 상한 — 그 이상이면 이 화면 대신 진짜 분석 도구가 필요하다. */
+const RETENTION_USERS_LIMIT = 1000;
+/** 어드민에 보여줄 최근 피드백 수. */
+const RECENT_FEEDBACK_LIMIT = 20;
+/** 리텐션·이벤트 집계가 읽는 이벤트 창(일). D7 창(13일) + 가입 30일 이내를 덮는다. */
+const EVENT_LOOKBACK_DAYS = 45;
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -153,6 +167,59 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // 4. 제품 이벤트 — createdAt 단일 필드 범위 조회 한 번으로 읽고, 이름 필터·집계는 메모리에서
+    //    (이름별 복합 인덱스 회피, lib/events 주석 참고). 리텐션은 최근 30일 가입자를 분모로,
+    //    그들의 app_open 을 uid+day 로 묶어 계산한다(lib/retention).
+    const sinceEvents = new Date(now - EVENT_LOOKBACK_DAYS * day);
+    const [eventSnap, recentUsersSnap, feedbackSnap] = await Promise.all([
+      db.collection("events").where("createdAt", ">=", Timestamp.fromDate(sinceEvents)).get(),
+      usersCol
+        .where("createdAt", ">=", Timestamp.fromDate(since30d))
+        .limit(RETENTION_USERS_LIMIT)
+        .get(),
+      db.collection("feedback").orderBy("createdAt", "desc").limit(RECENT_FEEDBACK_LIMIT).get(),
+    ]);
+
+    const eventRows: EventRow[] = [];
+    const openRows: OpenRow[] = [];
+    for (const doc of eventSnap.docs) {
+      const data = doc.data();
+      const uid = typeof data.uid === "string" ? data.uid : null;
+      const name = typeof data.name === "string" ? data.name : null;
+      const created = data.createdAt?.toDate?.();
+      if (!uid || !name || !(created instanceof Date)) continue;
+      eventRows.push({ uid, name, at: created.getTime() });
+      if (name === "app_open" && typeof data.day === "string") {
+        openRows.push({ uid, day: data.day });
+      }
+    }
+
+    const retentionUsers: RetentionUser[] = [];
+    for (const doc of recentUsersSnap.docs) {
+      const created = doc.data().createdAt?.toDate?.();
+      if (created instanceof Date) {
+        retentionUsers.push({ uid: doc.id, createdYmd: todayKstYmd(created) });
+      }
+    }
+
+    const events = countEvents(eventRows, EVENT_NAMES, now);
+    const retention = computeRetention(retentionUsers, openRows, todayKstYmd());
+
+    // 5. 최근 피드백 — 본문은 그대로, 연락처는 동의한 건에만 들어 있다(/api/feedback).
+    const recentFeedback = feedbackSnap.docs.map((doc) => {
+      const data = doc.data();
+      const created = data.createdAt?.toDate?.();
+      return {
+        id: doc.id,
+        text: typeof data.text === "string" ? data.text : "",
+        contactOk: data.contactOk === true,
+        email: typeof data.email === "string" ? data.email : null,
+        locale: typeof data.locale === "string" ? data.locale : null,
+        platform: typeof data.platform === "string" ? data.platform : null,
+        createdAt: created instanceof Date ? created.toISOString() : null,
+      };
+    });
+
     const round = (n: number) => Math.round(n * 1e6) / 1e6;
 
     // 상위 10명만 추린 뒤 그들의 프로필(email/displayName)만 조회 — 전체 users 스캔 회피.
@@ -178,6 +245,12 @@ export async function GET(req: NextRequest) {
         signups30d,
       },
       notifications,
+      // 운영 게이트 스위치 — 꺼져 있으면 402 가 안 나가고 페이월도 없다(lib/authServer). 레포에서는
+      // 볼 수 없는 값이라 여기서 드러낸다. 결제 전환이 0 인데 이 값이 false 면 원인은 그것이다.
+      entitlementRequired: ENTITLEMENT_REQUIRED,
+      events,
+      retention,
+      recentFeedback,
       usage: {
         total: {
           tokens: totalUsage.tokens,

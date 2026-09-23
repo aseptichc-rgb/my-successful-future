@@ -109,6 +109,18 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ── events ──
+    // 제품 이벤트(퍼널·리텐션 계측, server-only). 클라이언트는 /api/events 를 통해서만 남긴다.
+    match /events/{docId} {
+      allow read, write: if false;
+    }
+
+    // ── feedback ──
+    // "만든 사람에게 한마디" 피드백 (server-only). 클라이언트는 /api/feedback 을 통해서만 남긴다.
+    match /feedback/{docId} {
+      allow read, write: if false;
+    }
+
     // ── trialLedger ──
     // 이메일 해시별 트라이얼 발급 이력 (server-only). 탈퇴→재가입 트라이얼 리셋 차단용.
     match /trialLedger/{emailHash} {

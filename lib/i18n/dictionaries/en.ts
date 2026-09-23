@@ -492,6 +492,11 @@ const dict: Record<DictKey, string> = {
   "progress.streak.current": "Current streak",
   "progress.streak.days": "{count} days",
   "progress.streak.best": "Best {count} days",
+  "share.cta": "Share as a card",
+  "share.preparing": "Preparing…",
+  "share.card.countLabel": "Days I kept my word",
+  "share.card.brand": "Anima — A day that builds your dream",
+  "share.text": "Day {count} of keeping my daily affirmation — Anima",
   "progress.goalDays": "{count} days with a goal achieved",
   "progress.freeze.label": "Freezes left this month",
   "progress.freeze.desc": "Miss a day and a freeze bridges your streak automatically ({max}/month)",
@@ -610,6 +615,12 @@ const dict: Record<DictKey, string> = {
   "goalSlot.lockedProgress": "{progress} so far",
   "goalSlot.maxed": "Up to {max} goals. The fewer you carry, the better you keep them.",
   "goalSlot.hint": "Keep one, and room for the next one opens up.",
+  "goalSlot.proLocked": "🔒 A third goal needs lifetime access",
+  "goalSlot.proLockedBody": "Goals you made during the trial aren't deleted. They reopen right here once you have access.",
+  "goalSlot.proCta": "See lifetime access",
+  "goalSlot.proWeb": "You can get access in the app's Settings.",
+  "home.goals.lockedAria": "Goal that needs lifetime access",
+  "unlock.teaser.proCta": "Open now with lifetime access",
 
   // ── Store review ask (once, after the 7-day unlock) ──
   "storeReview.title": "A week together",
@@ -617,6 +628,50 @@ const dict: Record<DictKey, string> = {
     "You kept at it long enough to open a new goal slot. If Anima has helped, a rating would mean a lot.",
   "storeReview.cta": "Leave a review",
   "storeReview.later": "No thanks",
+
+  // ── Feedback card ──────────
+  "feedback.title": "A word to the maker",
+  "feedback.body":
+    "You've been here a few days. Why you started, where it gets in your way, what would be worth paying for — one line is plenty. The person who built this reads every one.",
+  "feedback.cta": "Leave a note",
+  "feedback.later": "No thanks",
+  "feedback.sheet.title": "Your note",
+  "feedback.sheet.placeholder":
+    "e.g. Too many reminders / I installed it for the widget / I'd pay for this feature",
+  "feedback.sheet.contactOk": "It's OK to reply to me (via my sign-up email)",
+  "feedback.sheet.send": "Send",
+  "feedback.sheet.sending": "Sending…",
+  "feedback.sheet.done": "Thank you. I'll read it myself and act on it.",
+  "feedback.sheet.failed": "Couldn't send. Please try again in a moment.",
+
+  // ── Guest mode ──────────
+  "auth.guest.start": "Start without an account",
+  "auth.guest.hint": "Try it first. Link an account whenever you want to keep your progress.",
+  "auth.guest.link.title": "Link an account",
+  "auth.guest.link.subtitle": "Your affirmations, goals and history stay exactly as they are. You're only adding a way to sign in.",
+  "auth.guest.link.submit": "Link and keep my progress",
+  "auth.guest.link.keep": "Once linked, your progress survives a new device or a reinstall.",
+  "auth.error.guestLinkInUse":
+    "That account already exists. Your guest progress stays on this device — sign in with that account from the sign-in screen.",
+  "guest.card.title": "Your progress lives only on this device",
+  "guest.card.body": "Delete the app or switch phones and it's gone. Link an account to keep it.",
+  "guest.card.cta": "Link an account",
+  "guest.card.later": "Later",
+  "settings.account.linkGuest": "Link an account",
+  "settings.account.guestSignOutConfirm":
+    "A guest account can't be signed back into. Signing out deletes your progress. Sign out anyway?",
+
+  // ── Fresh start card (a week or more away) ──────────
+  "recommit.fresh.title": "Again, like the first time. Just one.",
+  "recommit.fresh.body":
+    "You were away {missed} days. That's fine — your best of {best} days is still yours. Today isn't a continuation, it's a fresh start. Just one thing.",
+  "recommit.fresh.cta": "Do one thing today",
+
+  // ── Onboarding step 1 example chips ──────────
+  "onboarding.futureSelf.dream.chip1": "Publish a book under my own name within a year",
+  "onboarding.futureSelf.dream.chip2": "Run a small shop making $10k a month in three years",
+  "onboarding.futureSelf.dream.chip3": "Run 30 minutes every morning and finish a 10k this fall",
+  "onboarding.futureSelf.dream.chip4": "Lead meetings comfortably in English and work on an international team",
 
   // ── Growth stage (accumulated evidence votes) ──
   "growth.title": "Growth stage",

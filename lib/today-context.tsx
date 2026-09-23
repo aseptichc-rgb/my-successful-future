@@ -20,7 +20,7 @@ import { useExecutionPlans } from "@/lib/useExecutionPlans";
 import { computeGoalSlots, type GoalSlotState } from "@/lib/goalSlots";
 import { computePlanUnlock, type PlanUnlockState } from "@/lib/planUnlock";
 import { computeWinsUnlock, hasAnyWin, type WinsUnlockState } from "@/lib/winsUnlock";
-import { isPaidPro } from "@/lib/entitlement";
+import { unlocksEverything } from "@/lib/entitlement";
 import type { DailyEntry } from "@/types";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -129,9 +129,9 @@ export function TodayDataProvider({ children }: { children: ReactNode }) {
     });
   }, [firebaseUser, user, today.entryLoaded, winsRecordedRecently]);
 
-  // 결제 프로(평생/구독)는 모든 해금 게이트를 첫날부터 통과한다 — 트라이얼은 제외
-  // (트라이얼은 전원 자동 시작이라 포함하면 해금 여정 자체가 사라진다).
-  const proUnlockAll = isPaidPro(entitlement);
+  // 결제 프로와 체험 중 사용자는 모든 해금 게이트를 첫날부터 통과한다(lib/entitlement
+  // unlocksEverything). 체험이 끝나면 무료 상한으로 돌아간다 — 그 차이가 곧 페이월이다.
+  const proUnlockAll = unlocksEverything(entitlement);
 
   const value = useMemo<TodayData>(() => {
     // 해금 게이지는 다짐 전사·목표 달성 두 축 중 큰 값으로 찬다.

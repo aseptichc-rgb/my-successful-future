@@ -29,6 +29,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { PlatformText, WebOnly } from "@/components/landing/PlatformGate";
+import UtmCapture from "@/components/landing/UtmCapture";
 import { APP_STORE_URL, PLAY_STORE_URL } from "@/lib/constants/storeLinks";
 
 /**
@@ -41,6 +42,7 @@ const STORE_BUTTON_CLASS =
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-[#F0EDE6]">
+      <UtmCapture />
       {/* 상단 여백에 safe-area inset 을 더한다. layout.tsx 가 viewportFit:"cover" 라
           WKWebView 가 상태바·다이내믹 아일랜드 밑까지 확장되는데, 여백이 없으면 로그인 버튼이
           그 밑에 깔려 탭이 시스템 상태바(스크롤 최상단 이동)로 먹혀 눌리지 않는다 — 실제 사고.
@@ -78,8 +80,8 @@ export default function LandingPage() {
             </h1>
             <p className="mt-5 max-w-xl text-[16px] leading-[1.55] tracking-[-0.01em] text-black/64 sm:text-[17px]">
               <PlatformText
-                web="꿈을 한 줄 적으면 오늘 할 한 걸음이 정해지고, 그 걸음을 밀어줄 실존 멘토의 한 마디가 매일 홈 화면 위젯에 도착합니다. 알림 없이, 광고 없이."
-                ios="꿈을 한 줄 적으면 오늘 할 한 걸음이 정해지고, 그 걸음을 밀어줄 실존 멘토의 한 마디가 매일 잠금화면 위젯에 도착합니다. 알림 없이, 광고 없이."
+                web="꿈을 한 줄 적으면 오늘 할 한 걸음이 정해지고, 그 걸음을 밀어줄 실존 멘토의 한 마디가 매일 홈 화면 위젯에 도착합니다. 광고 없이, 14일 무료로."
+                ios="꿈을 한 줄 적으면 오늘 할 한 걸음이 정해지고, 그 걸음을 밀어줄 실존 멘토의 한 마디가 매일 잠금화면 위젯에 도착합니다. 광고 없이, 14일 무료로."
               />
             </p>
 
@@ -112,7 +114,7 @@ export default function LandingPage() {
                 </a>
               </WebOnly>
               <span className="text-[12px] tracking-[-0.01em] text-black/48">
-                1회 결제, 평생 사용. 광고 없음.
+                14일 무료 체험 후 1회 결제, 평생 사용. 광고 없음.
               </span>
             </div>
 
@@ -172,11 +174,11 @@ export default function LandingPage() {
             body="자기계발 클리셰 대신, 큐레이션된 실존 인물의 발언만. 가짜 인용 없음."
           />
           <ValueCard
-            title="알림 없음, 광고 없음"
+            title="광고 없음, 조용한 알림"
             body={
               <PlatformText
-                web="홈 화면을 열 때마다 한 줄. 그것 하나로 충분합니다."
-                ios="잠금화면을 한 번 켤 때마다 한 줄. 그것 하나로 충분합니다."
+                web="홈 화면을 열 때마다 한 줄. 알림은 아침·저녁 한 번씩, 이미 했으면 울리지 않고, 원하면 끌 수 있습니다."
+                ios="잠금화면을 켤 때마다 한 줄. 알림은 아침·저녁 한 번씩, 이미 했으면 울리지 않고, 원하면 끌 수 있습니다."
               />
             }
           />

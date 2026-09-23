@@ -43,16 +43,50 @@ interface UsageWindow {
   calls: number;
 }
 
+interface EventWindow {
+  count: number;
+  users: number;
+}
+
+interface EventCountRow {
+  name: string;
+  last7d: EventWindow;
+  last30d: EventWindow;
+}
+
+interface RetentionBucket {
+  eligible: number;
+  returned: number;
+  rate: number | null;
+}
+
+interface FeedbackRow {
+  id: string;
+  text: string;
+  contactOk: boolean;
+  email: string | null;
+  locale: string | null;
+  platform: string | null;
+  createdAt: string | null;
+}
+
 interface StatsResponse {
   ok: true;
   generatedAt: string;
   users: { total: number; signups7d: number; signups30d: number };
+  entitlementRequired: boolean;
+  events: EventCountRow[];
+  retention: { d1: RetentionBucket; d7: RetentionBucket };
+  recentFeedback: FeedbackRow[];
   usage: { total: UsageWindow; last7d: UsageWindow; last30d: UsageWindow };
   byModel: ModelBucket[];
   topUsers: UserBucket[];
 }
 
 const fmtNum = (n: number) => n.toLocaleString("ko-KR");
+const fmtRate = (b: RetentionBucket) =>
+  b.rate === null ? "—" : `${Math.round(b.rate * 100)}%`;
+const fmtRateSub = (b: RetentionBucket) => `${fmtNum(b.returned)} / ${fmtNum(b.eligible)}명`;
 const fmtUsd = (n: number) =>
   n < 0.01 ? `$${n.toFixed(6)}` : `$${n.toFixed(2)}`;
 
@@ -127,6 +161,16 @@ export default function AdminPage() {
           <p className="text-[13px] text-black/60">
             생성 시각: {new Date(stats.generatedAt).toLocaleString("ko-KR")}
           </p>
+          <p
+            className={`mt-1 inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-medium ${
+              stats.entitlementRequired
+                ? "bg-emerald-100 text-emerald-800"
+                : "bg-red-100 text-red-800"
+            }`}
+          >
+            결제 게이트 (ENTITLEMENT_REQUIRED):{" "}
+            {stats.entitlementRequired ? "켜짐 — 체험 만료자에게 402·페이월 동작" : "꺼짐 — 아무도 페이월을 보지 않음"}
+          </p>
         </header>
 
         {/* 가입자 */}
@@ -134,6 +178,79 @@ export default function AdminPage() {
           <StatCard label="총 가입자" value={fmtNum(stats.users.total)} />
           <StatCard label="최근 7일 가입" value={fmtNum(stats.users.signups7d)} />
           <StatCard label="최근 30일 가입" value={fmtNum(stats.users.signups30d)} />
+        </section>
+
+        {/* 리텐션 — 최근 30일 가입자 기준, D1 = 다음 날 복귀, D7 = 7~13일째 복귀(lib/retention) */}
+        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <StatCard
+            label="D1 리텐션"
+            value={fmtRate(stats.retention.d1)}
+            subtitle={`${fmtRateSub(stats.retention.d1)} · 가입 다음 날 앱 열기`}
+          />
+          <StatCard
+            label="D7 리텐션"
+            value={fmtRate(stats.retention.d7)}
+            subtitle={`${fmtRateSub(stats.retention.d7)} · 7~13일째 한 번이라도`}
+          />
+        </section>
+
+        {/* 퍼널 이벤트 */}
+        <section className="rounded-xl border border-black/[0.06] bg-white p-5">
+          <h2 className="mb-1 text-[16px] font-semibold text-[#1E1B4B]">퍼널 이벤트</h2>
+          <p className="mb-3 text-[12px] text-black/50">
+            건수 / 고유 사용자. trial_started → onboarding_completed → app_open → paywall_viewed →
+            purchase_started → purchase_completed
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[520px] text-left text-[13px]">
+              <thead className="text-black/60">
+                <tr className="border-b border-black/[0.06]">
+                  <th className="py-2 pr-3 font-medium">이벤트</th>
+                  <th className="py-2 pr-3 font-medium">최근 7일</th>
+                  <th className="py-2 pr-3 font-medium">최근 30일</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.events.map((e) => (
+                  <tr key={e.name} className="border-b border-black/[0.04]">
+                    <td className="py-2 pr-3 font-medium text-[#1E1B4B]">{e.name}</td>
+                    <td className="py-2 pr-3">
+                      {fmtNum(e.last7d.count)}
+                      <span className="ml-1 text-black/50">/ {fmtNum(e.last7d.users)}명</span>
+                    </td>
+                    <td className="py-2 pr-3">
+                      {fmtNum(e.last30d.count)}
+                      <span className="ml-1 text-black/50">/ {fmtNum(e.last30d.users)}명</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* 최근 피드백 */}
+        <section className="rounded-xl border border-black/[0.06] bg-white p-5">
+          <h2 className="mb-3 text-[16px] font-semibold text-[#1E1B4B]">최근 피드백</h2>
+          {stats.recentFeedback.length === 0 ? (
+            <p className="text-sm text-black/60">아직 받은 피드백이 없습니다.</p>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {stats.recentFeedback.map((f) => (
+                <li key={f.id} className="rounded-lg bg-[#F7F5F0] px-4 py-3">
+                  <p className="whitespace-pre-wrap text-[14px] leading-[20px] text-[#1E1B4B]">
+                    {f.text}
+                  </p>
+                  <p className="mt-1.5 text-[11px] text-black/50">
+                    {f.createdAt ? new Date(f.createdAt).toLocaleString("ko-KR") : "—"}
+                    {" · "}
+                    {f.platform ?? "?"} · {f.locale ?? "?"}
+                    {f.contactOk && f.email ? ` · 답장 OK: ${f.email}` : " · 답장 원치 않음"}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         {/* 사용량 / 비용 */}

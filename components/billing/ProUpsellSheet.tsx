@@ -1,12 +1,14 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { track } from "@/lib/track";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 import { useClientValue } from "@/lib/useClientValue";
 import { detectPurchaseEnv } from "@/lib/purchaseEnv";
 import { hasProAccess } from "@/lib/entitlement";
+import { PRO_SECTION_PATH } from "@/lib/constants/storeLinks";
 import {
   clearPaymentRequired,
   getPaymentRequired,
@@ -34,9 +36,6 @@ import {
  * ───────────────────────────────────────────────────────────────── */
 
 const PRO_ACCENT = "#D85A30"; // TrialBanner / 설정 ANIMA PRO 섹션과 동일한 강조색.
-
-/** 설정의 ANIMA PRO 섹션으로 스크롤시키는 딥링크(설정 페이지가 ?pro=1 을 읽어 처리). */
-const PRO_SECTION_PATH = "/settings?pro=1";
 
 /**
  * 시트를 띄우지 않는 경로.
@@ -95,7 +94,15 @@ export default function ProUpsellSheet() {
   // 결제/복원으로 권한이 살아났다면 띄울 이유가 없다. (렌더 중 clear 를 호출하면 다른
   // 구독자의 렌더 도중 상태를 바꾸게 되므로, 여기서는 그리지 않기만 하고 해제는 하지 않는다.
   // 다음 402 가 없으면 신호는 그대로 남아도 무해하다.)
-  if (!requested || hasProAccess(entitlement) || isSilentPath(pathname)) return null;
+  const visible = requested && !hasProAccess(entitlement) && !isSilentPath(pathname);
+
+  // 실제로 화면에 그려진 순간만 센다 — 서버의 paywall_blocked(402) 와 짝을 이뤄
+  // "막혔지만 시트를 못 본" 경로(조용한 화면·웹)를 구분하게 해준다.
+  useEffect(() => {
+    if (visible) track("paywall_viewed", { source: "sheet" });
+  }, [visible]);
+
+  if (!visible) return null;
 
   return (
     <div

@@ -24,6 +24,10 @@ import SlotUnlockBanner, {
 import StepUpCard, { shouldShowStepUp, stepUpAckStore } from "@/components/home/StepUpCard";
 import StoreReviewCard from "@/components/home/StoreReviewCard";
 import { shouldShowStoreReview, storeReviewAckStore } from "@/lib/storeReview";
+import FeedbackCard from "@/components/home/FeedbackCard";
+import { feedbackAckStore, shouldShowFeedbackCard } from "@/lib/feedbackCard";
+import GuestLinkCard from "@/components/home/GuestLinkCard";
+import { guestLinkDismissStore, isGuestLinkDismissed } from "@/lib/guestNotice";
 import { isStoreReviewAvailable } from "@/lib/storeReviewBridge";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -70,12 +74,14 @@ export default function NoticeSlot({
   onAddGoal: () => void;
   onRefineGoal: () => void;
 }) {
-  const { entitlement, trialEndsAt } = useAuth();
+  const { entitlement, trialEndsAt, isGuest } = useAuth();
   const recommitAck = useAck(recommitDismissStore);
+  const guestAck = useAck(guestLinkDismissStore);
   const slotAck = useAck(slotUnlockAckStore);
   const stepUpAck = useAck(stepUpAckStore);
   const nudgeDismissed = useAck(declarationNudgeDismissStore);
   const reviewAcked = useAck(storeReviewAckStore);
+  const feedbackAcked = useAck(feedbackAckStore);
 
   const recommit = computeRecommitVariant({ streak, todayYmd: ymd, alreadyCheckedInToday });
   const trial = computeTrialStatus(entitlement, trialEndsAt);
@@ -83,7 +89,9 @@ export default function NoticeSlot({
   const eligible: Record<HomeNoticeKind, boolean> = {
     recommit:
       recommit.kind === "freezeChip" ||
-      (recommit.kind === "recommit" && !isRecommitDismissed(recommitAck, ymd)),
+      ((recommit.kind === "recommit" || recommit.kind === "freshStart") &&
+        !isRecommitDismissed(recommitAck, ymd)),
+    guestLink: isGuest && !isGuestLinkDismissed(guestAck, ymd),
     slotUnlock: !proUnlockAll && shouldShowSlotUnlock(slots.earned, slotAck),
     stepUp: shouldShowStepUp(stepUpDraft, stepUpAck),
     declarationNudge: !nudgeDismissed && isDerivedDeclaration(declaration, goal),
@@ -92,6 +100,7 @@ export default function NoticeSlot({
       acked: reviewAcked,
       inApp: isStoreReviewAvailable(),
     }),
+    feedback: shouldShowFeedbackCard({ streak, acked: feedbackAcked }),
     trialExpired: trial.kind === "expired",
     trial: trial.kind === "trial",
   };
@@ -106,6 +115,8 @@ export default function NoticeSlot({
           onCheckinCta={onCheckinCta}
         />
       );
+    case "guestLink":
+      return <GuestLinkCard ymd={ymd} />;
     case "slotUnlock":
       return (
         <SlotUnlockBanner
@@ -124,6 +135,8 @@ export default function NoticeSlot({
       );
     case "storeReview":
       return <StoreReviewCard earned={slots.earned} />;
+    case "feedback":
+      return <FeedbackCard streak={streak} />;
     case "trialExpired":
     case "trial":
       return <TrialBanner />;

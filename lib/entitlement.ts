@@ -110,13 +110,25 @@ export function hasProAccess(ent: Entitlement): boolean {
 /**
  * "결제를 마친" 프로인가 — 평생/구독만 true, 트라이얼은 false.
  *
- * hasProAccess 와 구분하는 이유: 트라이얼은 모든 신규 사용자에게 자동으로 켜지므로,
- * 트라이얼까지 포함하면 "꾸준함으로 벌어서 여는" 해금 설계(goalSlots/planUnlock/winsUnlock)가
- * 전원에게 무력화된다. 결제자에게만 모든 기능을 첫날부터 연다 — 해금 게이트의
- * `unlockAll` 인자는 반드시 이 함수의 결과로만 채운다.
+ * 결제 여부 자체가 필요한 곳(설정의 PRO 상태 표시, 구매 복원 판단)에서 쓴다.
+ * 해금 게이트의 `unlockAll` 은 이 함수가 아니라 [unlocksEverything] 으로 채운다.
  */
 export function isPaidPro(ent: Entitlement): boolean {
   return ent.kind === "lifetime" || ent.kind === "subscription";
+}
+
+/**
+ * 해금 게이트(goalSlots/planUnlock/winsUnlock)를 첫날부터 전부 통과하는가 — 체험 포함.
+ *
+ * 체험을 포함하는 이유: 체험이 "진짜 Pro 체험" 이어야 만료 때 잃는 것이 생기고, 잃는 경험이
+ * 있어야 결제한다. 체험 14일 동안 목표 5칸·WOOP·잘한 일을 다 써 본 사용자가 만료 뒤
+ * 무료 상한(GOAL_SLOT_FREE_MAX)으로 돌아가는 그 순간이 페이월이다.
+ *
+ * 체험을 빼고 결제자만 열던 이전 설계는 "꾸준함으로 벌어서 여는" 여정을 지키려는 의도였지만,
+ * 그 여정은 만료 뒤 무료 구간에서 그대로 살아 있다(스트릭으로 2칸·WOOP·잘한 일까지 연다).
+ */
+export function unlocksEverything(ent: Entitlement): boolean {
+  return hasProAccess(ent);
 }
 
 /**

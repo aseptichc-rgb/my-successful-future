@@ -1,11 +1,14 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { track } from "@/lib/track";
 import { useT } from "@/lib/i18n";
 import { useClientValue } from "@/lib/useClientValue";
 import { detectPurchaseEnv } from "@/lib/purchaseEnv";
 import { computeTrialStatus } from "@/lib/trialStatus";
+import { PRO_SECTION_PATH } from "@/lib/constants/storeLinks";
 
 /* ─────────────────────────────────────────────────────────────────
  * TrialBanner — 홈 상단의 무료 체험 상태 배너.
@@ -32,9 +35,16 @@ export default function TrialBanner() {
   const canPurchase = useClientValue(detectPurchaseEnv, false);
 
   const status = computeTrialStatus(entitlement, trialEndsAt);
+
+  // 만료 배너가 실제로 그려진 것도 페이월 노출이다 — 업셀 시트와 source 로 구분한다.
+  const expiredShown = status.kind === "expired";
+  useEffect(() => {
+    if (expiredShown) track("paywall_viewed", { source: "trialExpired" });
+  }, [expiredShown]);
+
   if (status.kind === "pro" || status.kind === "none") return null;
 
-  const goToPro = () => router.push("/settings?pro=1");
+  const goToPro = () => router.push(PRO_SECTION_PATH);
 
   const upgradeButton = canPurchase ? (
     <button

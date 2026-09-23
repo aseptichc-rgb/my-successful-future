@@ -25,6 +25,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
 import { verifyRequestUser, AuthError } from "@/lib/authServer";
 import { verifyAppleTransaction } from "@/lib/appleStoreKit";
+import { logEvent } from "@/lib/events";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -195,6 +196,14 @@ export async function POST(request: NextRequest) {
       },
       { merge: true },
     );
+
+    // 퍼널의 마지막 칸 — 영수증 검증을 통과한 결제만 "완료" 로 센다(클라 탭은 purchase_started).
+    await logEvent({
+      uid: me.uid,
+      name: "purchase_completed",
+      props: { platform: "ios", productId: verifiedProductId },
+      platform: "ios",
+    });
 
     // 6) 클라이언트가 즉시 새 claim 을 반영할 수 있도록 customToken 발급.
     const customToken = await auth.createCustomToken(me.uid, {

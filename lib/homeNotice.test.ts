@@ -3,10 +3,12 @@ import { HOME_NOTICE_PRIORITY, pickHomeNotice, type HomeNoticeKind } from "./hom
 
 const ALL: Record<HomeNoticeKind, boolean> = {
   recommit: true,
+  guestLink: true,
   slotUnlock: true,
   stepUp: true,
   declarationNudge: true,
   storeReview: true,
+  feedback: true,
   trialExpired: true,
   trial: true,
 };
@@ -44,6 +46,18 @@ describe("pickHomeNotice", () => {
     );
     expect(pickHomeNotice({ storeReview: true, trialExpired: true })).toBe("storeReview");
     expect(pickHomeNotice({ storeReview: true, trial: true })).toBe("storeReview");
+  });
+
+  it("게스트 연결 안내는 재약속 바로 다음 — 해금·스텝업보다 앞", () => {
+    expect(pickHomeNotice({ guestLink: true, recommit: true })).toBe("recommit");
+    expect(pickHomeNotice({ guestLink: true, slotUnlock: true })).toBe("guestLink");
+    expect(pickHomeNotice({ guestLink: true, trial: true })).toBe("guestLink");
+  });
+
+  it("피드백 카드는 스토어 리뷰 뒤, 체험 배너들 앞", () => {
+    expect(pickHomeNotice({ feedback: true, storeReview: true })).toBe("storeReview");
+    expect(pickHomeNotice({ feedback: true, trialExpired: true })).toBe("feedback");
+    expect(pickHomeNotice({ feedback: true, trial: true })).toBe("feedback");
   });
 
   it("체험 D-day 배너는 최하위 — 만료 배너보다도 뒤", () => {

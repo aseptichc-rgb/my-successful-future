@@ -12,6 +12,9 @@ import {
   OAuthProvider,
   fetchSignInMethodsForEmail,
   linkWithCredential,
+  linkWithPopup,
+  signInAnonymously,
+  EmailAuthProvider,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   onIdTokenChanged,
@@ -40,7 +43,12 @@ import {
   type Firestore,
   type Unsubscribe,
 } from "firebase/firestore";
-import { isIosNative, isAppleSignInCancelled, signInWithAppleNative } from "@/lib/nativeAuth";
+import {
+  isIosNative,
+  isAppleSignInCancelled,
+  signInWithAppleNative,
+  appleNativeCredential,
+} from "@/lib/nativeAuth";
 import type {
   User,
   DailyEntry,
@@ -258,6 +266,78 @@ export async function signUp(email: string, password: string, displayName: strin
     }
   }
   return credential;
+}
+
+// ── 게스트(익명) 모드 ─────────────────────────────────
+/**
+ * 로그인 없이 시작 — Firebase 익명 계정을 만들고 빈 프로필 문서를 둔다.
+ *
+ * 왜: 자기계발 앱의 첫 화면 이탈은 대부분 로그인 강제에서 난다. 온보딩과 첫 체크인을 먼저
+ * 경험하게 하고, 기록을 지키고 싶어질 때 계정을 "연결" 한다(uid 는 그대로 — 데이터 이전 없음).
+ * 프로필 문서는 온보딩의 merge:true 쓰기들이 채우므로 여기서는 생성만 보장한다.
+ */
+export async function signInAsGuest() {
+  const credential = await signInAnonymously(getAuthInstance());
+  try {
+    await createUserProfile(credential.user.uid, "", "");
+  } catch (err) {
+    console.error("[signInAsGuest] 프로필 문서 생성 실패 — 온보딩 merge 쓰기가 보완:", err);
+  }
+  return credential;
+}
+
+/** 익명 계정에 이메일/비밀번호를 연결한다. uid·데이터는 그대로, 로그인 수단만 생긴다. */
+export async function linkGuestWithEmail(email: string, password: string, displayName: string) {
+  const user = requireCurrentGuest();
+  const credential = EmailAuthProvider.credential(email, password);
+  await linkWithCredential(user, credential);
+  await updateUserIdentity(user.uid, displayName, email);
+}
+
+/** 익명 계정에 Google 을 연결한다(팝업). */
+export async function linkGuestWithGoogle() {
+  const user = requireCurrentGuest();
+  const result = await linkWithPopup(user, googleProvider);
+  await updateUserIdentity(
+    user.uid,
+    result.user.displayName ?? "",
+    result.user.email ?? "",
+  );
+}
+
+/**
+ * 익명 계정에 Apple 을 연결한다 — iOS 네이티브는 네이티브 시트의 credential, 그 외는 팝업.
+ * 호출부는 [isAppleSignInCancelled] 로 취소를 구분한다(로그인과 같은 규칙).
+ */
+export async function linkGuestWithApple() {
+  const user = requireCurrentGuest();
+  if (isIosNative()) {
+    await linkWithCredential(user, await appleNativeCredential());
+  } else {
+    await linkWithPopup(user, appleProvider);
+  }
+  const fresh = getAuthInstance().currentUser;
+  await updateUserIdentity(user.uid, fresh?.displayName ?? "", fresh?.email ?? "");
+}
+
+function requireCurrentGuest(): FirebaseUser {
+  const user = getAuthInstance().currentUser;
+  if (!user) throw new Error("You need to be signed in as a guest first.");
+  if (!user.isAnonymous) throw new Error("This account is already linked.");
+  return user;
+}
+
+/** 연결 직후 프로필 문서의 이름/이메일을 채운다 — 빈 값은 덮어쓰지 않는다. */
+async function updateUserIdentity(uid: string, displayName: string, email: string) {
+  const patch: Record<string, string> = {};
+  if (displayName.trim()) patch.displayName = displayName.trim();
+  if (email.trim()) patch.email = email.trim();
+  if (Object.keys(patch).length === 0) return;
+  try {
+    await setDoc(doc(getDbInstance(), "users", uid), patch, { merge: true });
+  } catch (err) {
+    console.error("[linkGuest] 프로필 갱신 실패 — 연결 자체는 완료:", err);
+  }
 }
 
 export async function signOut() {

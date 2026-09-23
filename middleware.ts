@@ -7,9 +7,11 @@ export function middleware(request: NextRequest) {
   // 실제 검증은 API 라우트의 verifyRequestUser 가 담당.
   const authCookie = request.cookies.get("__session");
 
-  const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/signup");
+  // /signup 은 여기서 막지 않는다 — 게스트(익명) 세션도 쿠키가 있고, 그 사용자는 /signup 에서
+  // 계정을 "연결" 해야 한다. 이미 연결된 사용자의 /signup 진입은 페이지가 클라이언트에서 /home 으로 보낸다.
+  const isAuthPage = pathname.startsWith("/login");
 
-  // 인증된 사용자가 auth 페이지 접근 시 → /home 리다이렉트
+  // 인증된 사용자가 로그인 페이지 접근 시 → /home 리다이렉트
   if (isAuthPage && authCookie) {
     return NextResponse.redirect(new URL("/home", request.url));
   }

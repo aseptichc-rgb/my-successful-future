@@ -15,6 +15,7 @@ import type { NextRequest } from "next/server";
 import { getAdminAuth } from "./firebase-admin";
 import { ENTITLEMENT_REQUIRED } from "./constants/quota";
 import { readEntitlement, hasProAccess, type Entitlement } from "./entitlement";
+import { logEvent } from "./events";
 
 export interface AuthedUser {
   uid: string;
@@ -132,6 +133,14 @@ export async function requirePaidUser(request: NextRequest): Promise<AuthedUser>
   if (!ENTITLEMENT_REQUIRED) return user;
   if (hasProAccess(user.entitlement)) return user;
   const reason = user.trialEndsAt === null ? "trial_not_started" : "trial_expired";
+  // 페이월 노출의 서버 진실 — 어느 기능에서 얼마나 막히는지가 곧 "무엇에 돈을 낼지" 의 힌트다.
+  // 기록은 best-effort(logEvent 는 throw 하지 않음). 서버리스는 응답 뒤 백그라운드 작업이 죽으므로
+  // 짧은 Firestore 쓰기 한 번은 기다린다(lib/telegramNotify 와 같은 이유).
+  await logEvent({
+    uid: user.uid,
+    name: "paywall_blocked",
+    props: { path: request.nextUrl.pathname, reason },
+  });
   throw new AuthError(
     402,
     reason === "trial_expired"

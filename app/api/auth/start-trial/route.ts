@@ -34,6 +34,7 @@ import { verifyRequestUser, AuthError } from "@/lib/authServer";
 import { readEntitlement, shouldStartTrial } from "@/lib/entitlement";
 import { TRIAL_DURATION_MS } from "@/lib/constants/quota";
 import { trialLedgerPath } from "@/lib/trialLedger";
+import { logEvent } from "@/lib/events";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -113,6 +114,9 @@ export async function POST(request: NextRequest) {
     }
 
     const customToken = await auth.createCustomToken(me.uid, { trialEndsAt });
+
+    // 퍼널의 첫 칸 — 신규 체험 발급은 곧 첫 가입이다(재로그인은 alreadyStarted 로 위에서 빠졌다).
+    await logEvent({ uid: me.uid, name: "trial_started" });
 
     return NextResponse.json({
       ok: true,

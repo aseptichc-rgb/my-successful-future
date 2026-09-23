@@ -7,14 +7,19 @@
  *
  * 우선순위(높은 순) — 스스로 해소되는 1회성이 영구 상태 배너보다 위:
  *   1. recommit         — 오늘의 필수 행동과 직결(체크인 CTA), 체크인·당일 닫기로 해소
- *   2. slotUnlock       — "칸이 열린 순간" 1회성, 확인하면 사라짐
+ *   2. guestLink        — 게스트(익명) 계정의 "기록을 지키려면 계정 연결" 안내. 당일 닫기.
+ *                          기기를 잃으면 데이터도 잃는 상태라 재약속 다음으로 시급하다(lib/guestNotice).
+ *   3. slotUnlock       — "칸이 열린 순간" 1회성, 확인하면 사라짐
  *   3. stepUp           — 같은 축의 1회성 제안(해금과 겹치면 다음 날)
  *   4. declarationNudge — 레거시 1회성, 영구 닫기, 시급하지 않음
  *   5. storeReview      — 7일 해금(새 목표 칸) 뒤 스토어 리뷰 요청 1회성, 영구 닫기.
  *                          해금 배너·스텝업 아래라 "새 기능이 열린 그 순간" 을 가로채지 않고
  *                          그 다음 자리에서 한 번만 묻는다(lib/storeReview).
- *   6. trialExpired     — 구매 전까지 영구(닫기 없음)
- *   7. trial            — 체험 내내 상시(D-day)
+ *   6. feedback         — 3일 스트릭 뒤 "만든 사람에게 한마디" 1회성, 영구 닫기(lib/feedbackCard).
+ *                          리뷰 요청보다 아래인 이유: 둘 다 1회성 부탁이지만 리뷰가 먼저 나가야
+ *                          스토어 평점이 쌓이고, 피드백은 3일 이상 쓴 사람이면 언제 물어도 된다.
+ *   7. trialExpired     — 구매 전까지 영구(닫기 없음)
+ *   8. trial            — 체험 내내 상시(D-day)
  *
  * trialExpired 를 위에 두면 만료 후 미구매 사용자가 슬롯 해금·스텝업을 영영 못 본다.
  * 같은 이유로 "닫았지만 자격 있는" 카드가 아래 카드를 막지 않도록, 닫힘(dismiss) 상태는
@@ -23,19 +28,23 @@
 
 export type HomeNoticeKind =
   | "recommit"
+  | "guestLink"
   | "slotUnlock"
   | "stepUp"
   | "declarationNudge"
   | "storeReview"
+  | "feedback"
   | "trialExpired"
   | "trial";
 
 export const HOME_NOTICE_PRIORITY: ReadonlyArray<HomeNoticeKind> = [
   "recommit",
+  "guestLink",
   "slotUnlock",
   "stepUp",
   "declarationNudge",
   "storeReview",
+  "feedback",
   "trialExpired",
   "trial",
 ];

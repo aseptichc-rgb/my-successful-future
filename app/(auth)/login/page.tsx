@@ -111,6 +111,7 @@ export default function LoginPage() {
     signIn,
     signInGoogle,
     signInApple,
+    signInGuest,
     linkGoogleToEmailPassword,
     linkAppleToEmailPassword,
     firebaseUser,
@@ -130,6 +131,21 @@ export default function LoginPage() {
   const [linkPassword, setLinkPassword] = useState("");
 
   const getRedirectPath = () => "/home";
+
+  const handleGuest = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      await signInGuest();
+      // 게스트는 프로필이 비어 있으니 온보딩부터 — (tabs)/layout 도 onboardedAt 없으면 그리 보낸다.
+      router.push("/onboarding");
+    } catch (err) {
+      const key = authErrorMessageKey(err);
+      if (key) setError(t(key));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -386,6 +402,20 @@ export default function LoginPage() {
               {t("auth.continueWithGoogle") || "Google로 계속하기"}
             </button>
           </WebOnly>
+
+          {/* 게스트 시작 — 가치 먼저, 계정은 나중에. 기록을 지키고 싶어질 때 /signup 에서 연결한다. */}
+          <button
+            type="button"
+            onClick={handleGuest}
+            disabled={loading}
+            className="mt-4 w-full rounded-[14px] py-3.5 text-[16px] font-semibold text-[var(--label)] disabled:opacity-50"
+            style={{ background: "rgba(30,27,75,0.06)" }}
+          >
+            {t("auth.guest.start")}
+          </button>
+          <p className="mt-2 text-center text-[12px] tracking-[-0.05px] text-[var(--label-3)]">
+            {t("auth.guest.hint")}
+          </p>
 
           {/* Sign up link */}
           <div className="mt-8 text-center text-[15px] tracking-[-0.24px] text-[var(--label-2)]">

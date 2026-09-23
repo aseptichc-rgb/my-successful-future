@@ -25,6 +25,16 @@ import { isPaymentRequired } from "@/lib/paymentRequired";
 import BootSplash from "@/components/ui/BootSplash";
 import { useLanguage, LOCALE_META, SUPPORTED_LOCALES, type Locale, type DictKey } from "@/lib/i18n";
 import type { DailyMotivation, FutureSelfAnswers } from "@/types";
+import { track } from "@/lib/track";
+import { readUtm } from "@/lib/utm";
+
+/** 1단계(꿈 한 문장) 예시 칩 — 사전 키. 탭하면 입력칸을 그 문장으로 채운다. */
+const DREAM_EXAMPLE_KEYS: ReadonlyArray<DictKey> = [
+  "onboarding.futureSelf.dream.chip1",
+  "onboarding.futureSelf.dream.chip2",
+  "onboarding.futureSelf.dream.chip3",
+  "onboarding.futureSelf.dream.chip4",
+];
 
 /* ─────────────────────────────────────────────────────────────────
  * Anima 온보딩 — "내 꿈 한 문장 + 선언 1줄 + 오늘의 행동 딱 하나"
@@ -399,6 +409,8 @@ export default function OnboardingPage() {
     setSaving(true);
     try {
       await markOnboarded(firebaseUser.uid);
+      // 첫 방문 utm 을 함께 실어 "어느 캠페인이 온보딩 완료까지 이어졌는가" 를 남긴다(lib/utm).
+      track("onboarding_completed", { skipped: false, ...readUtm() });
       await refreshUser().catch(() => {});
       router.replace("/home");
     } catch (err) {
@@ -414,6 +426,7 @@ export default function OnboardingPage() {
       // 언어는 어쨌든 보존
       try { await updateUserLanguage(firebaseUser.uid, locale); } catch {}
       await markOnboarded(firebaseUser.uid);
+      track("onboarding_completed", { skipped: true, ...readUtm() });
       await refreshUser().catch(() => {});
       router.replace("/home");
     } catch (err) {
@@ -543,8 +556,22 @@ export default function OnboardingPage() {
                 {t("onboarding.futureSelf.dream.hint")}
               </p>
 
-              {/* 예시 칩 없이 직접 쓴다 — placeholder 가 구체성의 기준을 안내한다. */}
-              <div className="mt-6">
+              {/* 예시 칩 — 빈 입력칸은 첫 화면 이탈 지점이다. 탭하면 칸을 채우고, 사용자는 고쳐 쓴다.
+                  칩 문장은 placeholder 와 같은 구체성 기준(숫자·기한·장면)을 보여준다. */}
+              <div className="mt-5 flex flex-wrap gap-2">
+                {DREAM_EXAMPLE_KEYS.map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setDreamAnswer(t(key).slice(0, FUTURE_SELF_FIELD_MAX))}
+                    className="rounded-full border border-black/10 bg-white px-3 py-1.5 text-[13px] leading-[18px] tracking-[-0.01em] text-[#1E1B4B]/80 active:bg-black/[0.04]"
+                  >
+                    {t(key)}
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-4">
                 <textarea
                   value={dreamAnswer}
                   onChange={(e) =>

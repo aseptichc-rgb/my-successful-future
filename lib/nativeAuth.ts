@@ -16,7 +16,7 @@
  *   + "Sign in with Apple" Capability 가 적용돼야 한다(README-IOS §1~3).
  */
 import { Capacitor } from "@capacitor/core";
-import { OAuthProvider, signInWithCredential, type Auth } from "firebase/auth";
+import { OAuthProvider, signInWithCredential, type Auth, type AuthCredential } from "firebase/auth";
 
 /** iOS 네이티브(Capacitor WKWebView) 위에서 실행 중인지. SSR/웹/안드로이드에선 false. */
 export function isIosNative(): boolean {
@@ -51,6 +51,14 @@ export function isAppleSignInCancelled(err: unknown): boolean {
  *   needsLink/cancelled 분기와 에러 처리를 담당한다.
  */
 export async function signInWithAppleNative(auth: Auth): Promise<void> {
+  await signInWithCredential(auth, await appleNativeCredential());
+}
+
+/**
+ * 네이티브 Apple 시트를 띄워 Firebase 가 검증할 수 있는 OAuth credential 만 받아온다.
+ * 로그인(signInWithCredential)과 게스트 계정 연결(linkWithCredential)이 같은 credential 을 쓴다.
+ */
+export async function appleNativeCredential(): Promise<AuthCredential> {
   const { FirebaseAuthentication } = await import("@capacitor-firebase/authentication");
   // skipNativeAuth: 네이티브 Firebase SDK 로그인은 건너뛰고 credential 만 받는다 — JS SDK 가 권위.
   const result = await FirebaseAuthentication.signInWithApple({ skipNativeAuth: true });
@@ -64,6 +72,5 @@ export async function signInWithAppleNative(auth: Auth): Promise<void> {
 
   // 네이티브가 hash(rawNonce) 로 Apple 에 요청했으므로, Firebase 검증엔 rawNonce 를 넘겨야 한다.
   const provider = new OAuthProvider("apple.com");
-  const credential = provider.credential({ idToken, rawNonce });
-  await signInWithCredential(auth, credential);
+  return provider.credential({ idToken, rawNonce });
 }

@@ -68,6 +68,16 @@ describe("computeRecommitVariant", () => {
     ).toEqual({ kind: "freezeChip", missed: 1 });
   });
 
+  it("일주일 이상 비우면 recommit 대신 freshStart — best 는 그대로 보고", () => {
+    expect(variant(streakOf({ lastYmd: "2026-08-28", bestCount: 12 }))).toEqual({
+      kind: "freshStart",
+      missed: 6,
+      best: 12,
+    });
+    // 6일 공백(gap=6)은 아직 recommit.
+    expect(variant(streakOf({ lastYmd: "2026-08-29" })).kind).toBe("recommit");
+  });
+
   it("형식이 깨진 날짜는 none", () => {
     expect(variant(streakOf({ lastYmd: "bad" }))).toEqual({ kind: "none" });
   });

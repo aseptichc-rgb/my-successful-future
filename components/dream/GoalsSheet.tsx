@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useClientValue } from "@/lib/useClientValue";
+import { detectPurchaseEnv } from "@/lib/purchaseEnv";
+import { PRO_SECTION_PATH } from "@/lib/constants/storeLinks";
 import { updateUserGoals } from "@/lib/firebase";
 import { missingGoalSignals, needsMoreSpecificGoal, type GoalSignal } from "@/lib/goalQuality";
 import { GOAL_SLOT_MAX, GOAL_TEXT_MAX } from "@/lib/constants/goal";
@@ -19,6 +23,9 @@ import type { User } from "@/types";
  * 호출부가 계산해 넘긴다). 목표는 성공 선언과 독립이다 — 저장 후 "다짐도 바꿀까요?" 를
  * 묻지 않는다(선언 = 이미 이룬 상태 / 목표 = 오늘의 행동).
  * ───────────────────────────────────────────────────────────────── */
+
+/** 설정 ANIMA PRO 섹션·TrialBanner 와 동일한 강조색. */
+const PRO_ACCENT = "#D85A30";
 
 /** 구체성 신호 → i18n 라벨/예시 키. 빠진 신호만 칩으로 보여준다. */
 const GOAL_SIGNAL_LABEL_KEY: Record<GoalSignal, DictKey> = {
@@ -47,7 +54,10 @@ export default function GoalsSheet({
   onClose: () => void;
 }) {
   const t = useT();
+  const router = useRouter();
   const { refreshUser } = useAuth();
+  // 결제 CTA 는 결제 가능한 환경(iOS/Android 앱)에서만 — 웹은 안내 문구만(TrialBanner 와 같은 규칙).
+  const canPurchase = useClientValue(detectPurchaseEnv, false);
   const [goals, setGoals] = useState<string[]>(() =>
     user.goals && user.goals.length > 0 ? [...user.goals] : [],
   );
@@ -129,8 +139,39 @@ export default function GoalsSheet({
           );
         })}
 
+        {/* 이용권 전용 칸 — 무료 상한에 닿았다. 스트릭 안내 대신 결제 진입점을 그 자리에 둔다. */}
+        {goals.length >= goalSlots.unlocked && goalSlots.proOnly && (
+          <div className="flex items-start gap-3 border-t border-[var(--sep)] px-4 py-3">
+            <span className="w-7 text-center text-[15px]" aria-hidden>
+              🔒
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[15px] leading-[20px] tracking-[-0.24px] text-[var(--label-2)]">
+                {t("goalSlot.proLocked")}
+              </p>
+              <p className="mt-0.5 text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label-3)]">
+                {goalSlots.lockedCount > 0 ? t("goalSlot.proLockedBody") : t("goalSlot.proWeb")}
+              </p>
+              {canPurchase && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    router.push(PRO_SECTION_PATH);
+                  }}
+                  className="mt-2 rounded-full px-4 py-1.5 text-[14px] font-semibold text-white"
+                  style={{ background: PRO_ACCENT }}
+                >
+                  {t("goalSlot.proCta")}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* 잠긴 칸 — 왜 못 늘리는지, 언제 열리는지를 그 자리에서 보여준다. */}
         {goals.length >= goalSlots.unlocked &&
+          !goalSlots.proOnly &&
           goalSlots.unlocked < GOAL_SLOT_MAX &&
           goalSlots.nextThreshold !== null && (
             <div className="flex items-center gap-3 border-t border-[var(--sep)] px-4 py-3">
@@ -160,11 +201,13 @@ export default function GoalsSheet({
       </div>
 
       <p className="mt-2 px-1 text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label-2)]">
-        {/* nextThreshold === null == 더 벌어서 열 칸이 없다(전부 해금 또는 결제 프로) —
-            그때 "쌓이면 열려요" 안내는 거짓이 되므로 최대치 안내로 바꾼다. */}
-        {goalSlots.nextThreshold === null
-          ? t("goalSlot.maxed", { max: GOAL_SLOT_MAX })
-          : t("goalSlot.hint")}
+        {/* nextThreshold === null == 더 벌어서 열 칸이 없다 — 전부 해금/결제 프로면 최대치 안내,
+            무료 상한(proOnly)이면 위의 이용권 행이 이미 설명했으므로 "쌓이면 열려요" 를 반복하지 않는다. */}
+        {goalSlots.proOnly
+          ? null
+          : goalSlots.nextThreshold === null
+            ? t("goalSlot.maxed", { max: GOAL_SLOT_MAX })
+            : t("goalSlot.hint")}
       </p>
 
       <div className="mt-3 flex justify-end">

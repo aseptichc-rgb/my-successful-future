@@ -20,6 +20,16 @@ Highest search weight. Brand "Anima" + a top keyword, clearly separating it from
 
 ### ✅ Confirmed: `Anima: Daily Affirmations`  (25 chars — strongest search term, no collision)
 
+> **2026-09-23 포지셔닝 정합성 메모.** App Store(KO)는 "Anima — 꿈을 이루는 하루 / 매일 한 걸음, 꿈에
+> 다가가기" 로, Play 는 "Daily Affirmations" 로 갈려 있다. 광고·랜딩·공유 카드(lib/shareCard)는
+> 전부 "꿈 → 오늘 한 걸음" 메시지를 쓰므로, Play 도 다음 리스팅 갱신 때 아래로 맞추는 것을 권장한다.
+> 검색어 "affirmations" 는 제목 대신 짧은 설명·키워드 필드로 옮긴다.
+>
+> - KO 제목 후보: `Anima: 꿈을 이루는 하루` (14자)
+> - EN 제목 후보: `Anima: One Step Toward Your Dream` (33 — 초과) → `Anima: A Step Toward Your Dream` (30)
+>
+> 실제 변경은 Play Console 에서 사용자가 직접 한다. 이 문서는 근거와 문안만 남긴다.
+
 Alternatives (for reference):
 - `Anima: Affirm Your Future` (25) — blends the belief theme + affirmations keyword
 - `Anima – Affirmations & Mindset` (30) — two keywords packed

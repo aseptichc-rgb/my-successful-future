@@ -498,6 +498,11 @@ const dict: Record<DictKey, string> = {
   "progress.streak.current": "Racha actual",
   "progress.streak.days": "{count} días",
   "progress.streak.best": "Mejor {count} días",
+  "share.cta": "Compartir como tarjeta",
+  "share.preparing": "Preparando…",
+  "share.card.countLabel": "Días cumpliendo mi palabra",
+  "share.card.brand": "Anima — Un día que construye tu sueño",
+  "share.text": "Día {count} cumpliendo mi afirmación diaria — Anima",
   "progress.goalDays": "{count} días con una meta lograda",
   "progress.freeze.label": "Hielos restantes este mes",
   "progress.freeze.desc": "Si fallas un día, un hielo une tu racha automáticamente ({max}/mes)",
@@ -618,6 +623,12 @@ const dict: Record<DictKey, string> = {
   "goalSlot.lockedProgress": "{progress} hasta ahora",
   "goalSlot.maxed": "Hasta {max} metas. Cuantas menos lleves, mejor las cumples.",
   "goalSlot.hint": "Mantén una y se abrirá sitio para la siguiente.",
+  "goalSlot.proLocked": "🔒 A partir de la tercera meta necesitas acceso de por vida",
+  "goalSlot.proLockedBody": "Las metas creadas durante la prueba no se borran. Se reabren aquí mismo cuando tengas acceso.",
+  "goalSlot.proCta": "Ver acceso de por vida",
+  "goalSlot.proWeb": "Puedes obtener el acceso en los Ajustes de la app.",
+  "home.goals.lockedAria": "Meta que necesita acceso de por vida",
+  "unlock.teaser.proCta": "Abrir ahora con acceso de por vida",
 
   // ── Petición de reseña (una vez, tras el desbloqueo de 7 días) ──
   "storeReview.title": "Una semana juntos",
@@ -625,6 +636,50 @@ const dict: Record<DictKey, string> = {
     "Fuiste constante hasta abrir un nuevo hueco para metas. Si Anima te ha ayudado, una valoración significaría mucho.",
   "storeReview.cta": "Dejar una reseña",
   "storeReview.later": "No, gracias",
+
+  // ── Tarjeta de comentarios ──────────
+  "feedback.title": "Una nota para quien lo hizo",
+  "feedback.body":
+    "Llevas unos días aquí. Por qué empezaste, dónde se te atasca, qué valdría la pena pagar — con una línea basta. La persona que lo construyó lee cada una.",
+  "feedback.cta": "Dejar una nota",
+  "feedback.later": "No, gracias",
+  "feedback.sheet.title": "Tu nota",
+  "feedback.sheet.placeholder":
+    "p. ej. Demasiados recordatorios / Lo instalé por el widget / Pagaría por esta función",
+  "feedback.sheet.contactOk": "Pueden responderme (al correo con el que me registré)",
+  "feedback.sheet.send": "Enviar",
+  "feedback.sheet.sending": "Enviando…",
+  "feedback.sheet.done": "Gracias. Lo leeré personalmente y lo tendré en cuenta.",
+  "feedback.sheet.failed": "No se pudo enviar. Inténtalo de nuevo en un momento.",
+
+  // ── Modo invitado ──────────
+  "auth.guest.start": "Empezar sin cuenta",
+  "auth.guest.hint": "Pruébalo primero. Vincula una cuenta cuando quieras conservar tu progreso.",
+  "auth.guest.link.title": "Vincular una cuenta",
+  "auth.guest.link.subtitle": "Tus afirmaciones, metas e historial se quedan tal cual. Solo añades una forma de iniciar sesión.",
+  "auth.guest.link.submit": "Vincular y conservar mi progreso",
+  "auth.guest.link.keep": "Una vez vinculada, tu progreso sobrevive a un cambio de móvil o a una reinstalación.",
+  "auth.error.guestLinkInUse":
+    "Esa cuenta ya existe. Tu progreso de invitado se queda en este dispositivo; inicia sesión con esa cuenta desde la pantalla de inicio de sesión.",
+  "guest.card.title": "Tu progreso solo está en este dispositivo",
+  "guest.card.body": "Si borras la app o cambias de móvil, se pierde. Vincula una cuenta para conservarlo.",
+  "guest.card.cta": "Vincular una cuenta",
+  "guest.card.later": "Más tarde",
+  "settings.account.linkGuest": "Vincular una cuenta",
+  "settings.account.guestSignOutConfirm":
+    "A una cuenta de invitado no se puede volver a entrar. Cerrar sesión borra tu progreso. ¿Cerrar sesión de todos modos?",
+
+  // ── Tarjeta de nuevo comienzo (una semana o más fuera) ──────────
+  "recommit.fresh.title": "Otra vez, como la primera. Solo una cosa.",
+  "recommit.fresh.body":
+    "Estuviste {missed} días fuera. No pasa nada: tu récord de {best} días sigue siendo tuyo. Hoy no es continuar, es empezar de nuevo. Solo una cosa.",
+  "recommit.fresh.cta": "Hacer una cosa hoy",
+
+  // ── Chips de ejemplo del paso 1 ──────────
+  "onboarding.futureSelf.dream.chip1": "Publicar un libro con mi nombre en un año",
+  "onboarding.futureSelf.dream.chip2": "Tener una tienda pequeña que facture 10.000 € al mes en tres años",
+  "onboarding.futureSelf.dream.chip3": "Correr 30 minutos cada mañana y terminar un 10K este otoño",
+  "onboarding.futureSelf.dream.chip4": "Llevar reuniones en inglés con soltura y trabajar en un equipo internacional",
 
   // ── Etapa de crecimiento (votos de evidencia acumulados) ──
   "growth.title": "Etapa de crecimiento",

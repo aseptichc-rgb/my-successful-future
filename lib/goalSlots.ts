@@ -18,6 +18,7 @@
  * unlocked = max(벌어서 연 수, 지금 가진 목표 수).
  */
 import {
+  GOAL_SLOT_FREE_MAX,
   GOAL_SLOT_MAX,
   GOAL_SLOT_THRESHOLDS,
 } from "@/lib/constants/goal";
@@ -38,6 +39,16 @@ export interface GoalSlotState {
   progress: number;
   /** progress 를 만든 축 — 해금 배너가 문구("지켰어요"/"이어왔어요")를 고르는 데 쓴다. */
   source: GoalSlotSource;
+  /**
+   * 남은 칸이 이용권(Pro)으로만 열리는가 — 무료 상한(GOAL_SLOT_FREE_MAX)에 닿았고 결제·체험이 아닐 때.
+   * 목표 시트가 "N일 연속이면 열려요" 대신 "이용권으로 열기" 를 보여주는 판정.
+   */
+  proOnly: boolean;
+  /**
+   * 지금 가진 목표 중 상한 밖이라 잠긴 개수 — 체험 중 늘린 목표가 만료 뒤 잠기는 경우.
+   * 데이터는 그대로 두고(회수 없음) 홈에서 체크만 막는다. unlockAll 이면 항상 0.
+   */
+  lockedCount: number;
 }
 
 /**
@@ -91,14 +102,24 @@ export function computeGoalSlots({
       nextThreshold: null,
       progress,
       source,
+      proOnly: false,
+      lockedCount: 0,
     };
   }
 
+  // 무료: 꾸준함으로 번 칸과 기존 목표 보존분 중 큰 값이되, 무료 상한을 넘지 못한다.
+  // 상한 밖 목표는 회수하지 않고 잠근다(lockedCount) — 체험 때 늘린 목표를 지우면 처벌이고,
+  // 처벌은 재시작을 막는다. 잠긴 목표는 이용권을 받으면 그 자리에서 다시 열린다.
+  const unlocked = Math.min(Math.max(earned, existing), GOAL_SLOT_FREE_MAX);
+  const atFreeCap = earned >= GOAL_SLOT_FREE_MAX;
+
   return {
-    unlocked: Math.max(earned, existing),
+    unlocked,
     earned,
-    nextThreshold: earned >= GOAL_SLOT_MAX ? null : GOAL_SLOT_THRESHOLDS[earned],
+    nextThreshold: atFreeCap ? null : GOAL_SLOT_THRESHOLDS[earned],
     progress,
     source,
+    proOnly: atFreeCap && GOAL_SLOT_FREE_MAX < GOAL_SLOT_MAX,
+    lockedCount: Math.max(0, existing - unlocked),
   };
 }
