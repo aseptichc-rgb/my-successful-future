@@ -1,9 +1,18 @@
 # 재심사 — Guideline 4 대응 build 1.0(9) 올리기
 
-> ## ✅ 현재 상태(2026-09-06): **1.0.5 (14) 심사 제출 완료** — `WAITING_FOR_REVIEW`, 다음 빌드는 15
+> ## 🟡 현재 상태(2026-09-24): **1.0.6 (15) Mac 빌드 대기** — 게스트 모드·공유 카드·스토어 리뷰 브릿지 반영분
+>
+> 웹 변경(게스트 모드 + 계정 연결 수정 `597a247`, 온보딩 예시 칩, 스트릭 공유 카드, 피드백 카드,
+> 아침 알림 수정)은 Vercel 프로덕션에 **이미 라이브**. 새 빌드가 필요한 네이티브 변경은
+> **StoreReviewBridgePlugin.swift 신규 1개**(`73f79f5`) 뿐 — 절차는 [§ 1.0.6 (15) 빌드 절차](#106-15-빌드-절차-2026-09-24-준비--mac-대기).
+> ASC 실측(09-24): 1.0.5 (14) 출시 완료(`READY_FOR_DISTRIBUTION`), **1.0.6 편집 버전 생성 + 4로케일
+> 릴리스 노트 스테이징 완료** — Mac 에서는 빌드 15 아카이브·업로드·`--submit` 만 남았다.
+>
+> <details><summary>이전 상태(2026-09-06): 1.0.5 (14) 심사 제출 완료 — WAITING_FOR_REVIEW</summary>
 >
 > 탭 네비게이션 개편 + 위젯 자정 자동 교체 + 아침 명언 알림 반영분을 1.0.5 (14) 로 제출.
 > 위젯 Swift 3종 + 플러그인 복사 케이스 — 절차·실측은 [§ 1.0.5 제출 기록](#105-14-제출-기록-2026-09-06-mac) 참고.
+> </details>
 >
 > <details><summary>이전 상태(2026-08-31): 1.0.4 (13) 승인·출시됨 — 1.0.5 (14) Mac 대기</summary>
 >
@@ -46,6 +55,66 @@
 > Mac 빌드 시 참고용. App Store 거절(Guideline 4 — Design) 대응 후 **정식 재제출**을 위한 절차다.
 > 전체 iOS 셋업은 [README-IOS.md](README-IOS.md) 참고. 이 문서는 "이미 build 8까지 올린 상태에서
 > Guideline 4 수정본을 재심사에 넣는" 최소 절차만 담는다.
+
+---
+
+## 1.0.6 (15) 빌드 절차 (2026-09-24 준비 — Mac 대기)
+
+반영분(1.0.5 (14) 이후 master): 게스트 모드(로그인 없이 시작 → `/signup` 에서 계정 연결) + 체험
+시작 뒤 게스트 판정이 풀리던 수정(`597a247`, `lib/guestUser.ts`), 온보딩 꿈 예시 칩, 스트릭 공유
+카드, 피드백 카드, 이벤트 계측, 아침 다짐 알림 증발 수정(`3b30b86`), 7일 해금 뒤 스토어 리뷰 카드
+(`73f79f5`). **웹은 전부 Vercel 프로덕션에 라이브**(2026-09-24, 커밋 597a247) — 새 빌드가 필요한
+이유는 `SKStoreReviewController` 를 여는 **네이티브 플러그인 1개**뿐이다.
+
+- 네이티브 diff (1.0.5 이후 `ios-templates/`): `plugin/StoreReviewBridgePlugin.swift` **신규** 1개.
+  위젯 Swift·NotificationBridgePlugin·capacitor.config 변동 없음 → **`cap sync`/`cap copy` 불필요**
+  (괜히 돌리면 위젯 서명 리셋).
+- 릴리스 노트: [scripts/ios-update-metadata.mjs](scripts/ios-update-metadata.mjs) 의 4로케일
+  `whatsNew` 를 1.0.6 내용(게스트 시작·예시 칩·공유 카드·아침 알림 수정·피드백 카드)으로 갱신하고
+  **ASC 스테이징 완료**(2026-09-24, Windows, `--apply --version 1.0.6 --no-live-promo` →
+  `1.0.6 PREPARE_FOR_SUBMISSION` 생성 + en-US·ko·es-ES·zh-Hans 업서트). ASC 실측: 1.0.5 는
+  `READY_FOR_DISTRIBUTION`(출시됨), TestFlight 최신 빌드 14 → **다음 빌드는 15**. Mac 에서 문구 작업 불필요.
+- Firebase 콘솔: 익명(Anonymous) 로그인 제공업체는 2026-09-24 에 켰다 — 게스트 모드가 실제로
+  동작하는 전제 조건. 심사용 데모 계정(`play-review@anima-test.com`)은 그대로.
+
+Mac 에서:
+
+0. **상태 확인부터** — 1.0.5 (14) 가 출시됐는지(`READY_FOR_DISTRIBUTION`), 최신 빌드번호가 14 인지:
+   ```bash
+   export ASC_API_KEY_PATH=~/.appstoreconnect/private_keys/AuthKey_8ZJ3Y6N6J7.p8
+   npm run ios:submit          # 드라이런 — 버전 상태·빌드 목록만 출력
+   ```
+   2026-09-24 실측으로는 1.0.5 출시 완료·1.0.6 편집 버전 생성 상태다. 드라이런 출력에
+   `1.0.6 — PREPARE_FOR_SUBMISSION` 이 보이면 정상.
+1. `git pull && npm install`
+2. **스토어 리뷰 브릿지 플러그인 복사 + Xcode 타깃 등록** (신규 파일이라 복사만으로는 바이너리에 안 들어간다):
+   ```bash
+   cp ios-templates/plugin/StoreReviewBridgePlugin.swift ios/App/App/
+   ```
+   Xcode 에서 `ios/App/App/StoreReviewBridgePlugin.swift` 를 App 타깃에 추가
+   (File > Add Files to "App"… → Target Membership: **App** 체크). CAPBridgedPlugin 자동 등록이라
+   별도 등록 코드는 없다. 빠뜨려도 앱은 안 깨지지만 "앱 안 별점 시트" 대신 App Store 앱으로
+   이탈한다([lib/storeReviewBridge.ts](lib/storeReviewBridge.ts)).
+3. 버전 **1.0.6 / 빌드 15** — agvtool 은 pbxproj 의 MARKETING_VERSION 을 안 고친다(1.0.2 함정):
+   ```bash
+   cd ios/App && xcrun agvtool new-marketing-version 1.0.6 && xcrun agvtool new-version -all 15 && cd ../..
+   sed -i '' 's/MARKETING_VERSION = 1.0.5;/MARKETING_VERSION = 1.0.6;/g' ios/App/App.xcodeproj/project.pbxproj
+   grep -c "MARKETING_VERSION = 1.0.6;" ios/App/App.xcodeproj/project.pbxproj   # 4 (App/위젯 × Debug/Release)
+   ```
+4. 아카이브→익스포트→업로드 — [§4](#4-아카이브--업로드-위젯--수동-서명-경로) 와 동일(키체인 잠금해제 →
+   수동 서명 archive → ExportOptions-widget export → altool). 산출물은 `build/Anima-1.0.6.xcarchive` /
+   `build/export-1.0.6` 로 버전별 분리. 업로드 전 실측 두 가지:
+   ```bash
+   plutil -extract CFBundleVersion raw build/Anima-1.0.6.xcarchive/Products/Applications/App.app/Info.plist   # 15
+   strings build/Anima-1.0.6.xcarchive/Products/Applications/App.app/App | grep -c StoreReviewBridge         # > 0
+   ```
+5. TestFlight `1.0.6 (15) VALID` 확인(5~15분) 후:
+   ```bash
+   npm run ios:submit                              # 드라이런 — 1.0.6 에 build 15 연결 계획 확인
+   node scripts/ios-appstore-submit.mjs --submit   # 릴리스 노트는 스테이징돼 있어 --whats-new 불필요
+   ```
+   빌드 연결 직후 409 가 나면 잠시 뒤 같은 명령 재실행(§ 함정 참고). 제출 후 이 문서 상단 상태와
+   "다음 빌드는 16" 을 갱신해 커밋한다 — `ios/` 는 gitignore 라 버전 상향은 커밋에 안 잡힌다.
 
 ---
 

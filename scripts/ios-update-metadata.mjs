@@ -75,7 +75,7 @@ const COPY = {
     keywords:
       "motivation,affirmations,daily quote,goals,habits,widget,self care,dream,mindset",
     whatsNew:
-      "A fresh new layout: everything now lives in four tabs — Today, My Dream, Journal, and Growth — so what you need is always one tap away. Your widget now switches to a fresh daily quote at midnight — even when you don't open the app. Morning notifications now carry each day's quote. Plus small improvements.",
+      "Start without an account: try Anima first and link your account later, when you want to keep your records. Onboarding now offers example dreams you can tap to fill in. Share your streak as a card. The morning affirmation notification no longer disappears after a day, and a small in-app card lets you tell us what to improve. Plus small fixes.",
     description: `What if there was an app that made your dreams come true?
 
 Not by magic. By the oldest rule there is: you become what you believe.
@@ -117,7 +117,7 @@ Take it with Anima.`,
     keywords:
       "동기부여,확언,다짐,명언,목표,습관,위젯,자기계발,꿈,성공,멘토,루틴,마인드셋,긍정,자존감",
     whatsNew:
-      "화면 구성이 새로워졌어요: 오늘 · 내 꿈 · 기록 · 성장 네 개의 탭으로 정리되어, 필요한 화면에 한 번에 닿습니다. 위젯은 자정마다 그날의 새 명언으로 자동 교체됩니다 — 앱을 열지 않아도요. 아침 알림에도 매일 그날의 명언이 실립니다. 소소한 개선도 함께 했습니다.",
+      "로그인 없이 바로 시작할 수 있어요 — 먼저 써 보고, 기록을 지키고 싶어지면 그때 계정을 연결하세요. 온보딩에서 꿈 예시를 탭해 바로 채울 수 있고, 스트릭을 카드로 공유할 수 있어요. 아침 다짐 알림이 하루 만에 사라지던 문제를 고쳤고, 앱 안에서 짧게 의견을 보낼 수 있는 카드가 생겼어요. 소소한 개선도 함께 했습니다.",
     description: `꿈을 이루어주는 앱이 있다면 어떨까요?
 
 마법이 아닙니다. 가장 오래된 진리 하나 때문입니다 — 사람은 자신이 믿는 대로 됩니다.
@@ -159,7 +159,7 @@ Anima와 함께 떼어보세요.`,
     keywords:
       "motivación,afirmaciones,frase diaria,metas,hábitos,widget,sueño,mentalidad",
     whatsNew:
-      "Un diseño renovado: todo vive ahora en cuatro pestañas — Hoy, Mi sueño, Diario y Crecimiento — para que lo que necesitas esté a un toque. El widget ahora cambia a una nueva frase cada día a medianoche, incluso sin abrir la app. Las notificaciones de la mañana ahora incluyen la frase de cada día. Además, pequeñas mejoras.",
+      "Empieza sin cuenta: prueba Anima primero y vincula tu cuenta más tarde, cuando quieras conservar tus registros. El onboarding ahora ofrece sueños de ejemplo que puedes tocar para rellenar. Comparte tu racha como una tarjeta. La notificación matutina de la afirmación ya no desaparece al día siguiente, y una pequeña tarjeta dentro de la app te permite decirnos qué mejorar. Además, pequeñas correcciones.",
     description: `¿Y si hubiera una app que hiciera realidad tus sueños?
 
 No por arte de magia. Por la regla más antigua que existe: te conviertes en lo que crees.
@@ -201,7 +201,7 @@ Dalo con Anima.`,
     keywords:
       "励志,正能量,每日金句,目标,习惯,小组件,自我提升,梦想,名言,成功,坚持,语录,心态,自律,打卡",
     whatsNew:
-      "全新界面布局：内容整理为「今天 · 我的梦想 · 记录 · 成长」四个标签页，想去的页面一键直达。小组件现在会在每天午夜自动换上当天的新名言——即使不打开应用。晨间通知也会带上每天的名言。另有若干小改进。",
+      "无需登录即可开始：先用起来，想保留记录时再关联账号。引导页新增可一键填入的梦想示例；连续打卡可以生成卡片分享。修复了晨间肯定语通知第二天消失的问题，并新增应用内简短反馈卡片。另有若干小改进。",
     description: `如果有一款 App 能让你的梦想成真，会怎样？
 
 不是靠魔法，而是靠最古老的一条法则：你相信什么，就会成为什么。
