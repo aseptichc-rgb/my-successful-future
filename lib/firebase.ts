@@ -22,6 +22,7 @@ import {
   type AuthCredential,
   type User as FirebaseUser,
 } from "firebase/auth";
+import { isGuestUser } from "@/lib/guestUser";
 import {
   getFirestore,
   collection,
@@ -323,7 +324,7 @@ export async function linkGuestWithApple() {
 function requireCurrentGuest(): FirebaseUser {
   const user = getAuthInstance().currentUser;
   if (!user) throw new Error("You need to be signed in as a guest first.");
-  if (!user.isAnonymous) throw new Error("This account is already linked.");
+  if (!isGuestUser(user)) throw new Error("This account is already linked.");
   return user;
 }
 

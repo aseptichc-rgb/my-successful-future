@@ -34,8 +34,8 @@ export default function SignupPage() {
   // 이미 연결된(익명 아님) 로그인 사용자는 가입할 이유가 없다 — 미들웨어가 /signup 을 막지
   // 않으므로(게스트 통과용) 여기서 보낸다.
   useEffect(() => {
-    if (!authLoading && firebaseUser && !firebaseUser.isAnonymous) router.replace("/home");
-  }, [authLoading, firebaseUser, router]);
+    if (!authLoading && firebaseUser && !isGuest) router.replace("/home");
+  }, [authLoading, firebaseUser, isGuest, router]);
 
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");

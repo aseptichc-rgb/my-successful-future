@@ -23,6 +23,7 @@ import {
 } from "@/lib/firebase";
 import type { AuthCredential } from "firebase/auth";
 import { shouldStartTrial, readEntitlement, type Entitlement } from "@/lib/entitlement";
+import { isGuestUser } from "@/lib/guestUser";
 import {
   fireAndroidAuthBridge,
   installUserGestureTracker,
@@ -508,7 +509,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         linkAppleToEmailPassword,
         signOut,
         refreshUser,
-        isGuest: firebaseUser?.isAnonymous === true,
+        isGuest: isGuestUser(firebaseUser),
         signInGuest,
         linkGuestEmail,
         linkGuestGoogle,

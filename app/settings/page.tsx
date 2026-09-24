@@ -234,6 +234,7 @@ function SettingsRow({
   glyph,
   title,
   detail,
+  subtitle,
   destructive,
   onClick,
   isLast,
@@ -241,7 +242,9 @@ function SettingsRow({
   color: string;
   glyph: React.ReactNode;
   title: string;
+  /** 오른쪽 짧은 값("없음", "08:00 · 21:00"). 문장은 subtitle 로 — 제목이 글자 단위로 꺾인다. */
   detail?: string;
+  subtitle?: string;
   destructive?: boolean;
   onClick?: () => void;
   isLast?: boolean;
@@ -263,6 +266,11 @@ function SettingsRow({
         style={{ color: destructive ? "#FF3B30" : "var(--label)" }}
       >
         {title}
+        {subtitle && (
+          <div className="mt-0.5 text-[13px] leading-[18px] tracking-[-0.08px] text-[var(--label-2)]">
+            {subtitle}
+          </div>
+        )}
       </div>
       {detail && (
         <span className="text-[17px] tracking-[-0.43px] text-[var(--label-2)]">{detail}</span>
@@ -905,7 +913,7 @@ export default function SettingsPage() {
               color="#1E1B4B"
               glyph={G.user}
               title={t("settings.account.linkGuest")}
-              detail={t("guest.card.body")}
+              subtitle={t("guest.card.body")}
               onClick={() => router.push("/signup")}
             />
           )}
