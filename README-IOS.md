@@ -321,8 +321,9 @@ npm run ios:assets     # = capacitor-assets generate --ios
 
 ## 8. 심사 제출 (App Store Connect)
 
-`docs/app-store-listing-ko.md` 의 한국어 메타데이터와 `docs/app-store-listing-en.md` 의
-영어 메타데이터를 그대로 붙여넣는다.
+스토어 문안(6개 로케일의 이름·부제·설명·키워드·릴리스 노트)은 `node scripts/ios-update-metadata.mjs --apply`
+로 스테이징한다 — 원본은 그 스크립트의 `COPY` 다. 스크립트가 못 만지는 설정(로케일별 스크린샷·
+판매 지역·App Privacy·`CFBundleLocalizations`)은 `docs/app-store-metadata.md` 체크리스트를 따른다.
 
 ### 8-1. App Review 정보
 

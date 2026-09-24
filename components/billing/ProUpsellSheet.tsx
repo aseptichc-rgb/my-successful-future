@@ -54,6 +54,7 @@ const SILENT_PREFIXES = [
   "/privacy",
   "/terms",
   "/delete-account",
+  "/support",
   "/admin",
 ] as const;
 

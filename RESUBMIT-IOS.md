@@ -2,6 +2,12 @@
 
 > ## ✅ 현재 상태(2026-09-06): **1.0.5 (14) 심사 제출 완료** — `WAITING_FOR_REVIEW`, 다음 빌드는 15
 >
+> **2026-09-24 추가 — 다음 빌드(15)에서 할 것:**
+> - `ios-templates/Info.plist` 의 `CFBundleLocalizations` 를 `ios/App/App/Info.plist` 에 병합 — 제품 페이지
+>   "언어" 행에 한국어·스페인어·중국어가 뜨게 하는 키. 없으면 "영어" 만 표시된다.
+> - 스토어 문안은 `node scripts/ios-update-metadata.mjs --apply` 로 6로케일(es-MX·zh-Hant 신설, 이름·부제 포함)
+>   스테이징 후 제출. 새 로케일 스크린샷·판매 지역·App Privacy 체크는 [docs/app-store-metadata.md](docs/app-store-metadata.md).
+>
 > 탭 네비게이션 개편 + 위젯 자정 자동 교체 + 아침 명언 알림 반영분을 1.0.5 (14) 로 제출.
 > 위젯 Swift 3종 + 플러그인 복사 케이스 — 절차·실측은 [§ 1.0.5 제출 기록](#105-14-제출-기록-2026-09-06-mac) 참고.
 >

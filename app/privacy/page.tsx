@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-const LAST_UPDATED = "2026-08-10";
+const LAST_UPDATED = "2026-09-24";
 const CONTACT_EMAIL =
   process.env.NEXT_PUBLIC_PRIVACY_CONTACT_EMAIL || "aseptichc@gmail.com";
 
@@ -53,7 +53,7 @@ export default function PrivacyPolicyPage() {
           Anima (the &ldquo;Service&rdquo;) is a personal application that
           delivers a daily one-line motivation card and a curated quote — written
           from the perspective of &ldquo;the you of ten years from now&rdquo; —
-          to your Android widget and lock screen. This policy explains how the
+          to your home screen widget and lock screen. This policy explains how the
           Service collects, uses, stores, and deletes your personal information.
         </Section>
 

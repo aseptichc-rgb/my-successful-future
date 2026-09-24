@@ -1,3 +1,7 @@
+> ⚠️ **보관 문서 (2026-09-24)** — 아래 이름·부제·문안·이메일은 더 이상 쓰지 않는다.
+> 현재 문안 원본은 [scripts/ios-update-metadata.mjs](../scripts/ios-update-metadata.mjs),
+> 설정 체크리스트는 [docs/app-store-metadata.md](app-store-metadata.md). 카테고리·연령·App Privacy 표만 참고용으로 남긴다.
+
 # Anima — App Store Connect Metadata (English)
 
 ## App Name (≤ 30 chars)

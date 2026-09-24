@@ -55,6 +55,19 @@
         </dict>
     </array>
 
+    <!-- ============ 지원 언어 선언 — App Store 제품 페이지 "언어" 행 ============ -->
+    <!-- 앱 UI 는 웹(lib/i18n)이 4개 언어를 그리므로 .lproj 폴더가 없다. 이 키가 없으면 제품
+         페이지에 "언어: 영어" 만 표시되어 한국·스페인·중화권 사용자의 전환이 떨어진다.
+         ASC 로케일(en-US·ko·es-ES/es-MX·zh-Hans/zh-Hant)과 맞춘다. 앱 UI 는 간체만 있으므로
+         zh-Hant 는 넣지 않는다. CFBundleDevelopmentRegion 은 Capacitor 기본값(en) 그대로. -->
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>en</string>
+        <string>ko</string>
+        <string>es</string>
+        <string>zh-Hans</string>
+    </array>
+
     <!-- ============ 디스플레이 이름 — App Store / 홈 화면에 표시되는 짧은 이름 ============ -->
     <key>CFBundleDisplayName</key>
     <string>Anima</string>
