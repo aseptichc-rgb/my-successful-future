@@ -14,17 +14,13 @@
  *   --rollout <0~1>        단계적 출시 비율. 1 또는 미지정이면 전체 출시(completed)
  *   --notes "<text>"       ko-KR 릴리스 노트. 미지정 시 원본 트랙의 노트를 그대로 승계
  *
- * 인증(우선순위):
- *   1. GOOGLE_PLAY_SA_KEY        서비스 계정 JSON 문자열
- *   2. GOOGLE_PLAY_SA_KEY_FILE   서비스 계정 JSON 파일 경로
- *   3. 저장소 루트 .env.local 의 FIREBASE_SERVICE_ACCOUNT_KEY
+ * 인증: scripts/play-credentials.mjs (GOOGLE_PLAY_SA_KEY → GOOGLE_PLAY_SA_KEY_FILE →
+ *       루트 firebase-adminsdk JSON → .env.local 의 FIREBASE_SERVICE_ACCOUNT_KEY)
  *
  * 요구 권한: 서비스 계정이 Play Console 에서 "프로덕션 트랙에 출시" 권한을 가져야 한다.
  */
-import { readFileSync, existsSync } from "node:fs";
-import { resolve, dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { google } from "googleapis";
+import { loadPlayCredentials } from "./play-credentials.mjs";
 
 const PACKAGE_NAME = "com.michaelkim.anima";
 const TARGET_TRACK = "production";
@@ -34,8 +30,6 @@ const FULL_ROLLOUT = 1;
 const STATUS_COMPLETED = "completed";
 const STATUS_IN_PROGRESS = "inProgress";
 const NOTE_PREVIEW_LENGTH = 160;
-
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 function fail(msg) {
   console.error(`[play-promote] ${msg}`);
@@ -74,42 +68,16 @@ function parseArgs(argv) {
   };
 }
 
-function loadCredentials() {
-  if (process.env.GOOGLE_PLAY_SA_KEY) {
-    try {
-      return JSON.parse(process.env.GOOGLE_PLAY_SA_KEY);
-    } catch {
-      fail("GOOGLE_PLAY_SA_KEY 가 유효한 JSON 이 아닙니다.");
-    }
-  }
-  if (process.env.GOOGLE_PLAY_SA_KEY_FILE) {
-    const file = process.env.GOOGLE_PLAY_SA_KEY_FILE;
-    if (!existsSync(file)) fail(`서비스 계정 키 파일이 없습니다: ${file}`);
-    try {
-      return JSON.parse(readFileSync(file, "utf8"));
-    } catch {
-      fail(`서비스 계정 키 파일 파싱 실패: ${file}`);
-    }
-  }
-  const envFile = join(ROOT, ".env.local");
-  if (!existsSync(envFile)) fail(`인증 정보를 찾을 수 없습니다 (.env.local 없음: ${envFile})`);
-  try {
-    const matched = readFileSync(envFile, "utf8").match(/^FIREBASE_SERVICE_ACCOUNT_KEY=(.*)$/m);
-    if (!matched) fail(".env.local 에 FIREBASE_SERVICE_ACCOUNT_KEY 가 없습니다.");
-    let raw = matched[1].trim();
-    const quoted =
-      (raw.startsWith("'") && raw.endsWith("'")) || (raw.startsWith('"') && raw.endsWith('"'));
-    if (quoted) raw = raw.slice(1, -1);
-    return JSON.parse(raw);
-  } catch (err) {
-    fail(`.env.local 의 서비스 계정 키 파싱 실패: ${err.message}`);
-  }
+function previewNote(text) {
+  return String(text).replace(/\s*\n\s*/g, " / ").slice(0, NOTE_PREVIEW_LENGTH);
 }
 
 function describeRelease(release) {
   const codes = (release.versionCodes ?? []).join(",");
   const fraction = release.userFraction != null ? ` userFraction=${release.userFraction}` : "";
-  return `status=${release.status} name=${release.name ?? "-"} versionCodes=[${codes}]${fraction}`;
+  const note = (release.releaseNotes ?? []).find((n) => n.language === RELEASE_NOTE_LANGUAGE);
+  const notes = note ? ` notes="${previewNote(note.text)}"` : "";
+  return `status=${release.status} name=${release.name ?? "-"} versionCodes=[${codes}]${fraction}${notes}`;
 }
 
 async function readTrack(publisher, editId, track) {
@@ -125,7 +93,7 @@ async function readTrack(publisher, editId, track) {
 
 async function main() {
   const opts = parseArgs(process.argv);
-  const credentials = loadCredentials();
+  const credentials = loadPlayCredentials(fail);
   console.log(`[play-promote] 서비스 계정: ${credentials.client_email}`);
   console.log(
     `[play-promote] ${opts.sourceTrack} → ${TARGET_TRACK} / ${opts.commit ? "COMMIT" : "DRY-RUN"}`,
@@ -185,8 +153,7 @@ async function main() {
     console.log(`  versionCode : ${versionCode}`);
     console.log(`  status      : ${release.status}${isFullRollout ? " (100% 출시)" : ` (${opts.rollout * 100}% 단계적 출시)`}`);
     for (const note of releaseNotes) {
-      const preview = String(note.text).replace(/\s*\n\s*/g, " / ").slice(0, NOTE_PREVIEW_LENGTH);
-      console.log(`  notes[${note.language}] : ${preview}`);
+      console.log(`  notes[${note.language}] : ${previewNote(note.text)}`);
     }
     if (!releaseNotes.length) console.log("  notes       : (없음)");
 
