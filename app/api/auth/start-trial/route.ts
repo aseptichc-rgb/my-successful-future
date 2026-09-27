@@ -116,7 +116,9 @@ export async function POST(request: NextRequest) {
     const customToken = await auth.createCustomToken(me.uid, { trialEndsAt });
 
     // 퍼널의 첫 칸 — 신규 체험 발급은 곧 첫 가입이다(재로그인은 alreadyStarted 로 위에서 빠졌다).
-    await logEvent({ uid: me.uid, name: "trial_started" });
+    // guest: 이메일이 없는 계정 = 익명(게스트) 시작. 이메일·Google·Apple 가입은 모두 이메일을 싣는다.
+    // 게스트 비율과 account_linked 를 함께 보면 "둘러보기 → 계정 전환" 전환율이 나온다.
+    await logEvent({ uid: me.uid, name: "trial_started", props: { guest: !me.email } });
 
     return NextResponse.json({
       ok: true,

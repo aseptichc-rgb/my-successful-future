@@ -53,6 +53,42 @@ export const PRO_SECTION_PATH = "/settings?pro=1";
 /** 공개 사이트 주소 — 메타데이터(app/layout metadataBase)와 공유 카드(lib/shareCard)가 같은 값을 본다. */
 export const APP_URL = "https://my-successful-future.vercel.app";
 
+/** 기기별 스토어 리다이렉트 경로 — app/go/app/route.ts. */
+export const STORE_REDIRECT_PATH = "/go/app";
+
+/**
+ * 사용자 공유(바이럴) 링크의 캠페인 값. 공유로 들어온 사람도 광고와 같은 경로로 귀속된다:
+ *   모바일  → /go/app 이 스토어로 넘기며 utm(Play) / ct(App Store) 로 집계
+ *   데스크톱 → /go/app 이 utm 을 붙인 채 랜딩으로 넘기고, 랜딩(UtmCapture)이 저장했다가
+ *             onboarding_completed props 로 보낸다(lib/utm).
+ * 값이 바뀌면 어드민 "유입 채널" 표의 과거 행과 이어지지 않으니 바꾸지 말 것.
+ */
+export const SHARE_UTM = {
+  utm_source: "share",
+  utm_medium: "streak_card",
+  utm_campaign: "streak_share",
+} as const;
+
+/** 스트릭 공유 카드에 싣는 링크 — 스토어 리다이렉트 + 공유 캠페인 파라미터. */
+export function buildShareUrl(): string {
+  const url = new URL(STORE_REDIRECT_PATH, APP_URL);
+  for (const [key, value] of Object.entries(SHARE_UTM)) url.searchParams.set(key, value);
+  return url.toString();
+}
+
+/**
+ * 스토어로 보낼 수 없는 방문(데스크톱·판정 실패)을 랜딩으로 돌릴 때 utm_* 을 그대로 실어 보낸다.
+ * 빼먹으면 랜딩의 UtmCapture 가 읽을 값이 없어 그 방문의 가입이 "direct" 로 잡힌다.
+ */
+export function buildLandingUrl(origin: string, params: URLSearchParams): string {
+  const target = new URL("/", origin);
+  for (const key of FORWARDED_UTM_KEYS) {
+    const value = params.get(key);
+    if (value) target.searchParams.set(key, value);
+  }
+  return target.toString();
+}
+
 export type StorePlatform = "ios" | "android" | "unknown";
 
 /** 판정에 성공한 플랫폼 — buildStoreUrl 은 unknown 을 받지 않는다. */

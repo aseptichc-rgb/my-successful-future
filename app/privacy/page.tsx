@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-const LAST_UPDATED = "2026-08-10";
+const LAST_UPDATED = "2026-09-27";
 const CONTACT_EMAIL =
   process.env.NEXT_PUBLIC_PRIVACY_CONTACT_EMAIL || "aseptichc@gmail.com";
 
@@ -76,6 +76,24 @@ export default function PrivacyPolicyPage() {
               <b>Widget and notification activity:</b> the minimum operational
               records needed to run the Service, such as which daily card and
               quote were shown, rotation history, and notification tap events.
+            </li>
+            <li>
+              <b>Product usage events:</b> a short, fixed list of in-app
+              actions — for example signing up, finishing onboarding, opening
+              the app on a given day, viewing the upgrade screen, starting or
+              completing a purchase, linking a guest account, and sharing your
+              streak card — stored with your account identifier, the date, and
+              your platform (Android, iOS, or web). If you arrived through a
+              link that carried campaign tags (utm_source / utm_medium /
+              utm_campaign), those tags are attached to the onboarding event.
+              Used only to understand which features help people and how many
+              come back. These events never contain your goals, affirmations,
+              or any other text you write.
+            </li>
+            <li>
+              <b>Feedback you send (optional):</b> the message you write in the
+              in-app feedback card, plus your email address only if you tick
+              the box allowing us to reply.
             </li>
             <li>
               <b>Purchase receipts (when applicable):</b> receipts issued by
@@ -139,10 +157,11 @@ export default function PrivacyPolicyPage() {
           <p>
             We retain your data for as long as you use the Service. When you
             delete your account, we permanently delete your identifying
-            information, profile, daily records, and cached purchase receipts.
+            information, profile, daily records, feedback messages, and cached
+            purchase receipts.
           </p>
           <p className="mt-2">
-            Two records outlive your account, and neither can be used to
+            Three records outlive your account, and none of them can be used to
             identify you:
           </p>
           <ul className="mt-2 list-disc space-y-2 pl-5">
@@ -152,6 +171,12 @@ export default function PrivacyPolicyPage() {
               accounting records under applicable e-commerce laws. The account
               identifier attached to these rows is erased at the moment you
               delete your account, leaving anonymous cost totals.
+            </li>
+            <li>
+              <b>Product usage events:</b> the event name, date, and platform.
+              The account identifier is erased when you delete your account, so
+              past totals (for example &ldquo;how many people opened the app
+              last week&rdquo;) stay accurate without pointing to you.
             </li>
             <li>
               <b>Free-trial issuance record:</b> a one-way hash of your email
@@ -182,7 +207,10 @@ export default function PrivacyPolicyPage() {
         <Section title="7. Advertising and tracking">
           The Service does not display ads, does not collect or transmit
           advertising identifiers (AdID / IDFA), and does not use any
-          third-party analytics SDKs.
+          third-party analytics SDKs. The product usage events described in
+          section 2 are recorded on our own servers only, are never shared
+          with advertisers or data brokers, and are not used to track you
+          across other companies&rsquo; apps or websites.
         </Section>
 
         <Section title="8. Children">

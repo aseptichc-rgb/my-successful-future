@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useT } from "@/lib/i18n";
 import { renderShareCard, shareStreakCard } from "@/lib/shareCard";
 import { track } from "@/lib/track";
-import { APP_URL } from "@/lib/constants/storeLinks";
+import { buildShareUrl } from "@/lib/constants/storeLinks";
 
 /* ─────────────────────────────────────────────────────────────────
  * ShareStreakButton — 성장 탭 스트릭 히어로의 "공유" 버튼.
@@ -41,7 +41,8 @@ export default function ShareStreakButton({
         declaration,
         brandLine: t("share.card.brand"),
       });
-      const text = `${t("share.text", { count })} ${APP_URL}`;
+      // 공유 링크에 캠페인 파라미터를 실어 바이럴 유입을 광고와 같은 방식으로 귀속시킨다.
+      const text = `${t("share.text", { count })} ${buildShareUrl()}`;
       const method = await shareStreakCard(blob, text);
       if (method) track("streak_shared", { method, count });
     } catch (err) {

@@ -10,10 +10,13 @@
  *
  * 최소 퍼널: trial_started(=가입) → onboarding_completed → app_open(D1/D7) →
  *            paywall_viewed → purchase_started → purchase_completed
+ * 게스트 전환: trial_started(guest=true) → account_linked
  */
 export const EVENT_NAMES = [
-  /** 서버. 신규 체험 발급 = 사실상 첫 가입 (start-trial 이 alreadyStarted=false 를 돌려줄 때). */
+  /** 서버. 신규 체험 발급 = 사실상 첫 가입 (start-trial 이 alreadyStarted=false 를 돌려줄 때) — props.guest. */
   "trial_started",
+  /** 클라. 게스트(익명) 계정에 로그인 수단을 연결 완료 — props.method(email|google|apple). */
+  "account_linked",
   /** 클라. 온보딩 마지막 화면에서 시작/건너뛰기 — props.skipped. */
   "onboarding_completed",
   /** 클라. 로그인 상태로 탭 화면 진입. 기기별 KST 하루 1회로 중복 제거 — D1/D7 리텐션의 원천. */

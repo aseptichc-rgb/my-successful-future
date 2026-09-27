@@ -60,6 +60,12 @@ interface RetentionBucket {
   rate: number | null;
 }
 
+interface AcquisitionRow {
+  source: string;
+  campaign: string | null;
+  users: number;
+}
+
 interface FeedbackRow {
   id: string;
   text: string;
@@ -77,6 +83,7 @@ interface StatsResponse {
   entitlementRequired: boolean;
   events: EventCountRow[];
   retention: { d1: RetentionBucket; d7: RetentionBucket };
+  acquisition: AcquisitionRow[];
   recentFeedback: FeedbackRow[];
   usage: { total: UsageWindow; last7d: UsageWindow; last30d: UsageWindow };
   byModel: ModelBucket[];
@@ -199,7 +206,7 @@ export default function AdminPage() {
           <h2 className="mb-1 text-[16px] font-semibold text-[#1E1B4B]">퍼널 이벤트</h2>
           <p className="mb-3 text-[12px] text-black/50">
             건수 / 고유 사용자. trial_started → onboarding_completed → app_open → paywall_viewed →
-            purchase_started → purchase_completed
+            purchase_started → purchase_completed · 게스트 전환: account_linked
           </p>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[520px] text-left text-[13px]">
@@ -227,6 +234,39 @@ export default function AdminPage() {
               </tbody>
             </table>
           </div>
+        </section>
+
+        {/* 유입 채널 — 온보딩 완료자의 첫 방문 utm(lib/utm). 스토어 경유 설치는 Play 콘솔·ASC 캠페인 보고서에서 본다. */}
+        <section className="rounded-xl border border-black/[0.06] bg-white p-5">
+          <h2 className="mb-1 text-[16px] font-semibold text-[#1E1B4B]">유입 채널 (최근 30일)</h2>
+          <p className="mb-3 text-[12px] text-black/50">
+            웹 랜딩을 거쳐 온보딩을 마친 고유 사용자. share = 스트릭 공유 링크, direct = utm 없음.
+            앱 스토어로 바로 간 설치는 Play 콘솔 획득 보고서 / App Store Connect 캠페인에서 확인.
+          </p>
+          {stats.acquisition.length === 0 ? (
+            <p className="text-[13px] text-black/50">아직 온보딩 완료 기록이 없습니다.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[420px] text-left text-[13px]">
+                <thead className="text-black/60">
+                  <tr className="border-b border-black/[0.06]">
+                    <th className="py-2 pr-3 font-medium">source</th>
+                    <th className="py-2 pr-3 font-medium">campaign</th>
+                    <th className="py-2 pr-3 font-medium">사용자</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.acquisition.map((a) => (
+                    <tr key={`${a.source}|${a.campaign ?? ""}`} className="border-b border-black/[0.04]">
+                      <td className="py-2 pr-3 font-medium text-[#1E1B4B]">{a.source}</td>
+                      <td className="py-2 pr-3 text-black/60">{a.campaign ?? "—"}</td>
+                      <td className="py-2 pr-3">{fmtNum(a.users)}명</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
 
         {/* 최근 피드백 */}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeRetention, countEvents } from "./retention";
+import { ACQUISITION_MAX_ROWS, DIRECT_SOURCE, computeRetention, countAcquisition, countEvents } from "./retention";
 
 describe("computeRetention", () => {
   const today = "2026-09-23";
@@ -76,5 +76,47 @@ describe("countEvents", () => {
         last30d: { count: 0, users: 0 },
       },
     ]);
+  });
+});
+
+describe("countAcquisition", () => {
+  const now = Date.UTC(2026, 8, 23);
+  const day = 24 * 60 * 60 * 1000;
+
+  it("utm_source × campaign 으로 묶고 같은 사람은 한 번만 센다", () => {
+    const out = countAcquisition(
+      [
+        { uid: "a", at: now - day, source: "share", campaign: "streak_share" },
+        { uid: "a", at: now - 2 * day, source: "share", campaign: "streak_share" }, // 중복
+        { uid: "b", at: now - day, source: "share", campaign: "streak_share" },
+        { uid: "c", at: now - day, source: "facebook", campaign: "anima_launch_kr" },
+      ],
+      now,
+    );
+    expect(out).toEqual([
+      { source: "share", campaign: "streak_share", users: 2 },
+      { source: "facebook", campaign: "anima_launch_kr", users: 1 },
+    ]);
+  });
+
+  it("utm 이 없으면 direct, 30일 밖은 버린다", () => {
+    const out = countAcquisition(
+      [
+        { uid: "a", at: now - day, source: null, campaign: null },
+        { uid: "b", at: now - 40 * day, source: "facebook", campaign: null },
+      ],
+      now,
+    );
+    expect(out).toEqual([{ source: DIRECT_SOURCE, campaign: null, users: 1 }]);
+  });
+
+  it("행 수를 상한으로 자른다", () => {
+    const rows = Array.from({ length: ACQUISITION_MAX_ROWS + 5 }, (_, i) => ({
+      uid: `u${i}`,
+      at: now - day,
+      source: `s${i}`,
+      campaign: null,
+    }));
+    expect(countAcquisition(rows, now)).toHaveLength(ACQUISITION_MAX_ROWS);
   });
 });

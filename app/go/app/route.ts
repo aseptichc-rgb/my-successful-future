@@ -6,7 +6,7 @@
  *
  *   Android  → Google Play  (utm_* 전달)
  *   iOS      → App Store    (utm_campaign → Apple ct 로 변환)
- *   그 외    → 마케팅 랜딩 "/"  (데스크톱·봇·판정 실패)
+ *   그 외    → 마케팅 랜딩 "/"  (데스크톱·봇·판정 실패, utm_* 유지)
  *
  * 광고에 넣는 주소:
  *   https://<host>/go/app?utm_source=facebook&utm_medium=cpc&utm_campaign=anima_launch_kr
@@ -25,6 +25,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import {
+  buildLandingUrl,
   buildStoreUrl,
   resolveStorePlatform,
   type ResolvedStorePlatform,
@@ -36,10 +37,12 @@ export const dynamic = "force-dynamic";
 const TEMPORARY_REDIRECT_STATUS = 302;
 
 export function GET(request: NextRequest) {
-  const landingUrl = new URL("/", request.nextUrl.origin).toString();
+  const params = request.nextUrl.searchParams;
+  let landingUrl = new URL("/", request.nextUrl.origin).toString();
 
   try {
-    const params = request.nextUrl.searchParams;
+    // 랜딩 폴백에도 utm 을 실어 보낸다 — 데스크톱에서 연 광고·공유 링크의 가입도 채널에 귀속되도록.
+    landingUrl = buildLandingUrl(request.nextUrl.origin, params);
     const platform =
       readPlatformOverride(params) ??
       resolveStorePlatform(request.headers.get("user-agent"));

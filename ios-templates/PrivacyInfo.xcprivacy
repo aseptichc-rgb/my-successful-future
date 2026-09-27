@@ -52,6 +52,20 @@
                 <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
             </array>
         </dict>
+        <!-- 제품 상호작용 — 1st-party 이벤트(lib/constants/events: 가입·온보딩·앱 열기·결제 퍼널). uid 와 연결,
+             서버에만 저장하고 제3자 공유·추적 없음. -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeProductInteraction</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
+            </array>
+        </dict>
         <!-- 사용자 ID — Firebase uid. 광고 식별자가 아니라 앱 기능용. -->
         <dict>
             <key>NSPrivacyCollectedDataType</key>

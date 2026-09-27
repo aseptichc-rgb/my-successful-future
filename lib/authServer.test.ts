@@ -12,6 +12,11 @@ import type { AuthedUser } from "@/lib/authServer";
 import type { Entitlement } from "@/lib/entitlement";
 
 const NOW = 1_700_000_000_000;
+/**
+ * 케이스마다 resetModules 후 firebase-admin 까지 새로 임포트한다. 전체 스위트를 병렬로 돌리면
+ * 첫 콜드 임포트가 기본 5초를 넘겨 로직과 무관하게 타임아웃이 나므로 이 describe 만 늘린다.
+ */
+const COLD_IMPORT_TIMEOUT_MS = 30_000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function authedUser(entitlement: Entitlement, trialEndsAt: number | null = null): AuthedUser {
@@ -39,7 +44,7 @@ afterEach(() => {
   vi.resetModules();
 });
 
-describe("canUseAiFeatures", () => {
+describe("canUseAiFeatures", { timeout: COLD_IMPORT_TIMEOUT_MS }, () => {
   it("플래그가 꺼져 있으면(개발/베타) 미결제 사용자도 AI 기능을 쓴다", async () => {
     const canUseAiFeatures = await loadGate("");
     expect(canUseAiFeatures(authedUser({ kind: "free" }))).toBe(true);

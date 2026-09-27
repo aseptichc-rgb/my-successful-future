@@ -24,6 +24,7 @@ import {
 import type { AuthCredential } from "firebase/auth";
 import { shouldStartTrial, readEntitlement, type Entitlement } from "@/lib/entitlement";
 import { isGuestUser } from "@/lib/guestUser";
+import { track } from "@/lib/track";
 import {
   fireAndroidAuthBridge,
   installUserGestureTracker,
@@ -435,16 +436,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const linkGuestEmail = async (email: string, password: string, displayName: string) => {
     await linkGuestWithEmail(email, password, displayName);
     await afterGuestLink();
+    track("account_linked", { method: "email" });
   };
 
   const linkGuestGoogle = async () => {
     await linkGuestWithGoogle();
     await afterGuestLink();
+    track("account_linked", { method: "google" });
   };
 
   const linkGuestApple = async () => {
     await linkGuestWithApple();
     await afterGuestLink();
+    track("account_linked", { method: "apple" });
   };
 
   const signOut = async () => {

@@ -141,3 +141,49 @@ export function countEvents(
     };
   });
 }
+
+/** 유입 채널 집계의 입력 — onboarding_completed 1건과 그 props 의 첫 방문 utm. */
+export interface AcquisitionRow {
+  uid: string;
+  /** createdAt(ms). */
+  at: number;
+  source: string | null;
+  campaign: string | null;
+}
+
+export interface AcquisitionCount {
+  source: string;
+  campaign: string | null;
+  /** 최근 30일 온보딩 완료 고유 사용자 수. */
+  users: number;
+}
+
+/** utm 없이 들어온 가입(스토어 직접 검색·지인 추천 등) 의 표시 이름. */
+export const DIRECT_SOURCE = "direct";
+/** 채널 표 상한 — 캠페인 이름이 난립해도 어드민 표가 끝없이 늘지 않게. */
+export const ACQUISITION_MAX_ROWS = 20;
+
+/**
+ * 최근 30일 onboarding_completed 를 utm_source × utm_campaign 으로 묶어 고유 사용자 수를 센다.
+ * 한 사람이 여러 번 완료해도(건너뛰기 후 재온보딩 등) 1명으로 센다. 많은 순, 동률은 이름순.
+ */
+export function countAcquisition(
+  rows: ReadonlyArray<AcquisitionRow>,
+  nowMs: number,
+): AcquisitionCount[] {
+  const since30 = nowMs - 30 * 24 * 60 * 60 * 1000;
+  const buckets = new Map<string, { source: string; campaign: string | null; uids: Set<string> }>();
+  for (const r of rows) {
+    if (r.at < since30) continue;
+    const source = r.source || DIRECT_SOURCE;
+    const campaign = r.campaign || null;
+    const key = `${source}|${campaign ?? ""}`;
+    const b = buckets.get(key) ?? { source, campaign, uids: new Set<string>() };
+    b.uids.add(r.uid);
+    buckets.set(key, b);
+  }
+  return Array.from(buckets.values())
+    .map((b) => ({ source: b.source, campaign: b.campaign, users: b.uids.size }))
+    .sort((a, b) => b.users - a.users || a.source.localeCompare(b.source))
+    .slice(0, ACQUISITION_MAX_ROWS);
+}

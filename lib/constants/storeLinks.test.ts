@@ -11,7 +11,12 @@
 import { describe, expect, it } from "vitest";
 import {
   APP_STORE_URL,
+  APP_URL,
   PLAY_STORE_URL,
+  SHARE_UTM,
+  STORE_REDIRECT_PATH,
+  buildLandingUrl,
+  buildShareUrl,
   buildStoreUrl,
   resolveStorePlatform,
 } from "@/lib/constants/storeLinks";
@@ -132,5 +137,46 @@ describe("buildStoreUrl — iOS", () => {
   it("캠페인 파라미터가 없으면 스토어 주소를 그대로 돌려준다", () => {
     const url = buildStoreUrl("ios", new URLSearchParams());
     expect(url).toBe(new URL(APP_STORE_URL).toString());
+  });
+});
+
+describe("buildShareUrl", () => {
+  it("스토어 리다이렉트로 보내며 공유 캠페인 utm 을 싣는다", () => {
+    const url = new URL(buildShareUrl());
+    expect(url.origin).toBe(new URL(APP_URL).origin);
+    expect(url.pathname).toBe(STORE_REDIRECT_PATH);
+    for (const [key, value] of Object.entries(SHARE_UTM)) {
+      expect(url.searchParams.get(key)).toBe(value);
+    }
+  });
+
+  it("App Store 로 넘어가도 ct 로 이어진다", () => {
+    const shared = new URL(buildShareUrl()).searchParams;
+    const store = new URL(buildStoreUrl("ios", shared));
+    expect(store.searchParams.get("ct")).toBe(SHARE_UTM.utm_campaign);
+  });
+});
+
+describe("buildLandingUrl", () => {
+  const ORIGIN = "https://example.test";
+
+  it("데스크톱 폴백에도 utm_* 을 그대로 넘긴다", () => {
+    const url = new URL(buildLandingUrl(ORIGIN, AD_PARAMS));
+    expect(url.pathname).toBe("/");
+    expect(url.searchParams.get("utm_source")).toBe("facebook");
+    expect(url.searchParams.get("utm_campaign")).toBe("anima_launch_kr");
+  });
+
+  it("utm 이 아닌 파라미터(p·uid 등)는 버린다", () => {
+    const url = new URL(
+      buildLandingUrl(ORIGIN, new URLSearchParams("p=ios&uid=abc123&utm_source=share"))
+    );
+    expect(url.searchParams.has("p")).toBe(false);
+    expect(url.searchParams.has("uid")).toBe(false);
+    expect(url.searchParams.get("utm_source")).toBe("share");
+  });
+
+  it("파라미터가 없으면 랜딩 주소 그대로", () => {
+    expect(buildLandingUrl(ORIGIN, new URLSearchParams())).toBe(`${ORIGIN}/`);
   });
 });

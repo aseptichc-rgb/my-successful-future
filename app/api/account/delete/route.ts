@@ -9,12 +9,15 @@
  *      — 목록은 [lib/constants/userData.ts] 의 USER_SUBCOLLECTIONS 가 단일 진리원천.
  *        Firestore 는 상위 문서를 지워도 서브컬렉션을 자동 삭제하지 않으므로 반드시 열거해야 한다.
  *   2) entitlements/{uid}  (결제 영수증 검증 결과)
- *   3) Firebase Auth 사용자 레코드 (auth.deleteUser)
+ *   3) feedback/{docId} where uid == 본인  (본문·동의 시 이메일이 들어 있다)
+ *   4) Firebase Auth 사용자 레코드 (auth.deleteUser)
  *
  * 익명화(레코드는 남기고 신원만 지우는 항목):
  *   - tokenUsage/{docId}.uid → null : LLM 토큰 비용 회계는 전자상거래법상 보관 의무가 있어
  *     레코드 자체는 남기지만, 개인을 식별하는 uid 는 지운다. 남는 건 모델·토큰수·비용뿐이라
  *     [app/privacy/page.tsx] 의 "anonymized token usage metrics" 문구와 실제가 일치한다.
+ *   - events/{docId}.uid → null : 제품 이벤트(퍼널·리텐션 계측, lib/events). 이름·날짜만 남아
+ *     과거 집계 수치가 유지되고, 어드민 집계는 uid 없는 행을 건너뛴다.
  *   - trialLedger/{emailHash}.lastUid → 삭제 : 원장 문서는 남겨야 탈퇴→재가입 트라이얼
  *     리셋을 계속 막을 수 있다(문서 ID 는 복원 불가능한 단방향 해시). 계정과 이어지는
  *     lastUid 만 제거한다. [lib/trialLedger.ts] 참고.
@@ -28,7 +31,13 @@
  *   500 { error }   — 부분 실패 (자세한 단계는 server log)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { FieldValue, type Firestore } from "firebase-admin/firestore";
+import {
+  FieldValue,
+  type DocumentReference,
+  type Firestore,
+  type Query,
+  type WriteBatch,
+} from "firebase-admin/firestore";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
 import { verifyRequestUser, AuthError } from "@/lib/authServer";
 import { USER_SUBCOLLECTIONS } from "@/lib/constants/userData";
@@ -43,48 +52,54 @@ const SESSION_COOKIE_NAME = "__session";
 const DELETE_BATCH_SIZE = 200;
 
 /**
- * 단일 서브컬렉션을 페이지네이션으로 모두 삭제. limit 단위로 commit.
+ * 쿼리에 걸리는 문서를 DELETE_BATCH_SIZE 단위 batch 로 처리해 소진한다.
  * 호출당 1회의 트랜잭션이 아니라 여러 batch 로 나누어 처리 — Firestore 500개 제한 회피.
+ *
+ * 페이지네이션 커서가 필요 없다: apply 가 문서를 지우거나 uid 를 덮으면 같은 쿼리에 다시 걸리지
+ * 않으므로, 매번 처음부터 다시 조회하면 자연히 소진된다. 빈 페이지·짧은 페이지에서 종료.
  */
-async function deleteSubcollection(db: Firestore, path: string): Promise<number> {
-  let totalDeleted = 0;
-  // while 무한 루프 위험 방지: 비어있는 페이지가 나오면 종료
+async function drainInBatches(
+  db: Firestore,
+  query: Query,
+  apply: (batch: WriteBatch, ref: DocumentReference) => void,
+): Promise<number> {
+  let total = 0;
   while (true) {
-    const snap = await db.collection(path).limit(DELETE_BATCH_SIZE).get();
+    const snap = await query.limit(DELETE_BATCH_SIZE).get();
     if (snap.empty) break;
     const batch = db.batch();
-    snap.docs.forEach((d) => batch.delete(d.ref));
+    snap.docs.forEach((d) => apply(batch, d.ref));
     await batch.commit();
-    totalDeleted += snap.size;
+    total += snap.size;
     if (snap.size < DELETE_BATCH_SIZE) break;
   }
-  return totalDeleted;
+  return total;
 }
 
-/**
- * tokenUsage 의 비용 레코드는 남기되 uid 만 지워 익명 집계로 만든다.
- *
- * 페이지네이션이 필요 없다: uid 를 null 로 덮는 순간 같은 쿼리에 다시 걸리지 않으므로,
- * 매번 "아직 uid 가 남아 있는 문서" 만 조회하면 자연히 소진된다.
- */
-async function anonymizeTokenUsage(db: Firestore, uid: string): Promise<number> {
-  let totalRedacted = 0;
-  while (true) {
-    const snap = await db
-      .collection("tokenUsage")
-      .where("uid", "==", uid)
-      .limit(DELETE_BATCH_SIZE)
-      .get();
-    if (snap.empty) break;
-    const batch = db.batch();
-    snap.docs.forEach((d) =>
-      batch.update(d.ref, { uid: null, uidRedactedAt: FieldValue.serverTimestamp() }),
-    );
-    await batch.commit();
-    totalRedacted += snap.size;
-    if (snap.size < DELETE_BATCH_SIZE) break;
-  }
-  return totalRedacted;
+const deleteDoc = (batch: WriteBatch, ref: DocumentReference) => {
+  batch.delete(ref);
+};
+
+/** 레코드는 남기고 uid 만 지우는 컬렉션 — 위 헤더 "익명화" 항목 참고. */
+const UID_ANONYMIZED_COLLECTIONS = ["tokenUsage", "events"] as const;
+/** 본인 uid 로 남긴 문서를 통째로 지우는 최상위 컬렉션. */
+const UID_OWNED_COLLECTIONS = ["feedback"] as const;
+
+/** 단일 서브컬렉션을 모두 삭제. */
+function deleteSubcollection(db: Firestore, path: string): Promise<number> {
+  return drainInBatches(db, db.collection(path), deleteDoc);
+}
+
+/** 컬렉션의 본인 레코드는 남기되 uid 만 지워 익명 집계로 만든다. */
+function anonymizeUidField(db: Firestore, collection: string, uid: string): Promise<number> {
+  return drainInBatches(db, db.collection(collection).where("uid", "==", uid), (batch, ref) =>
+    batch.update(ref, { uid: null, uidRedactedAt: FieldValue.serverTimestamp() }),
+  );
+}
+
+/** 최상위 컬렉션에서 본인 uid 문서를 모두 지운다. */
+function deleteOwnedDocs(db: Firestore, collection: string, uid: string): Promise<number> {
+  return drainInBatches(db, db.collection(collection).where("uid", "==", uid), deleteDoc);
 }
 
 export async function DELETE(request: NextRequest) {
@@ -115,16 +130,29 @@ export async function DELETE(request: NextRequest) {
     // 3) 계정과 분리 보존되는 레코드에서 신원만 지운다 (레코드 자체는 목적상 남긴다).
     //    둘 다 best-effort — 여기서 실패해도 계정 삭제 자체는 완료시키고 로그로 남긴다.
     //    (사용자를 삭제 불가 상태에 묶어두는 것이 더 나쁜 결과다.)
-    try {
-      const redacted = await anonymizeTokenUsage(db, uid);
-      if (redacted > 0) {
-        console.info(`[account/delete] tokenUsage ${redacted}건 uid 익명화 완료.`);
+    for (const collection of UID_ANONYMIZED_COLLECTIONS) {
+      try {
+        const redacted = await anonymizeUidField(db, collection, uid);
+        if (redacted > 0) {
+          console.info(`[account/delete] ${collection} ${redacted}건 uid 익명화 완료.`);
+        }
+      } catch (e) {
+        console.warn(
+          `[account/delete] uid=${uid} ${collection} 익명화 실패:`,
+          e instanceof Error ? e.message : String(e),
+        );
       }
-    } catch (e) {
-      console.warn(
-        `[account/delete] uid=${uid} tokenUsage 익명화 실패:`,
-        e instanceof Error ? e.message : String(e),
-      );
+    }
+    for (const collection of UID_OWNED_COLLECTIONS) {
+      try {
+        const removed = await deleteOwnedDocs(db, collection, uid);
+        if (removed > 0) console.info(`[account/delete] ${collection} ${removed}건 삭제 완료.`);
+      } catch (e) {
+        console.warn(
+          `[account/delete] uid=${uid} ${collection} 삭제 실패:`,
+          e instanceof Error ? e.message : String(e),
+        );
+      }
     }
 
     const ledgerPath = trialLedgerPath(me.email);

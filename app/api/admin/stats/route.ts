@@ -5,6 +5,7 @@
  * - 가입자 수 (총·최근 7일·최근 30일)
  * - 제품 이벤트 이름별 7일/30일 건수·고유 사용자 (lib/constants/events)
  * - D1/D7 리텐션 (최근 30일 가입자 × app_open, lib/retention)
+ * - 유입 채널 (최근 30일 onboarding_completed 의 첫 방문 utm, lib/utm → lib/retention)
  * - 최근 피드백 20건 (/api/feedback)
  * - 토큰 사용량 / 비용 (provider·model 별)
  * - 사용자 상위 10명 (총비용 기준)
@@ -19,7 +20,15 @@ import { getAdminDb } from "@/lib/firebase-admin";
 import { assertAdminRequest } from "@/lib/adminAuth";
 import { EVENT_NAMES } from "@/lib/constants/events";
 import { ENTITLEMENT_REQUIRED } from "@/lib/constants/quota";
-import { computeRetention, countEvents, type EventRow, type OpenRow, type RetentionUser } from "@/lib/retention";
+import {
+  computeRetention,
+  countAcquisition,
+  countEvents,
+  type AcquisitionRow,
+  type EventRow,
+  type OpenRow,
+  type RetentionUser,
+} from "@/lib/retention";
 import { todayKstYmd } from "@/lib/kstDate";
 
 /** 리텐션 분모로 읽는 최근 가입자 상한 — 그 이상이면 이 화면 대신 진짜 분석 도구가 필요하다. */
@@ -182,6 +191,7 @@ export async function GET(req: NextRequest) {
 
     const eventRows: EventRow[] = [];
     const openRows: OpenRow[] = [];
+    const acquisitionRows: AcquisitionRow[] = [];
     for (const doc of eventSnap.docs) {
       const data = doc.data();
       const uid = typeof data.uid === "string" ? data.uid : null;
@@ -191,6 +201,15 @@ export async function GET(req: NextRequest) {
       eventRows.push({ uid, name, at: created.getTime() });
       if (name === "app_open" && typeof data.day === "string") {
         openRows.push({ uid, day: data.day });
+      }
+      if (name === "onboarding_completed") {
+        const props = (data.props ?? {}) as Record<string, unknown>;
+        acquisitionRows.push({
+          uid,
+          at: created.getTime(),
+          source: typeof props.utm_source === "string" ? props.utm_source : null,
+          campaign: typeof props.utm_campaign === "string" ? props.utm_campaign : null,
+        });
       }
     }
 
@@ -204,6 +223,7 @@ export async function GET(req: NextRequest) {
 
     const events = countEvents(eventRows, EVENT_NAMES, now);
     const retention = computeRetention(retentionUsers, openRows, todayKstYmd());
+    const acquisition = countAcquisition(acquisitionRows, now);
 
     // 5. 최근 피드백 — 본문은 그대로, 연락처는 동의한 건에만 들어 있다(/api/feedback).
     const recentFeedback = feedbackSnap.docs.map((doc) => {
@@ -250,6 +270,7 @@ export async function GET(req: NextRequest) {
       entitlementRequired: ENTITLEMENT_REQUIRED,
       events,
       retention,
+      acquisition,
       recentFeedback,
       usage: {
         total: {

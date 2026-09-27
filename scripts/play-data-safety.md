@@ -53,7 +53,7 @@
 
 | Data type | Collected? | Shared? | Purposes |
 |---|---|---|---|
-| App interactions (위젯 갱신 시각·알림 탭) | ✅ | ❌ | App functionality |
+| App interactions (위젯 갱신 시각·알림 탭 + 제품 이벤트: 가입·온보딩·앱 열기·결제 퍼널·계정 연결·공유, lib/constants/events) | ✅ | ❌ | App functionality, Analytics |
 | In-app search history / Installed apps / Other user-generated content | ❌ | — | — |
 | **Other user-generated content** (사용자가 입력한 "10년 후의 나" 서술, 목표, 다짐, 잘한 일) | ✅ | ❌ | App functionality, Personalization |
 
