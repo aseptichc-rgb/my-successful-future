@@ -1,12 +1,16 @@
 # 재심사 — Guideline 4 대응 build 1.0(9) 올리기
 
-> ## 🟡 현재 상태(2026-09-24): **1.0.6 (15) Mac 빌드 대기** — 게스트 모드·공유 카드·스토어 리뷰 브릿지 반영분
+> ## 🟢 현재 상태(2026-10-05): **1.0.6 (15) 심사 제출 완료 — WAITING_FOR_REVIEW**
 >
-> 웹 변경(게스트 모드 + 계정 연결 수정 `597a247`, 온보딩 예시 칩, 스트릭 공유 카드, 피드백 카드,
-> 아침 알림 수정)은 Vercel 프로덕션에 **이미 라이브**. 새 빌드가 필요한 네이티브 변경은
-> **StoreReviewBridgePlugin.swift 신규 1개**(`73f79f5`) 뿐 — 절차는 [§ 1.0.6 (15) 빌드 절차](#106-15-빌드-절차-2026-09-24-준비--mac-대기).
-> ASC 실측(09-24): 1.0.5 (14) 출시 완료(`READY_FOR_DISTRIBUTION`), **1.0.6 편집 버전 생성 + 4로케일
-> 릴리스 노트 스테이징 완료** — Mac 에서는 빌드 15 아카이브·업로드·`--submit` 만 남았다.
+> 게스트 모드·공유 카드·스토어 리뷰 브릿지 반영분을 1.0.6 (15) 로 제출. 이번 빌드는
+> **1.0.3~1.0.5 에서 빠져 있던 커스텀 플러그인 등록(`packageClassList`)도 복구**한다 —
+> 절차·실측은 [§ 1.0.6 제출 기록](#106-15-제출-기록-2026-10-05-mac) 필독. **다음 빌드는 16.**
+>
+> <details><summary>이전 상태(2026-09-24): 1.0.6 (15) Mac 빌드 대기</summary>
+>
+> 웹 변경은 Vercel 프로덕션에 이미 라이브, 네이티브 변경은 StoreReviewBridgePlugin.swift 신규 1개.
+> 1.0.5 (14) 출시 완료, 1.0.6 편집 버전 생성 + 4로케일 릴리스 노트 스테이징 완료.
+> </details>
 >
 > <details><summary>이전 상태(2026-09-06): 1.0.5 (14) 심사 제출 완료 — WAITING_FOR_REVIEW</summary>
 >
@@ -58,6 +62,52 @@
 
 ---
 
+## 1.0.6 (15) 제출 기록 (2026-10-05, Mac)
+
+아래 § 빌드 절차대로 실행. 절차서와 달랐던 점·새로 밟은 함정:
+
+- **⚠️ `packageClassList` 누락 발견·복구 (1.0.3~1.0.5 출시본 회귀)**: Capacitor 8(SPM) 의
+  `CapacitorBridge.registerPlugins()` 는 `ios/App/App/capacitor.config.json` 의
+  `packageClassList` 에 적힌 클래스만 등록한다 — **CAPBridgedPlugin 을 채택했다고 자동 등록되지
+  않는다.** 1.0.3 때 돌린 `npx cap copy ios` 가 이 파일을 재생성하면서 커스텀 플러그인 3종이
+  지워졌고, 아카이브 실측으로 1.0.2 는 4개(Firebase + Widget/StoreKit/Notification), **1.0.3·1.0.4·
+  1.0.5 는 `FirebaseAuthenticationPlugin` 1개뿐**이었다. 즉 그 세 버전에서는 위젯 데이터·StoreKit
+  결제·네이티브 알림 브릿지가 런타임에 등록되지 않았을 가능성이 높다(바이너리에 코드가 들어
+  있는지만 `strings` 로 확인해서 못 잡았다). 1.0.6 은 5개 전부 등록:
+  ```bash
+  # cap copy / cap sync 를 돌렸다면 반드시 다시 주입. ios-templates/plugin/*.swift 전부가 들어가야 한다.
+  node -e 'const fs=require("fs"),p="ios/App/App/capacitor.config.json",c=JSON.parse(fs.readFileSync(p,"utf8"));
+  const w=fs.readdirSync("ios-templates/plugin").filter(f=>f.endsWith(".swift")).map(f=>f.replace(/\.swift$/,""));
+  c.packageClassList=[...new Set([...(c.packageClassList||[]),...w])];fs.writeFileSync(p,JSON.stringify(c,null,"\t")+"\n");console.log(c.packageClassList)'
+  # 업로드 전 아카이브 실측 — 플러그인 수 + 1(Firebase) 이어야 한다
+  grep -A8 packageClassList build/Anima-<ver>.xcarchive/Products/Applications/App.app/capacitor.config.json
+  ```
+- **App 타깃 등록은 Xcode GUI 없이** xcodeproj gem 으로 했다(`GEM_HOME=$HOME/.gem ruby` —
+  App 그룹에 `StoreReviewBridgePlugin.swift` 참조 추가 + `add_file_references`). 위젯 서명을
+  리셋하는 `ios-add-widget.rb` 는 돌리지 않았다 — 두 타깃 수동 서명 그대로.
+- **Xcode 27.0 업데이트 후 라이선스 재동의 필요**: 미동의 상태에서는 `xcodebuild` 는 물론
+  `/usr/bin/git`·`python3` 까지 막힌다. `sudo xcodebuild -license accept && sudo xcodebuild
+  -runFirstLaunch` (관리자 암호 필요). 그 전까지 git 은
+  `DEVELOPER_DIR=/Library/Developer/CommandLineTools git …` 로 우회 가능.
+- **Xcode 27 altool 은 `--apple-id 6774140443` 을 명시해야 한다** — 없으면 "Unable to find Apple
+  ID for Bundle ID" 로 실패:
+  ```bash
+  xcrun altool --upload-app -f build/export-1.0.6/App.ipa -t ios --apple-id 6774140443 \
+    --apiKey 8ZJ3Y6N6J7 --apiIssuer daa5537d-77cb-44e3-904f-6df67f61ffde
+  ```
+- **403 `REQUIRED_AGREEMENTS_MISSING_OR_EXPIRED`**: Apple 약관이 갱신되면 업로드·ASC API 가 전부
+  403 이 된다. 계정 소유자가 developer.apple.com/account · App Store Connect > 계약 에서 동의해야
+  하며, **동의 후 반영까지 약 5~8분** 걸리고 엔드포인트마다 풀리는 시점이 다르다(조회 API 가
+  먼저, 업로드가 마지막) — 403 이 계속 나도 몇 분 간격으로 재시도할 것.
+- 검증: vitest **250/250**, `next build` 통과. 버전 agvtool 1.0.6 / -all 15 + pbxproj 4곳 sed.
+  아카이브 실측: 앱·위젯 Info.plist 1.0.6 (15), `strings App | grep -c StoreReviewBridge` = 4,
+  `packageClassList` 5개, `get-task-allow` false.
+- `UPLOAD SUCCEEDED` — Delivery UUID `3933ac90-fbf8-4d3b-b943-3e90e40e01e9` → TestFlight 약 2분
+  만에 `1.0.6 (15) VALID` → `--submit` 한 번에 통과(409 없음) → ASC 실측 `WAITING_FOR_REVIEW`.
+- `ios/` 는 gitignore 라 버전 상향은 커밋에 안 잡힌다 — **다음 빌드는 16 부터.**
+
+---
+
 ## 1.0.6 (15) 빌드 절차 (2026-09-24 준비 — Mac 대기)
 
 반영분(1.0.5 (14) 이후 master): 게스트 모드(로그인 없이 시작 → `/signup` 에서 계정 연결) + 체험
@@ -92,8 +142,9 @@ Mac 에서:
    cp ios-templates/plugin/StoreReviewBridgePlugin.swift ios/App/App/
    ```
    Xcode 에서 `ios/App/App/StoreReviewBridgePlugin.swift` 를 App 타깃에 추가
-   (File > Add Files to "App"… → Target Membership: **App** 체크). CAPBridgedPlugin 자동 등록이라
-   별도 등록 코드는 없다. 빠뜨려도 앱은 안 깨지지만 "앱 안 별점 시트" 대신 App Store 앱으로
+   (File > Add Files to "App"… → Target Membership: **App** 체크). **타깃 등록만으로는 부족하다 —
+   `capacitor.config.json` 의 `packageClassList` 에도 클래스명이 있어야 런타임에 등록된다**
+   ([§ 1.0.6 제출 기록](#106-15-제출-기록-2026-10-05-mac)). 빠뜨려도 앱은 안 깨지지만 "앱 안 별점 시트" 대신 App Store 앱으로
    이탈한다([lib/storeReviewBridge.ts](lib/storeReviewBridge.ts)).
 3. 버전 **1.0.6 / 빌드 15** — agvtool 은 pbxproj 의 MARKETING_VERSION 을 안 고친다(1.0.2 함정):
    ```bash
