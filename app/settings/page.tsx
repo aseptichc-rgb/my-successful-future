@@ -594,7 +594,9 @@ export default function SettingsPage() {
     }
   };
 
+  const newMembershipPurchasesEnabled = false;
   const handlePurchasePro = async () => {
+    if (!newMembershipPurchasesEnabled) return;
     if (purchasing || restoring) return; // 이중 실행/상호 충돌 방지.
     // 결제 시도 — 완료(purchase_completed)는 서버 검증 라우트가 남기므로 여기선 "눌렀다" 만.
     track("purchase_started", { platform: detectEventPlatform() });
@@ -864,7 +866,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={handlePurchasePro}
-                disabled={purchasing || restoring}
+                disabled={!newMembershipPurchasesEnabled || purchasing || restoring}
                 className="w-full relative flex items-center gap-3 px-4 min-h-[44px] text-left disabled:opacity-50"
               >
                 <div
@@ -874,10 +876,10 @@ export default function SettingsPage() {
                   {G.spark}
                 </div>
                 <div className="flex-1 py-[11px] text-[17px] leading-[22px] tracking-[-0.43px] text-[var(--soul)] font-semibold">
-                  {purchasing ? t("settings.pro.processing") : t("settings.pro.buy")}
+                  US$19.90 · Lifetime · One-time · Coming soon
                 </div>
                 {proPrice && !purchasing && (
-                  <span className="text-[17px] tracking-[-0.43px] text-[var(--label-2)]">{proPrice}</span>
+                  <span className="text-[17px] tracking-[-0.43px] text-[var(--label-2)]">US$19.90</span>
                 )}
                 <div className="absolute bottom-0 right-0 h-[0.5px]" style={{ left: 58, background: "var(--sep)" }} />
               </button>

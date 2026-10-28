@@ -22,6 +22,7 @@
 export type EntitlementPlatform = "android" | "ios";
 
 export type Entitlement =
+  | { kind: "membership"; productId: string; grantedAt: number; expiresAt: number }
   | { kind: "lifetime"; productId: string; grantedAt: number; platform: EntitlementPlatform }
   | {
       kind: "subscription";
@@ -104,7 +105,7 @@ export function readEntitlement(
  * 보호 라우트의 게이트는 이 함수만 호출한다 (claim 의 구체 형식을 모름).
  */
 export function hasProAccess(ent: Entitlement): boolean {
-  return ent.kind !== "free";
+  return ent.kind === "membership" ? ent.expiresAt > Date.now() : ent.kind !== "free";
 }
 
 /**
@@ -114,7 +115,7 @@ export function hasProAccess(ent: Entitlement): boolean {
  * 해금 게이트의 `unlockAll` 은 이 함수가 아니라 [unlocksEverything] 으로 채운다.
  */
 export function isPaidPro(ent: Entitlement): boolean {
-  return ent.kind === "lifetime" || ent.kind === "subscription";
+  return ent.kind === "lifetime" || ent.kind === "subscription" || (ent.kind === "membership" && ent.expiresAt > Date.now());
 }
 
 /**
@@ -147,4 +148,11 @@ export function shouldStartTrial(
   if (ent.kind === "lifetime" || ent.kind === "subscription") return false;
   if (isPositiveNumber(claims.trialEndsAt)) return false;
   return true;
+}
+
+/** Preserve legacy purchases; shared access is obtained from the verified server. */
+export function chooseEntitlement(local: Entitlement, shared: Entitlement): Entitlement {
+  if (local.kind === "lifetime" || shared.kind !== "membership" || !hasProAccess(shared)) return local;
+  if (local.kind === "subscription" && local.expiresAt >= shared.expiresAt) return local;
+  return shared;
 }

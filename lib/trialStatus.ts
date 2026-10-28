@@ -10,7 +10,7 @@
  *   expired — 체험이 만료됨(trialEndsAt 이 과거). "체험이 끝났어요" + 업그레이드.
  *   none    — 체험 정보 없음(미시작 등). 배너 없음.
  */
-import type { Entitlement } from "@/lib/entitlement";
+import { isPaidPro, type Entitlement } from "@/lib/entitlement";
 
 export const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -36,7 +36,7 @@ export function computeTrialStatus(
   trialEndsAt: number | null,
   now: number = Date.now(),
 ): TrialStatus {
-  if (entitlement.kind === "lifetime" || entitlement.kind === "subscription") {
+  if (isPaidPro(entitlement)) {
     return { kind: "pro" };
   }
 

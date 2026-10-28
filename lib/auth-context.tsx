@@ -22,7 +22,7 @@ import {
   type AppleSignInResult,
 } from "@/lib/firebase";
 import type { AuthCredential } from "firebase/auth";
-import { shouldStartTrial, readEntitlement, type Entitlement } from "@/lib/entitlement";
+import { shouldStartTrial, readEntitlement, chooseEntitlement, type Entitlement } from "@/lib/entitlement";
 import { isGuestUser } from "@/lib/guestUser";
 import { track } from "@/lib/track";
 import {
@@ -300,6 +300,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   // 최신 ID 토큰의 custom claims — 트라이얼/결제 배너가 파생해 쓴다(게이트 판정은 서버에서).
   const [claims, setClaims] = useState<Record<string, unknown> | null>(null);
+  const [sharedMembership, setSharedMembership] = useState<{ uid: string; entitlement: Entitlement } | null>(null);
+  useEffect(() => {
+    let disposed = false;
+    setSharedMembership(null);
+    if (!firebaseUser) return;
+    const refresh = async () => {
+      try {
+        const response = await fetch('/api/membership', { headers: { Authorization: 'Bearer ' + await firebaseUser.getIdToken() }, cache: 'no-store' });
+        if (!response.ok) throw new Error('Unavailable');
+        const { entitlement } = await response.json();
+        if (disposed || getAuth_().currentUser?.uid !== firebaseUser.uid) return;
+        const valid = entitlement?.kind === 'membership' && entitlement.productId === 'aseptic_all_access' &&
+          Number.isFinite(entitlement.expiresAt) && entitlement.expiresAt > Date.now();
+        setSharedMembership(valid ? { uid: firebaseUser.uid, entitlement } : null);
+      } catch { if (!disposed) setSharedMembership(null); }
+    };
+    void refresh();
+    const timer = setInterval(() => { void refresh(); }, 30000);
+    const foreground = () => { if (document.visibilityState === 'visible') void refresh(); };
+    document.addEventListener('visibilitychange', foreground);
+    return () => { disposed = true; clearInterval(timer); document.removeEventListener('visibilitychange', foreground); };
+  }, [firebaseUser]);
   const restoreAttemptedRef = useRef(false);
   // uid 별로 트라이얼 시작 시도 여부 — customToken 재로그인이 onIdTokenChanged 를
   // 다시 발동시키므로 무한 호출 방지용. 로그아웃 시 비운다.
@@ -493,7 +515,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // claims 에서 파생 — 게이트와 동일한 readEntitlement 로 권한을, raw trialEndsAt 은 D-day 표시로.
   // AuthProvider 는 state 변화 때만 리렌더되므로 매 렌더 재계산 비용은 무시할 수준이다.
-  const entitlement = readEntitlement(claims);
+  const entitlement = chooseEntitlement(readEntitlement(claims),
+    sharedMembership?.uid === firebaseUser?.uid ? sharedMembership?.entitlement || { kind: 'free' } : { kind: 'free' });
   const trialEndsAt =
     typeof claims?.trialEndsAt === "number" ? (claims.trialEndsAt as number) : null;
 
