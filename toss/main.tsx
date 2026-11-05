@@ -12,6 +12,8 @@ import Link from './Link';
 import Settings from './components/Settings';
 import Legal from './components/Legal';
 import Paywall from './components/Paywall';
+import Pro from './components/Pro';
+import { TossSubscriptionProvider } from './subscription';
 import ErrorBoundary from './components/ErrorBoundary';
 import './styles.css';
 import { isTossHost } from './environment';
@@ -29,6 +31,8 @@ const Progress = lazy(() => import('../app/(tabs)/progress/page'));
 const Dream = lazy(() => import('../app/(tabs)/dream/page'));
 const History = lazy(() => import('../app/(tabs)/record/history/page'));
 const Onboarding = lazy(() => import('../app/onboarding/page'));
+const CoachChat = lazy(() => import('./components/Coaching').then(({ CoachChat }) => ({ default: CoachChat })));
+const CoachWeekly = lazy(() => import('./components/Coaching').then(({ CoachWeekly }) => ({ default: CoachWeekly })));
 
 function Intro() {
   const { user, firebaseUser, loading, error, start } = useAuth();
@@ -40,6 +44,7 @@ function Intro() {
     <div className="mb-10 mt-8 text-[var(--soul)] text-lg font-bold">아니마</div>
     <h1>꿈을 이루는 하루,<br />작은 실천부터 시작해요</h1>
     <p>이루고 싶은 꿈을 적고, 오늘 할 한 걸음을 정해 보세요. 매일의 실천과 다짐을 기록하며 변화를 확인할 수 있어요.</p>
+    <p>AI 맞춤 기능은 처음 14일 동안 무료예요. 체험이 끝나도 자동으로 결제되지 않으며, 목표와 실천 기록은 계속 무료예요.</p>
     <ul className="my-8 space-y-4 text-[var(--label-2)]"><li>✦ 나의 꿈과 오늘의 목표 정하기</li><li>✦ 하루의 실천과 잘한 일 기록하기</li><li>✦ 쌓이는 기록과 성장 돌아보기</li></ul>
     <div className="rounded-2xl bg-white p-5 mb-8"><strong className="text-sm">AI 활용 안내</strong><p className="text-sm">작성한 꿈과 목표를 바탕으로 AI가 다짐·계획·응원을 제안해요. AI가 생성한 내용은 사실과 다를 수 있으니 직접 확인해 주세요. 민감한 개인정보는 입력하지 마세요.</p><p className="text-sm">토스에서 나의 실천 기록을 이어갈 수 있어요.</p></div>
     {error && <p role="alert" className="text-red-600">{error}</p>}
@@ -54,7 +59,7 @@ function SignedIn({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 function App() {
-  return <BrowserRouter><TossNavigation /><TossTheme><AuthProvider><LanguageBridge>
+  return <BrowserRouter><TossNavigation /><TossTheme><AuthProvider><LanguageBridge><TossSubscriptionProvider>
     <Suspense fallback={<BootSplash />}>
       <Routes>
         <Route path="/" element={<Intro />} />
@@ -69,6 +74,9 @@ function App() {
           <Route path="/dream" element={<Dream />} />
         </Route>
         <Route path="/settings" element={<SignedIn><Settings /></SignedIn>} />
+        <Route path="/pro" element={<SignedIn><Pro /></SignedIn>} />
+        <Route path="/pro/coach" element={<SignedIn><CoachChat /></SignedIn>} />
+        <Route path="/pro/weekly" element={<SignedIn><CoachWeekly /></SignedIn>} />
         <Route path="/delete-account" element={<Navigate to="/settings" replace />} />
         <Route path="/privacy" element={<Legal type="privacy" />} />
         <Route path="/terms" element={<Legal type="terms" />} />
@@ -77,6 +85,6 @@ function App() {
     </Suspense>
     <p className="toss-ai-label pb-[calc(var(--tab-bar-h)+20px)]">AI 생성 안내 · 맞춤 다짐, 계획, 미래의 나와 응원 문구는 AI가 생성해요. 중요한 내용은 직접 확인해 주세요.</p>
     <Paywall />
-  </LanguageBridge></AuthProvider></TossTheme></BrowserRouter>;
+  </TossSubscriptionProvider></LanguageBridge></AuthProvider></TossTheme></BrowserRouter>;
 }
 createRoot(document.getElementById('root')!).render(<ErrorBoundary><App /></ErrorBoundary>);

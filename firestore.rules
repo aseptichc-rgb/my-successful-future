@@ -55,6 +55,10 @@ service cloud.firestore {
         allow write: if false;
       }
 
+      match /aiWeeklyCoach/{report} {
+        allow read, write: if false;
+      }
+
       // 본인 정체성 진행도 (라벨당 누적 응답 수 + 최근 응답).
       // 카운터/리스트 조작을 막기 위해 클라이언트 write 는 막고 서버(Admin SDK)에서만 갱신.
       // 홈에서 onSnapshot 으로 즉시 표시할 수 있도록 본인 read 는 허용.
@@ -92,6 +96,10 @@ service cloud.firestore {
     match /entitlements/{uid} {
       allow read: if isOwner(uid);
       allow write: if false;
+    }
+
+    match /tossSubscriptionOrders/{order} {
+      allow read, write: if false;
     }
 
     // ── famousQuotes ──

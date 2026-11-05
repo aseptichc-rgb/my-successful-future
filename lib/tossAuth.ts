@@ -27,10 +27,14 @@ export function tossAuthConfigured() {
 }
 
 export function exchangeTossCode(code: string): Promise<string> {
+  return postTossPartnerApi('/users/anon-key/exchange', { code }).then(parseTossExchange);
+}
+
+export function postTossPartnerApi(path: '/users/anon-key/exchange' | '/order/get-order-status', payload: object): Promise<unknown> {
   if (!tossAuthConfigured()) throw new Error('Toss mTLS is not configured');
-  const body = JSON.stringify({ code });
+  const body = JSON.stringify(payload);
   return new Promise((resolve, reject) => {
-    const req = request('https://apps-in-toss-api.toss.im/api-partner/v1/apps-in-toss/users/anon-key/exchange', {
+    const req = request(`https://apps-in-toss-api.toss.im/api-partner/v1/apps-in-toss${path}`, {
       method: 'POST',
       cert: process.env.TOSS_MTLS_CERT!.replace(/\\n/g, '\n'),
       key: process.env.TOSS_MTLS_KEY!.replace(/\\n/g, '\n'),
@@ -47,12 +51,12 @@ export function exchangeTossCode(code: string): Promise<string> {
       res.on('error', reject);
       res.on('end', () => {
         try {
-          if (res.statusCode !== 200) throw new Error('Toss authentication failed');
-          resolve(parseTossExchange(JSON.parse(Buffer.concat(chunks).toString('utf8'))));
+          if (res.statusCode !== 200) throw new Error('Toss partner API request failed');
+          resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')));
         } catch (err) { reject(err); }
       });
     });
-    const timeout = setTimeout(() => req.destroy(new Error('Toss authentication timed out')), 10000);
+    const timeout = setTimeout(() => req.destroy(new Error('Toss partner API request timed out')), 10000);
     req.on('close', () => clearTimeout(timeout));
     req.on('error', reject);
     req.end(body);

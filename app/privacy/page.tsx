@@ -109,6 +109,13 @@ export default function PrivacyPolicyPage() {
               prevent receipt forgery. Not retained separately.
             </li>
             <li>
+              <b>AI coach questions (optional):</b> with your permission, the
+              current question and up to two recent exchanges are sent to
+              Google Gemini to generate a reply. Anima does not save the
+              conversation to your account. We store a daily question count
+              to apply the usage limit.
+            </li>
+            <li>
               <b>LLM usage records:</b> token usage metrics for cost and quality
               management when we call language models to generate motivation
               cards. The free-text you enter is transmitted transiently only to
@@ -143,7 +150,7 @@ export default function PrivacyPolicyPage() {
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>Google Firebase (authentication, data storage, serverless hosting)</li>
             <li>Firebase Crashlytics (crash &amp; error diagnostics)</li>
-            <li>Google Generative AI (model inference for card generation)</li>
+            <li>Google Generative AI (model inference for cards and coaching)</li>
             <li>Google Play Billing (in-app purchases on Android)</li>
             <li>Apple App Store / StoreKit (in-app purchases on iOS)</li>
             <li>Vercel (web hosting and serverless function execution)</li>

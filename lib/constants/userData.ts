@@ -27,6 +27,8 @@ export const USER_SUBCOLLECTIONS = [
   "executionPlans",
   /** 정체성 증거 장부 (일자별). */
   "identityEvidence",
+  /** 현재 AI 주간 코칭 결과 및 생성 상태. */
+  "aiWeeklyCoach",
 ] as const;
 
 export type UserSubcollection = (typeof USER_SUBCOLLECTIONS)[number];

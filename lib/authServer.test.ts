@@ -50,6 +50,14 @@ describe("canUseAiFeatures", { timeout: COLD_IMPORT_TIMEOUT_MS }, () => {
     expect(canUseAiFeatures(authedUser({ kind: "free" }))).toBe(true);
   });
 
+  it("토스 구독 출시 후 체험이 끝난 토스 사용자만 별도로 제한한다", async () => {
+    vi.stubEnv("TOSS_IAP_ENABLED", "true");
+    const canUseAiFeatures = await loadGate("");
+    const free = authedUser({ kind: "free" }, NOW - DAY_MS);
+    expect(canUseAiFeatures(free)).toBe(true);
+    expect(canUseAiFeatures({ ...free, tossApp: true })).toBe(false);
+  });
+
   it("플래그가 켜져 있으면 무료 사용자는 큐레이션으로 다운그레이드된다", async () => {
     const canUseAiFeatures = await loadGate("true");
     expect(canUseAiFeatures(authedUser({ kind: "free" }, NOW - DAY_MS))).toBe(false);

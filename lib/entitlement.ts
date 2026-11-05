@@ -29,7 +29,7 @@ export type Entitlement =
       productId: string;
       grantedAt: number;
       expiresAt: number;
-      platform: EntitlementPlatform;
+      platform: EntitlementPlatform | "toss";
     }
   | { kind: "trial"; trialEndsAt: number }
   | { kind: "free" };
@@ -105,7 +105,8 @@ export function readEntitlement(
  * 보호 라우트의 게이트는 이 함수만 호출한다 (claim 의 구체 형식을 모름).
  */
 export function hasProAccess(ent: Entitlement): boolean {
-  return ent.kind === "membership" ? ent.expiresAt > Date.now() : ent.kind !== "free";
+  if (ent.kind === "membership" || (ent.kind === "subscription" && ent.platform === "toss")) return ent.expiresAt > Date.now();
+  return ent.kind !== "free";
 }
 
 /**
@@ -115,7 +116,7 @@ export function hasProAccess(ent: Entitlement): boolean {
  * 해금 게이트의 `unlockAll` 은 이 함수가 아니라 [unlocksEverything] 으로 채운다.
  */
 export function isPaidPro(ent: Entitlement): boolean {
-  return ent.kind === "lifetime" || ent.kind === "subscription" || (ent.kind === "membership" && ent.expiresAt > Date.now());
+  return ent.kind !== "trial" && hasProAccess(ent);
 }
 
 /**
@@ -129,6 +130,8 @@ export function isPaidPro(ent: Entitlement): boolean {
  * 그 여정은 만료 뒤 무료 구간에서 그대로 살아 있다(스트릭으로 2칸·WOOP·잘한 일까지 연다).
  */
 export function unlocksEverything(ent: Entitlement): boolean {
+  // Toss Pro pays for AI features. Manual features follow the free tier's unlock rules.
+  if (ent.kind === "subscription" && ent.platform === "toss") return false;
   return hasProAccess(ent);
 }
 

@@ -18,7 +18,7 @@ export default function Sheet({
 }: {
   onClose: () => void;
   title: string;
-  children: React.ReactNode;
+  children: React.ReactNode | ((requestClose: () => void) => React.ReactNode);
 }) {
   const { t } = useLanguage();
   const requestClose = useSheetHistory(onClose);
@@ -45,7 +45,7 @@ export default function Sheet({
           <span className="text-[17px] font-semibold tracking-[-0.43px] text-[var(--label)]">{title}</span>
           <div className="w-12" />
         </div>
-        <div className="px-4">{children}</div>
+        <div className="px-4">{typeof children === 'function' ? children(requestClose) : children}</div>
       </div>
     </div>
   );

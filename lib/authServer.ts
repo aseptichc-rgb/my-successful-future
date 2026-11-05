@@ -18,10 +18,13 @@ import { getAdminAuth } from "./firebase-admin";
 import { ENTITLEMENT_REQUIRED } from "./constants/quota";
 import { readEntitlement, hasProAccess, type Entitlement } from "./entitlement";
 import { logEvent } from "./events";
+import { TOSS_APP_NAME } from "./tossOrigins";
+import { readTossEntitlement } from "./tossIap";
 
 export interface AuthedUser {
   uid: string;
   email?: string;
+  tossApp?: boolean;
   /**
    * 권한 상태(lifetime / subscription / trial / free) 의 단일 진입점.
    * 새 호출부는 이 필드만 보면 된다. 아래 paid / productId / purchaseTimeMs 는
@@ -76,6 +79,7 @@ function decodedToAuthedUser(
   return {
     uid: decoded.uid,
     email: decoded.email,
+    tossApp: claims.tossApp === TOSS_APP_NAME,
     entitlement,
     paid,
     productId,
@@ -84,10 +88,17 @@ function decodedToAuthedUser(
   };
 }
 
-async function withSharedMembership(user: AuthedUser, token: string, tokenKind: 'id' | 'session'): Promise<AuthedUser> {
+async function withServerEntitlement(user: AuthedUser, token: string, tokenKind: 'id' | 'session'): Promise<AuthedUser> {
   if (user.entitlement.kind === 'lifetime') return user;
-  const entitlement = chooseEntitlement(user.entitlement, await readSharedEntitlement(token, tokenKind));
-  if (entitlement.kind !== 'membership') return user;
+  const [toss, shared] = await Promise.all([
+    user.tossApp ? readTossEntitlement(user.uid).catch(() => {
+      console.error('[toss-iap] Subscription status unavailable');
+      return null;
+    }) : null,
+    readSharedEntitlement(token, tokenKind),
+  ]);
+  const entitlement = chooseEntitlement(toss ?? user.entitlement, shared);
+  if (entitlement === user.entitlement || (entitlement.kind !== 'membership' && entitlement.kind !== 'subscription')) return user;
   return { ...user, entitlement, paid: true, productId: entitlement.productId, purchaseTimeMs: entitlement.grantedAt };
 }
 
@@ -98,7 +109,7 @@ export async function verifyRequestUser(request: NextRequest): Promise<AuthedUse
     if (token) {
       try {
         const decoded = await getAdminAuth().verifyIdToken(token);
-        return await withSharedMembership(decodedToAuthedUser(decoded), token, "id");
+        return await withServerEntitlement(decodedToAuthedUser(decoded), token, "id");
       } catch {
         // 헤더 검증 실패 시 쿠키 폴백 시도
       }
@@ -109,7 +120,7 @@ export async function verifyRequestUser(request: NextRequest): Promise<AuthedUse
   if (cookie) {
     try {
       const decoded = await getAdminAuth().verifySessionCookie(cookie, true);
-      return await withSharedMembership(decodedToAuthedUser(decoded), cookie, "session");
+      return await withServerEntitlement(decodedToAuthedUser(decoded), cookie, "session");
     } catch {
       throw new AuthError(401, "Your session expired. Please sign in again.");
     }
@@ -139,8 +150,7 @@ export async function verifyRequestUser(request: NextRequest): Promise<AuthedUse
  */
 export async function requirePaidUser(request: NextRequest): Promise<AuthedUser> {
   const user = await verifyRequestUser(request);
-  if (!ENTITLEMENT_REQUIRED) return user;
-  if (hasProAccess(user.entitlement)) return user;
+  if (canUseAiFeatures(user)) return user;
   const reason = user.trialEndsAt === null ? "trial_not_started" : "trial_expired";
   // 페이월 노출의 서버 진실 — 어느 기능에서 얼마나 막히는지가 곧 "무엇에 돈을 낼지" 의 힌트다.
   // 기록은 best-effort(logEvent 는 throw 하지 않음). 서버리스는 응답 뒤 백그라운드 작업이 죽으므로
@@ -169,7 +179,7 @@ export async function requirePaidUser(request: NextRequest): Promise<AuthedUser>
  * ENTITLEMENT_REQUIRED 가 꺼져 있으면(개발/베타) 항상 true — 게이트 스위치는 여전히 하나다.
  */
 export function canUseAiFeatures(user: AuthedUser): boolean {
-  if (!ENTITLEMENT_REQUIRED) return true;
+  if (!ENTITLEMENT_REQUIRED && !(user.tossApp && process.env.TOSS_IAP_ENABLED === 'true')) return true;
   return hasProAccess(user.entitlement);
 }
 

@@ -8,14 +8,14 @@
  * language 도 바디를 신뢰한다 — Step 0 의 언어 저장이 실패했을 수 있고, 그 경우
  * 사용자가 실제로 보고 있는 화면 언어를 아는 쪽은 클라이언트뿐이다.
  *
- * 결제 게이트를 걸지 않는다(verifyRequestUser): 온보딩은 체험 클레임이 아직 전파되기
- * 전에도 반드시 끝까지 진행돼야 하는 경로다. 대신 일별 한도(onboardingSuggest)로 막는다.
+ * AI 제안은 이용권 정책과 일별 한도를 적용한다. 체험 권한이 아직 전파되지 않았거나
+ * 무료 이용 중이면 화면에서 직접 입력하거나 정적 예시를 선택할 수 있다.
  *
  * 실패 정책: 생성/파싱 실패는 200 + suggestions:null 로 나가고 화면은 정적 예시를 쓴다.
  * 온보딩이 이 API 때문에 멈추는 경우는 없어야 한다.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { verifyRequestUser, AuthError } from "@/lib/authServer";
+import { verifyRequestUser, canUseAiFeatures, AuthError } from "@/lib/authServer";
 import { enforceQuota, QuotaExceededError } from "@/lib/quota";
 import { suggestOnboardingLines } from "@/lib/onboardingSuggest";
 import { DREAM_MIN_LEN_FOR_SUGGEST, FUTURE_SELF_FIELD_MAX } from "@/lib/futureSelf";
@@ -31,6 +31,7 @@ interface PostBody {
 export async function POST(request: NextRequest) {
   try {
     const me = await verifyRequestUser(request);
+    if (!canUseAiFeatures(me)) return NextResponse.json({ ok: true, suggestions: null });
 
     let body: PostBody = {};
     try {

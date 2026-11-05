@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, type ModelParams } from "@google/generative-ai";
 import { logTokenUsage } from "@/lib/tokenUsage";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
@@ -34,6 +34,8 @@ export interface GenUsageContext {
   feature: string;
 }
 
+type GenTextOptions = Pick<ModelParams, "systemInstruction" | "safetySettings"> & { json?: boolean };
+
 /** Gemini 가 호출당 시간 안에 응답하지 못해 끊었음을 나타낸다. */
 export class GeminiTimeoutError extends Error {
   constructor(timeoutMs: number) {
@@ -61,12 +63,16 @@ async function generateOnce(
   maxTokens: number,
   temperature: number,
   usageCtx?: GenUsageContext,
+  options?: GenTextOptions,
 ): Promise<string> {
   const model = genAI.getGenerativeModel({
     model: MODEL,
+    systemInstruction: options?.systemInstruction,
+    safetySettings: options?.safetySettings,
     generationConfig: {
       maxOutputTokens: maxTokens,
       temperature,
+      ...(options?.json && { responseMimeType: "application/json" }),
     },
   });
 
@@ -114,12 +120,13 @@ export async function generateText(
   maxTokens: number = 800,
   temperature: number = DEFAULT_TEMPERATURE,
   usageCtx?: GenUsageContext,
+  options?: GenTextOptions,
 ): Promise<string> {
   try {
-    return await generateOnce(prompt, maxTokens, temperature, usageCtx);
+    return await generateOnce(prompt, maxTokens, temperature, usageCtx, options);
   } catch (err) {
     if (!isRateLimit(err)) throw err;
     await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
-    return generateOnce(prompt, maxTokens, temperature, usageCtx);
+    return generateOnce(prompt, maxTokens, temperature, usageCtx, options);
   }
 }

@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { User as TossUser } from '@apps-in-toss/web-framework';
 import { getAuth_, getUserProfile, onIdTokenChanged, signInWithCustomTokenClient, signOut as firebaseSignOut, type FirebaseUser } from '../lib/firebase';
-import { chooseEntitlement, readEntitlement, type Entitlement } from '../lib/entitlement';
+import { chooseEntitlement, hasProAccess, readEntitlement, type Entitlement } from '../lib/entitlement';
 import type { User } from '../types';
 import { API_ORIGIN } from './authedFetch';
 
@@ -9,6 +9,7 @@ type ContextValue = {
   user: User | null; firebaseUser: FirebaseUser | null; loading: boolean; error: string;
   entitlement: Entitlement; trialEndsAt: number | null; isGuest: boolean;
   start: () => Promise<void>; signOut: () => Promise<void>; refreshUser: () => Promise<void>;
+  refreshEntitlement: () => Promise<void>;
 };
 const Context = createContext<ContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -19,6 +20,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const generation = useRef(0);
+  const entitlementRequest = useRef(0);
   const pending = useRef(false);
   const refreshUser = useCallback(async () => {
     const current = getAuth_().currentUser;
@@ -69,30 +71,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else void refreshUser().catch(() => {});
     });
   }, [firebaseUser, refreshUser]);
+  const refreshEntitlement = useCallback(async () => {
+    if (!firebaseUser || getAuth_().currentUser?.uid !== firebaseUser.uid) return;
+    const attempt = generation.current;
+    const request = ++entitlementRequest.current;
+    try {
+      const token = await firebaseUser.getIdToken();
+      const response = await fetch(`${API_ORIGIN}/api/membership`, { headers: { Authorization: `Bearer ${token}` }, credentials: 'omit', signal: AbortSignal.timeout(10000) });
+      if (!response.ok) return;
+      const { entitlement } = await response.json() as { entitlement?: Entitlement };
+      if (attempt !== generation.current || request !== entitlementRequest.current || getAuth_().currentUser?.uid !== firebaseUser.uid) return;
+      const recognized = entitlement?.kind === 'membership' && entitlement.productId === 'aseptic_all_access' ||
+        entitlement?.kind === 'subscription' && entitlement.platform === 'toss';
+      setShared(recognized && Number.isFinite(entitlement.expiresAt) && hasProAccess(entitlement) ? entitlement : { kind: 'free' });
+    } catch { /* Keep the last verified entitlement until it expires. */ }
+  }, [firebaseUser]);
   useEffect(() => {
     if (!firebaseUser) return;
-    let disposed = false;
-    const refresh = async () => {
-      try {
-        const token = await firebaseUser.getIdToken();
-        const response = await fetch(`${API_ORIGIN}/api/membership`, { headers: { Authorization: `Bearer ${token}` }, credentials: 'omit', signal: AbortSignal.timeout(10000) });
-        const data = await response.json();
-        if (disposed) return;
-        setShared(response.ok && data.entitlement?.kind === 'membership' && data.entitlement.productId === 'aseptic_all_access' &&
-          Number.isFinite(data.entitlement.expiresAt) && data.entitlement.expiresAt > Date.now() ? data.entitlement : { kind: 'free' });
-      } catch { if (!disposed) setShared({ kind: 'free' }); }
-    };
-    void refresh();
-    const timer = setInterval(() => { if (document.visibilityState === 'visible') void refresh(); }, 30000);
-    const foreground = () => { if (document.visibilityState === 'visible') { void refresh(); void refreshUser().catch(() => {}); } };
+    void refreshEntitlement();
+    const timer = setInterval(() => { if (document.visibilityState === 'visible') void refreshEntitlement(); }, 30000);
+    const foreground = () => { if (document.visibilityState === 'visible') { void refreshEntitlement(); void refreshUser().catch(() => {}); } };
     document.addEventListener('visibilitychange', foreground);
-    return () => { disposed = true; clearInterval(timer); document.removeEventListener('visibilitychange', foreground); };
-  }, [firebaseUser, refreshUser]);
-  const value = useMemo(() => ({ user, firebaseUser, loading, error,
-    entitlement: chooseEntitlement(readEntitlement(claims), shared),
-    trialEndsAt: typeof claims?.trialEndsAt === 'number' ? claims.trialEndsAt : null,
-    isGuest: false, start, signOut, refreshUser,
-  }), [user, firebaseUser, loading, error, claims, shared, start, signOut, refreshUser]);
+    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', foreground); };
+  }, [firebaseUser, refreshEntitlement, refreshUser]);
+  const value = useMemo(() => {
+    const local = readEntitlement(claims);
+    const entitlement = shared.kind === 'subscription' && hasProAccess(shared) ? shared : chooseEntitlement(local, shared);
+    return { user, firebaseUser, loading, error, entitlement,
+      trialEndsAt: typeof claims?.trialEndsAt === 'number' ? claims.trialEndsAt : null,
+      isGuest: false, start, signOut, refreshUser, refreshEntitlement,
+    };
+  }, [user, firebaseUser, loading, error, claims, shared, start, signOut, refreshUser, refreshEntitlement]);
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 export function useAuth() {
