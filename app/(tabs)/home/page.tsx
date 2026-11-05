@@ -547,10 +547,10 @@ export default function HomeDashboardPage() {
               ariaLabel={t("progress.chipAria")}
               onClick={() => router.replace("/progress")}
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="#D85A30" aria-hidden>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="var(--soul)" aria-hidden>
                 <path d="M13 2L4.5 13.5h6L9 22l8.5-11.5h-6L13 2z" />
               </svg>
-              <span className="text-[12px] font-semibold tracking-[0.4px] text-[#D85A30]">
+              <span className="text-[12px] font-semibold tracking-[0.4px] text-[var(--soul)]">
                 {streakCount}
               </span>
             </HeaderChip>

@@ -62,7 +62,7 @@ export default function DeclarationNudgeCard({
           type="button"
           onClick={onEdit}
           className="inline-flex items-center rounded-full px-4 py-2 text-[15px] font-semibold text-white"
-          style={{ background: "#D85A30" }}
+          style={{ background: "var(--soul)" }}
         >
           {t("declarationNudge.cta")}
         </button>

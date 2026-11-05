@@ -17,8 +17,8 @@ import BackButton from "@/components/nav/BackButton";
  *  인증 게이트는 (tabs)/layout 이 담당한다.
  * ───────────────────────────────────────────────────────────────── */
 
-// Day-of-week color rotation (iOS palette).
-const DAY_COLORS = ["#D85A30", "#D85A30", "#1E1B4B", "#1E1B4B", "#1E1B4B", "#1E1B4B", "#FFCC00"];
+// Day-of-week color rotation within the indigo palette.
+const DAY_COLORS = ["#1E1B4B", "#2A2766", "#4F4BA8", "#625E9B", "#45416F", "#393563", "#74709E"];
 
 /** 모듈 함수로 두어 참조가 안정 — useRetryableLoad 가 불필요하게 재조회하지 않는다. */
 const loadWinsHistory = (uid: string) => getDailyWinsHistory(uid, WINS_HISTORY_DEFAULT_LIMIT);
@@ -85,7 +85,7 @@ export default function WinsHistoryPage() {
       <main className="mx-auto w-full max-w-3xl">
         {loading && (
           <div className="flex items-center justify-center py-12">
-            <div className="h-6 w-6 animate-spin rounded-full border-[1.5px] border-black/10 border-t-[#D85A30]" />
+            <div className="h-6 w-6 animate-spin rounded-full border-[1.5px] border-black/10 border-t-[var(--soul)]" />
           </div>
         )}
 

@@ -292,7 +292,7 @@ export default function MotivationCard({
     return (
       <>
         {before}
-        <span className="text-[#D85A30] font-bold">{emphasis}</span>
+        <span className="text-[var(--soul)] font-bold">{emphasis}</span>
         {after}
       </>
     );
@@ -315,7 +315,7 @@ export default function MotivationCard({
           style={{
             fontSize: 120,
             fontWeight: 700,
-            color: "rgba(216,90,48,0.12)",
+            color: "rgba(30,27,75,0.12)",
             lineHeight: 1,
             fontFamily: "var(--font-display)",
           }}
@@ -323,7 +323,7 @@ export default function MotivationCard({
           “
         </div>
         <div className="relative px-5 pt-5 pb-5">
-          <div className="text-[11px] font-semibold tracking-[1.6px] uppercase text-[#D85A30] mb-2.5">
+          <div className="text-[11px] font-semibold tracking-[1.6px] uppercase text-[var(--soul)] mb-2.5">
             {t("motivation.headerTodayLabel")}
           </div>
 
@@ -358,7 +358,7 @@ export default function MotivationCard({
                     type="button"
                     onClick={handleDownload}
                     disabled={!motivation || downloading}
-                    className="text-[15px] font-semibold text-[#D85A30] disabled:opacity-40"
+                    className="text-[15px] font-semibold text-[var(--soul)] disabled:opacity-40"
                   >
                     {downloading
                       ? t("motivation.wallpaper.downloading")
@@ -416,7 +416,7 @@ export default function MotivationCard({
             {motivation.response && !responseEditing ? (
               <div
                 className="mt-3 pl-4 border-l-[3px] rounded-l-[2px]"
-                style={{ borderColor: "#D85A30" }}
+                style={{ borderColor: "var(--soul)" }}
               >
                 <p className="whitespace-pre-wrap text-[15px] leading-[20px] tracking-[-0.24px] text-[var(--label)]">
                   {motivation.response.text}
@@ -478,7 +478,7 @@ export default function MotivationCard({
             )}
 
             {submitFlash && (
-              <p role="status" className="mt-3 text-[13px] font-semibold text-[#D85A30]">
+              <p role="status" className="mt-3 text-[13px] font-semibold text-[var(--soul)]">
                 {submitFlash}
               </p>
             )}

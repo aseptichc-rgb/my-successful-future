@@ -460,10 +460,10 @@ export default function OnboardingPage() {
   const goalHintVisible = needsMoreSpecificGoal(goal);
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F0EDE6]">
+    <div className="anima-onboarding flex min-h-screen flex-col bg-[#F0EDE6]">
       {/* sticky top-0 이라 스크롤 중 상태바 밑에 붙는다. viewportFit:"cover"(layout.tsx)
           때문에 여백이 없으면 우측 "건너뛰기" 버튼이 상태바에 가려 탭이 먹지 않는다. */}
-      <div className="sticky top-0 z-10 border-b border-black/[0.06] bg-white/80 backdrop-blur">
+      <div className="anima-onboarding__header sticky top-0 z-10 border-b border-black/[0.06] bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center gap-4 px-5 pb-3 pt-[calc(env(safe-area-inset-top)+12px)] sm:px-6">
           {progress ? (
             <div className="flex flex-1 items-center gap-3">
@@ -497,7 +497,7 @@ export default function OnboardingPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 py-8 sm:px-6 sm:py-12">
+      <div className="anima-onboarding__content flex-1 overflow-y-auto px-5 py-8 sm:px-6 sm:py-12">
         <div className="mx-auto max-w-2xl">
           {step === 0 && (
             <div>
@@ -558,13 +558,14 @@ export default function OnboardingPage() {
 
               {/* 예시 칩 — 빈 입력칸은 첫 화면 이탈 지점이다. 탭하면 칸을 채우고, 사용자는 고쳐 쓴다.
                   칩 문장은 placeholder 와 같은 구체성 기준(숫자·기한·장면)을 보여준다. */}
-              <div className="mt-5 flex flex-wrap gap-2">
+              <div className="anima-onboarding__examples mt-5 flex flex-wrap gap-2">
                 {DREAM_EXAMPLE_KEYS.map((key) => (
                   <button
                     key={key}
                     type="button"
+                    aria-pressed={dreamAnswer === t(key).slice(0, FUTURE_SELF_FIELD_MAX)}
                     onClick={() => setDreamAnswer(t(key).slice(0, FUTURE_SELF_FIELD_MAX))}
-                    className="rounded-full border border-black/10 bg-white px-3 py-1.5 text-[13px] leading-[18px] tracking-[-0.01em] text-[#1E1B4B]/80 active:bg-black/[0.04]"
+                    className="anima-onboarding__example rounded-full border border-black/10 bg-white px-3 py-1.5 text-[13px] leading-[18px] tracking-[-0.01em] text-[#1E1B4B]/80 active:bg-black/[0.04]"
                   >
                     {t(key)}
                   </button>
@@ -792,7 +793,7 @@ export default function OnboardingPage() {
               )}
 
               {!previewLoading && previewError && (
-                <p className="mt-6 text-center text-[13px] tracking-[-0.01em] text-[#D85A30]">
+                <p className="mt-6 text-center text-[13px] tracking-[-0.01em] text-[var(--soul)]">
                   {t("onboarding.step5.previewError")} ({previewError})
                 </p>
               )}
@@ -856,14 +857,14 @@ export default function OnboardingPage() {
           )}
 
           {error && (
-            <p className="mt-5 text-center text-[13px] tracking-[-0.01em] text-[#D85A30]">
+            <p className="mt-5 text-center text-[13px] tracking-[-0.01em] text-[var(--soul)]">
               {error}
             </p>
           )}
         </div>
       </div>
 
-      <div className="sticky bottom-0 border-t border-black/[0.06] bg-white/80 backdrop-blur">
+      <div className="anima-onboarding__footer sticky bottom-0 border-t border-black/[0.06] bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-5 py-4 sm:px-6">
           <button
             type="button"

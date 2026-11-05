@@ -27,7 +27,7 @@ import { useT } from "@/lib/i18n";
 function AnimaMark({
   size = 56,
   color = "#FFFFFF",
-  coreColor = "#BE4B26",
+  coreColor = "var(--soul-press)",
 }: {
   size?: number;
   color?: string;
@@ -64,8 +64,8 @@ function LogoLockup() {
       <div
         className="w-24 h-24 rounded-[28px] flex items-center justify-center"
         style={{
-          background: "linear-gradient(135deg, #D85A30 0%, #BE4B26 100%)",
-          boxShadow: "0 12px 28px rgba(175,82,222,0.28)",
+          background: "linear-gradient(135deg, var(--soul) 0%, var(--soul-press) 100%)",
+          boxShadow: "0 12px 28px rgba(30,27,75,0.18)",
         }}
       >
         <AnimaMark size={56} color="#FFFFFF" />
@@ -86,7 +86,7 @@ function LogoLockup() {
               top: -2,
               width: 5,
               height: 5,
-              background: "#D85A30",
+              background: "var(--soul)",
             }}
           />
         </span>

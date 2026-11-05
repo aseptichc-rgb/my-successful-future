@@ -34,7 +34,7 @@ const EVIDENCE_FEED_DAYS = 14;
 /** 증거 피드에 그리는 최대 행 수 — 화면 비대 방지. */
 const EVIDENCE_FEED_MAX_ROWS = 20;
 
-const SOUL = "#D85A30";
+const SOUL = "#1E1B4B";
 const STREAK_CHIP_BG = "rgba(255,149,0,0.16)";
 
 type SourceKey = "mission" | "checkin" | "deep" | "goal" | "win";
@@ -257,7 +257,7 @@ export default function ProgressPage() {
           <div className="px-5 py-4">
             {!checkedYmds ? (
               <div className="flex items-center justify-center py-6">
-                <div className="h-5 w-5 animate-spin rounded-full border-[1.5px] border-black/10 border-t-[#D85A30]" />
+                <div className="h-5 w-5 animate-spin rounded-full border-[1.5px] border-black/10 border-t-[var(--soul)]" />
               </div>
             ) : (
               <div className="grid grid-cols-10 gap-[6px]" role="img" aria-label={t("progress.heatmap.title")}>

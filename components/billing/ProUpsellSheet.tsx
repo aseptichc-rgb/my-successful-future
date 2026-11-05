@@ -35,7 +35,7 @@ import {
  * 유일하게 중복 없는 방법이다(TrialBanner 의 업그레이드 CTA 와 같은 목적지).
  * ───────────────────────────────────────────────────────────────── */
 
-const PRO_ACCENT = "#D85A30"; // TrialBanner / 설정 ANIMA PRO 섹션과 동일한 강조색.
+const PRO_ACCENT = "var(--soul)"; // TrialBanner / 설정 ANIMA PRO 섹션과 동일한 강조색.
 
 /**
  * 시트를 띄우지 않는 경로.

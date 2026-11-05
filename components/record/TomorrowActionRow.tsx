@@ -142,7 +142,7 @@ export default function TomorrowActionRow({
     <div className="relative flex items-start gap-3 px-4 py-3">
       <div
         className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0 mt-0.5"
-        style={{ background: "rgba(216,90,48,0.12)" }}
+        style={{ background: "rgba(30,27,75,0.12)" }}
       >
         <span className="text-[15px]" aria-hidden>
           🌅
@@ -156,7 +156,7 @@ export default function TomorrowActionRow({
           {error ? (
             <span className="text-[13px] text-[#FF3B30]">{error}</span>
           ) : justSaved ? (
-            <span className="text-[13px] font-medium text-[#D85A30]">{t("common.saved")}</span>
+            <span className="text-[13px] font-medium text-[var(--soul)]">{t("common.saved")}</span>
           ) : saving ? (
             <span className="text-[13px] text-[var(--label-3)]">{t("common.saving")}</span>
           ) : null}

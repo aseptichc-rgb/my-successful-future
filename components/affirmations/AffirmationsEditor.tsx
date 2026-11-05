@@ -93,7 +93,7 @@ export default function AffirmationsEditor({
                     aria-label={t("coach.buttonAria")}
                     aria-expanded={coachIdx === idx}
                     className="flex h-7 w-7 items-center justify-center rounded-full text-[13px] transition-colors hover:bg-black/[0.04] disabled:cursor-not-allowed disabled:opacity-30"
-                    style={{ color: coachIdx === idx ? "#D85A30" : "rgba(0,0,0,0.4)" }}
+                    style={{ color: coachIdx === idx ? "var(--soul)" : "rgba(0,0,0,0.4)" }}
                   >
                     ✦
                   </button>

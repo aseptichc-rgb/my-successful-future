@@ -1,0 +1,43 @@
+@import '../app/globals.css';
+@source '../app';
+@source '../components';
+@source './';
+
+html, body, #root { min-height: 100%; color-scheme: light; }
+body { margin: 0; background: var(--bg-grouped); color: var(--label); font-family: var(--font-sans); }
+/* Toss owns the top navigation and safe area. */
+:root {
+  --safe-top: 0px;
+  --font-sans: 'Toss Product Sans', Tossface, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+  --font-display: var(--font-sans);
+}
+.toss-page { max-width: 520px; margin: auto; padding: 28px 22px 40px; }
+.toss-page h1 { font-size: 28px; font-weight: 700; line-height: 1.35; }
+.toss-page h2 { margin-top: 28px; font-size: 18px; font-weight: 650; }
+.toss-page p { margin: 12px 0; line-height: 1.7; color: var(--label-2); }
+.toss-page a { color: var(--soul); text-decoration: underline; }
+.toss-row { display: flex; width: 100%; gap: 12px; align-items: center; padding: 18px 0; border-bottom: 1px solid var(--sep); }
+.toss-ai-label { max-width: 520px; margin: 0 auto; padding: 8px 22px; font-size: 11px; line-height: 1.5; color: var(--label-2); }
+
+/* The host already insets the webview below its navigation bar. */
+.anima-onboarding { min-height: 100dvh; }
+.anima-onboarding__header > div { max-width: 520px; padding: 14px 20px; }
+.anima-onboarding__content { padding: 28px 20px 24px; }
+.anima-onboarding__content > div { max-width: 480px; }
+.anima-onboarding h1 { font-size: 28px; font-weight: 700; line-height: 1.35; letter-spacing: -0.025em; word-break: keep-all; overflow-wrap: anywhere; }
+.anima-onboarding__examples { display: grid; gap: 8px; }
+.anima-onboarding__example {
+  width: 100%; padding: 12px 14px; border: 1px solid rgba(30,27,75,0.08);
+  border-radius: 16px; background: rgba(255,255,255,0.88);
+  font-size: 14px; font-weight: 500; line-height: 1.55; text-align: left;
+  word-break: keep-all; overflow-wrap: anywhere;
+  transition: background-color 160ms, border-color 160ms;
+}
+.anima-onboarding__example[aria-pressed='true'] { border-color: rgba(30,27,75,0.4); background: var(--soul-soft); color: var(--label); }
+.anima-onboarding textarea { padding: 16px; border-radius: 18px; font-size: 16px; line-height: 1.65; resize: none; }
+.anima-onboarding__footer > div { max-width: 520px; padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px)); }
+.anima-onboarding__footer button { min-height: 48px; border-radius: 16px; padding: 12px 20px; font-size: 15px; line-height: 1.4; }
+.anima-onboarding__footer button:last-child { min-width: 116px; }
+.anima-onboarding__footer button:first-child { background: rgba(30,27,75,0.04); }
+/* Keep keyboard focus visible without replacing a control's rounded shape. */
+.anima-onboarding button:focus-visible, .anima-onboarding textarea:focus-visible { outline: 2px solid var(--soul); outline-offset: 3px; }

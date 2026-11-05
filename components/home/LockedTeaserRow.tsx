@@ -7,7 +7,7 @@ import { detectPurchaseEnv } from "@/lib/purchaseEnv";
 import { PRO_SECTION_PATH } from "@/lib/constants/storeLinks";
 
 /** 설정 ANIMA PRO 섹션·TrialBanner 와 동일한 강조색. */
-const PRO_ACCENT = "#D85A30";
+const PRO_ACCENT = "var(--soul)";
 
 /**
  * 잠금 예고 행 — 어떤 기능인지는 밝히지 않고 조건과 진행도만 알린다.

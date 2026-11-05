@@ -181,7 +181,7 @@ export default function TodayWinsCard({
           {error ? (
             <span className="text-[13px] text-[#FF3B30]">{error}</span>
           ) : justSaved ? (
-            <span className="text-[13px] font-medium text-[#D85A30]">{t("common.saved")}</span>
+            <span className="text-[13px] font-medium text-[var(--soul)]">{t("common.saved")}</span>
           ) : autoSaving ? (
             <span className="text-[13px] text-[var(--label-3)]">{t("common.saving")}</span>
           ) : null}

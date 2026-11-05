@@ -25,7 +25,7 @@ import type { User } from "@/types";
  * ───────────────────────────────────────────────────────────────── */
 
 /** 설정 ANIMA PRO 섹션·TrialBanner 와 동일한 강조색. */
-const PRO_ACCENT = "#D85A30";
+const PRO_ACCENT = "var(--soul)";
 
 /** 구체성 신호 → i18n 라벨/예시 키. 빠진 신호만 칩으로 보여준다. */
 const GOAL_SIGNAL_LABEL_KEY: Record<GoalSignal, DictKey> = {
@@ -193,7 +193,7 @@ export default function GoalsSheet({
           <button
             type="button"
             onClick={() => setGoals([...goals, ""])}
-            className="block w-full px-4 py-3 text-left text-[17px] text-[#D85A30]"
+            className="block w-full px-4 py-3 text-left text-[17px] text-[var(--soul)]"
           >
             ＋ {t("common.add")}
           </button>

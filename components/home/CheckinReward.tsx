@@ -49,12 +49,12 @@ export default function CheckinReward({
       role="status"
       aria-live="polite"
       className="rounded-[12px] px-5 py-4"
-      style={{ background: "rgba(216,90,48,0.08)" }}
+      style={{ background: "rgba(30,27,75,0.08)" }}
     >
       <div className="flex items-start gap-3">
         <span
           className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ background: "#D85A30" }}
+          style={{ background: "var(--soul)" }}
           aria-hidden
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
@@ -81,7 +81,7 @@ export default function CheckinReward({
 
           {/* 증거 적립이 실패(격리된 try-catch)했다면 이 줄 자체를 생략한다 — 거짓 보상 금지. */}
           {typeof evidenceVotes === "number" && evidenceVotes > 0 && (
-            <p className="mt-2 text-[13px] leading-[18px] font-medium tracking-[-0.08px] text-[#D85A30]">
+            <p className="mt-2 text-[13px] leading-[18px] font-medium tracking-[-0.08px] text-[var(--soul)]">
               {evidenceTag
                 ? t("checkin.reward.evidence", { count: evidenceVotes, label: evidenceTag })
                 : t("checkin.reward.evidencePlain", { count: evidenceVotes })}

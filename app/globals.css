@@ -63,7 +63,7 @@
   --hairline:            rgba(30,27,75,0.10);  /* alias for legacy code */
 
   /* ────────────────────────────────────────────────
-   * Anima 브랜드 토큰 (기존 톤 복귀) — cream/indigo/soul 코랄.
+   * Anima 브랜드 토큰 — cream 배경과 차분한 indigo 중심.
    * iOS 구조 위에 Anima 톤을 입히는 한 쌍이라, 기존 코드의 bg-cream·text-indigo·
    * bg-soul·border-mist 도 자동으로 같은 톤으로 그려진다.
    * ──────────────────────────────────────────────── */
@@ -72,9 +72,10 @@
   --mist:           #E8E6DF;
   --mist-soft:      #F0EDE6;
   --indigo-brand:   #1E1B4B;
-  --soul:           #D85A30;               /* coral warm — 기존 핵심 CTA·강조 */
-  --soul-press:     #BE4B26;
-  --soul-soft:      #F2C9B8;
+  /* Keep the soul token name for existing components; indigo is the brand accent. */
+  --soul:           #1E1B4B;
+  --soul-press:     #151237;
+  --soul-soft:      #E9E7F2;
   --charcoal:       #1A1A1A;
 
   /* Anima 기존 indigo 스케일 */
@@ -103,7 +104,7 @@
   --shadow-card:        0 1px 2px rgba(30,27,75,0.04), 0 4px 12px rgba(30,27,75,0.04);
   --shadow-card-hover:  0 1px 2px rgba(30,27,75,0.06), 0 8px 20px rgba(30,27,75,0.08);
   --shadow-product:     0 2px 4px rgba(30,27,75,0.06), 0 16px 32px rgba(30,27,75,0.10);
-  --shadow-tinted:      0 2px 14px rgba(216,90,48,0.16);  /* soul coral hero glow */
+  --shadow-tinted:      0 2px 14px rgba(30,27,75,0.10);
 
   /* ────────────────────────────────────────────────
    * 부팅 스플래시 — obsidian + gold
@@ -631,11 +632,10 @@ h4, h5, h6 {
   border-radius: 9999px;
 }
 
-/* Focus ring — iOS uses 2px solid blue */
+/* Focus ring follows the brand accent. */
 :focus-visible {
-  outline: 2px solid var(--blue);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
-  border-radius: 4px;
 }
 
 button:focus,
@@ -650,7 +650,7 @@ button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid var(--blue);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -661,7 +661,7 @@ textarea:focus-visible {
 }
 
 a {
-  color: var(--blue);
+  color: var(--soul);
   text-decoration: none;
 }
 a:hover { color: var(--blue); opacity: 0.8; }

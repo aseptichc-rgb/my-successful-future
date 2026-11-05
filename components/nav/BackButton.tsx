@@ -10,7 +10,7 @@ export default function BackButton({ label, onClick }: { label: string; onClick:
       className="inline-flex items-center gap-1 px-1 py-2 text-[17px] tracking-[-0.43px] text-[var(--soul)]"
     >
       <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
-        <path d="M14 4l-7 7 7 7" stroke="#D85A30" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M14 4l-7 7 7 7" stroke="var(--soul)" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
       <span>{label}</span>
     </button>

@@ -25,7 +25,7 @@ import { PRO_SECTION_PATH } from "@/lib/constants/storeLinks";
  * 권한/트라이얼 상태는 auth-context 가 게이트와 동일한 readEntitlement 로 파생해 내려준다.
  * ───────────────────────────────────────────────────────────────── */
 
-const PRO_ACCENT = "#D85A30"; // 설정 ANIMA PRO 섹션과 동일한 강조색.
+const PRO_ACCENT = "var(--soul)"; // 설정 ANIMA PRO 섹션과 동일한 강조색.
 
 export default function TrialBanner() {
   const router = useRouter();
@@ -62,7 +62,7 @@ export default function TrialBanner() {
       <div
         role="status"
         className="mx-4 mt-4 flex flex-wrap items-center gap-3 rounded-[12px] px-5 py-4"
-        style={{ background: "rgba(216,90,48,0.10)" }}
+        style={{ background: "rgba(30,27,75,0.10)" }}
       >
         <p className="flex-1 text-[15px] font-semibold tracking-[-0.24px] text-[var(--label)]">
           {t("billing.trialEnded")}

@@ -229,7 +229,7 @@ export default function ExecutionPlanSheet({
               className="w-[22px] h-[22px] rounded-full flex-shrink-0 flex items-center justify-center"
               style={{
                 border: selected ? "none" : "1.6px solid #C7C7CC",
-                background: selected ? "#D85A30" : "transparent",
+                background: selected ? "var(--soul)" : "transparent",
               }}
             >
               {selected && (
@@ -276,7 +276,7 @@ export default function ExecutionPlanSheet({
               onClick={handleSuggest}
               disabled={suggesting || goal.trim().length === 0}
               className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-[15px] font-semibold text-[var(--soul)] disabled:opacity-40"
-              style={{ background: "rgba(216,90,48,0.10)" }}
+              style={{ background: "rgba(30,27,75,0.10)" }}
             >
               <span aria-hidden>✦</span>
               {suggesting ? t("woop.quick.drafting") : t("woop.quick.draftCta")}
@@ -296,8 +296,8 @@ export default function ExecutionPlanSheet({
                   onClick={() => handleApplySuggestion(s, i)}
                   className="w-full rounded-[12px] px-4 py-3 text-left transition-colors"
                   style={{
-                    background: picked ? "rgba(216,90,48,0.10)" : "var(--bg-grouped-2)",
-                    boxShadow: picked ? "inset 0 0 0 1.5px #D85A30" : "none",
+                    background: picked ? "rgba(30,27,75,0.10)" : "var(--bg-grouped-2)",
+                    boxShadow: picked ? "inset 0 0 0 1.5px var(--soul)" : "none",
                   }}
                 >
                   {s.outcome && (
@@ -344,7 +344,7 @@ export default function ExecutionPlanSheet({
             onClick={handleSave}
             disabled={!canSave || saving}
             className="rounded-full px-5 py-2.5 text-[15px] font-semibold text-white disabled:opacity-30"
-            style={{ background: "#D85A30" }}
+            style={{ background: "var(--soul)" }}
           >
             {saving ? t("woop.saving") : t("woop.quick.saveDraft")}
           </button>
@@ -363,7 +363,7 @@ export default function ExecutionPlanSheet({
           <div
             key={s}
             className="h-[6px] flex-1 rounded-full transition-colors"
-            style={{ background: i <= stepIdx ? "#D85A30" : "rgba(0,0,0,0.08)" }}
+            style={{ background: i <= stepIdx ? "var(--soul)" : "rgba(0,0,0,0.08)" }}
             aria-hidden
           />
         ))}
@@ -426,7 +426,7 @@ export default function ExecutionPlanSheet({
               onClick={handleSuggest}
               disabled={suggesting}
               className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[15px] font-semibold text-[var(--soul)] disabled:opacity-40"
-              style={{ background: "rgba(216,90,48,0.10)" }}
+              style={{ background: "rgba(30,27,75,0.10)" }}
             >
               <span aria-hidden>✦</span>
               {suggesting ? t("woop.obstacle.suggesting") : t("woop.obstacle.suggest")}
@@ -443,8 +443,8 @@ export default function ExecutionPlanSheet({
                     onClick={() => handleApplySuggestion(s, i)}
                     className="w-full rounded-[10px] px-4 py-3 text-left transition-colors"
                     style={{
-                      background: applied ? "rgba(216,90,48,0.10)" : "var(--bg-grouped-2)",
-                      boxShadow: applied ? "inset 0 0 0 1.5px #D85A30" : "none",
+                      background: applied ? "rgba(30,27,75,0.10)" : "var(--bg-grouped-2)",
+                      boxShadow: applied ? "inset 0 0 0 1.5px var(--soul)" : "none",
                     }}
                   >
                     <p className="text-[15px] leading-[20px] font-medium text-[var(--label)]">
@@ -551,7 +551,7 @@ export default function ExecutionPlanSheet({
             onClick={() => canNext && moveToStep(stepIdx + 1)}
             disabled={!canNext}
             className="rounded-full px-5 py-2.5 text-[15px] font-semibold text-white disabled:opacity-30"
-            style={{ background: "#D85A30" }}
+            style={{ background: "var(--soul)" }}
           >
             {t("common.next")}
           </button>
@@ -561,7 +561,7 @@ export default function ExecutionPlanSheet({
             onClick={handleSave}
             disabled={!canNext || saving}
             className="rounded-full px-5 py-2.5 text-[15px] font-semibold text-white disabled:opacity-30"
-            style={{ background: "#D85A30" }}
+            style={{ background: "var(--soul)" }}
           >
             {saving ? t("woop.saving") : t("woop.save")}
           </button>

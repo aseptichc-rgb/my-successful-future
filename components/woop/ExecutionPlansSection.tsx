@@ -91,7 +91,7 @@ export default function ExecutionPlansSection({
               <span
                 className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0 mt-0.5 text-[15px]"
                 style={{
-                  background: row.kind === "plan" ? "rgba(216,90,48,0.12)" : "rgba(0,0,0,0.05)",
+                  background: row.kind === "plan" ? "rgba(30,27,75,0.12)" : "rgba(0,0,0,0.05)",
                 }}
                 aria-hidden
               >

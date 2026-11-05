@@ -1,10 +1,25 @@
 import type { NextConfig } from "next";
+import { TOSS_ORIGINS } from "./lib/tossOrigins";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["pdf-parse", "pdfjs-dist"],
   // 에뮬레이터(10.0.2.2)·실기기(LAN IP)에서 dev 서버의 _next/* 리소스에 접근할 수 있도록 허용.
   // Next.js 16 부터 dev 리소스 cross-origin 접근이 기본 차단됨 — TWA/Custom Tab 로딩이 hang 되는 원인.
   allowedDevOrigins: ["10.0.2.2", "localhost", "127.0.0.1"],
+  // Toss's static client authenticates API calls with a Firebase bearer token, without cookies.
+  async headers() {
+    return TOSS_ORIGINS.map((origin) => ({
+      source: "/api/:path*",
+      has: [{ type: "header" as const, key: "origin", value: origin.replace(/\./g, "\\.") }],
+      headers: [
+        { key: "Access-Control-Allow-Origin", value: origin },
+        { key: "Access-Control-Allow-Methods", value: "GET, POST, DELETE, OPTIONS" },
+        { key: "Access-Control-Allow-Headers", value: "Authorization, Content-Type" },
+        { key: "Access-Control-Max-Age", value: "600" },
+        { key: "Vary", value: "Origin" },
+      ],
+    }));
+  },
   /**
    * 하단 탭 전환(2026-09) 전의 경로를 살린다 — Android 알림/위젯이 이미 깔린 기기에서 옛 경로로
    * 들어오고(MainActivity.resolveOpenPath), 그 매핑은 네이티브 빌드를 새로 올려야 바뀐다.

@@ -20,7 +20,8 @@ export const SHARE_CARD_WIDTH = 1080;
 export const SHARE_CARD_HEIGHT = 1350;
 
 const BG = "#1E1B4B";
-const ACCENT = "#D85A30";
+// A light indigo keeps the count readable against the dark indigo background.
+const ACCENT = "#A6A3D1";
 const INK = "#F5F1E8";
 const INK_DIM = "rgba(245,241,232,0.62)";
 /** 다짐 한 줄을 캔버스에 그릴 때의 최대 줄 수 — 넘치면 말줄임. */
@@ -92,8 +93,8 @@ export async function renderShareCard(input: ShareCardInput): Promise<Blob | nul
     ctx.fillRect(0, 0, SHARE_CARD_WIDTH, SHARE_CARD_HEIGHT);
     // 은은한 원광 — 앱 아이콘의 링 모티프
     const ring = ctx.createRadialGradient(540, 520, 60, 540, 520, 520);
-    ring.addColorStop(0, "rgba(216,90,48,0.28)");
-    ring.addColorStop(1, "rgba(216,90,48,0)");
+    ring.addColorStop(0, "rgba(166,163,209,0.28)");
+    ring.addColorStop(1, "rgba(166,163,209,0)");
     ctx.fillStyle = ring;
     ctx.fillRect(0, 0, SHARE_CARD_WIDTH, SHARE_CARD_HEIGHT);
 

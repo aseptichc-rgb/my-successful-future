@@ -100,7 +100,7 @@ export default function TodayCard({
             {t("home.todayGoal.title")}
           </span>
           {goalAchieved && (
-            <span className="text-[13px] font-medium text-[#D85A30]">
+            <span className="text-[13px] font-medium text-[var(--soul)]">
               {t("home.todayGoal.doneToday")}
             </span>
           )}

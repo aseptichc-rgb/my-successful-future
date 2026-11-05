@@ -130,7 +130,7 @@ export default function DailyPlanCard({
         <div className="flex items-start gap-2.5">
           <span
             className="flex-shrink-0 mt-[1px] rounded-[6px] px-2 py-0.5 text-[12px] font-bold tracking-[0.2px]"
-            style={{ background: "rgba(216,90,48,0.12)", color: "#D85A30" }}
+            style={{ background: "rgba(30,27,75,0.12)", color: "var(--soul)" }}
           >
             {t("plan.today.then")}
           </span>

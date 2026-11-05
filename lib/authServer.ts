@@ -11,6 +11,8 @@
  *   /api/auth/start-trial 이 가입 직후 14일 뒤 시각(ms) 을 박아둔다.
  *   paid 가 아니더라도 trialEndsAt > now 이면 무료 체험 중으로 간주해 통과시킨다.
  */
+import { readSharedEntitlement } from "./sharedMembership";
+import { chooseEntitlement } from "./entitlement";
 import type { NextRequest } from "next/server";
 import { getAdminAuth } from "./firebase-admin";
 import { ENTITLEMENT_REQUIRED } from "./constants/quota";
@@ -82,6 +84,13 @@ function decodedToAuthedUser(
   };
 }
 
+async function withSharedMembership(user: AuthedUser, token: string, tokenKind: 'id' | 'session'): Promise<AuthedUser> {
+  if (user.entitlement.kind === 'lifetime') return user;
+  const entitlement = chooseEntitlement(user.entitlement, await readSharedEntitlement(token, tokenKind));
+  if (entitlement.kind !== 'membership') return user;
+  return { ...user, entitlement, paid: true, productId: entitlement.productId, purchaseTimeMs: entitlement.grantedAt };
+}
+
 export async function verifyRequestUser(request: NextRequest): Promise<AuthedUser> {
   const header = request.headers.get("authorization") || request.headers.get("Authorization");
   if (header && header.startsWith("Bearer ")) {
@@ -89,7 +98,7 @@ export async function verifyRequestUser(request: NextRequest): Promise<AuthedUse
     if (token) {
       try {
         const decoded = await getAdminAuth().verifyIdToken(token);
-        return decodedToAuthedUser(decoded);
+        return await withSharedMembership(decodedToAuthedUser(decoded), token, "id");
       } catch {
         // 헤더 검증 실패 시 쿠키 폴백 시도
       }
@@ -100,7 +109,7 @@ export async function verifyRequestUser(request: NextRequest): Promise<AuthedUse
   if (cookie) {
     try {
       const decoded = await getAdminAuth().verifySessionCookie(cookie, true);
-      return decodedToAuthedUser(decoded);
+      return await withSharedMembership(decodedToAuthedUser(decoded), cookie, "session");
     } catch {
       throw new AuthError(401, "Your session expired. Please sign in again.");
     }

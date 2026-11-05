@@ -60,7 +60,7 @@ export default function ShareStreakButton({
       disabled={busy}
       aria-label={t("share.cta")}
       className="mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-semibold disabled:opacity-50"
-      style={{ background: "rgba(216,90,48,0.10)", color: "#D85A30" }}
+      style={{ background: "rgba(30,27,75,0.10)", color: "var(--soul)" }}
     >
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <path d="M12 3v12" />

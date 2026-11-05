@@ -19,6 +19,11 @@
 
 # production
 /build
+/toss/node_modules/
+/toss/dist/
+/toss/.ait/
+/toss/*.ait
+/toss/artifacts/
 
 # misc
 .DS_Store
@@ -95,6 +100,9 @@ DerivedData/
 # scripts/ios-appstore-submit.mjs 는 ASC_API_KEY_PATH 로 저장소 밖 경로를 참조한다.
 *.p8
 AuthKey_*.p8
+*_private.key
+*_public.crt
 
 # 심사용 데모 계정 자격증명 — Play Console UI 에 직접 입력만 하고 파일은 로컬에 둔다.
 /scripts/review-account-credentials.txt
+.env*.local

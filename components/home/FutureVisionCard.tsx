@@ -74,7 +74,7 @@ export default function FutureVisionCard({
             boxShadow: "var(--shadow-card)",
           }}
         >
-          <div className="text-[11px] font-semibold tracking-[1.6px] uppercase text-[#D85A30] mb-2.5">
+          <div className="text-[11px] font-semibold tracking-[1.6px] uppercase text-[var(--soul)] mb-2.5">
             {t("futureVision.headerLabel")}
           </div>
           <h3 className="text-[19px] font-semibold tracking-[-0.4px] text-[var(--label)]">
@@ -100,14 +100,14 @@ export default function FutureVisionCard({
   const labelColor = isDark ? "rgba(255,255,255,0.92)" : "var(--label)";
   const subColor = isDark ? "rgba(255,255,255,0.74)" : "var(--label-2)";
   const momentColor = isDark ? "rgba(255,255,255,0.62)" : "var(--label-3)";
-  const accentColor = isDark ? "rgba(255,255,255,0.85)" : "#D85A30";
+  const accentColor = isDark ? "rgba(255,255,255,0.85)" : "var(--soul)";
 
   return (
     <section className="flex flex-col gap-4" aria-label={t("futureVision.headerLabel")}>
       <div
         className="relative overflow-hidden rounded-[18px]"
         style={{
-          background: vision ? gradientCss(vision) : "linear-gradient(135deg, #1E1B4B 0%, #7C3AED 100%)",
+          background: vision ? gradientCss(vision) : "linear-gradient(135deg, #1E1B4B 0%, #4F4BA8 100%)",
           boxShadow: "var(--shadow-card)",
         }}
       >
@@ -193,7 +193,7 @@ export default function FutureVisionCard({
                   className="mt-4 rounded-xl px-3 py-2 text-[13px] leading-[18px] tracking-[-0.1px]"
                   style={{
                     color: isDark ? "rgba(255,255,255,0.96)" : "#9A3412",
-                    background: isDark ? "rgba(0,0,0,0.22)" : "rgba(216,90,48,0.10)",
+                    background: isDark ? "rgba(0,0,0,0.22)" : "rgba(30,27,75,0.10)",
                   }}
                   role="alert"
                 >

@@ -505,7 +505,7 @@ export default function SettingsPage() {
   if (authLoading || !firebaseUser) {
     return (
       <div className="flex h-full items-center justify-center bg-[var(--bg-grouped)]">
-        <div className="h-6 w-6 animate-spin rounded-full border-[1.5px] border-black/10 border-t-[#D85A30]" />
+        <div className="h-6 w-6 animate-spin rounded-full border-[1.5px] border-black/10 border-t-[var(--soul)]" />
       </div>
     );
   }
@@ -594,7 +594,9 @@ export default function SettingsPage() {
     }
   };
 
+  const newMembershipPurchasesEnabled = false;
   const handlePurchasePro = async () => {
+    if (!newMembershipPurchasesEnabled) return;
     if (purchasing || restoring) return; // 이중 실행/상호 충돌 방지.
     // 결제 시도 — 완료(purchase_completed)는 서버 검증 라우트가 남기므로 여기선 "눌렀다" 만.
     track("purchase_started", { platform: detectEventPlatform() });
@@ -785,10 +787,10 @@ export default function SettingsPage() {
               className="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
               style={{ background: "rgba(255,149,0,0.16)" }}
             >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="#D85A30" aria-hidden>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="var(--soul)" aria-hidden>
                 <path d="M13 2L4.5 13.5h6L9 22l8.5-11.5h-6L13 2z" />
               </svg>
-              <span className="text-[12px] font-semibold tracking-[0.4px] text-[#D85A30]">
+              <span className="text-[12px] font-semibold tracking-[0.4px] text-[var(--soul)]">
                 {t("settings.streakLabel", { count: streakCount }) || `STREAK ${streakCount}일`}
               </span>
             </div>
@@ -848,7 +850,7 @@ export default function SettingsPage() {
               <div className="relative flex items-center gap-3 px-4 min-h-[44px]">
                 <div
                   className="w-[30px] h-[30px] rounded-[7px] flex items-center justify-center flex-shrink-0"
-                  style={{ background: "#D85A30" }}
+                  style={{ background: "var(--soul)" }}
                 >
                   {G.spark}
                 </div>
@@ -864,20 +866,20 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={handlePurchasePro}
-                disabled={purchasing || restoring}
+                disabled={!newMembershipPurchasesEnabled || purchasing || restoring}
                 className="w-full relative flex items-center gap-3 px-4 min-h-[44px] text-left disabled:opacity-50"
               >
                 <div
                   className="w-[30px] h-[30px] rounded-[7px] flex items-center justify-center flex-shrink-0"
-                  style={{ background: "#D85A30" }}
+                  style={{ background: "var(--soul)" }}
                 >
                   {G.spark}
                 </div>
                 <div className="flex-1 py-[11px] text-[17px] leading-[22px] tracking-[-0.43px] text-[var(--soul)] font-semibold">
-                  {purchasing ? t("settings.pro.processing") : t("settings.pro.buy")}
+                  US$19.90 · Lifetime · One-time · Coming soon
                 </div>
                 {proPrice && !purchasing && (
-                  <span className="text-[17px] tracking-[-0.43px] text-[var(--label-2)]">{proPrice}</span>
+                  <span className="text-[17px] tracking-[-0.43px] text-[var(--label-2)]">US$19.90</span>
                 )}
                 <div className="absolute bottom-0 right-0 h-[0.5px]" style={{ left: 58, background: "var(--sep)" }} />
               </button>
@@ -968,7 +970,7 @@ export default function SettingsPage() {
             >
               <span>{t("common.none") || "없음"}</span>
               {pinnedAuthor === "" && (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D85A30" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--soul)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M5 12l5 5L20 7" />
                 </svg>
               )}
@@ -987,7 +989,7 @@ export default function SettingsPage() {
                 >
                   <span>{a}</span>
                   {selected && (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D85A30" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--soul)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M5 12l5 5L20 7" />
                     </svg>
                   )}
@@ -1100,7 +1102,7 @@ export default function SettingsPage() {
                   <span aria-hidden className="text-[20px] leading-none">{meta.flag}</span>
                   <span className="flex-1">{meta.nativeLabel}</span>
                   {selected && (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D85A30" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--soul)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M5 12l5 5L20 7" />
                     </svg>
                   )}

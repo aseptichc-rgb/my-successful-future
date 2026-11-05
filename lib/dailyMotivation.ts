@@ -78,21 +78,21 @@ const DAYS_PER_WEEK = 7;
 const EXCLUDED_CATEGORIES = new Set(["personal"]);
 
 const LIGHT_PALETTES: ReadonlyArray<Pick<MotivationGradient, "from" | "to" | "angle">> = [
-  { from: "#FDE68A", to: "#FCA5A5", angle: 135 },
-  { from: "#A7F3D0", to: "#93C5FD", angle: 145 },
-  { from: "#FBCFE8", to: "#C7D2FE", angle: 130 },
-  { from: "#FEF3C7", to: "#BFDBFE", angle: 150 },
-  { from: "#FBE2C0", to: "#F4A261", angle: 140 },
-  { from: "#E0F2FE", to: "#FBCFE8", angle: 160 },
+  { from: "#F0EEF7", to: "#DCD9EE", angle: 135 },
+  { from: "#E9EDF4", to: "#D2D9EA", angle: 145 },
+  { from: "#EAE7F2", to: "#D8D4E9", angle: 130 },
+  { from: "#F4F1EB", to: "#E2DFED", angle: 150 },
+  { from: "#EEEDF5", to: "#CFCBE2", angle: 140 },
+  { from: "#E8EDF3", to: "#DDD9EC", angle: 160 },
 ];
 
 const DARK_PALETTES: ReadonlyArray<Pick<MotivationGradient, "from" | "to" | "angle">> = [
-  { from: "#1E1B4B", to: "#7C3AED", angle: 135 },
-  { from: "#0F172A", to: "#0EA5E9", angle: 150 },
-  { from: "#312E81", to: "#EC4899", angle: 145 },
-  { from: "#064E3B", to: "#1E40AF", angle: 135 },
-  { from: "#7F1D1D", to: "#1E1B4B", angle: 160 },
-  { from: "#0F172A", to: "#7C3AED", angle: 125 },
+  { from: "#1E1B4B", to: "#4F4BA8", angle: 135 },
+  { from: "#20243A", to: "#414C70", angle: 150 },
+  { from: "#2A2766", to: "#625E9B", angle: 145 },
+  { from: "#263249", to: "#41416F", angle: 135 },
+  { from: "#39334E", to: "#1E1B4B", angle: 160 },
+  { from: "#20243A", to: "#514B7F", angle: 125 },
 ];
 
 /** KST 기준 YYYY-MM-DD (단일 구현은 lib/kstDate.todayKstYmd). */

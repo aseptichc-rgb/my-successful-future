@@ -18,7 +18,7 @@ import { addKstDays } from "@/lib/kstDate";
 
 /** 링 칸 수 — lib/weeklyReview 의 WEEKLY_REVIEW_DAYS 와 같은 창을 본다. */
 const RING_DAYS = 7;
-const SOUL = "#D85A30";
+const SOUL = "#1E1B4B";
 
 export default function WeekRhythmRing({
   todayYmd,
@@ -68,7 +68,7 @@ export default function WeekRhythmRing({
                 background: checked
                   ? SOUL
                   : isStart
-                    ? "rgba(216,90,48,0.28)"
+                    ? "rgba(30,27,75,0.28)"
                     : "rgba(0,0,0,0.07)",
                 boxShadow: isToday ? `0 0 0 2px ${SOUL}44` : undefined,
               }}
