@@ -506,6 +506,11 @@ const dict: Record<DictKey, string> = {
 
   // ── 誓言教练 ──────────────────────────────────────
   "coach.chat.title": "AI 教练",
+  "coach.home.description": "设定目标，或在遇到阻碍时一起找到下一步。",
+  "praise.goalSaved": "做得好！你写下了目标“{goal}”。想清楚要做什么，就是向前一步。",
+  "praise.goalCompleted": "做得好！你今天完成了“{goal}”。",
+  "praise.winRecorded": "做得好！你发现并记下了今天做成的事。",
+  "praise.tomorrowPlanned": "做得好！你提前想好了明天要做的第一件事。",
   "coach.chat.intro": "你可以询问肯定语、目标、行动中的障碍、适合你处境的鼓励，或未来的自己。",
   "coach.chat.affirmations": "肯定语和目标建议",
   "coach.chat.obstacles": "克服障碍的行动建议",

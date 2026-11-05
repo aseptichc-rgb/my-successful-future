@@ -5,6 +5,7 @@ import { saveTomorrowFirstAction, TOMORROW_FIRST_ACTION_MAX } from "@/lib/fireba
 import { WINS_AUTOSAVE_MS, WINS_SAVED_TOAST_MS } from "@/lib/constants/record";
 import { docKey } from "@/lib/docKey";
 import { useT } from "@/lib/i18n";
+import { usePracticePraise } from "@/components/ui/PracticePraise";
 import type { DailyEntry } from "@/types";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -31,6 +32,7 @@ export default function TomorrowActionRow({
   entryLoaded: boolean;
 }) {
   const t = useT();
+  const showPraise = usePracticePraise();
 
   const [value, setValue] = useState("");
   const [saving, setSaving] = useState(false);
@@ -79,6 +81,7 @@ export default function TomorrowActionRow({
     try {
       await saveTomorrowFirstAction(uid, ymd, snapshot);
       setJustSaved(true);
+      if (!saved.trim() && snapshot.trim()) showPraise(t("praise.tomorrowPlanned"));
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
       toastTimerRef.current = setTimeout(() => setJustSaved(false), WINS_SAVED_TOAST_MS);
     } catch (err) {

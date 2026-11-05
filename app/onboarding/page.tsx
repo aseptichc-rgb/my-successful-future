@@ -458,6 +458,7 @@ export default function OnboardingPage() {
   // 통합 진행바 — 언어 선택/미리보기에서는 null(미표시).
   const progress = computeOnboardingProgress(step);
   const goalHintVisible = needsMoreSpecificGoal(goal);
+  const savedPreviewGoal = step === 3 ? normalizeGoalText(goal) : "";
 
   return (
     <div className="anima-onboarding flex min-h-screen flex-col bg-[#F0EDE6]">
@@ -710,6 +711,12 @@ export default function OnboardingPage() {
               <p className="mt-2 text-[15px] leading-[1.47] tracking-[-0.022em] text-black/60">
                 {previewLoading ? t("onboarding.step5.subtitleLoading") : t("onboarding.step5.subtitleDone")}
               </p>
+
+              {savedPreviewGoal && (
+                <p role="status" className="mt-4 rounded-2xl bg-[var(--soul-soft)] px-4 py-3 text-[15px] leading-snug text-[var(--soul)] [overflow-wrap:anywhere]">
+                  {t("praise.goalSaved", { goal: savedPreviewGoal })}
+                </p>
+              )}
 
               {previewLoading && (
                 <div className="mt-8 flex items-center justify-center rounded-[24px] bg-white/60 px-6 py-16">

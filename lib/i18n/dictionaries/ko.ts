@@ -522,6 +522,11 @@ const dict = {
 
   // ── 다짐 코치 ─────────────────────────────────────
   "coach.chat.title": "AI 코치",
+  "coach.home.description": "목표를 세우고, 막힐 때 다음 한 걸음을 함께 찾아봐요.",
+  "praise.goalSaved": "좋아요! ‘{goal}’을 목표로 적었어요. 무엇을 할지 정한 것부터 한 걸음이에요.",
+  "praise.goalCompleted": "잘했어요! ‘{goal}’을 오늘 해냈어요.",
+  "praise.winRecorded": "잘했어요! 오늘 해낸 일을 직접 알아보고 기록했어요.",
+  "praise.tomorrowPlanned": "좋아요! 내일 시작할 첫 행동을 미리 정했어요.",
   "coach.chat.intro": "다짐과 목표, 실천을 막는 장애물, 내 상황에 맞는 응원, 미래의 내 모습에 대해 물어보세요.",
   "coach.chat.affirmations": "나의 다짐과 목표 제안",
   "coach.chat.obstacles": "장애물을 넘기 위한 실행 제안",

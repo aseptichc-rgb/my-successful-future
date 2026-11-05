@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { User as FirebaseUser } from "firebase/auth";
 import { onDailyEntrySnapshot, saveDailyAchievedGoals } from "@/lib/firebase";
 import { docKey } from "@/lib/docKey";
 import { notifyAndroidWidgetRefresh } from "@/lib/widgetBridge";
 import { refreshIosWidget } from "@/lib/iosWidget";
 import { useT } from "@/lib/i18n";
+import { usePracticePraise } from "@/components/ui/PracticePraise";
 import type { DailyEntry } from "@/types";
 
 export interface TodayEntryState {
@@ -34,6 +35,7 @@ export function useTodayEntry(
   ymd: string,
 ): TodayEntryState {
   const t = useT();
+  const showPraise = usePracticePraise();
   const uid = firebaseUser?.uid ?? "";
   const currentKey = docKey(firebaseUser?.uid, ymd);
 
@@ -42,6 +44,7 @@ export function useTodayEntry(
   );
   const [achievedGoals, setAchievedGoals] = useState<string[]>([]);
   const [goalSaving, setGoalSaving] = useState(false);
+  const goalSavingRef = useRef(false);
 
   useEffect(() => {
     if (!firebaseUser) return;
@@ -55,39 +58,42 @@ export function useTodayEntry(
   }, [firebaseUser, ymd]);
 
   const curEntry = entrySnap?.key === currentKey ? entrySnap : null;
+  const entryLoaded = curEntry !== null;
 
   const toggleGoalAchieved = useCallback(
     async (goalText: string) => {
       const trimmed = goalText.trim();
-      if (!trimmed || !uid) return;
+      if (!trimmed || !uid || !entryLoaded || goalSavingRef.current) return;
       // Android intent 는 현재 탭 user-activation 이 살아 있는 첫 await 전에만 신호.
       notifyAndroidWidgetRefresh();
       const prev = achievedGoals;
-      const next = prev.includes(trimmed)
-        ? prev.filter((g) => g !== trimmed)
-        : [...prev, trimmed];
+      const completing = !prev.includes(trimmed);
+      const next = completing ? [...prev, trimmed] : prev.filter((g) => g !== trimmed);
+      goalSavingRef.current = true;
       setAchievedGoals(next);
       setGoalSaving(true);
       try {
         await saveDailyAchievedGoals(uid, ymd, next);
+        if (completing) showPraise(t("praise.goalCompleted", { goal: trimmed }));
         void refreshIosWidget();
       } catch (err) {
         console.error("[today] 목표 달성 저장 실패:", err);
         setAchievedGoals(prev);
         window.alert(t("common.saveFailed"));
       } finally {
+        goalSavingRef.current = false;
         setGoalSaving(false);
       }
     },
-    [achievedGoals, t, uid, ymd],
+    [achievedGoals, entryLoaded, showPraise, t, uid, ymd],
   );
 
   return {
     currentKey,
     entry: curEntry?.entry ?? null,
-    entryLoaded: curEntry !== null,
-    achievedGoals,
-    goalSaving,
+    entryLoaded,
+    achievedGoals: entryLoaded ? achievedGoals : [],
+    goalSaving: !entryLoaded || goalSaving,
     toggleGoalAchieved,
   };
 }

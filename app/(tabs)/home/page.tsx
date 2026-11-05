@@ -33,6 +33,7 @@ import {
 } from "@/lib/notificationPolicy";
 import { fetchNotificationContent, type NotificationServerContent } from "@/lib/notificationSync";
 import MotivationCard from "@/components/home/MotivationCard";
+import CoachHomeCard from "@/components/home/CoachHomeCard";
 import TodayCard from "@/components/home/TodayCard";
 import FutureVisionCard from "@/components/home/FutureVisionCard";
 import NoticeSlot from "@/components/home/NoticeSlot";
@@ -560,6 +561,7 @@ export default function HomeDashboardPage() {
       />
 
       <main className="mx-auto w-full max-w-3xl">
+        <CoachHomeCard />
         {/* ── 알림 슬롯 — 재약속·슬롯 해금·스텝업·선언 안내·스토어 리뷰·피드백·체험 배너 중 우선순위 1장만(lib/homeNotice) ── */}
         <NoticeSlot
           ymd={ymd}
@@ -625,6 +627,7 @@ export default function HomeDashboardPage() {
             <ExtraGoalRows
               goals={goals}
               achievedGoals={achievedGoals}
+              goalSaving={goalSaving}
               onToggle={(g) => void handleToggleGoalAchieved(g)}
               unlocked={slots.unlocked}
             />

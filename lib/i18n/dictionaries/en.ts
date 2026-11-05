@@ -525,6 +525,11 @@ const dict: Record<DictKey, string> = {
 
   // ── Affirmation coach ─────────────────────────────
   "coach.chat.title": "AI coach",
+  "coach.home.description": "Set a goal or find your next step when you feel stuck.",
+  "praise.goalSaved": "Nice work setting “{goal}” as a goal. Deciding what to do is a step forward.",
+  "praise.goalCompleted": "Well done! You followed through on “{goal}” today.",
+  "praise.winRecorded": "Well done! You took a moment to notice and record what went well today.",
+  "praise.tomorrowPlanned": "Nice work deciding how you’ll get started tomorrow.",
   "coach.chat.intro": "Ask about affirmations, goals, what gets in your way, encouragement for your situation, or your future self.",
   "coach.chat.affirmations": "Suggestions for affirmations and goals",
   "coach.chat.obstacles": "Practical ideas for overcoming obstacles",

@@ -201,7 +201,7 @@ export default function CoachPage() {
 
   return (
     <main className="mx-auto w-full max-w-lg px-4 pb-[calc(env(safe-area-inset-bottom)+32px)] pt-[calc(env(safe-area-inset-top)+12px)]">
-      <BackButton label={t("settings.pro.header")} onClick={() => backOrReplace(router, "/settings")} />
+      <BackButton label={t("common.prev")} onClick={() => backOrReplace(router, "/home")} />
       <h1 id="coach-title" className="mt-4 text-3xl font-bold">{t("coach.chat.title")}</h1>
       <p className="mt-2 text-[var(--label-2)]">{t("coach.chat.intro")}</p>
       {hasProAccess(entitlement) ? <Chat key={firebaseUser.uid} /> : (

@@ -14,6 +14,7 @@ import { notifyAndroidWidgetRefresh } from "@/lib/widgetBridge";
 import { refreshIosWidget } from "@/lib/iosWidget";
 import { useT, type DictKey } from "@/lib/i18n";
 import Sheet from "@/components/ui/Sheet";
+import { usePracticePraise } from "@/components/ui/PracticePraise";
 import type { User } from "@/types";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -54,6 +55,7 @@ export default function GoalsSheet({
   onClose: () => void;
 }) {
   const t = useT();
+  const showPraise = usePracticePraise();
   const router = useRouter();
   const { refreshUser } = useAuth();
   // 결제 CTA 는 결제 가능한 환경(iOS/Android 앱)에서만 — 웹은 안내 문구만(TrialBanner 와 같은 규칙).
@@ -68,10 +70,13 @@ export default function GoalsSheet({
     setSaving(true);
     try {
       const cleaned = goals.map((g) => g.trim()).filter((g) => g.length > 0);
+      const existing = new Set((user.goals ?? []).map((g) => g.trim()));
+      const newGoal = cleaned.find((g) => !existing.has(g));
       await updateUserGoals(uid, cleaned);
       await refreshUser().catch(() => {});
       void refreshIosWidget();
       onClose();
+      if (newGoal) showPraise(t("praise.goalSaved", { goal: newGoal }));
     } catch (err) {
       console.error("[dream] 목표 저장 실패:", err);
       window.alert(t("common.saveFailed"));

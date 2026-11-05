@@ -24,12 +24,14 @@ const FIRST_EXTRA_NUMBER = 2;
 export default function ExtraGoalRows({
   goals,
   achievedGoals,
+  goalSaving,
   onToggle,
   unlocked,
 }: {
   /** 전체 목표 (User.goals) — 첫 목표는 오늘 카드 몫이라 여기선 나머지만 그린다. */
   goals: string[];
   achievedGoals: string[];
+  goalSaving: boolean;
   onToggle: (goal: string) => void;
   /** 지금 쓸 수 있는 목표 칸 수(computeGoalSlots().unlocked). 그 이상 인덱스는 잠긴다. */
   unlocked: number;
@@ -72,11 +74,11 @@ export default function ExtraGoalRows({
                     : t("home.goals.toggleAchievedAria")
                 }
                 aria-pressed={achieved}
-                disabled={trimmed.length === 0}
+                disabled={goalSaving || trimmed.length === 0}
                 className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0 transition-opacity"
                 style={{
                   background: achieved ? SLOT_COLOR : SLOT_COLOR + "1A",
-                  opacity: trimmed.length === 0 ? 0.4 : 1,
+                  opacity: goalSaving || trimmed.length === 0 ? 0.4 : 1,
                 }}
               >
                 {achieved ? (

@@ -531,6 +531,11 @@ const dict: Record<DictKey, string> = {
 
   // ── Coach de afirmaciones ─────────────────────────
   "coach.chat.title": "Coach de IA",
+  "coach.home.description": "Fija una meta o encuentra el siguiente paso cuando te sientas bloqueado.",
+  "praise.goalSaved": "¡Bien hecho! Anotaste «{goal}» como meta. Decidir qué hacer ya es un paso.",
+  "praise.goalCompleted": "¡Bien hecho! Hoy cumpliste «{goal}».",
+  "praise.winRecorded": "¡Bien hecho! Te tomaste un momento para reconocer y anotar un logro de hoy.",
+  "praise.tomorrowPlanned": "¡Bien hecho! Ya decidiste cómo empezar mañana.",
   "coach.chat.intro": "Pregunta sobre afirmaciones, metas, obstáculos, ánimo para tu situación o cómo te imaginas en el futuro.",
   "coach.chat.affirmations": "Sugerencias de afirmaciones y metas",
   "coach.chat.obstacles": "Ideas prácticas para superar obstáculos",

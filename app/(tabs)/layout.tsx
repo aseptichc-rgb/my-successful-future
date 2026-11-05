@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import { TodayDataProvider } from "@/lib/today-context";
 import TabBar from "@/components/nav/TabBar";
 import BootSplash from "@/components/ui/BootSplash";
+import { PracticePraiseProvider } from "@/components/ui/PracticePraise";
 import { trackAppOpenOnce } from "@/lib/track";
 import { todayKstYmd } from "@/lib/kstDate";
 
@@ -43,9 +44,11 @@ export default function TabsLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <TodayDataProvider>
-      {children}
-      <TabBar />
-    </TodayDataProvider>
+    <PracticePraiseProvider key={firebaseUser.uid}>
+      <TodayDataProvider>
+        {children}
+        <TabBar />
+      </TodayDataProvider>
+    </PracticePraiseProvider>
   );
 }

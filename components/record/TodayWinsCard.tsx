@@ -13,6 +13,7 @@ import { shouldSaveWins, winsSnapshotKey } from "@/lib/winsDraft";
 import { notifyAndroidWidgetRefresh } from "@/lib/widgetBridge";
 import { refreshIosWidget } from "@/lib/iosWidget";
 import { useT } from "@/lib/i18n";
+import { usePracticePraise } from "@/components/ui/PracticePraise";
 import type { DailyEntry } from "@/types";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -49,6 +50,7 @@ export default function TodayWinsCard({
   onOpenHistory: () => void;
 }) {
   const t = useT();
+  const showPraise = usePracticePraise();
 
   const [wins, setWins] = useState<string[]>(() => Array(MAX_DAILY_WINS).fill(""));
   const [autoSaving, setAutoSaving] = useState(false);
@@ -109,6 +111,9 @@ export default function TodayWinsCard({
     try {
       await saveDailyWins(uid, ymd, snapshot);
       setJustSaved(true);
+      if (snapshot.some((text, i) => text.trim() && !savedWins[i]?.trim())) {
+        showPraise(t("praise.winRecorded"));
+      }
       void refreshIosWidget();
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
       toastTimerRef.current = setTimeout(() => setJustSaved(false), WINS_SAVED_TOAST_MS);
