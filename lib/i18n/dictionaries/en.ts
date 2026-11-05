@@ -525,12 +525,11 @@ const dict: Record<DictKey, string> = {
 
   // ── Affirmation coach ─────────────────────────────
   "coach.chat.title": "AI coach",
-  "coach.home.description": "Set a goal or find your next step when you feel stuck.",
   "praise.goalSaved": "Nice work setting “{goal}” as a goal. Deciding what to do is a step forward.",
   "praise.goalCompleted": "Well done! You followed through on “{goal}” today.",
   "praise.winRecorded": "Well done! You took a moment to notice and record what went well today.",
   "praise.tomorrowPlanned": "Nice work deciding how you’ll get started tomorrow.",
-  "coach.chat.intro": "Ask about affirmations, goals, what gets in your way, encouragement for your situation, or your future self.",
+  "coach.chat.intro": "Find a practical next step based on your saved dream, goals, and what your ideal day looks like.",
   "coach.chat.affirmations": "Suggestions for affirmations and goals",
   "coach.chat.obstacles": "Practical ideas for overcoming obstacles",
   "coach.chat.encouragement": "Personalized encouragement",
@@ -542,7 +541,7 @@ const dict: Record<DictKey, string> = {
   "coach.chat.exhausted": "You’ve used all your questions for today.",
   "coach.chat.label": "Question",
   "coach.chat.example": "For example, what’s one step I can take today to start exercising after work?",
-  "coach.chat.consent": "I agree to send my question and up to two recent exchanges to Google Gemini to generate a reply.",
+  "coach.chat.consent": "I agree to send my question, up to two recent exchanges, and my saved dream, goals, and ideal day to Google Gemini to generate a reply.",
   "coach.chat.privacy": "Please leave out sensitive personal information. Double-check important details in AI replies.",
   "coach.chat.send": "Send question",
   "coach.chat.sending": "Preparing a reply…",

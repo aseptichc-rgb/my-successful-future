@@ -506,12 +506,11 @@ const dict: Record<DictKey, string> = {
 
   // ── 誓言教练 ──────────────────────────────────────
   "coach.chat.title": "AI 教练",
-  "coach.home.description": "设定目标，或在遇到阻碍时一起找到下一步。",
   "praise.goalSaved": "做得好！你写下了目标“{goal}”。想清楚要做什么，就是向前一步。",
   "praise.goalCompleted": "做得好！你今天完成了“{goal}”。",
   "praise.winRecorded": "做得好！你发现并记下了今天做成的事。",
   "praise.tomorrowPlanned": "做得好！你提前想好了明天要做的第一件事。",
-  "coach.chat.intro": "你可以询问肯定语、目标、行动中的障碍、适合你处境的鼓励，或未来的自己。",
+  "coach.chat.intro": "根据你保存的梦想、目标和理想的一天，找到现在可以迈出的一步。",
   "coach.chat.affirmations": "肯定语和目标建议",
   "coach.chat.obstacles": "克服障碍的行动建议",
   "coach.chat.encouragement": "个性化鼓励",
@@ -523,7 +522,7 @@ const dict: Record<DictKey, string> = {
   "coach.chat.exhausted": "今天的提问次数已用完。",
   "coach.chat.label": "问题",
   "coach.chat.example": "例如：我想开始下班后锻炼，今天可以先做什么？",
-  "coach.chat.consent": "我同意将问题和最近最多两轮对话发送给 Google Gemini，以生成回复。",
+  "coach.chat.consent": "我同意将问题、最近最多两轮对话，以及我保存的梦想、目标和理想的一天发送给 Google Gemini，以生成回复。",
   "coach.chat.privacy": "请勿输入敏感个人信息。请核实 AI 回复中的重要内容。",
   "coach.chat.send": "发送问题",
   "coach.chat.sending": "正在准备回复…",

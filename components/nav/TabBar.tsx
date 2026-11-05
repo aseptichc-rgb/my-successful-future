@@ -92,7 +92,7 @@ function isTextField(target: EventTarget | null): boolean {
   return !NON_TEXT_INPUT_TYPES.has((target as HTMLInputElement).type);
 }
 
-function useKeyboardOpen(): boolean {
+export function useKeyboardOpen(): boolean {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     const onFocusIn = (e: FocusEvent) => {
@@ -116,10 +116,9 @@ function isTabActive(pathname: string | null, href: TabHref): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export default function TabBar() {
+export default function TabBar({ keyboardOpen }: { keyboardOpen: boolean }) {
   const t = useT();
   const pathname = usePathname();
-  const keyboardOpen = useKeyboardOpen();
 
   return (
     <nav

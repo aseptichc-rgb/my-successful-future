@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { TodayDataProvider } from "@/lib/today-context";
-import TabBar from "@/components/nav/TabBar";
+import TabBar, { useKeyboardOpen } from "@/components/nav/TabBar";
+import CoachHomeButton from "@/components/home/CoachHomeButton";
 import BootSplash from "@/components/ui/BootSplash";
 import { PracticePraiseProvider } from "@/components/ui/PracticePraise";
 import { trackAppOpenOnce } from "@/lib/track";
@@ -22,6 +23,8 @@ import { todayKstYmd } from "@/lib/kstDate";
 
 export default function TabsLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const keyboardOpen = useKeyboardOpen();
   const { user, firebaseUser, loading } = useAuth();
 
   useEffect(() => {
@@ -44,10 +47,13 @@ export default function TabsLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <PracticePraiseProvider key={firebaseUser.uid}>
+    <PracticePraiseProvider
+      key={firebaseUser.uid}
+      floatingAction={pathname === "/home" && !keyboardOpen && <CoachHomeButton />}
+    >
       <TodayDataProvider>
         {children}
-        <TabBar />
+        <TabBar keyboardOpen={keyboardOpen} />
       </TodayDataProvider>
     </PracticePraiseProvider>
   );

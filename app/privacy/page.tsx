@@ -110,10 +110,12 @@ export default function PrivacyPolicyPage() {
             </li>
             <li>
               <b>AI coach questions (optional):</b> with your permission, the
-              current question and up to two recent exchanges are sent to
-              Google Gemini to generate a reply. Anima does not save the
-              conversation to your account. We store a daily question count
-              to apply the usage limit.
+              current question, up to two recent exchanges, and your saved
+              dream, goals and description of your ideal day are sent to
+              Google Gemini to generate a reply. You can withdraw permission
+              for future replies by clearing the checkbox on the coach screen.
+              Anima does not save the conversation to your account. We store
+              a daily question count to apply the usage limit.
             </li>
             <li>
               <b>LLM usage records:</b> token usage metrics for cost and quality

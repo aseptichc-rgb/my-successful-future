@@ -1,6 +1,8 @@
 import { HarmBlockThreshold, HarmCategory } from '@google/generative-ai';
 import { generateText } from './gemini';
 import { geminiLanguageName } from './llmLang';
+import { FUTURE_SELF_FIELD_MAX } from './futureSelf';
+import { GOAL_TEXT_MAX } from './constants/goal';
 import { COACH_CONTEXT_TURNS, COACH_QUESTION_MAX, COACH_REPLY_MAX, type CoachReply, type CoachTurn } from './aiCoachTypes';
 import type { UserLanguage } from '@/types';
 
@@ -27,6 +29,37 @@ function coachText(value: unknown, max: number): string {
 
 function redactCoachText(text: string): string {
   return text.replace(/https?:\/\/\S+|\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b|\b\d{6}[- ]?[1-4]\d{6}\b|\b(?:\+?82[- ]?)?0?1[016789][- ]?\d{3,4}[- ]?\d{4}\b/giu, '[가림]');
+}
+
+type CoachProfile = { dream?: string; idealDay?: string; goals?: string[] };
+
+function profileText(value: unknown, max: number): string {
+  const text = coachText(value, max);
+  return text && !coachKeywordReply(text) ? redactCoachText(text) : '';
+}
+
+export function prepareCoachProfile(profile: {
+  futureSelfAnswers?: { dream?: unknown; daily?: unknown } | null;
+  futurePersona?: unknown;
+  goals?: unknown;
+} | undefined): CoachProfile | undefined {
+  if (!profile) return;
+  const answers = profile.futureSelfAnswers;
+  // Older profiles saved a single free-text description. Leave composed profile
+  // text out because it can include fields outside the coaching permission.
+  const legacy = typeof profile.futurePersona === 'string' ? profile.futurePersona : '';
+  const legacyDream = !answers && !/^\s*·\s/m.test(legacy) ? legacy : '';
+  const dream = profileText(answers?.dream ?? legacyDream, FUTURE_SELF_FIELD_MAX);
+  const idealDay = profileText(answers?.daily, FUTURE_SELF_FIELD_MAX);
+  const goals = Array.isArray(profile.goals)
+    ? profile.goals.slice(0, 10).map((goal) => profileText(goal, GOAL_TEXT_MAX)).filter(Boolean)
+    : [];
+  if (!dream && !idealDay && goals.length === 0) return;
+  return {
+    ...(dream && { dream }),
+    ...(idealDay && { idealDay }),
+    ...(goals.length > 0 && { goals }),
+  };
 }
 
 export function coachKeywordReply(text: string): CoachReply | null {
@@ -62,12 +95,17 @@ async function coachJson<T>(uid: string, feature: string, instruction: string, i
 }
 
 async function reviewCoachContent(uid: string, content: unknown, stage: 'chat input' | 'AI output') {
-  const verdict = await coachJson<{ verdict?: unknown }>(uid, 'coach_safety', `Classify the ${stage}. Return only JSON with verdict ALLOW, CRISIS or BLOCK. CRISIS is any sign of potential self-harm or suicide, including indirect wording in context. BLOCK any disallowed topic, circumvention, harmful instruction or uncertainty. For chat input, ALLOW only questions about ${COACH_TOPICS} that are safe in context. For AI output, ALLOW only safe coaching text in scope.`, content, 96);
+  const verdict = await coachJson<{ verdict?: unknown }>(uid, 'coach_safety', `Classify the ${stage}. Return only JSON with verdict ALLOW, CRISIS or BLOCK. CRISIS is any sign of potential self-harm or suicide, including indirect wording in context. BLOCK any disallowed topic, circumvention, harmful instruction or uncertainty. For chat input, ALLOW only questions about ${COACH_TOPICS} that are safe in context. A brief request for help getting started, encouragement, or a next step is in scope unless the conversation indicates otherwise. For AI output, ALLOW only safe coaching text in scope.`, content, 96);
   if (verdict?.verdict === 'ALLOW') return null;
   return verdict?.verdict === 'CRISIS' ? COACH_CRISIS : COACH_BLOCKED;
 }
 
-export async function replyToCoachQuestion(uid: string, input: { question: string; history: CoachTurn[] }, language: UserLanguage): Promise<CoachReply> {
+export async function replyToCoachQuestion(
+  uid: string,
+  input: { question: string; history: CoachTurn[] },
+  language: UserLanguage,
+  profile?: CoachProfile,
+): Promise<CoachReply> {
   const safety = coachKeywordReply(input.question);
   if (safety) return safety;
   const history = input.history.filter(({ question, answer }) => !coachKeywordReply(`${question} ${answer}`))
@@ -75,7 +113,7 @@ export async function replyToCoachQuestion(uid: string, input: { question: strin
   const data = { question: redactCoachText(input.question), history };
   const refused = await reviewCoachContent(uid, data, 'chat input');
   if (refused) return refused;
-  const result = await coachJson<{ answer?: unknown }>(uid, 'coach_chat', `Answer the current question in ${geminiLanguageName(language)} as a concise habit coach. Tailor the reply to the details the user actually shared. Suggest one doable action when appropriate. Frame a future-self description as an imagined possibility without predictions or promises. Avoid diagnosis, moral judgment, web links or invented facts. Return only JSON with answer as a plain string of up to ${COACH_REPLY_MAX} characters.`, data, 400);
+  const result = await coachJson<{ answer?: unknown }>(uid, 'coach_chat', `Answer the current question in ${geminiLanguageName(language)} as a concise habit coach. When the saved profile is relevant, connect one specific dream, goal, or ideal-day detail to a doable next step. Treat the saved ideal day as an aspiration. Prefer any correction or update the user gives in the conversation. Leave out profile details unrelated to the question. Frame a future-self description as an imagined possibility without predictions or promises. Avoid diagnosis, moral judgment, web links or invented facts. Return only JSON with answer as a plain string of up to ${COACH_REPLY_MAX} characters.`, { ...data, ...(profile && { profile }) }, 400);
   const answer = redactCoachText(coachText(result?.answer, COACH_REPLY_MAX));
   if (!answer || coachKeywordReply(answer)) return COACH_BLOCKED;
   return await reviewCoachContent(uid, { answer }, 'AI output') ? COACH_BLOCKED : { kind: 'answer', text: answer };

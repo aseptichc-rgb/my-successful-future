@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import BackButton from "@/components/nav/BackButton";
 import BootSplash from "@/components/ui/BootSplash";
-import { COACH_CONTEXT_TURNS, COACH_DAILY_QUESTION_LIMIT, COACH_QUESTION_MAX, type CoachReply, type CoachUsage } from "@/lib/aiCoachTypes";
+import { COACH_CONTEXT_TURNS, COACH_DAILY_QUESTION_LIMIT, COACH_PROFILE_CONSENT_VERSION, COACH_QUESTION_MAX, type CoachReply, type CoachUsage } from "@/lib/aiCoachTypes";
 import { authedFetch } from "@/lib/authedFetch";
 import { useAuth } from "@/lib/auth-context";
 import { hasProAccess } from "@/lib/entitlement";
@@ -24,16 +24,38 @@ const PRO_FEATURES = [
 type ChatError = "coach.chat.access" | "coach.chat.usageError" | "coach.chat.replyError";
 type Exchange = { question: string; reply: CoachReply };
 
-function Chat() {
+function Chat({ uid }: { uid: string }) {
   const { locale, t } = useLanguage();
+  const consentKey = `anima:coach-consent:${COACH_PROFILE_CONSENT_VERSION}:${uid}`;
   const [usage, setUsage] = useState<CoachUsage | null>(null);
   const [revision, setRevision] = useState(0);
   const [question, setQuestion] = useState("");
-  const [consent, setConsent] = useState(false);
+  const [consent, setConsent] = useState(() => {
+    try { return window.localStorage.getItem(consentKey) === "granted"; }
+    catch { return false; }
+  });
   const [turns, setTurns] = useState<Exchange[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ChatError | null>(null);
   const sending = useRef(false);
+
+  function updateConsent(granted: boolean) {
+    setConsent(granted);
+    try {
+      if (granted) window.localStorage.setItem(consentKey, "granted");
+      else window.localStorage.removeItem(consentKey);
+    } catch {
+      // The choice still applies while this screen is open.
+    }
+  }
+
+  useEffect(() => {
+    const syncConsent = (event: StorageEvent) => {
+      if (event.key === consentKey || event.key === null) setConsent(event.newValue === "granted");
+    };
+    window.addEventListener("storage", syncConsent);
+    return () => window.removeEventListener("storage", syncConsent);
+  }, [consentKey]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -101,7 +123,9 @@ function Chat() {
       const response = await authedFetch(CHAT_API, {
         method: "POST",
         signal: controller.signal,
-        body: JSON.stringify({ question: text, history, language: locale, consent }),
+        body: JSON.stringify({
+          question: text, history, language: locale, consent, profileConsentVersion: COACH_PROFILE_CONSENT_VERSION,
+        }),
       });
       const data = await response.json() as { usage?: CoachUsage; reply?: CoachReply };
       setUsage(data.usage ?? null);
@@ -158,6 +182,11 @@ function Chat() {
         </button>
       )}
       {!usage && !error && <p role="status" className="text-sm">{t("common.loading")}</p>}
+      <label className="flex min-h-11 items-start gap-3 text-sm">
+        <input type="checkbox" className="mt-0.5 size-5 shrink-0 accent-[var(--soul)]" checked={consent}
+          disabled={busy} onChange={(event) => updateConsent(event.target.checked)} />
+        {t("coach.chat.consent")}
+      </label>
       {Boolean(usage?.remaining) && (
         <form onSubmit={(event) => void ask(event)} className="space-y-3" aria-busy={busy}>
           <label htmlFor="coach-question" className="block font-semibold">{t("coach.chat.label")}</label>
@@ -173,11 +202,6 @@ function Chat() {
             aria-describedby="coach-privacy"
           />
           <p id="coach-privacy" className="text-sm text-[var(--label-2)]">{t("coach.chat.privacy")}</p>
-          <label className="flex min-h-11 items-start gap-3 text-sm">
-            <input type="checkbox" className="mt-0.5 size-5 shrink-0 accent-[var(--soul)]" checked={consent}
-              disabled={busy} onChange={(event) => setConsent(event.target.checked)} />
-            {t("coach.chat.consent")}
-          </label>
           <button type="submit" disabled={busy || !consent || !question.trim()}
             className="min-h-11 w-full rounded-xl bg-[var(--soul)] px-4 py-3 font-semibold text-white disabled:opacity-50">
             {t(busy ? "coach.chat.sending" : "coach.chat.send")}
@@ -204,7 +228,7 @@ export default function CoachPage() {
       <BackButton label={t("common.prev")} onClick={() => backOrReplace(router, "/home")} />
       <h1 id="coach-title" className="mt-4 text-3xl font-bold">{t("coach.chat.title")}</h1>
       <p className="mt-2 text-[var(--label-2)]">{t("coach.chat.intro")}</p>
-      {hasProAccess(entitlement) ? <Chat key={firebaseUser.uid} /> : (
+      {hasProAccess(entitlement) ? <Chat key={firebaseUser.uid} uid={firebaseUser.uid} /> : (
         <section aria-label={t("settings.pro.header")} className="mt-6 rounded-2xl bg-[var(--bg-grouped-2)] p-5">
           <p>{t("coach.chat.access")}</p>
           <ul className="mt-3 list-disc space-y-2 pl-5">

@@ -522,12 +522,11 @@ const dict = {
 
   // ── 다짐 코치 ─────────────────────────────────────
   "coach.chat.title": "AI 코치",
-  "coach.home.description": "목표를 세우고, 막힐 때 다음 한 걸음을 함께 찾아봐요.",
   "praise.goalSaved": "좋아요! ‘{goal}’을 목표로 적었어요. 무엇을 할지 정한 것부터 한 걸음이에요.",
   "praise.goalCompleted": "잘했어요! ‘{goal}’을 오늘 해냈어요.",
   "praise.winRecorded": "잘했어요! 오늘 해낸 일을 직접 알아보고 기록했어요.",
   "praise.tomorrowPlanned": "좋아요! 내일 시작할 첫 행동을 미리 정했어요.",
-  "coach.chat.intro": "다짐과 목표, 실천을 막는 장애물, 내 상황에 맞는 응원, 미래의 내 모습에 대해 물어보세요.",
+  "coach.chat.intro": "저장한 꿈과 목표, 꿈꾸는 하루를 참고해 지금 할 수 있는 한 걸음을 함께 찾아봐요.",
   "coach.chat.affirmations": "나의 다짐과 목표 제안",
   "coach.chat.obstacles": "장애물을 넘기 위한 실행 제안",
   "coach.chat.encouragement": "내 상황에 맞는 응원",
@@ -539,7 +538,7 @@ const dict = {
   "coach.chat.exhausted": "오늘 질문을 모두 사용했어요.",
   "coach.chat.label": "질문",
   "coach.chat.example": "예: 퇴근 후 운동을 시작하려면 오늘 무엇부터 하면 좋을까요?",
-  "coach.chat.consent": "답변을 만들기 위해 질문과 최근 대화 최대 두 차례를 Google Gemini에 보내는 데 동의해요.",
+  "coach.chat.consent": "답변을 위해 질문, 최근 대화 최대 두 차례, 저장한 꿈·목표·꿈꾸는 하루를 Google Gemini에 보내는 데 동의해요.",
   "coach.chat.privacy": "민감한 개인정보는 입력하지 마세요. AI 답변의 중요한 내용은 직접 확인해 주세요.",
   "coach.chat.send": "질문 보내기",
   "coach.chat.sending": "답변을 준비하고 있어요…",

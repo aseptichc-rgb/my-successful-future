@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => {
         { find: '@/lib/auth-context', replacement: path('./auth-context.tsx') },
         { find: '@/lib/authedFetch', replacement: path('./authedFetch.ts') },
         { find: '@/components/nav/BackButton', replacement: path('./components/Hidden.tsx') },
-        { find: '@/components/home/CoachHomeCard', replacement: path('./components/Hidden.tsx') },
+        { find: '@/components/home/CoachHomeButton', replacement: path('./components/Hidden.tsx') },
         { find: '@/components/home/GuestLinkCard', replacement: path('./components/Hidden.tsx') },
         { find: '@/components/home/StoreReviewCard', replacement: path('./components/Hidden.tsx') },
         { find: '@/components/home/TrialBanner', replacement: path('./components/TrialNotice.tsx') },
