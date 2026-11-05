@@ -25,6 +25,7 @@ const PRICING: Record<string, ModelPrice> = {
   // Google Gemini (2025 공식 기준 — flash-lite)
   "gemini-2.5-flash-lite": { inputPerMTokens: 0.1, outputPerMTokens: 0.4 },
   "gemini-2.5-flash": { inputPerMTokens: 0.3, outputPerMTokens: 2.5 },
+  "gemini-3.5-flash-lite": { inputPerMTokens: 0.3, outputPerMTokens: 2.5 },
   "gemini-2.5-pro": { inputPerMTokens: 1.25, outputPerMTokens: 10 },
   // OpenAI
   "gpt-4o-mini": { inputPerMTokens: 0.15, outputPerMTokens: 0.6 },

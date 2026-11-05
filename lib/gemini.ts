@@ -34,7 +34,10 @@ export interface GenUsageContext {
   feature: string;
 }
 
-type GenTextOptions = Pick<ModelParams, "systemInstruction" | "safetySettings"> & { json?: boolean };
+type GenTextOptions = Pick<ModelParams, "systemInstruction" | "safetySettings"> & {
+  json?: boolean;
+  model?: string;
+};
 
 /** Gemini 가 호출당 시간 안에 응답하지 못해 끊었음을 나타낸다. */
 export class GeminiTimeoutError extends Error {
@@ -65,8 +68,9 @@ async function generateOnce(
   usageCtx?: GenUsageContext,
   options?: GenTextOptions,
 ): Promise<string> {
+  const modelName = options?.model ?? MODEL;
   const model = genAI.getGenerativeModel({
-    model: MODEL,
+    model: modelName,
     systemInstruction: options?.systemInstruction,
     safetySettings: options?.safetySettings,
     generationConfig: {
@@ -91,7 +95,7 @@ async function generateOnce(
       void logTokenUsage({
         uid: usageCtx.uid,
         provider: "google",
-        model: MODEL,
+        model: modelName,
         promptTokens: um?.promptTokenCount ?? 0,
         completionTokens: um?.candidatesTokenCount ?? 0,
         feature: usageCtx.feature,
