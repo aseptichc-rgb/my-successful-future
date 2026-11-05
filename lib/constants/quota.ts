@@ -1,3 +1,5 @@
+import { COACH_DAILY_QUESTION_LIMIT } from "../aiCoachTypes";
+
 /**
  * 결제 후 사용자에게도 일별 호출 한도를 둔다.
  * 1회 결제 모델에서 한 명이 무한 호출하면 백엔드 비용이 결제액을 빠르게 초과한다.
@@ -63,6 +65,7 @@ export const DAILY_QUOTA = {
    * 그 왕복을 몇 번 해도 막히지 않을 만큼만 열어둔다(초과해도 정적 예시로 폴백).
    */
   onboardingSuggest: 5,
+  coachQuestion: COACH_DAILY_QUESTION_LIMIT,
 } as const;
 
 export type QuotaKey = keyof typeof DAILY_QUOTA;

@@ -835,17 +835,24 @@ export default function SettingsPage() {
           />
         </GroupedSection>
 
-        {/* Anima Pro — iOS 인앱결제 (네이티브 플러그인이 있는 iOS 빌드에서만 노출) */}
-        {showPro && (
+        {/* Anima Pro — 코치 안내는 공통, 결제와 복원은 지원하는 앱에서 표시한다. */}
           <div ref={proSectionRef} className="scroll-mt-4">
           <GroupedSection
             header={t("settings.pro.header")}
             footer={
-              proActive
+              !showPro ? undefined : proActive
                 ? t("settings.pro.footerActive")
                 : t("settings.pro.footerInactive")
             }
           >
+            <SettingsRow
+              color="var(--soul)"
+              glyph={G.spark}
+              title={t("coach.chat.title")}
+              onClick={() => router.push("/coach")}
+              isLast={!showPro}
+            />
+            {showPro && <>
             {proActive ? (
               <div className="relative flex items-center gap-3 px-4 min-h-[44px]">
                 <div
@@ -904,9 +911,9 @@ export default function SettingsPage() {
                 {restoring ? t("settings.pro.restoring") : t("settings.pro.restore")}
               </div>
             </button>
+            </>}
           </GroupedSection>
           </div>
-        )}
 
         {/* 계정 */}
         <GroupedSection header={t("settings.account.header") || "계정"}>

@@ -21,6 +21,7 @@ export class QuotaExceededError extends Error {
     public readonly key: QuotaKey,
     public readonly limit: number,
     public readonly current: number,
+    public readonly ymd?: string,
   ) {
     super(`일별 호출 한도(${key} ${limit}회)를 초과했습니다. (현재 ${current}회)`);
     this.name = "QuotaExceededError";
@@ -53,7 +54,7 @@ export async function enforceQuota(
     const next = current + weight;
 
     if (next > limit) {
-      throw new QuotaExceededError(key, limit, current);
+      throw new QuotaExceededError(key, limit, current, ymd);
     }
 
     if (snap.exists) {
