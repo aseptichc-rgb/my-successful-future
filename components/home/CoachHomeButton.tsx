@@ -5,7 +5,8 @@ import { useT } from "@/lib/i18n";
 
 export default function CoachHomeButton() {
   const t = useT();
-  const label = t("coach.chat.title");
+  const name = "Genie";
+  const label = `${name} · ${t("coach.chat.title")}`;
   return (
     <Link
       href="/coach"
@@ -17,7 +18,7 @@ export default function CoachHomeButton() {
         <path d="M21 11a7 7 0 0 1-7 7H8l-5 3V11a7 7 0 0 1 7-7h4a7 7 0 0 1 7 7Z" />
         <path d="M8.5 11h.01m3.5 0h.01m3.5 0h.01" strokeWidth="2.2" />
       </svg>
-      <span aria-hidden="true" className="text-[10px] font-semibold leading-none tracking-wide">AI</span>
+      <span aria-hidden="true" className="text-[10px] font-semibold leading-none tracking-wide">{name}</span>
     </Link>
   );
 }
