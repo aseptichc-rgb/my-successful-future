@@ -179,6 +179,7 @@ export default function OnboardingPage() {
   const suggestRequestIdRef = useRef(0);
 
   const [saving, setSaving] = useState(false);
+  const [savedPreviewGoal, setSavedPreviewGoal] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -395,6 +396,7 @@ export default function OnboardingPage() {
       }
 
       setSaving(false);
+      setSavedPreviewGoal(cleanedGoal);
       setStep(3);
     } catch (err) {
       console.error("[onboarding] 저장 실패:", err);
@@ -458,7 +460,6 @@ export default function OnboardingPage() {
   // 통합 진행바 — 언어 선택/미리보기에서는 null(미표시).
   const progress = computeOnboardingProgress(step);
   const goalHintVisible = needsMoreSpecificGoal(goal);
-  const savedPreviewGoal = step === 3 ? normalizeGoalText(goal) : "";
 
   return (
     <div className="anima-onboarding flex min-h-screen flex-col bg-[#F0EDE6]">
