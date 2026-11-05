@@ -48,6 +48,12 @@ Firebase Firestore의 기존 사용자 규칙을 유지한다. 인증 토큰은 
 - SDK 3.9의 실제 `apps`·`private-apps` Origin에 맞춰 요청 검증과 CORS를 수정했고, 관련 회귀 테스트 14개 및 운영 서버의 실제 Origin별 preflight·인증 요청 검사를 통과했다. 앱 번들은 그대로 사용하며 서버만 수정했다.
 - 사용자 인증과 온보딩 진입은 실기기에서 확인했다. 재접속·기록 저장·AI 요청·뒤로가기·공유·삭제를 추가 검증한 후 심사를 요청한다. 콘솔의 인허가 확인 및 파트너 책임·손해배상 동의는 운영자 확인이 필요하다.
 
+## 디자인 업데이트 · 2026-11-05
+
+2026-11-05 디자인 업데이트는 테스트 버전 `20261105-2`로 업로드하고 임시저장했다. deploymentId는 `01a1a9e7-35b6-7b13-a8eb-9ae59b309e60`이다. [새 버전 테스트 QR](https://apps-in-toss.toss.im/workspace/22009/mini-app/anima/meta/edit?step=0&testDeploymentId=01a1a9e7-35b6-7b13-a8eb-9ae59b309e60&testVersionName=20261105-2)에서 확인한다. 기존 QR은 이전 디자인을 연다.
+
+전체 테스트 275개, 변경한 TypeScript 파일의 ESLint, Next.js 운영 빌드, 토스 타입 검사와 번들 빌드를 통과했다. 인증을 대체한 로컬 화면 검사에서 390px·480px 너비와 예시 선택·입력 반영을 확인했다. 새 디자인의 실기기 확인은 아직 필요하며 심사는 제출하지 않았다.
+
 ## 근거 문서
 
 - [SDK 설치와 번들 구성](https://developers-apps-in-toss.toss.im/ai-vibe-coding/tutorials/webview)
