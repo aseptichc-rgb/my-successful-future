@@ -12,6 +12,7 @@
     "noEmit": true,
     "types": ["vite/client", "node"],
     "paths": {
+      "@/lib/i18n": ["./i18n.ts"],
       "react": ["./node_modules/@types/react"],
       "react/jsx-runtime": ["./node_modules/@types/react/jsx-runtime"],
       "@/lib/auth-context": ["./auth-context.tsx"],

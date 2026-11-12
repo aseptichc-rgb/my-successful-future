@@ -4,8 +4,13 @@ import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath, URL } from 'node:url';
 
 const path = (name: string) => fileURLToPath(new URL(name, import.meta.url));
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, path('..'), 'NEXT_PUBLIC_');
+  if (command === 'build') {
+    const required = ['API_KEY', 'AUTH_DOMAIN', 'PROJECT_ID', 'STORAGE_BUCKET', 'MESSAGING_SENDER_ID', 'APP_ID'];
+    const missing = required.map((key) => `NEXT_PUBLIC_FIREBASE_${key}`).filter((key) => !env[key]?.trim());
+    if (missing.length) throw new Error(`Missing public Firebase configuration: ${missing.join(', ')}`);
+  }
   const define = Object.fromEntries(Object.entries(env).map(([key, value]) => [`process.env.${key}`, JSON.stringify(value)]));
   return {
     plugins: [react(), tailwindcss()],
@@ -21,6 +26,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       dedupe: ['react', 'react-dom', 'firebase', '@emotion/react'],
       alias: [
+        { find: /^@\/lib\/i18n$/, replacement: path('./i18n.ts') },
         { find: '@/lib/auth-context', replacement: path('./auth-context.tsx') },
         { find: '@/lib/authedFetch', replacement: path('./authedFetch.ts') },
         { find: '@/components/nav/BackButton', replacement: path('./components/Hidden.tsx') },

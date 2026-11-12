@@ -14,6 +14,10 @@ npm run build
 
 업로드 파일은 `toss/anima.ait`다. `apps-in-toss.config.ts`의 `appName`은 콘솔 등록값 `anima`와 일치해야 한다. SDK는 3.9.0이며 실제 설치 버전은 package-lock.json에 고정했다.
 
+빌드에는 저장소 루트 환경 파일 또는 실행 환경의 공개 Firebase 설정 `NEXT_PUBLIC_FIREBASE_{API_KEY,AUTH_DOMAIN,PROJECT_ID,STORAGE_BUCKET,MESSAGING_SENDER_ID,APP_ID}`가 필요하다. 누락되면 빌드를 중단한다. 서버 인증서·개인 키를 이 설정에 넣지 않는다.
+
+2026-11-12 반려 보완 버전 **20261112-3**을 재심사 제출했고 콘솔의 **검토 중** 상태를 확인했다. 카테고리와 온보딩의 자사 앱 설치·위젯 안내를 수정했다. 파일 해시·검증·실기기 제약은 [제출 기록](review-20261112.md)을 따른다.
+
 ## 콘솔과 서버
 
 - 워크스페이스: 이뻐지는퀴즈 (22009)
